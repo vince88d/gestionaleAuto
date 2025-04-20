@@ -1,0 +1,428 @@
+*,
+*::before,
+*::after {
+box-sizing: border-box;
+}
+
+
+/* ---------- Container ---------- */
+.bookings-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.title {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: white;
+}
+
+.subtitle {
+  margin-top: 40px;
+  font-size: 1.5rem;
+  font-weight: 500;
+  text-align: center;
+  color: #333;
+}
+
+/* ---------- Calendar Wrapper ---------- */
+.calendar-wrapper {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 1rem;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.calendar-wrapper.calendar-disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* FullCalendar tweaks */
+.fc {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+}
+
+.fc .fc-view-harness {
+  min-height: 400px;
+  max-height: 450px;
+}
+
+.fc-daygrid-event {
+  max-width: 70%;
+  margin: 2px;
+}
+
+.fc-daygrid-event-dot {
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.fc-daygrid-event-dot:hover {
+  background-color: #ff5733;
+}
+
+/* ---------- Booking dot in cell ---------- */
+.booking-dot-event {
+  background-color: transparent !important;
+  border: none !important;
+  display: flex;
+  justify-content: left;
+  align-items: center;
+  padding-left: 5px;
+}
+
+.booking-dot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 2em;
+  height: 2em;
+  border-radius: 50%;
+  background-color: #3498db;
+  color: white;
+  font-size: 0.7em;
+}
+
+/* ---------- Modal ---------- */
+.Overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 999;
+}
+
+.Modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 2rem;
+  padding-right: 1rem;
+  z-index: 1000;
+  border-radius: 10px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  min-height: 300px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  overflow: auto;
+}
+
+/* ---------- Form Aggiunta Prenotazione ---------- */
+.booking-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-color: #f9f9f9;
+  padding: 1.3rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.booking-form input {
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 0.8rem;
+}
+
+.booking-form input[readonly] {
+  background-color: #eaeaea;
+}
+
+.booking-form button {
+  padding: 0.8rem;
+  background-color: #3498db;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.booking-form button:hover {
+  background-color: #2980b9;
+}
+
+/* ---------- Tabella riepilogativa ---------- */
+.booking-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  background-color: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+  font-size: 0.92rem;
+}
+
+.booking-table th,
+.booking-table td {
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  white-space: nowrap;
+}
+
+.booking-table th {
+  background-color: #f1f1f1;
+  font-weight: 600;
+  color: #333;
+}
+
+.booking-table .edit-btn,
+.booking-table .delete-btn,
+.booking-table .info-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.info-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+
+}
+.info-btn svg {
+  color: #3498db;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+
+.info-btn:hover svg {
+  transform: scale(1.1);
+  color: #2980b9;
+}
+
+.export-btn {
+  background-color: #2ecc71;
+  color: white;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.export-btn:hover {
+  background-color: #27ae60;
+}
+
+/* ---------- Lista prenotazioni nel modal ---------- */
+.booking-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.booking-card {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.booking-info p {
+  margin: 4px 0;
+  font-size: 0.95rem;
+}
+
+.booking-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ---------- Bottoni Modifica ed Elimina ---------- */
+.edit-btn,
+.delete-btn {
+  padding: 0.4rem 0.8rem;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.edit-btn {
+  background-color: #f39c12;
+}
+
+.edit-btn:hover {
+  background-color: #e67e22;
+}
+
+.delete-btn {
+  background-color: #e74c3c;
+}
+
+.delete-btn:hover {
+  background-color: #c0392b;
+}
+.search-bar {
+  position: relative;
+  width: 94%;
+  margin-bottom: 1.5rem;
+}
+
+.search-input-enhanced {
+  width: 100%;
+  padding: 0.6rem 2.5rem 0.6rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+}
+
+.search-icon {
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #888;
+  pointer-events: none;
+}
+
+
+/* ---------- Responsive Styles ---------- */
+
+@media (max-width: 768px) {
+.bookings-container {
+  padding: 1rem;
+}
+.booking-form{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.booking-form button{
+  grid-column: span 2;
+  justify-self: end;
+}
+
+.title {
+  font-size: 1.5rem;
+}
+
+.search-bar {
+  width: 100%;
+}
+
+.search-input-enhanced {
+  font-size: 0.9rem;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.booking-table {
+  min-width: 650px;
+ 
+}
+
+.booking-form {
+  padding: 1rem;
+}
+
+.booking-form input {
+  font-size: 0.9rem;
+}
+
+.Modal {
+  max-width: 95%;
+  padding: 1rem;
+}
+.Modal::-webkit-scrollbar{
+  width: 8px;
+}
+.Modal::-webkit-scrollbar-thumb{
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.booking-dot {
+  width: 1.8em;
+  height: 1.8em;
+  font-size: 0.65em;
+}
+
+.booking-card {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+
+.booking-actions {
+  flex-direction: row;
+  justify-content: flex-end;
+  width: 100%;
+}
+}
+.form-group {
+display: flex;
+flex-direction: column;
+gap: 0.3rem;
+}
+
+@media  (max-height: 650px), (max-width: 1200px) {
+.Modal {
+  max-width: 95% !important;
+  max-height: 90vh !important;
+  padding: 1rem;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.Modal button {
+  font-size: 1rem;
+}
+
+.booking-form input,
+.booking-form button {
+  font-size: 0.95rem;
+}
+
+.booking-actions {
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.booking-info p {
+  font-size: 0.9rem;
+}
+}
+
+
+@media print {
+  button {
+    display: none;
+  }
+}

@@ -1,0 +1,118 @@
+/* src/dashboard.css */
+
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #f0f4f8;
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+/* Container principale della dashboard */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header della Dashboard */
+h1 {
+  color: #333;
+  text-align: center;
+  padding: 20px 0;
+  font-size: 36px;
+  font-weight: bold;
+  background: linear-gradient(to right, #0d47a1, #1976d2);
+  color: white;
+  border-radius: 10px;
+  margin-bottom: 40px;
+}
+
+/* Sezione delle carte (statistiche) */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  padding: 20px;
+  grid-template-rows: auto;
+}
+
+/* Card */
+.card {
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 25px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.3s ease;
+}
+
+.card:hover {
+  transform: scale(1.05);
+}
+
+/* Titolo e valore della card */
+.card .title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.card .value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0d47a1;
+  margin-bottom: 15px;
+}
+
+/* Icona */
+.card .icon {
+  font-size: 40px;
+  margin-top: 10px;
+}
+
+/* Aggiunta di colori per diverse carte */
+.card.blue { background-color: #e3f2fd; border-left: 5px solid #1976d2; }
+.card.green { background-color: #e8f5e9; border-left: 5px solid #388e3c; }
+.card.yellow { background-color: #fffde7; border-left: 5px solid #fbc02d; }
+.card.purple { background-color: #f3e5f5; border-left: 5px solid #8e24aa; }
+
+/* Sezione di grafici o altre informazioni future */
+.graph {
+  margin-top: 40px;
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+}
+
+.graph-card {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  width: 48%;
+}
+
+.graph-card h3 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* Responsive: layout su dispositivi mobili */
+@media (max-width: 768px) {
+  .graph {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .graph-card {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+}

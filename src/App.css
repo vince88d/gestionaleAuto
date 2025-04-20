@@ -1,0 +1,21 @@
+.app-container {
+    display: flex;
+  }
+  
+  .main-content {
+    margin-left: 220px;
+    padding: 20px;
+    width: 100%;
+    transition: margin-left 0.3s ease;
+    background-color: #f4f6f8;
+    min-height: 100vh;
+  }
+  
+  .app-container.collapsed .main-content {
+    margin-left: 70px;
+  }
+  @media print {
+    button {
+      display: none;
+    }
+  }
