@@ -1,0 +1,65 @@
+/* ---------- Scheda Veicolo Modal ---------- */
+
+.Modal form label {
+    font-weight: 600;
+    margin-top: 1rem;
+    display: block;
+    color: #333;
+  }
+  
+  .Modal form select,
+  .Modal form input[type="number"],
+  .Modal form textarea {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    margin-top: 0.3rem;
+  }
+  
+  .Modal form textarea {
+    resize: vertical;
+  }
+  
+  .Modal form input[type="file"] {
+    margin-top: 0.5rem;
+  }
+  
+  .Modal form .accessori-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.3rem;
+  }
+  
+  .Modal form .accessori-wrapper label {
+    font-weight: normal;
+  }
+  
+  .Modal form button[type="submit"] {
+    margin-top: 1.5rem;
+    padding: 0.8rem;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .Modal form button[type="submit"]:hover {
+    background-color: #2980b9;
+  }
+  
+  .Modal img.preview {
+    max-width: 100%;
+    max-height: 200px;
+    margin-top: 0.5rem;
+    border-radius: 8px;
+    object-fit: contain;
+    border: 1px solid #ccc;
+  }
+  
