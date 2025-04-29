@@ -6,11 +6,13 @@ import interactionPlugin from '@fullcalendar/interaction';
 import BookingForm from '../components/BookingForm';
 import SchedaVeicoloModal from '../components/SchedaModalOpen';
 import RiepilogoPrenotazioneModal from '../components/RiepilogoPrenotazioneModal';
+import InfoModal from '../components/InfoModal';
+import { ToastContainer,toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import { Search, Info, CheckCircle, AlertCircle } from 'lucide-react';
 import Modal from 'react-modal';
 import "../components/BookingForm.css";
-import {db} from '../components/firebase';
-import {collection,addDoc,getDocs,doc,deleteDoc,updateDoc} from 'firebase/firestore';
 import { useDispatch,useSelector } from 'react-redux';
 import{
   setPrenotazioni,
@@ -19,6 +21,7 @@ import{
   deletePrenotazione,
 } from '../store/prenotazioniSlice';
 Modal.setAppElement('#root');
+
 
 
 function Bookings() {
@@ -65,50 +68,43 @@ function Bookings() {
   });  
 
   useEffect(() => {
+    let cleanup;
     if (window.electronAPI?.onEmailStatus) {
-      const listener = (event, { success, message }) => {
+      cleanup = window.electronAPI.onEmailStatus(({ success, message }) => {
         showFeedback(message, success ? 'success' : 'error');
-      };
-  
-      window.electronAPI.onEmailStatus(listener);
-  
-      return () => {
-        // Non tentare di rimuovere se undefined
-        if (window.electronAPI?.onEmailStatus) {
-          window.electronAPI.onEmailStatus(null);
-        }
-      };
+      });
     }
+  
+    return () => {
+      if (cleanup) cleanup(); // ✅ Rimuove correttamente il listener
+    };
   }, []);
   
+
   useEffect(() => {
     const caricaPrenotazioni = async () => {
-      setLoading(true)
+      setLoading(true);
       try {
-       
-        const snapshot = await getDocs(collection(db, "prenotazioni"));
-        const dati = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-       dispatch(setPrenotazioni(dati)) ;
+        const dati = await window.electronAPI.readPrenotazioni();
+        dispatch(setPrenotazioni(dati));
       } catch (error) {
-        console.error("Errore nel recupero prenotazioni:", error);
-      }finally{
+        console.error("Errore lettura locale:", error);
+      } finally {
         setLoading(false);
       }
     };
   
     caricaPrenotazioni();
   }, []);
-
-
+  
 
 
   const showFeedback = (message, type = 'success') => {
-    setFeedbackMessage(message);
-    setFeedbackType(type);
-    setTimeout(() => setFeedbackMessage(null), 3000);
+    if (type === 'success') {
+      toast.success(message);
+    } else {
+      toast.error(message);
+    }
   };
 
   const resetModal = () => {
@@ -176,29 +172,22 @@ function Bookings() {
     setDettagliPrenotazione(null);
     setInfoModalOpen(false);
   };
-
   const handleDelete = async (index) => {
     const conferma = window.confirm("Sei sicuro di voler eliminare questa prenotazione?");
     if (!conferma) return;
   
-    const prenotazione = prenotazioni[index];
-  
-    if (!prenotazione?.id) {
-      showFeedback("ID prenotazione non trovato.", "error");
-      return;
-    }
-  
     try {
-      await deleteDoc(doc(db, "prenotazioni", prenotazione.id));
-      
-      dispatch(deletePrenotazione(prenotazione.id));
-
+      const nuovaLista = prenotazioni.filter((_, i) => i !== index);
+      dispatch(deletePrenotazione(prenotazioni[index].id));
+      await window.electronAPI.writePrenotazioni(nuovaLista);
       showFeedback("Prenotazione eliminata con successo.", "success");
     } catch (error) {
       console.error("Errore durante eliminazione:", error);
       showFeedback("Errore nell'eliminazione", "error");
     }
   };
+  
+
   const handleBookingSubmit = (data) => {
     const giorni = calcGiorni(data.dataInizio, data.dataFine);
     const totale = giorni * parseFloat(data.prezzoGiornaliero || 0);
@@ -211,7 +200,8 @@ function Bookings() {
       const fineA = new Date(p.dataFine);
       const inizioB = new Date(data.dataInizio);
       const fineB = new Date(data.dataFine);
-  
+
+      
       return (
         (inizioB <= fineA && inizioB >= inizioA) ||
         (fineB >= inizioA && fineB <= fineA) ||
@@ -224,8 +214,10 @@ function Bookings() {
       return;
     }
   
-    setFormData({ ...data, prezzoTotale: totale }); // salvi nel formData
-    setSchedaModalOpen(true); // apri il passo successivo
+    setFormData({ ...data, prezzoTotale: totale });
+  
+    setModalIsOpen(false);        // Chiudo il primo modal
+    setSchedaModalOpen(true);     // Apro la scheda veicolo
   };
   
 
@@ -302,40 +294,79 @@ function Bookings() {
       ...formData,
       schedaVeicolo: { ...schedaVeicolo },
     };
+  
+    let prenotazioniAggiornate = [];
+  
     setLoading(true);
+  
     try {
       if (editingIndex !== null) {
-        // MODIFICA
+        // Modifica esistente
         const id = prenotazioni[editingIndex].id;
         if (!id) throw new Error("ID mancante");
+        
+        const aggiornata = { ...nuovaPrenotazione, id };
+        prenotazioniAggiornate = prenotazioni.map((p, i) =>
+          i === editingIndex ? aggiornata : p
+        );
   
-        await updateDoc(doc(db, "prenotazioni", id), nuovaPrenotazione);
-          
-        dispatch(updatePrenotazione({ ...nuovaPrenotazione, id }));
-  
+        dispatch(updatePrenotazione(aggiornata));
         showFeedback("Prenotazione modificata con successo", "success");
       } else {
-        // NUOVA
-        const docRef = await addDoc(collection(db, "prenotazioni"), nuovaPrenotazione);
-        dispatch(addPrenotazione({ ...nuovaPrenotazione, id: docRef.id }));
-
+        // Nuova prenotazione
+        const nuovaConId = {
+          ...nuovaPrenotazione,
+          id: crypto.randomUUID(),
+        };
+        
+        prenotazioniAggiornate = [...prenotazioni, nuovaConId];
+        dispatch(addPrenotazione(nuovaConId));
         showFeedback("Prenotazione aggiunta con successo", "success");
       }
+  
+      await window.electronAPI.writePrenotazioni(prenotazioniAggiornate);
+  
     } catch (error) {
-      console.error("Errore nel salvataggio Firestore:", error);
+      console.error("Errore nel salvataggio:", error);
       showFeedback("Errore durante il salvataggio", "error");
       return;
-    }
-    finally{
+    } finally {
       setLoading(false);
     }
   
     inviaEmailPrenotazioneIPC(nuovaPrenotazione);
+  
+    // --- 🚀 Dopo il salvataggio:
+    setFormData({
+      cliente: '',
+      codiceFiscale: '',
+      patente: '',
+      veicolo: '',
+      targa: '',
+      dataInizio: '',
+      dataFine: '',
+      prezzoGiornaliero: '',
+      prezzoTotale: '',
+      emailCliente: '',
+    });
+  
+    setSchedaVeicolo({
+      carburante: '',
+      kmIniziali: '',
+      danni: '',
+      accessori: {
+        cric: false,
+        triangolo: false,
+        giubbotto: false,
+      }
+    });
+  
     setEditingIndex(null);
-
-    resetModal();
+    setModalIsOpen(false);
+    setSchedaModalOpen(false);
     setRiepilogoOpen(false);
   };
+  
   
  // Funzione per inviare email tramite IPC al Main Process
  const inviaEmailPrenotazioneIPC = (prenotazione) => {
@@ -349,8 +380,14 @@ function Bookings() {
   }
   
 
+
   console.log('Richiesta invio email inviata al main process.');
 };
+const handleBackToForm = () => {
+  setSchedaModalOpen(false);
+  setModalIsOpen(true);
+};
+
 
 if(loading){
   return (
@@ -410,8 +447,8 @@ return (
   <Modal
     isOpen={modalIsOpen}
 onRequestClose={resetModal}
-  className="Modal"
-    overlayClassName="Overlay"
+  className="calendar-modal"
+    overlayClassName="calendar-overlay"
   >
     <button onClick={resetModal} style={{ float: 'right', border: 'none', background: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
     {isAddingNewBooking ? (
@@ -537,51 +574,18 @@ onRequestClose={resetModal}
   </div>
 
   {/* Modal info dettagliato */}
-  <Modal
-    isOpen={infoModalOpen}
-    onRequestClose={closeInfoModal}
-    className="Modal"
-    overlayClassName="Overlay"
-  >
-    <button onClick={closeInfoModal} style={{ float: 'right', border: 'none', background: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
-    {dettagliPrenotazione && (
-      <div className="booking-info-full">
-        <h2>Dettagli Prenotazione</h2>
-        <p><strong>Cliente:</strong> {dettagliPrenotazione.cliente}</p>
-        <p><strong>Email Cliente:</strong> {dettagliPrenotazione.emailCliente}</p>
-        <p><strong>Codice Fiscale:</strong> {dettagliPrenotazione.codiceFiscale}</p>
-        <p><strong>Patente:</strong> {dettagliPrenotazione.patente}</p>
-        <p><strong>Veicolo:</strong> {dettagliPrenotazione.veicolo}</p>
-        <p><strong>Targa:</strong> {dettagliPrenotazione.targa}</p>
-        <p><strong>Dal:</strong> {dettagliPrenotazione.dataInizio}</p>
-        <p><strong>Al:</strong> {dettagliPrenotazione.dataFine}</p>
-        <p><strong>Prezzo al giorno:</strong> {dettagliPrenotazione.prezzoGiornaliero} €</p>
-        <p><strong>Totale:</strong> {dettagliPrenotazione.prezzoTotale} €</p>
-        {dettagliPrenotazione?.schedaVeicolo?.fotoDanni && (
-  <div style={{ marginTop: '1rem' }}>
-    <p><strong>Foto Danni:</strong></p>
-    <img
-      src={dettagliPrenotazione.schedaVeicolo.fotoDanni}
-      alt="Foto danni"
-      style={{
-        maxWidth: '100%',
-        maxHeight: '250px',
-        borderRadius: '8px',
-        border: '1px solid #ccc',
-        marginTop: '0.5rem'
-      }}
-    />
-  </div>
-)}
-      </div>
-    )}
-  </Modal>
+ <InfoModal
+  isOpen={infoModalOpen}
+  onClose={closeInfoModal}
+  prenotazione={dettagliPrenotazione}
+   />
   <SchedaVeicoloModal
   isOpen={schedaModalOpen}
   onRequestClose={() => setSchedaModalOpen(false)}
   schedaVeicolo={schedaVeicolo}
   setSchedaVeicolo={setSchedaVeicolo}
   onSave={handleSaveSchedaVeicolo}
+  onBack={handleBackToForm}
 />
 
 <RiepilogoPrenotazioneModal

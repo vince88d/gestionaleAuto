@@ -1,19 +1,34 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain , dialog} = require('electron');
 const path = require('path');
-const nodemailer = require('nodemailer'); // Già presente
+const nodemailer = require('nodemailer'); 
+const fs = require('fs');
+
+
+try {
+  require('electron-reload')(__dirname, {
+    electron: require(`${__dirname}/node_modules/electron`)
+  });
+} catch (error) {
+  console.warn('electron-reload non caricato:', error);
+}
 
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 1200,
     height: 600,
     webPreferences: {
-      contextIsolation: false, // Attenzione: questo è meno sicuro. In futuro, considera l'uso di un preload script.
-      nodeIntegration: true,   // Permette al renderer di accedere alle API di Node.js (ma usiamo IPC per sicurezza).
-      preload: path.join(__dirname, 'preload.js') // L'approccio moderno e sicuro
+      contextIsolation: true, // Attenzione: questo è meno sicuro. In futuro, considera l'uso di un preload script.
+      nodeIntegration: false,   // Permette al renderer di accedere alle API di Node.js (ma usiamo IPC per sicurezza).
+      preload: path.join(__dirname, 'preload.js'), // L'approccio moderno e sicuro
+      webSecurity:false,
     },
   });
-
-  win.loadFile(path.join(__dirname, 'build', 'index.html'));
+  if (process.env.NODE_ENV === 'development') {
+    win.loadURL('http://localhost:3000'); // 👈 In sviluppo carica localhost
+    win.webContents.openDevTools(); // (opzionale) Apro i DevTools
+  } else {
+    win.loadFile(path.join(__dirname, 'build', 'index.html')); // 👈 In produzione carica la build
+  }
 
   win.webContents.on('did-finish-load', () => {
     console.log('Finestra caricata con successo');
@@ -58,35 +73,20 @@ app.on('before-quit', (event) => {
 ipcMain.on('send-booking-email', async (event, { bookingData, companyData }) => {
   console.log('Received request to send email for booking:', bookingData.cliente);
 
-  // Configura il transporter di Nodemailer
-  // !!! SOSTITUISCI CON I TUOI DATI SMTP REALI O USA UN SERVIZIO EMAIL DI TERZE PARTI PIÙ AVANZATO !!!
-  // Esempi di configurazione:
-  // Per Gmail (richiede app password se 2FA è attivo):
-  /*
-  let transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: 'la-tua-email@gmail.com',
-      pass: 'la-tua-app-password' // Usa una password per app, non la password normale!
-    }
-  });
-  */
+  console.log('PASSWORD:', `"${companyData.password}"`);
+
   // Per un server SMTP generico:
   let transporter = nodemailer.createTransport({
-    host: 'smtp.iltuoserver.com', // Esempio: smtp.gmail.com, smtp.outlook.com, etc.
-    port: 587, // Porta standard per TLS/STARTTLS
-    secure: false, // true per 465 (SSL), false per altre porte (TLS/STARTTLS)
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
     auth: {
-      user: companyData.email || 'email-di-default@esempio.com', // Usa l'email aziendale salvata
-      pass: 'LA_PASSWORD_EMAIL_AZIENDALE', // !!! NON HARDCODARE CREDENZIALI SENSIBILI COSÌ IN UN'APP DISTRIBUITA !!!
-                                           // Considera di chiedere all'utente le credenziali o usarle in modo più sicuro.
-    },
-    tls: {
-        // Non rifiutare certificati auto-firmati. Sconsigliato in produzione senza una ragione valida.
-        // rejectUnauthorized: false
+      user: companyData.email.trim(),
+      pass: companyData.password.trim()
     }
   });
-
+  
+  
 
   // Costruisci il corpo dell'email
   const emailBody = `
@@ -151,5 +151,89 @@ ipcMain.on('send-booking-email', async (event, { bookingData, companyData }) => 
     // if (global.mainWindow) {
     //   global.mainWindow.webContents.send('email-sent-status', { success: false, message: 'Errore nell\'invio dell\'email.' });
     // }
+  }
+});
+
+const prenotazioniPath = path.join(app.getPath('userData'), 'prenotazioni.json');
+
+// Leggi prenotazioni
+ipcMain.handle('read-prenotazioni', async () => {
+  try {
+    if (!fs.existsSync(prenotazioniPath)) return [];
+    const data = fs.readFileSync(prenotazioniPath, 'utf-8');
+    return JSON.parse(data);
+  } catch (err) {
+    console.error('Errore lettura file:', err);
+    return [];
+  }
+});
+
+// Salva prenotazioni
+ipcMain.handle('write-prenotazioni', async (event, prenotazioni) => {
+  try {
+    fs.writeFileSync(prenotazioniPath, JSON.stringify(prenotazioni, null, 2));
+    return true;
+  } catch (err) {
+    console.error('Errore scrittura file:', err);
+    return false;
+  }
+
+  
+});
+
+const immaginiPath = path.join(app.getPath('userData'), 'images');
+if (!fs.existsSync(immaginiPath)) fs.mkdirSync(immaginiPath, { recursive: true });
+
+ipcMain.handle('salva-immagine-locale', async (event, filePathOriginale) => {
+  try {
+    const estensione = path.extname(filePathOriginale);
+    const nomeFile = `${Date.now()}${estensione}`;
+    const destinazione = path.join(immaginiPath, nomeFile);
+
+    fs.copyFileSync(filePathOriginale, destinazione);
+
+    return `file://${destinazione}`; // Percorso utilizzabile nel src dell'immagine
+  } catch (error) {
+    console.error('Errore salvataggio immagine:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('seleziona-immagine', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp'] }]
+  });
+
+  if (result.canceled || !result.filePaths.length) return null;
+  return result.filePaths;
+});
+
+
+// Percorso file veicoli.json
+const veicoliPath = path.join(__dirname, 'data', 'veicoli.json');
+
+// Lettura veicoli
+ipcMain.handle('read-veicoli', async () => {
+  try {
+    if (!fs.existsSync(veicoliPath)) {
+      fs.writeFileSync(veicoliPath, '[]');
+    }
+    const data = fs.readFileSync(veicoliPath, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Errore lettura veicoli:', error);
+    return [];
+  }
+});
+
+// Scrittura veicoli
+ipcMain.handle('write-veicoli', async (_, data) => {
+  try {
+    fs.writeFileSync(veicoliPath, JSON.stringify(data, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Errore scrittura veicoli:', error);
+    return false;
   }
 });

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import './App.css';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Vehicles from './pages/Vehicles';
@@ -17,6 +18,8 @@ function App() {
   };
 
   return (
+    <>
+    <ToastContainer/>
     <Router>
       <div className={`app-container ${collapsed ? 'collapsed' : ''}`}>
         <Sidebar collapsed={collapsed} toggleSidebar={toggleSidebar} />
@@ -30,8 +33,9 @@ function App() {
           </Routes>
         </main>
       </div>
-    </Router>
-  );
+    </Router> 
+    </>
+  );   
 }
 
 export default App;

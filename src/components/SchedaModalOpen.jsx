@@ -4,13 +4,11 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from './firebase'; // assicurati del path
 import '../components/schedaModal.css';
 
-
-function SchedaVeicoloModal({ isOpen, onRequestClose, schedaVeicolo, setSchedaVeicolo, onSave }) {
+function SchedaVeicoloModal({ isOpen, onRequestClose, schedaVeicolo, setSchedaVeicolo, onSave, onBack }) {
   const [uploading, setUploading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
     if (name.startsWith('accessori.')) {
       const key = name.split('.')[1];
       setSchedaVeicolo(prev => ({
@@ -28,31 +26,42 @@ function SchedaVeicoloModal({ isOpen, onRequestClose, schedaVeicolo, setSchedaVe
     }
   };
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-  
+  const handleImageUpload = async () => {
+    const filePaths = await window.electronAPI.selezionaImmagine();
+    if (!filePaths || !filePaths[0]) return;
+
     setUploading(true);
     try {
-      const storageRef = ref(storage, `danni/${Date.now()}-${file.name}`);      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      console.log("url dell immagine caricata",url);
-  
-      setSchedaVeicolo(prev => ({
-        ...prev,
-        fotoDanni: url
-      }));
-    } catch (error) {
-      console.error("Errore durante l'upload dell'immagine:", error);
-      // Mostra un messaggio di errore all'utente
+      const localUrl = await window.electronAPI.salvaImmagineLocale(filePaths[0]);
+      setSchedaVeicolo(prev => ({ ...prev, fotoDanni: localUrl }));
+    } catch (err) {
+      console.error("Errore durante salvataggio immagine:", err);
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onRequestClose={onRequestClose} className="Modal" overlayClassName="Overlay">
-      <button onClick={onRequestClose} style={{ float: 'right' }}>✖</button>
+    <Modal 
+      isOpen={isOpen}
+      onRequestClose={onRequestClose}
+      closeTimeoutMS={300} 
+      className={{
+        base: 'Modal',
+        afterOpen: 'Modal--after-open',
+        beforeClose: 'Modal--before-close'
+      }}
+      overlayClassName={{
+        base: 'Overlay',
+        afterOpen: 'Overlay--after-open',
+        beforeClose: 'Overlay--before-close'
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+        <button onClick={onBack} className="simple-btn">← Indietro</button>
+        <button onClick={onRequestClose} className="simple-btn">✖</button>
+      </div>
+
       <h2>Scheda Veicolo</h2>
 
       <form onSubmit={(e) => { e.preventDefault(); onSave(); }}>
@@ -70,24 +79,26 @@ function SchedaVeicoloModal({ isOpen, onRequestClose, schedaVeicolo, setSchedaVe
 
         <label>Accessori presenti</label>
         <div className="accessori-wrapper">
-  <label><input type="checkbox" name="accessori.cric" checked={schedaVeicolo.accessori.cric} onChange={handleChange} /> Cric</label>
-  <label><input type="checkbox" name="accessori.triangolo" checked={schedaVeicolo.accessori.triangolo} onChange={handleChange} /> Triangolo</label>
-  <label><input type="checkbox" name="accessori.giubbotto" checked={schedaVeicolo.accessori.giubbotto} onChange={handleChange} /> Giubbotto</label>
-</div>
+          <label><input type="checkbox" name="accessori.cric" checked={schedaVeicolo.accessori.cric} onChange={handleChange} /> Cric</label>
+          <label><input type="checkbox" name="accessori.triangolo" checked={schedaVeicolo.accessori.triangolo} onChange={handleChange} /> Triangolo</label>
+          <label><input type="checkbox" name="accessori.giubbotto" checked={schedaVeicolo.accessori.giubbotto} onChange={handleChange} /> Giubbotto</label>
+        </div>
 
         <label>Danni visibili</label>
         <textarea name="danni" value={schedaVeicolo.danni} onChange={handleChange} rows={3} placeholder="Descrizione dei danni..." />
 
         <label>Foto dei Danni (opzionale)</label>
-        <input type="file" accept="image/*" onChange={handleImageUpload} />
+        <button type="button" onClick={handleImageUpload}>
+          Carica Immagine
+        </button>
         {uploading && <p>Caricamento in corso...</p>}
         {schedaVeicolo.fotoDanni && (
-           <img src={schedaVeicolo.fotoDanni} alt="Danni" className="preview" />
+          <img src={schedaVeicolo.fotoDanni} alt="Danni" className="preview" />
         )}
 
         <button type="submit" disabled={uploading}>
-         {uploading ? "Attendi...":"Salva Scheda"}
-          </button>
+          {uploading ? "Attendi..." : "Salva Scheda"}
+        </button>
       </form>
     </Modal>
   );

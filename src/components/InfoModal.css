@@ -1,0 +1,282 @@
+/* ============ VARIABLES ============ */
+:root {
+    --modal-bg: #ffffff;
+    --modal-text: #2d3748;
+    --modal-border: #e2e8f0;
+    --primary: #2563eb;
+    --primary-hover: #1e4bb5;
+    --secondary: #4b5563;
+    --accent: #f3f4f6;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* ============ MODAL OVERLAY ============ */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 300ms ease;
+  }
+  
+  .modal-overlay.ReactModal__Overlay--after-open {
+    opacity: 1;
+  }
+  
+  .modal-overlay.ReactModal__Overlay--before-close {
+    opacity: 0;
+  }
+  
+  /* ============ MODAL CONTAINER ============ */
+  .info-modal {
+    background: var(--modal-bg);
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  outline: none;
+
+  display: flex;
+  flex-direction: column;
+  }
+  
+  .ReactModal__Content--after-open {
+    transform: translateY(0);
+  }
+  
+  .ReactModal__Content--before-close {
+    transform: translateY(20px);
+  }
+  
+  /* ============ MODAL CONTENT ============ */
+  .modal-content {
+    display: flex;
+    flex-direction: column;    
+    height: 100%;
+  }
+  
+  .modal-overlay.active .info-modal {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  
+  /* ============ MODAL HEADER ============ */
+  .modal-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--modal-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--accent);
+  }
+  
+  .modal-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--modal-text);
+  }
+  
+  /* ============ MODAL BODY ============ */
+  .modal-body {
+    padding: 2rem;
+    overflow-y: auto;
+    max-height: 60vh;
+  }
+  
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .info-item {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .info-label {
+    font-size: 0.875rem;
+    color: var(--secondary);
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+  }
+  
+  .info-value {
+    font-size: 1rem;
+    color: var(--modal-text);
+    font-weight: 400;
+    padding: 0.5rem 0;
+    border-bottom: 1px dashed var(--modal-border);
+  }
+  
+  /* ============ PHOTO SECTION ============ */
+  .photo-section {
+    margin-top: 2rem;
+    border-top: 1px solid var(--modal-border);
+    padding-top: 2rem;
+  }
+  
+  .photo-container {
+    margin-top: 1rem;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+  }
+  
+  .photo-container:hover {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .photo-container img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  /* ============ MODAL FOOTER ============ */
+  .modal-footer {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--modal-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    background: var(--accent);
+  }
+  
+  /* ============ BUTTONS ============ */
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+  }
+  
+  .btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+  }
+  
+  .btn-close {
+    background: none;
+    border: none;
+    color: var(--secondary);
+    padding: 0.5rem;
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .btn-close:hover {
+    background: rgba(0,0,0,0.05);
+    color: var(--modal-text);
+  }
+  
+  /* ============ ANIMATIONS ============ */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 768px) {
+    .info-modal {
+      max-width: 95%;
+      margin: 0 auto;
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+      padding: 1.25rem;
+    }
+    
+    .info-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Aggiungi queste regole al tuo InfoModal.css */
+.no-print {
+    @media print {
+      display: none !important;
+    }
+  }
+  
+  .print-only {
+    display: none;
+  }
+  
+  @media print {
+    .print-only {
+      display: block !important;
+    }
+  }
+  
+  
+  /* Stili specifici per la stampa */
+  @media print {
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.5;
+    }
+    
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+    
+    .info-item {
+      page-break-inside: avoid;
+      margin-bottom: 10px;
+    }
+    
+    .info-label {
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .photo-container {
+      margin-top: 20px;
+      page-break-inside: avoid;
+      
+      img {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #ddd;
+      }
+    }
+  }
+
+ 
