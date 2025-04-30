@@ -1,32 +1,5 @@
 [
   {
-    "modello": "clio re",
-    "marca": "renault",
-    "targa": "45t89",
-    "anno": "2024",
-    "prezzo": "45",
-    "colore": "verde",
-    "carburante": "Diesel",
-    "km": "0",
-    "porte": "3",
-    "cambio": "Semi-automatico",
-    "categoria": "City Car",
-    "note": "",
-    "immagine": "file://C:\\Users\\fede3\\AppData\\Roaming\\react-electron\\images\\1745840737283.webp",
-    "id": "48eb2dca-502a-4395-9fe4-3c6e5073e652",
-    "danni": [
-      "file://C:\\Users\\fede3\\AppData\\Roaming\\react-electron\\images\\1745918745183.jpg",
-      "file://C:\\Users\\fede3\\AppData\\Roaming\\react-electron\\images\\1745918760022.jpg",
-      "file://C:\\Users\\fede3\\AppData\\Roaming\\react-electron\\images\\1745928955012.jpg",
-      "file://C:\\Users\\fede3\\AppData\\Roaming\\react-electron\\images\\1745929018800.webp",
-      "file://C:\\Users\\fede3\\AppData\\Roaming\\react-electron\\images\\1745929225208.jpg",
-      "file://C:\\Users\\fede3\\AppData\\Roaming\\react-electron\\images\\1745929403508.jpg",
-      "file://C:\\Users\\fede3\\AppData\\Roaming\\react-electron\\images\\1745929433352.jpg",
-      "file://C:\\Users\\fede3\\AppData\\Roaming\\react-electron\\images\\1745929587638.jpg",
-      "file://C:\\Users\\fede3\\AppData\\Roaming\\react-electron\\images\\1745930568457.png"
-    ]
-  },
-  {
     "modello": "j",
     "marca": "kl",
     "targa": "jkfd",

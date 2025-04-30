@@ -169,7 +169,20 @@ function Vehicles() {
       toast.error('Errore durante l\'aggiunta della foto del danno.');
     }
   };
-    // Aggiorna lo stato e salva i dati
+  
+  const handleDeleteDamagePhoto = (index) => {
+    if (!selectedVeicolo) return;
+  
+    const conferma = window.confirm('Sei sicuro di voler eliminare questa foto?');
+    if (!conferma) return;
+  
+    // Aggiorna solo lo stato locale
+    const danniAggiornati = selectedVeicolo.danni.filter((_, i) => i !== index);
+    const aggiornato = { ...selectedVeicolo, danni: danniAggiornati };
+    setSelectedVeicolo(aggiornato);
+  
+    toast.info('Foto eliminata. Ricorda di salvare le modifiche!');
+  };
 
   return (
     <div className="vehicles-wrapper">
@@ -275,16 +288,22 @@ function Vehicles() {
 
       <div className="vehicle-damages-section">
       {selectedVeicolo.danni && selectedVeicolo.danni.length > 0 ? (
-  <div className="damage-gallery">
+        <div className="damage-gallery">
   {selectedVeicolo.danni.map((danno, index) => (
-    <img
-      key={index}
-      src={danno}
-      alt={`Danno ${index + 1}`}
-      onClick={() => { setSelectedDamagePhoto(danno); setDamageModalOpen(true); }}
-      className="damage-photo"
-      style={{ width: '100px', height: '100px', objectFit: 'cover', marginRight: '10px', borderRadius: '8px', cursor: 'pointer' }}
-    />
+    <div key={index} className="damage-photo-wrapper">
+      <img
+        src={danno}
+        alt={`Danno ${index + 1}`}
+        onClick={() => { setSelectedDamagePhoto(danno); setDamageModalOpen(true); }}
+        className="damage-photo"
+      />
+      <button
+        className="delete-damage-btn"
+        onClick={() => handleDeleteDamagePhoto(index)}
+      >
+        ✖
+      </button>
+    </div>
   ))}
 </div>
 ) : (
@@ -299,20 +318,26 @@ function Vehicles() {
       </div>
 
       <div className="vehicle-actions">
-        <button 
-          onClick={async () => {
-            // Salva le modifiche prima di chiudere
-            dispatch(updateVeicolo(selectedVeicolo));
-            const nuovaLista = veicoli.map((v) => 
-              v.id === selectedVeicolo.id ? selectedVeicolo : v
-            );
-            await window.electronAPI.writeVeicoli(nuovaLista);
-            toast.success('Modifiche salvate con successo!');
-            handleCloseDetailModal();
-          }} 
-          className="save-btn"
-        >
-          Salva modifiche
+        <button className="save-btn"
+    onClick={async () => {
+    try {
+      // Aggiorna Redux e salva nel database
+      dispatch(updateVeicolo(selectedVeicolo));
+      const nuovaLista = veicoli.map((v) => 
+        v.id === selectedVeicolo.id ? selectedVeicolo : v
+      );
+      await window.electronAPI.writeVeicoli(nuovaLista);
+
+      toast.success('Modifiche salvate con successo!');
+      handleCloseDetailModal();
+    } catch (error) {
+      console.error('Errore durante il salvataggio:', error);
+      toast.error('Errore durante il salvataggio delle modifiche.');
+    }
+  }} 
+  
+>
+  Salva 
         </button>
         <button onClick={() => { handleCloseDetailModal(); handleOpenModal(selectedVeicolo); }} className="edit-btn">Modifica</button>
         <button onClick={() => { handleDelete(selectedVeicolo.id); handleCloseDetailModal(); }} className="delete-btn">Elimina</button>
