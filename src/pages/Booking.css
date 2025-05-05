@@ -240,6 +240,11 @@ box-sizing: border-box;
   white-space: nowrap;
 }
 
+.booking-table th:last-child,
+.booking-table td:last-child {
+  white-space: normal;
+}
+
 .booking-table th {
   background-color: #f1f1f1;
   font-weight: 600;
@@ -265,6 +270,35 @@ box-sizing: border-box;
   transition: background-color 0.2s ease;
 
 }
+
+.restore-btn,
+.delete-btn,
+.info-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  margin: 0 4px;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: background 0.2s ease;
+}
+
+.restore-btn:hover {
+  background-color: #e0f7e9;
+  color: #2e7d32;
+}
+
+.delete-btn:hover {
+  background-color: #ffeaea;
+  color: #c62828;
+}
+
+.info-btn:hover {
+  background-color: #e8f0fe;
+  color: #1565c0;
+}
+
 .info-btn svg {
   color: #3498db;
   width: 18px;
@@ -292,6 +326,27 @@ box-sizing: border-box;
 .export-btn:hover {
   background-color: #27ae60;
 }
+
+.newPren-btn{
+  background-color: #3498db;
+  color: white;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: 20px;
+}
+
+.riga-scadenza-oggi {
+  background-color: #fff3cd; /* giallo chiaro */
+}
+
+.riga-scadenza-domani {
+  background-color: #d1ecf1; /* azzurro chiaro */
+}
+
 
 /* ---------- Lista prenotazioni nel modal ---------- */
 .booking-cards {

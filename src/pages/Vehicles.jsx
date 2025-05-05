@@ -24,6 +24,7 @@ const emptyFormData = {
   note: '',
   immagine: '',
   danni:[],
+  prenotazioni: [],
 };
 
 function Vehicles() {
@@ -38,7 +39,8 @@ function Vehicles() {
   const [selectedDamagePhoto, setSelectedDamagePhoto] = useState(null);
   const [damageModalOpen, setDamageModalOpen] = useState(false);
   const [originalVeicolo, setOriginalVeicolo] = useState(null);
-
+  const [search, setSearch] = useState('');
+ 
 
   useEffect(() => {
     const caricaVeicoli = async () => {
@@ -183,9 +185,28 @@ function Vehicles() {
   
     toast.info('Foto eliminata. Ricorda di salvare le modifiche!');
   };
+  const prenotazioni = useSelector((state) => state.prenotazioni);
+const prenotazioniAttive = prenotazioni.filter(p => p.status !== 'completata');
+
+const isDisponibile = (veicolo) => {
+  const oggi = new Date().toISOString().split('T')[0];
+  return !prenotazioniAttive.some(p =>
+    p.targa === veicolo.targa &&
+    p.dataInizio <= oggi &&
+    p.dataFine >= oggi
+  );
+};
 
   return (
     <div className="vehicles-wrapper">
+      <input
+  type="text"
+  placeholder="Cerca per modello, targa, marca..."
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  className="vehicle-search"
+/>
+
       <h1>Gestione Veicoli</h1>
       <button onClick={() => handleOpenModal()} className="add-vehicle-btn">
         ➕ Aggiungi Veicolo 
@@ -195,7 +216,11 @@ function Vehicles() {
   {veicoli.length === 0 ? (
     <p>Nessun veicolo disponibile.</p>
   ) : (
-    veicoli.map((veicolo) => (
+    veicoli.filter((v) =>
+      v.modello.toLowerCase().includes(search.toLowerCase()) ||
+      v.marca.toLowerCase().includes(search.toLowerCase()) ||
+      v.targa.toLowerCase().includes(search.toLowerCase())
+    ).map((veicolo) => (
       <div
         key={veicolo.id}
         className="vehicle-card"
@@ -216,9 +241,13 @@ function Vehicles() {
           />
         )}
         <h3>{veicolo.modello}</h3>
-        <p><strong>Prezzo:</strong> {veicolo.prezzo}€</p>
-        <p><strong>Km:</strong> {veicolo.km}</p>
-        <p><strong>Colore:</strong> {veicolo.colore}</p>
+<p><strong>Prezzo:</strong> {veicolo.prezzo}€</p>
+<p><strong>Km:</strong> {veicolo.km}</p>
+<p><strong>Colore:</strong> {veicolo.colore}</p>
+<div className={`badge ${isDisponibile(veicolo) ? 'available' : 'unavailable'}`}>
+  {isDisponibile(veicolo) ? '🟢 Disponibile' : '🔴 Occupato'}
+</div>
+
       </div>
     ))
   )}

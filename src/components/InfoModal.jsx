@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import Modal from 'react-modal';
 import './InfoModal.css';
 
-function InfoModal({ isOpen, onClose, prenotazione }) {
+function InfoModal({ isOpen, onClose, prenotazione,onModifica, onElimina, onConcludi }) {
   const [showImage, setShowImage] = useState(false);
   const printRef = useRef();
 
@@ -151,6 +151,11 @@ function InfoModal({ isOpen, onClose, prenotazione }) {
           )}
         </div>
 
+        <div className="info-modal-actions">
+  <button className="edit-btn" onClick={() => onModifica(prenotazione)}>Modifica</button>
+  <button className="delete-btn" onClick={() => onElimina(prenotazione)}>Elimina</button>
+  <button className="complete-btn" onClick={() => onConcludi(prenotazione)}>Concludi</button>
+</div>
         <div className="modal-footer">
           <button className="btn btn-primary" onClick={handleDownloadPDF}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">

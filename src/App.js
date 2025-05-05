@@ -9,8 +9,10 @@ import Vehicles from './pages/Vehicles';
 import Clients from './pages/Clients';
 import Booking from './pages/Booking';
 import ImpostazioniAzienda from './pages/ImpostazioniAzienda';
+import ArchivioPrenotazione from './pages/ArchivioPrenotazioni';
+function
 
-function App() {
+App() {
   const [collapsed, setCollapsed] = useState(false);
 
   const toggleSidebar = () => {
@@ -30,6 +32,7 @@ function App() {
             <Route path="/clients" element={<Clients />} />
             <Route path="/booking" element={<Booking />} />
             <Route path="/impostazioni-azienda" element={<ImpostazioniAzienda />} />
+            <Route path="/archivio-prenotazione" element={<ArchivioPrenotazione />} />
           </Routes>
         </main>
       </div>
