@@ -1,30 +1,31 @@
 import React, { useState } from 'react';
 import Modal from 'react-modal';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from './firebase'; // assicurati del path
 import '../components/schedaModal.css';
 
-function SchedaVeicoloModal({ isOpen, onRequestClose, schedaVeicolo, setSchedaVeicolo, onSave, onBack }) {
+function SchedaVeicoloModal({ isOpen, onRequestClose, schedaVeicolo, setSchedaVeicolo, onSave, onBack, prenotazioniAttive = []  }) {
   const [uploading, setUploading] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    if (name.startsWith('accessori.')) {
-      const key = name.split('.')[1];
-      setSchedaVeicolo(prev => ({
-        ...prev,
-        accessori: {
-          ...prev.accessori,
-          [key]: checked
-        }
-      }));
-    } else {
-      setSchedaVeicolo(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
-  };
+
+const handleChange = (e) => {
+  const { name, value, type, checked } = e.target;
+
+  if (name.startsWith('accessori.')) {
+    const key = name.split('.')[1];
+    setSchedaVeicolo(prev => ({
+      ...prev,
+      accessori: {
+        ...prev.accessori,
+        [key]: type === 'checkbox' ? checked : value
+      }
+    }));
+  } else {
+    setSchedaVeicolo(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  }
+};
+
 
   const handleImageUpload = async () => {
     const filePaths = await window.electronAPI.selezionaImmagine();
@@ -46,21 +47,22 @@ function SchedaVeicoloModal({ isOpen, onRequestClose, schedaVeicolo, setSchedaVe
       isOpen={isOpen}
       onRequestClose={onRequestClose}
       closeTimeoutMS={300} 
-      className={{
-        base: 'Modal',
-        afterOpen: 'Modal--after-open',
-        beforeClose: 'Modal--before-close'
-      }}
-      overlayClassName={{
-        base: 'Overlay',
-        afterOpen: 'Overlay--after-open',
-        beforeClose: 'Overlay--before-close'
-      }}
+  className={{
+    base: 'Modal',
+    afterOpen: 'Modal--after-open',
+    beforeClose: 'Modal--before-close',
+  }}
+  overlayClassName={{
+    base: 'Overlay',
+    afterOpen: 'Overlay--after-open',
+    beforeClose: 'Overlay--before-close',
+  }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <button onClick={onBack} className="simple-btn">← Indietro</button>
         <button onClick={onRequestClose} className="simple-btn">✖</button>
       </div>
+
 
       <h2>Scheda Veicolo</h2>
 
@@ -82,6 +84,20 @@ function SchedaVeicoloModal({ isOpen, onRequestClose, schedaVeicolo, setSchedaVe
           <label><input type="checkbox" name="accessori.cric" checked={schedaVeicolo.accessori.cric} onChange={handleChange} /> Cric</label>
           <label><input type="checkbox" name="accessori.triangolo" checked={schedaVeicolo.accessori.triangolo} onChange={handleChange} /> Triangolo</label>
           <label><input type="checkbox" name="accessori.giubbotto" checked={schedaVeicolo.accessori.giubbotto} onChange={handleChange} /> Giubbotto</label>
+          <label><input type="checkbox" name="accessori.ruotaScorta" checked={schedaVeicolo.accessori.ruotaScorta} onChange={handleChange} /> Ruota di scorta</label>
+          <label><input type="checkbox" name="accessori.cavoRicarica" checked={schedaVeicolo.accessori.cavoRicarica} onChange={handleChange} /> Cavo ricarica</label>
+          <label><input type="checkbox" name="accessori.cateneNeve" checked={schedaVeicolo.accessori.cateneNeve} onChange={handleChange} /> Catene da neve</label>
+          <label>
+  Altro accessorio:
+  <input
+    type="text"
+    name="accessori.altro"
+    value={schedaVeicolo.accessori.altro || ''}
+    onChange={handleChange}
+    placeholder="Es. Seggiolino bimbi"
+  />
+</label>
+
         </div>
 
         <label>Danni visibili</label>

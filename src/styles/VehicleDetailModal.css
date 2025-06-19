@@ -1,0 +1,457 @@
+/* ============= SEZIONI PRINCIPALI ============= */
+.vehicle-damages-toggle,
+.vehicle-maintenance-toggle {
+  margin-top: 30px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* ============= PULSANTI TOGGLE ============= */
+.toggle-section-btn,
+.toggle-subsection-btn,
+.toggle-maintenance-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  padding: 12px 15px;
+  margin: 10px 0;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.toggle-section-btn:hover,
+.toggle-subsection-btn:hover,
+.toggle-maintenance-btn:hover {
+  background-color: #e9ecef;
+  border-color: #ccc;
+}
+
+.toggle-section-btn::after,
+.toggle-subsection-btn::after,
+.toggle-maintenance-btn::after {
+  content: '';
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #555;
+  transition: transform 0.3s ease;
+}
+
+.toggle-section-btn[aria-expanded="true"]::after,
+.toggle-subsection-btn[aria-expanded="true"]::after,
+.toggle-maintenance-btn[aria-expanded="true"]::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* ============= CONTENITORI SEZIONI ============= */
+.vehicle-damages-section,
+.vehicle-maintenance-section {
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  margin-top: 15px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+
+/* ============= TITOLI ============= */
+.vehicle-damages-section h4,
+.vehicle-maintenance-section h4,
+.repair-history h5 {
+  margin-bottom: 15px;
+  font-size: 17px;
+  color: #333;
+  font-weight: 600;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
+}
+
+/* ============= GALLERIA DANNI ============= */
+.damage-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.damage-photo-wrapper {
+  position: relative;
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 10px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid #e0e0e0;
+}
+
+.damage-photo-wrapper:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+
+.damage-photo {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #ddd;
+}
+
+.damage-desc {
+  margin: 8px 0 5px;
+  font-size: 14px;
+  color: #444;
+  line-height: 1.4;
+  min-height: 40px;
+}
+
+/* ============= STATO RIPARAZIONE ============= */
+.repair-status {
+  font-size: 13px;
+  margin: 5px 0;
+  padding: 3px 8px;
+  border-radius: 12px;
+  display: inline-block;
+  background: #f0f0f0;
+  color: #555;
+}
+
+.repair-status strong {
+  font-weight: 600;
+}
+
+.status-badge.pending {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.status-badge.repaired {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.repair-warning {
+  color: #d32f2f;
+  font-weight: 600;
+  font-size: 13px;
+  background: #ffebee;
+  padding: 3px 8px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-top: 5px;
+}
+
+.repair-done {
+  color: #388e3c;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+/* ============= CONTROLLI DANNI ============= */
+.damage-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  justify-content: center;
+}
+
+.toggle-repair-btn,
+.restore-btn {
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  flex-grow: 1;
+  text-align: center;
+}
+
+.toggle-repair-btn:hover,
+.restore-btn:hover {
+  background-color: #1565c0;
+}
+
+.delete-damage-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: #d32f2f;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.damage-photo-wrapper:hover .delete-damage-btn {
+  opacity: 1;
+}
+
+.delete-damage-btn:hover {
+  background-color: #b71c1c;
+}
+
+/* ============= FORM AGGIUNTA DANNO ============= */
+.add-damage-form {
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 25px;
+}
+
+.add-damage-form h5 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #444;
+}
+
+.file-upload-wrapper {
+  margin-bottom: 15px;
+}
+
+.upload-btn {
+  padding: 8px 15px;
+  background-color: #e0e0e0;
+  border: 1px solid #bdbdbd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.upload-btn:hover {
+  background-color: #d0d0d0;
+}
+
+.image-preview {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.image-preview img {
+  max-width: 200px;
+  max-height: 150px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.remove-image-btn {
+  margin-top: 8px;
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.remove-image-btn:hover {
+  background: #d32f2f;
+}
+
+/* Input e textarea */
+.add-damage-form input[type="date"],
+.add-damage-form input[type="text"],
+.add-damage-form textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.add-damage-form input[type="date"]:focus,
+.add-damage-form input[type="text"]:focus,
+.add-damage-form textarea:focus {
+  border-color: #1976d2;
+  outline: none;
+}
+
+.add-damage-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Checkbox */
+.checkbox-group {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-group input {
+  margin-right: 8px;
+}
+
+/* Pulsante submit */
+.submit-damage-btn {
+  background-color: #388e3c;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 10px;
+}
+
+.submit-damage-btn:hover {
+  background-color: #2e7d32;
+}
+
+.submit-damage-btn:disabled {
+  background-color: #a5a5a5;
+  cursor: not-allowed;
+}
+
+/* ============= STORICO RIPARAZIONI ============= */
+.repair-history {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.repair-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.repair-item {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+}
+
+.repair-image img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.repair-details {
+  margin-top: 10px;
+}
+
+.repair-details p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #444;
+}
+
+/* ============= PULSANTI AZIONI ============= */
+.vehicle-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.vehicle-actions button {
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.save-btn {
+  background-color: #388e3c;
+  color: white;
+}
+
+.edit-btn {
+  background-color: #ffa000;
+  color: white;
+}
+
+.delete-btn {
+  background-color: #d32f2f;
+  color: white;
+}
+
+.vehicle-actions button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+}
+
+.DamagePhotoModal {
+  max-width: 90vw;
+  max-height: 90vh;
+  margin: auto;
+  padding: 20px;
+  background: white;
+  border-radius: 10px;
+  outline: none;
+}
+
+.DamagePhotoOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* ============= MEDIA QUERIES ============= */
+@media (max-width: 768px) {
+  .damage-gallery,
+  .repair-list {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  
+  .vehicle-actions {
+    flex-direction: column;
+  }
+}

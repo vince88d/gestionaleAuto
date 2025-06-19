@@ -7,6 +7,7 @@ import { Provider } from 'react-redux';
 import {store} from './store/store';
 import Modal from 'react-modal'; 
 
+
 Modal.setAppElement('#root');    
 
 

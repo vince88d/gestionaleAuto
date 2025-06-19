@@ -9,8 +9,49 @@
     transition: margin-left 0.3s ease;
     background-color: #f4f6f8;
     min-height: 100vh;
+    padding-top: 70px;
   }
-  
+  .custom-titlebar {
+  height: 50px;
+  background-color: #1f2937;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+  -webkit-app-region: drag;
+  user-select: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+}
+
+.Toastify__toast-container {
+  z-index: 99999 !important;
+}
+/* Pulsanti finestra */
+.window-controls {
+  display: flex;
+  gap: 10px;
+  -webkit-app-region: no-drag;
+}
+.window-controls button {
+  background: transparent;
+  color: white;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.window-controls button:hover {
+  background-color: #374151;
+  border-radius: 4px;
+}
+
   .app-container.collapsed .main-content {
     margin-left: 70px;
   }

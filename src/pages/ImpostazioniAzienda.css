@@ -28,4 +28,7 @@
   .impostazioni-container button:hover {
     background-color: #0056b3;
   }
-  
+
+  .btn{
+    margin-bottom: 10px;
+  }

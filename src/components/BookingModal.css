@@ -22,6 +22,7 @@
     overflow-y: auto;
   }
   
+  
   .DialogClose {
     position: absolute;
     top: 10px;
@@ -32,3 +33,7 @@
     cursor: pointer;
   }
   
+
+  .Toastify__toast-container {
+  z-index: 99999  !important;
+}

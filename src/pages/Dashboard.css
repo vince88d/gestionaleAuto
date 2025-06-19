@@ -104,6 +104,138 @@ h1 {
   margin-bottom: 20px;
 }
 
+.scadenze-box {
+  margin-top: 40px;
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.scadenze-box h2 {
+  margin-bottom: 20px;
+  font-size: 20px;
+  color: #2c3e50;
+}
+
+.scadenze-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.scadenze-table th,
+.scadenze-table td {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.scadenze-table th {
+  background-color: #f4f6f8;
+  color: #34495e;
+}
+
+.scadenze-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+.griglia-veicoli-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  margin-top: 1rem;
+  padding: 0;
+}
+.btn-link{
+  color: #1976d2;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  margin-top: 10px;
+  border: none;
+}
+
+.card-veicolo-dashboard {
+   background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: transform 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: center;
+}
+
+.card-veicolo-dashboard:hover {
+  transform: scale(1.03);
+}
+
+.img-card-veicolo {
+    width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-bottom: 1px solid #eee;
+}
+
+.info-card-veicolo {
+ padding: 0.6rem 0.8rem;
+}
+
+.info-card-veicolo .titolo {
+   font-weight: 600;
+  font-size: 15px;
+  color: #2c3e50;
+  margin-bottom: 0.25rem;
+}
+
+.info-card-veicolo .targa {
+font-size: 13px;
+  color: #777;
+}
+
+.filtro-date {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.filtro-date input {
+  padding: 0.3rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.filtro-date button {
+  padding: 0.4rem 0.8rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.scroll-veicoli {
+  max-height: 300px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+  padding: 0.5rem;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background-color: #fafafa;
+}
+
+.campo-data{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+
 /* Responsive: layout su dispositivi mobili */
 @media (max-width: 768px) {
   .graph {

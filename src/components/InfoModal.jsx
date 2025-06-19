@@ -1,54 +1,91 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef,useEffect } from 'react';
 import Modal from 'react-modal';
 import './InfoModal.css';
+import { Pencil, Trash2, CheckCircle } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
-function InfoModal({ isOpen, onClose, prenotazione,onModifica, onElimina, onConcludi }) {
-  const [showImage, setShowImage] = useState(false);
+
+function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, soloLettura = false }) {
   const printRef = useRef();
+  const [danniAttiviVeicolo, setDanniAttiviVeicolo] = useState([]);
 
-  const handleDownloadPDF = () => {
-    import('html2pdf.js').then(({ default: html2pdf }) => {
-      if (printRef.current) {
-        const opt = {
-          margin: 10,
-          filename: `Prenotazione_${prenotazione?.cliente || 'cliente'}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+
+  useEffect(() => {
+  const caricaDanniVeicolo = async () => {
+    if (!prenotazione?.targa || !isOpen) return;
+
+    try {
+      const veicoli = await window.electronAPI.readVeicoli();
+      const veicolo = veicoli.find(v => v.targa === prenotazione.targa);
+
+      if (veicolo?.danniAttivi) {
+        const attiviNonRiparati = veicolo.danniAttivi.filter(d => d.daRiparare && !d.riparato);
+        setDanniAttiviVeicolo(attiviNonRiparati);
+      } else {
+        setDanniAttiviVeicolo([]);
+      }
+    } catch (err) {
+      console.error("Errore caricamento danni veicolo:", err);
+      setDanniAttiviVeicolo([]);
+    }
+  };
+
+  caricaDanniVeicolo();
+}, [prenotazione, isOpen]);
+
+
+const marcaComeRiparato = async (riferimentoPrenotazione) => {
+  if (!prenotazione?.targa) return;
+
+  try {
+    const veicoli = await window.electronAPI.readVeicoli();
+    const index = veicoli.findIndex(v => v.targa === prenotazione.targa);
+    if (index === -1) return;
+
+    const veicolo = veicoli[index];
+
+    veicolo.danniAttivi = veicolo.danniAttivi.map(d => {
+      if (d.riferimentoPrenotazione === riferimentoPrenotazione) {
+        return {
+          ...d,
+          riparato: true,
+          dataRiparazione: new Date().toISOString()
         };
+      }
+      return d;
+    });
 
-         // Clona l'elemento per modificarlo temporaneamente
-         const element = printRef.current.cloneNode(true);
-         const noPrintElements = element.querySelectorAll('.no-print, button, .btn, svg');
-         
-         noPrintElements.forEach(el => el.remove());
-         
-         // Aggiungi stili temporanei per la stampa
-         const style = document.createElement('style');
-         style.innerHTML = `
-           .print-only { display: block !important; }
-           .no-print { display: none !important; }
-           body { font-family: Arial, sans-serif; }
-           .info-item { margin-bottom: 8px; }
-           .info-label { font-weight: bold; }
-           .photo-container img { max-width: 100%; height: auto; }
-         `;
-         element.appendChild(style);
-         
-         // Crea un div temporaneo per generare il PDF
-         const tempDiv = document.createElement('div');
-         tempDiv.appendChild(element);
-         document.body.appendChild(tempDiv);
-         
-         html2pdf().from(tempDiv).set(opt).save();
-         
-         // Rimuovi il div temporaneo dopo la generazione del PDF
-         setTimeout(() => {
-           document.body.removeChild(tempDiv);
-         }, 1000);
-       }
-     });
-   };
+    await window.electronAPI.writeVeicoli(veicoli);
+
+    const nuoviAttivi = veicolo.danniAttivi.filter(d => d.daRiparare && !d.riparato);
+    setDanniAttiviVeicolo(nuoviAttivi);
+  } catch (error) {
+    console.error("Errore durante la marcatura del danno come riparato:", error);
+  }
+};
+
+
+  const handleDownloadPDF = async () => {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const page1 = document.getElementById("pdf-page-1");
+    const page2 = document.getElementById("pdf-page-2");
+
+    const renderToPDF = async (element, addPage = false) => {
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      if (addPage) pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    };
+
+    await renderToPDF(page1);
+    await renderToPDF(page2, true);
+
+    pdf.save(`Prenotazione_${prenotazione?.cliente || 'cliente'}.pdf`);
+  };
 
   if (!prenotazione) return null;
 
@@ -59,110 +96,305 @@ function InfoModal({ isOpen, onClose, prenotazione,onModifica, onElimina, onConc
       contentLabel="Dettagli Prenotazione"
       className="info-modal"
       overlayClassName="modal-overlay"
-      closeTimeoutMS={300}
       ariaHideApp={false}
     >
-          <div ref={printRef} className="modal-content">
-        {/* Header - Nascondi nel PDF */}
+
+
+      <div className="modal-body">
         <div className="modal-header no-print">
-          <h2 className="modal-title">Dettagli Prenotazione</h2>
-          <button className="btn-close" onClick={onClose}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="modal-body">
-        <h2 className="print-only" style={{ textAlign: 'center', marginBottom: '20px' }}>
-            Dettagli Prenotazione
-          </h2>
-          <div className="info-grid">
-            <div className="info-item">
-              <span className="info-label">Cliente</span>
-              <span className="info-value">{prenotazione.cliente}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Email</span>
-              <span className="info-value">{prenotazione.emailCliente}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Codice Fiscale</span>
-              <span className="info-value">{prenotazione.codiceFiscale}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Patente</span>
-              <span className="info-value">{prenotazione.patente}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Veicolo</span>
-              <span className="info-value">{prenotazione.veicolo}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Targa</span>
-              <span className="info-value">{prenotazione.targa}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Dal</span>
-              <span className="info-value">{prenotazione.dataInizio}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Al</span>
-              <span className="info-value">{prenotazione.dataFine}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Prezzo</span>
-              <span className="info-value">{prenotazione.prezzoTotale} €</span>
-            </div>
-          </div>
-
-          {prenotazione.schedaVeicolo?.fotoDanni && (
-            <div className="photo-section">
-              <button 
-                className="btn btn-primary"
-                onClick={() => setShowImage(!showImage)}
-              >
-                {showImage ? (
-                  <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                    Nascondi Foto
-                  </>
-                ) : (
-                  <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                    </svg>
-                    Mostra Foto Danni
-                  </>
-                )}
-              </button>
-
-              {showImage && (
-                <div className="photo-container">
-                  <img
-                    src={prenotazione.schedaVeicolo.fotoDanni}
-                    alt="Foto Danni"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="info-modal-actions">
-  <button className="edit-btn" onClick={() => onModifica(prenotazione)}>Modifica</button>
-  <button className="delete-btn" onClick={() => onElimina(prenotazione)}>Elimina</button>
-  <button className="complete-btn" onClick={() => onConcludi(prenotazione)}>Concludi</button>
+  <button className="btn-close" onClick={onClose}>
+    <svg width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  </button>
 </div>
-        <div className="modal-footer">
-          <button className="btn btn-primary" onClick={handleDownloadPDF}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Scarica PDF
+
+        {/* CONTENUTO VISIBILE */}
+        <h2>Dettagli Prenotazione</h2>
+       <div className="info-grid">
+  <div className="info-item">
+    <span className="info-label">Cliente</span>
+    <span className="info-value">{prenotazione.cliente}</span>
+  </div>
+  <div className="info-item">
+    <span className="info-label">Email</span>
+    <span className="info-value">{prenotazione.emailCliente}</span>
+  </div>
+  <div className="info-item">
+    <span className="info-label">Codice Fiscale</span>
+    <span className="info-value">{prenotazione.codiceFiscale}</span>
+  </div>
+  <div className="info-item">
+    <span className="info-label">Patente</span>
+    <span className="info-value">{prenotazione.patente}</span>
+  </div>   
+    <div className="info-item">
+    <span className="info-label">Veicolo</span>
+    <span className="info-value">{prenotazione.veicolo}</span>
+  </div>
+  <div className="info-item">
+    <span className="info-label">Targa</span>
+    <span className="info-value">{prenotazione.targa}</span>
+  </div>
+    <div className="info-item">
+    <span className="info-label">Dal</span>
+    <span className="info-value">{prenotazione.dataInizio}</span>
+  </div>
+    <div className="info-item">
+    <span className="info-label">Al</span>
+    <span className="info-value">{prenotazione.dataFine}</span>
+  </div>
+    <div className="info-item">
+    <span className="info-label">Prezzo</span>
+    <span className="info-value">{prenotazione.prezzoTotale}</span>
+  </div>
+</div>
+
+
+{prenotazione.schedaVeicolo.accessori && (
+  <>
+    <h4 style={{ marginTop: '10px' }}>Accessori</h4>
+    <div style={{
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '10px',
+      paddingLeft: '10px',
+      marginTop: '10px'
+    }}>
+      {Object.entries(prenotazione.schedaVeicolo.accessori)
+        .filter(([k]) => k !== "altro")
+        .map(([k, v]) => (
+          <span
+            key={k}
+            style={{
+              background: '#f0f0f0',
+              borderRadius: '6px',
+              padding: '5px 10px',
+              fontSize: '0.9rem',
+              border: '1px solid #ccc'
+            }}
+          >
+            {v ? '✅' : '❌'} {k.charAt(0).toUpperCase() + k.slice(1)}
+          </span>
+        ))}
+      {prenotazione.schedaVeicolo.accessori.altro && (
+        <span
+          style={{
+            background: '#f0f0f0',
+            borderRadius: '6px',
+            padding: '5px 10px',
+            fontSize: '0.9rem',
+            border: '1px solid #ccc'
+          }}
+        >
+          ✅ {prenotazione.schedaVeicolo.accessori.altro}
+        </span>
+      )}
+    </div>
+  </>
+)}
+
+      
+         
+         {prenotazione.fotoDanni && (
+  <div style={{ marginTop: '20px' }}>
+    <h3>Immagini Danni</h3>
+    {Array.isArray(prenotazione.fotoDanni) ? (
+      prenotazione.fotoDanni.map((src, idx) => (
+        <img
+          key={idx}
+          src={src}
+          alt={`Danno ${idx + 1}`}
+          style={{ width: '100%', marginBottom: '10px', borderRadius: '8px' }}
+        />
+      ))
+    ) : (
+      <img
+        src={prenotazione.fotoDanni}
+        alt="Danno"
+        style={{ width: '100%', borderRadius: '8px' }}
+      />
+    )}
+    {prenotazione.descrizioneDanno && (
+  <div style={{ marginTop: '15px' }}>
+    <h4>Descrizione del Danno</h4>
+    <p>{prenotazione.descrizioneDanno}</p>
+  </div>
+)}
+
+  </div>
+)}
+
+{prenotazione.schedaVeicolo?.fotoDanni && (
+  <div style={{ marginTop: '20px' }}>
+    <h3>Foto Veicolo</h3>
+    <img
+      src={prenotazione.schedaVeicolo.fotoDanni}
+      alt="Foto Veicolo"
+      style={{ width: '100%', borderRadius: '8px' }}
+    />
+  </div>
+)}
+
+{danniAttiviVeicolo.length > 0 && (
+  <div style={{ marginTop: '20px' }}>
+    <h3>Danni Attivi sul Veicolo</h3>
+    <ul>
+      {danniAttiviVeicolo.map((danno, idx) => (
+        <li key={idx} style={{ marginBottom: '10px' }}>
+          <strong>{danno.descrizioneDanno}</strong><br />
+          <small>Data: {new Date(danno.data).toLocaleDateString()}</small><br />
+          <small>Rif. Prenotazione: {danno.riferimentoPrenotazione}</small><br />
+          <button
+            className="btn btn-success"
+            onClick={() => marcaComeRiparato(danno.riferimentoPrenotazione)}
+            style={{ marginTop: '5px' }}
+          >
+            Segna come Riparato
           </button>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
+
+        {/* Pulsanti */}
+        {!soloLettura && (
+          <div className="modal-footer no-print">
+            <button className="btn btn-secondary" onClick={() => onModifica(prenotazione)}><Pencil size={16} /> Modifica</button>
+            <button className="btn btn-danger" onClick={() => onElimina(prenotazione)}><Trash2 size={16} /> Elimina</button>
+            <button className="btn btn-success" onClick={() => onConcludi(prenotazione)}><CheckCircle size={16} /> Concludi</button>
+          </div>
+        )}
+        <div className="modal-footer no-print">
+          <button className="btn btn-primary" onClick={handleDownloadPDF}>Scarica PDF</button>
+        </div>
+      </div>
+
+      {/* CONTENUTO NASCOSTO PER IL PDF */}
+  <div ref={printRef} style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+   <div id="pdf-page-1" className="modal-body" style={{ padding: '20px', width: '800px' }}>
+  <h2>Dettagli Prenotazione</h2>
+  <div className="info-grid">
+    <div className="info-item">
+      <span className="info-label">Cliente</span>
+      <span className="info-value">{prenotazione.cliente}</span>
+    </div>
+    <div className="info-item">
+      <span className="info-label">Email</span>
+      <span className="info-value">{prenotazione.emailCliente}</span>
+    </div>
+    <div className="info-item">
+      <span className="info-label">Codice Fiscale</span>
+      <span className="info-value">{prenotazione.codiceFiscale}</span>
+    </div>
+    <div className="info-item">
+      <span className="info-label">Patente</span>
+      <span className="info-value">{prenotazione.patente}</span>
+    </div>
+    <div className="info-item">
+      <span className="info-label">Veicolo</span>
+      <span className="info-value">{prenotazione.veicolo}</span>
+    </div>
+    <div className="info-item">
+      <span className="info-label">Targa</span>
+      <span className="info-value">{prenotazione.targa}</span>
+    </div>
+    <div className="info-item">
+      <span className="info-label">Dal</span>
+      <span className="info-value">{prenotazione.dataInizio}</span>
+    </div>
+    <div className="info-item">
+      <span className="info-label">Al</span>
+      <span className="info-value">{prenotazione.dataFine}</span>
+    </div>
+    <div className="info-item">
+      <span className="info-label">Prezzo</span>
+      <span className="info-value">{prenotazione.prezzoTotale} €</span>
+    </div>
+  </div>
+
+
+{prenotazione.schedaVeicolo.accessori && (
+  <>
+    <h4 style={{ marginTop: '10px' }}>Accessori</h4>
+    <div style={{
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '10px',
+      paddingLeft: '10px',
+      marginTop: '10px'
+    }}>
+      {Object.entries(prenotazione.schedaVeicolo.accessori)
+        .filter(([k]) => k !== "altro")
+        .map(([k, v]) => (
+          <span
+            key={k}
+            style={{
+              background: '#f0f0f0',
+              borderRadius: '6px',
+              padding: '5px 10px',
+              fontSize: '0.9rem',
+              border: '1px solid #ccc'
+            }}
+          >
+            {v ? '✅' : '❌'} {k.charAt(0).toUpperCase() + k.slice(1)}
+          </span>
+        ))}
+      {prenotazione.schedaVeicolo.accessori.altro && (
+        <span
+          style={{
+            background: '#f0f0f0',
+            borderRadius: '6px',
+            padding: '5px 10px',
+            fontSize: '0.9rem',
+            border: '1px solid #ccc'
+          }}
+        >
+          ✅ {prenotazione.schedaVeicolo.accessori.altro}
+        </span>
+      )}
+    </div>
+  </>
+)}
+
+
+  {prenotazione.daRiparare && (
+    <p style={{ color: 'red', fontWeight: 'bold', marginTop: '10px' }}>
+      ⚠️ Il danno richiede riparazione
+    </p>
+  )}
+  {prenotazione.descrizioneDanno && (
+  <div style={{ marginTop: '10px' }}>
+    <h4 style={{ marginBottom: '5px' }}>Descrizione Danno</h4>
+    <p>{prenotazione.descrizioneDanno}</p>
+  </div>
+)}
+
+</div>
+        <div id="pdf-page-2" className="modal-body" style={{ padding: '20px', width: '800px' }}>
+          <h2>Immagini Danni</h2>
+          
+          {prenotazione.fotoDanni && (
+            Array.isArray(prenotazione.fotoDanni) ? (
+              prenotazione.fotoDanni.map((src, idx) => (
+<img
+  key={idx}
+  src={src}
+  alt={`Danno ${idx + 1}`}
+  style={{ maxWidth: '300px', height: 'auto', marginBottom: '10px' }}
+/>              ))
+            ) : (
+              <img src={prenotazione.fotoDanni} alt="Danno" style={{ width: '100%' }} />
+            )
+          )}
+          {prenotazione.schedaVeicolo?.fotoDanni && (
+            <>
+              <h3>Foto Veicolo</h3>
+              <img src={prenotazione.schedaVeicolo.fotoDanni} alt="Foto Danni" style={{ width: '100%' }} />
+            </>
+          )}
         </div>
       </div>
     </Modal>

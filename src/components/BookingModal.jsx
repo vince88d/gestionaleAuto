@@ -2,6 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import './BookingModal.css';
 import { useEffect, useRef } from 'react';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { X } from 'lucide-react';
 
 function BookingModal({ open, onClose, children }) {
   const closeButtonRef = useRef(null);
@@ -21,9 +22,9 @@ function BookingModal({ open, onClose, children }) {
           <Dialog.Title >
           <VisuallyHidden>Gestione Prenotazione</VisuallyHidden>
             </Dialog.Title>
-          <Dialog.Close className="DialogClose" ref={closeButtonRef}>
-            ✖
-          </Dialog.Close>
+      <Dialog.Close className="DialogClose" ref={closeButtonRef} aria-label="Chiudi">
+  <X size={20} />
+</Dialog.Close>
           {children}
         </Dialog.Content>
       </Dialog.Portal>

@@ -1,23 +1,21 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Dipendenze
+node_modules/
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# File di build della tua app React
+build/
 
-# testing
-/coverage
+# Cartelle di output di Electron Forge
+out/
+dist/
 
-# production
-/build
-
-# misc
+# Log e file di sistema
+*.log
 .DS_Store
+Thumbs.db
+
+# File di ambiente (contengono chiavi segrete!)
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*

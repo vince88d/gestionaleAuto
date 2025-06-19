@@ -1,0 +1,48 @@
+.storico-table-container {
+    margin-top: 1.5rem;
+  }
+  
+  .storico-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    background-color: #fff;
+  }
+  
+  .storico-table th,
+  .storico-table td {
+    border: 1px solid #ddd;
+    padding: 0.6rem;
+    text-align: left;
+  }
+  
+  .storico-table th {
+    background-color: #f3f4f6;
+    color: #333;
+    font-weight: 600;
+  }
+  
+  .storico-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  
+  .storico-table button {
+    padding: 0.4rem 0.8rem;
+    border: none;
+    background-color: #2563eb;
+    color: white;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  
+  .storico-table button:hover {
+    background-color: #1e40af;
+  }
+  
+  .Modal img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin-top: 1rem;
+  }
+  

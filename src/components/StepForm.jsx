@@ -286,8 +286,16 @@ function Bookings() {
       <Modal
         isOpen={infoModalOpen}
         onRequestClose={closeInfoModal}
-        className="Modal"
-        overlayClassName="Overlay"
+      className={{
+    base: 'Modal',
+    afterOpen: 'Modal--after-open',
+    beforeClose: 'Modal--before-close',
+  }}
+  overlayClassName={{
+    base: 'Overlay',
+    afterOpen: 'Overlay--after-open',
+    beforeClose: 'Overlay--before-close',
+  }}
       >
         <button onClick={closeInfoModal} style={{ float: 'right', border: 'none', background: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
         {dettagliPrenotazione && (

@@ -10,11 +10,13 @@ import InfoModal from '../components/InfoModal';
 import {toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ConfirmDialog from '../components/ConfirmDialog';
-
-import { Search, Info, CheckCircle, AlertCircle } from 'lucide-react';
+import { setClienti } from '../store/clientiSlice';
+import { Search, Info, CheckCircle, AlertCircle, Edit3, Trash2 } from 'lucide-react';
 import BookingModal from '../components/BookingModal';
 import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
+import ConcludiPrenotazioneModal from '../components/ConcludiPrenotazioneModal';
+import { useLocation } from 'react-router-dom';
 import{
   setPrenotazioni,
   addPrenotazione,
@@ -48,8 +50,13 @@ function Bookings() {
   const [availableVehiclesForBooking, setAvailableVehiclesForBooking] = useState([]);
   const [forceRenderKey, setForceRenderKey] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
-const [deleteIndex, setDeleteIndex] = useState(null);
-
+  const [deleteIndex, setDeleteIndex] = useState(null);
+  const clienti = useSelector((state) => state.clienti);
+  const [concludiModalOpen, setConcludiModalOpen] = useState(false);
+  const [prenotazioneDaConcludere, setPrenotazioneDaConcludere] = useState(null);
+  const [paginaPrenotazioni, setPaginaPrenotazioni] = useState(1);
+  const location = useLocation();
+  const righePerPagina = 10;
 
   const [formData, setFormData] = useState({
     cliente: '',
@@ -71,11 +78,15 @@ const [deleteIndex, setDeleteIndex] = useState(null);
     carburante: '',
     kmIniziali: '',
     danni: '',
-    accessori: {
-      cric: false,
-      triangolo: false,
-      giubbotto: false,
-    }
+accessori: {
+  cric: false,
+  triangolo: false,
+  giubbotto: false,
+  ruotaScorta: false,
+  cavoRicarica: false,
+  cateneNeve: false,
+  altro: ''
+}
   }); 
   
   
@@ -86,6 +97,11 @@ const [deleteIndex, setDeleteIndex] = useState(null);
       toast.error(message);
     }
   };
+  
+  useEffect(() => {
+  setPaginaPrenotazioni(1);
+}, [search]);
+
 
   useEffect(() => {
     let cleanup;
@@ -99,6 +115,36 @@ const [deleteIndex, setDeleteIndex] = useState(null);
       if (cleanup) cleanup(); // ✅ Rimuove correttamente il listener
     };
   }, []);
+
+useEffect(() => {
+  if (location.state?.targaSelezionata) {
+    const { targaSelezionata, modelloSelezionato, prezzoSelezionato } = location.state;
+
+    setFormData((prev) => ({
+      ...prev,
+      targa: targaSelezionata,
+      veicolo: modelloSelezionato || '',
+      prezzoGiornaliero: prezzoSelezionato || '',
+      dataInizio: '',
+      dataFine: '',
+    }));
+
+    setIsAddingNewBooking(true);
+    setModalIsOpen(true);
+  }
+}, [location.state]);
+  
+  useEffect(() => {
+    const caricaClienti = async () => {
+      try {
+        const dati = await window.electronAPI.readClienti();
+        dispatch(setClienti(dati || []));
+      } catch (err) {
+        console.error("Errore caricamento clienti:", err);
+      }
+    };
+    caricaClienti();
+  }, [dispatch]);
   
 
   useEffect(() => {
@@ -152,6 +198,12 @@ const [deleteIndex, setDeleteIndex] = useState(null);
       const isAlreadyBooked = prenotazioni.some(prenotazione => {
         if (prenotazione.targa !== vehicle.targa) return false;
       
+          // Se la prenotazione è completata, considera solo le date dopo il rientro effettivo
+      if (prenotazione.status === 'completata' && prenotazione.dataRientroEffettiva) {
+  const rientro = new Date(prenotazione.dataRientroEffettiva);
+  const giorno = new Date(date);
+  if (giorno >= rientro) return false; // Non blocca più il veicolo
+}
         const inizio = new Date(prenotazione.dataInizio);
         const fine = prenotazione.dataRientroEffettiva
           ? new Date(prenotazione.dataRientroEffettiva)
@@ -225,7 +277,15 @@ const [deleteIndex, setDeleteIndex] = useState(null);
       carburante: '',
       kmIniziali: '',
       danni: '',
-      accessori: { cric: false, triangolo: false, giubbotto: false },
+accessori: {
+  cric: false,
+  triangolo: false,
+  giubbotto: false,
+  ruotaScorta: false,
+  cavoRicarica: false,
+  cateneNeve: false,
+  altro: ''
+}
     });
   };
 
@@ -283,6 +343,7 @@ const [deleteIndex, setDeleteIndex] = useState(null);
   const sovrapposta = prenotazioni.some((p, i) => {
     if (editingIndex !== null && i === editingIndex) return false;
     if (p.targa !== data.targa) return false;
+    if (p.status === 'completata') return false; 
 
     const inizioA = new Date(p.dataInizio);
     const fineA = new Date(p.dataFine);
@@ -387,6 +448,7 @@ const [deleteIndex, setDeleteIndex] = useState(null);
      const primaPrenotazione = prenotazioniDelGiorno[0]; // Prendi la prima come esempio
      const giorni = calcGiorni(primaPrenotazione.dataInizio, primaPrenotazione.dataFine);
      setFormData({
+      id: primaPrenotazione.id,
       cliente: primaPrenotazione.cliente,
       codiceFiscale: primaPrenotazione.codiceFiscale,
       patente: primaPrenotazione.patente,
@@ -402,7 +464,15 @@ const [deleteIndex, setDeleteIndex] = useState(null);
       carburante: '',
       kmIniziali: '',
       danni: '',
-      accessori: { cric: false, triangolo: false, giubbotto: false },
+      accessori: {
+  cric: false,
+  triangolo: false,
+  giubbotto: false,
+  ruotaScorta: false,
+  cavoRicarica: false,
+  cateneNeve: false,
+  altro: ''
+}
      });
      setEditingIndex(prenotazioni.findIndex(p => p.id === primaPrenotazione.id)); // Imposta l'indice di modifica
     } else {
@@ -419,7 +489,16 @@ const [deleteIndex, setDeleteIndex] = useState(null);
       prezzoTotale: '',
       emailCliente: '',
      });
-     setSchedaVeicolo({ carburante: '', kmIniziali: '', danni: '', accessori: { cric: false, triangolo: false, giubbotto: false } });
+     setSchedaVeicolo({ carburante: '', kmIniziali: '', danni: '', accessori: {
+  cric: false,
+  triangolo: false,
+  giubbotto: false,
+  ruotaScorta: false,
+  cavoRicarica: false,
+  cateneNeve: false,
+  altro: ''
+} 
+});
      setEditingIndex(null);
      setIsAddingNewBooking(true); // Imposta a true se vuoi aggiungere una nuova da qui
     }
@@ -537,11 +616,15 @@ const [deleteIndex, setDeleteIndex] = useState(null);
       carburante: '',
       kmIniziali: '',
       danni: '',
-      accessori: {
-        cric: false,
-        triangolo: false,
-        giubbotto: false,
-      }
+   accessori: {
+  cric: false,
+  triangolo: false,
+  giubbotto: false,
+  ruotaScorta: false,
+  cavoRicarica: false,
+  cateneNeve: false,
+  altro: ''
+}
     });
   
     setEditingIndex(null);
@@ -598,19 +681,88 @@ const segnaComeCompletata = async (index) => {
   showFeedback("Prenotazione conclusa", "success");
   
 
-// Allineo la data selezionata per forzare il recalcolo
-if (!selectedDate || selectedDate !== prenotazione.dataInizio) {
-  setSelectedDate(prenotazione.dataInizio);
-}
-
-// Ricalcola la disponibilità dopo la modifica
-const nuovaDisponibilità = getAvailableVehiclesForDate(
-  prenotazione.dataInizio, // usa direttamente la data coerente
+ // Forza il ricalcolo della disponibilità
+ const nuovaDisponibilità = getAvailableVehiclesForDate(
+  prenotazione.dataInizio, // usa la data originale di inizio
   formData?.targa,
-  isAddingNewBooking
+  true // forza il calcolo come nuova prenotazione
 );
+
 setAvailableVehiclesForBooking(nuovaDisponibilità);
-  
+
+// Se stavi visualizzando la data originale, forza il refresh
+if (selectedDate === prenotazione.dataInizio) {
+  setSelectedDate(null);
+  setTimeout(() => setSelectedDate(prenotazione.dataInizio), 50);
+}
+};
+
+const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoDanni }) => {
+  const now = new Date().toISOString();
+  const prenotazione = prenotazioneDaConcludere;
+
+  const aggiornata = {
+    ...prenotazione,
+    status: 'completata',
+    dataRientroEffettiva: now,
+    descrizioneDanno,
+    daRiparare,
+    fotoDanni: fotoDanni || null,
+  };
+
+  const nuovePrenotazioni = prenotazioni.map((p) =>
+    p.id === aggiornata.id ? aggiornata : p
+  );
+
+  dispatch(updatePrenotazione(aggiornata));
+  await window.electronAPI.writePrenotazioni(nuovePrenotazioni);
+  dispatch(setPrenotazioni(nuovePrenotazioni));
+
+  if (descrizioneDanno?.trim()) {
+    const clienti = await window.electronAPI.readClienti();
+    const idxCliente = clienti.findIndex(c =>
+      c.codiceFiscale === prenotazione.codiceFiscale ||
+      c.email === prenotazione.emailCliente
+    );
+
+    if (idxCliente !== -1) {
+      clienti[idxCliente].storicoDanni = clienti[idxCliente].storicoDanni || [];
+      clienti[idxCliente].storicoDanni.push({
+        data: now,
+        descrizioneDanno,
+        veicolo: prenotazione.veicolo,
+        targa: prenotazione.targa,
+        riferimentoPrenotazione: prenotazione.id,
+      });
+      await window.electronAPI.writeClienti(clienti);
+      dispatch(setClienti(clienti));
+    }
+
+if (daRiparare && prenotazione.targa) {
+  const veicoli = await window.electronAPI.readVeicoli();
+  const index = veicoli.findIndex(v => v.targa === prenotazione.targa);
+
+  if (index !== -1) {
+    const nuovoDanno = {
+      descrizione: descrizioneDanno,
+      data: now,
+      daRiparare: true,
+      riparato: false,
+      foto: fotoDanni || [],
+      riferimentoPrenotazione: prenotazione.id,
+    };
+
+    veicoli[index].danni = veicoli[index].danni || [];
+    veicoli[index].danni.push(nuovoDanno);
+
+    await window.electronAPI.writeVeicoli(veicoli);
+    showFeedback("Danno salvato nel veicolo", "success");
+  }
+}
+ }
+  showFeedback("Prenotazione conclusa con esito registrato.");
+  setConcludiModalOpen(false);
+  setPrenotazioneDaConcludere(null);
 };
 
 
@@ -627,6 +779,14 @@ if(loading){
       </div>     
   );
 }
+
+const prenotazioniAttiveFiltrate = prenotazioniAttive.filter(p =>
+  p.cliente.toLowerCase().includes(search.toLowerCase()) ||
+  p.targa.toLowerCase().includes(search.toLowerCase()) ||
+  p.veicolo.toLowerCase().includes(search.toLowerCase())
+);
+const numeroPagine = Math.ceil(prenotazioniAttiveFiltrate.length / righePerPagina);
+
 
 return (
   <div className="bookings-container">
@@ -678,7 +838,9 @@ return (
           onSubmit={handleBookingSubmit}
           initialValues={formData}
           availableVehicles={availableVehiclesForBooking}
-        />
+          clienti = {clienti}
+          prenotazioni={prenotazioni}
+       />
       </div>
     ) : (
       <div>
@@ -696,7 +858,7 @@ return (
                   </div>
                   <div className="booking-actions">
                     <button
-                      className="edit-btn"
+                      className="btn btn-secondary"
                       onClick={() => {
                         const giorni = calcGiorni(prenotazione.dataInizio, prenotazione.dataFine);
                         setFormData({
@@ -707,11 +869,15 @@ return (
                           carburante: '',
                           kmIniziali: '',
                           danni: '',
-                          accessori: {
-                            cric: false,
-                            triangolo: false,
-                            giubbotto: false,
-                          }
+                   accessori: {
+  cric: false,
+  triangolo: false,
+  giubbotto: false,
+  ruotaScorta: false,
+  cavoRicarica: false,
+  cateneNeve: false,
+  altro: ''
+}
                         });
                         const globalIndex = prenotazioni.findIndex(p => p === prenotazione);
                         setEditingIndex(globalIndex);
@@ -720,20 +886,27 @@ return (
                         setModalIsOpen(true);
                       }}
                     >
-                      Modifica
+                      <Edit3 size={16} /> 
+                                       Modifica
                     </button>
                     <button
-                      className="delete-btn"
+                      className="btn btn-danger"
                       onClick={() => handleDelete(prenotazioni.findIndex(p => p === prenotazione))}
                     >
+                      <Trash2 size={16} />
                       Elimina
                     </button>
-                    <button
-                      className="complete-btn"
-                      onClick={() => segnaComeCompletata(prenotazioni.findIndex(p => p === prenotazione))}
-                    >
-                      Concludi
-                    </button>
+                  <button
+  className="btn btn-success"
+  onClick={() => {
+    setModalIsOpen(false); // 🔴 chiudi BookingModal
+    setPrenotazioneDaConcludere(prenotazione); // ✅ setta prenotazione attuale
+    setConcludiModalOpen(true); // ✅ apri modale conclusione
+  }}
+>
+  <CheckCircle size={16}/>
+  Concludi
+</button>
                   </div>
                 </div>
               ))}
@@ -755,7 +928,15 @@ return (
                 carburante: '',
                 kmIniziali: '',
                 danni: '',
-                accessori: { cric: false, triangolo: false, giubbotto: false },
+              accessori: {
+  cric: false,
+  triangolo: false,
+  giubbotto: false,
+  ruotaScorta: false,
+  cavoRicarica: false,
+  cateneNeve: false,
+  altro: ''
+},
               });
               setEditingIndex(null);
               setIsAddingNewBooking(true);
@@ -782,7 +963,15 @@ return (
                 carburante: '',
                 kmIniziali: '',
                 danni: '',
-                accessori: { cric: false, triangolo: false, giubbotto: false },
+                accessori: {
+  cric: false,
+  triangolo: false,
+  giubbotto: false,
+  ruotaScorta: false,
+  cavoRicarica: false,
+  cateneNeve: false,
+  altro: ''
+},
               });
               setEditingIndex(null);
               setIsAddingNewBooking(true);
@@ -811,13 +1000,14 @@ return (
           </tr>
         </thead>
         <tbody>
-          {prenotazioniAttive
-            .filter(p =>
-              p.cliente.toLowerCase().includes(search.toLowerCase()) ||
-              p.targa.toLowerCase().includes(search.toLowerCase()) ||
-              p.veicolo.toLowerCase().includes(search.toLowerCase())
-            )
-            .map((p, index) => (
+         {prenotazioniAttive
+  .filter(p =>
+    p.cliente.toLowerCase().includes(search.toLowerCase()) ||
+    p.targa.toLowerCase().includes(search.toLowerCase()) ||
+    p.veicolo.toLowerCase().includes(search.toLowerCase())
+  )
+  .slice((paginaPrenotazioni - 1) * righePerPagina, paginaPrenotazioni * righePerPagina)
+  .map((p, index) => (
               <tr key={index} className={
                 p.dataFine === new Date().toISOString().split('T')[0]
                   ? 'riga-scadenza-oggi'
@@ -840,6 +1030,17 @@ return (
             ))}
         </tbody>
       </table>
+      <div className="pagination">
+  {[...Array(numeroPagine)].map((_, i) => (
+    <button
+      key={i}
+      className={paginaPrenotazioni === i + 1 ? 'active' : ''}
+      onClick={() => setPaginaPrenotazioni(i + 1)}
+    >
+      {i + 1}
+    </button>
+  ))}
+</div>
     </div>
   
     {/* Modal info dettagliato */}
@@ -855,7 +1056,15 @@ return (
         carburante: '',
         kmIniziali: '',
         danni: '',
-        accessori: { cric: false, triangolo: false, giubbotto: false },
+       accessori: {
+  cric: false,
+  triangolo: false,
+  giubbotto: false,
+  ruotaScorta: false,
+  cavoRicarica: false,
+  cateneNeve: false,
+  altro: ''
+},
       });
       setEditingIndex(index);
       setIsAddingNewBooking(true);
@@ -869,8 +1078,12 @@ return (
     }}
     onConcludi={(p) => {
       const index = prenotazioni.findIndex(item => item.id === p.id);
-      segnaComeCompletata(index);
-      setInfoModalOpen(false);
+      
+     setInfoModalOpen(false);          
+    setModalIsOpen(false);            
+    setPrenotazioneDaConcludere(p);   
+    setConcludiModalOpen(true);      
+    setForceRenderKey(prev => prev + 1); 
     }}
       />
     <SchedaVeicoloModal
@@ -886,7 +1099,7 @@ return (
     isOpen={riepilogoOpen}
     onClose={() => setRiepilogoOpen(false)}
     formData={formData}
-    schedaVeicolo={schedaVeicolo}
+    schedaVeicolo={formData.schedaVeicolo}
     onConferma={confermaPrenotazione}
   />
   
@@ -896,6 +1109,14 @@ return (
     onConfirm={confermaEliminazione}
     message="Sei sicuro di voler eliminare questa prenotazione?"
   />
+
+  <ConcludiPrenotazioneModal
+  isOpen={concludiModalOpen}
+  onClose={() => setConcludiModalOpen(false)}
+  onConferma={confermaConclusioneConDanni}
+  prenotazione={prenotazioneDaConcludere}
+/>
+
   
   </div>
   

@@ -1,7 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import AutocompleteClienti from './AutocompleteClienti';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
+import './BookingForm.css';
+
+
+
 
 const schema = yup.object().shape({
  cliente: yup.string().required("Il nome e cognome sono obbligatori"),
@@ -25,8 +32,12 @@ const schema = yup.object().shape({
   .required("Email cliente obbligatoria"),
 });
 
-function BookingForm({ onSubmit, initialValues, availableVehicles }) {
- const {
+
+function BookingForm({ onSubmit, initialValues, availableVehicles, clienti = [], prenotazioni = [] }) {
+ const [clienteSelezionato, setClienteSelezionato] = useState(null);
+ const [disabledDates, setDisabledDates] = useState([]);
+
+  const {
   register,
   handleSubmit,
   watch,
@@ -46,24 +57,78 @@ function BookingForm({ onSubmit, initialValues, availableVehicles }) {
   reset({ ...initialValues });
  }, [initialValues, reset]);
 
+ useEffect(() => {
+  if (clienteSelezionato) {
+    setValue("cliente", `${clienteSelezionato.nome} ${clienteSelezionato.cognome}`);
+    setValue("emailCliente", clienteSelezionato.email || '');
+    setValue("telefono", clienteSelezionato.telefono || '');
+    setValue("documento", clienteSelezionato.documento || '');
+    setValue("codiceFiscale", clienteSelezionato.codiceFiscale || '');
+    setValue("patente", clienteSelezionato.patente || '');
+  }
+}, [clienteSelezionato, setValue]);
+
 
  // Aggiorna il modello del veicolo quando la targa cambia (opzionale, ma utile)
  const watchTarga = watch("targa");
+
+
  useEffect(() => {
-  console.log('BookingForm - useEffect: Targa osservata:', watchTarga);
+  
   if (watchTarga && availableVehicles) {
    const selectedVehicle = availableVehicles.find(v => v.targa === watchTarga);
    if (selectedVehicle) {
-    console.log('BookingForm - useEffect: Veicolo trovato per la targa:', selectedVehicle);
-    setValue("veicolo", selectedVehicle.modello || ''); // Imposta il modello se disponibile
-   } else {
-    console.log('BookingForm - useEffect: Nessun veicolo trovato per la targa, resettando modello.');
-    setValue("veicolo", ''); // Resetta il modello se la targa non corrisponde
-   }
+  console.log('BookingForm - useEffect: Veicolo trovato per la targa:', selectedVehicle);
+  setValue("veicolo", selectedVehicle.modello || '');
+  setValue("prezzoGiornaliero", selectedVehicle.prezzo || ''); // ← Aggiungi questa riga
+} else {
+  console.log('BookingForm - useEffect: Nessun veicolo trovato per la targa, resettando modello.');
+  setValue("veicolo", '');
+  setValue("prezzoGiornaliero", ''); // ← E resetta anche il prezzo se la targa non combacia
+}
   }
  }, [watchTarga, availableVehicles, setValue]);
 
 
+useEffect(() => {
+  if (!watchTarga || !prenotazioni?.length) {
+    setDisabledDates([]);
+    return;
+  }
+
+  const occupate = [];
+  prenotazioni.forEach(p => {
+    if (p.targa === watchTarga && p.status !== 'completata') {
+      const start = new Date(p.dataInizio);
+      const end = new Date(p.dataFine);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        occupate.push(new Date(d));
+      }
+    }
+  });
+
+  setDisabledDates(occupate);
+}, [watchTarga, prenotazioni]);
+
+
+
+
+// Forza il set del modello veicolo se inizialmente presente ma non ancora settato
+useEffect(() => {
+  console.log('BookingForm - useEffect: Resettando il form con:', initialValues);
+  reset({ ...initialValues });
+  
+  // Forza il set del modello veicolo se inizialmente presente
+  if (initialValues?.targa && availableVehicles?.length > 0) {
+    const selected = availableVehicles.find(v => v.targa === initialValues.targa);
+    if (selected) {
+      setValue("veicolo", selected.modello || initialValues.veicolo || '');
+      setValue("prezzoGiornaliero", selected.prezzo || initialValues.prezzoGiornaliero || '');
+    }
+  }
+},
+
+[initialValues, reset, availableVehicles, setValue]);
  const dataInizio = watch("dataInizio");
  const dataFine = watch("dataFine");
  const prezzoGiornaliero = watch("prezzoGiornaliero");
@@ -79,11 +144,13 @@ function BookingForm({ onSubmit, initialValues, availableVehicles }) {
 
  return (
   <form onSubmit={handleSubmit(onSubmit)} className="booking-form">
-   <div className="form-group">
-    <label>Nome e Cognome</label>
-    <input {...register("cliente")} placeholder="Es. Mario Rossi" />
-    <p className="error">{errors.cliente?.message}</p>
-   </div>
+<div className="form-group">
+  <label>Seleziona Cliente</label>
+  <AutocompleteClienti
+    clienti={clienti}
+    onSelect={(cliente) => setClienteSelezionato(cliente)}
+  />
+</div>
 
    <div className="form-group">
     <label>Codice Fiscale</label>
@@ -105,7 +172,7 @@ function BookingForm({ onSubmit, initialValues, availableVehicles }) {
 
    <div className="form-group">
     <label>Modello Veicolo</label>
-    <input {...register("veicolo")} placeholder="Fiat Panda" readOnly /> {/* Ora è readonly, si popola dalla targa */}
+    <input {...register("veicolo")} placeholder="Fiat Panda"  /> {/* Ora è readonly, si popola dalla targa */}
     <p className="error">{errors.veicolo?.message}</p>
    </div>
 
@@ -128,17 +195,43 @@ function BookingForm({ onSubmit, initialValues, availableVehicles }) {
     <p className="error">{errors.targa?.message}</p>
    </div>
 
-   <div className="form-group">
-    <label>Data Inizio</label>
-    <input type="date" {...register("dataInizio")} />
-    <p className="error">{errors.dataInizio?.message}</p>
-   </div>
+<div className="form-group">
+  <label>Data Inizio</label>
+<DatePicker
+  selected={dataInizio ? new Date(dataInizio) : null}
+ onChange={(date) => {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString().split('T')[0];
+  setValue("dataInizio", localDate);
+}}
 
-   <div className="form-group">
-    <label>Data Fine</label>
-    <input type="date" {...register("dataFine")} />
-    <p className="error">{errors.dataFine?.message}</p>
-   </div>
+  excludeDates={disabledDates}
+  dateFormat="dd-MM-yyyy"
+  className="custom-datepicker"
+/>
+
+  <p className="error">{errors.dataInizio?.message}</p>
+</div>
+
+
+<div className="form-group">
+  <label>Data Fine</label>
+  <DatePicker
+    selected={dataFine ? new Date(dataFine) : null}
+    onChange={(date) => {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString().split('T')[0];
+  setValue("dataFine", localDate);
+}}
+
+    excludeDates={disabledDates}
+    dateFormat="dd-MM-yyyy"
+    className="custom-datepicker"
+  />
+  <p className="error">{errors.dataFine?.message}</p>
+</div>
+
+
 
    <div className="form-group">
     <label>Prezzo Giornaliero (€)</label>
