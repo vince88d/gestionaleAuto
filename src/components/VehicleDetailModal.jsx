@@ -3,12 +3,13 @@ import Modal from "react-modal";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import { useNavigate } from "react-router-dom";
-import { Car } from "lucide-react";
+import { Car, ChevronLeft,ChevronRight } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
 import "../styles/VehicleDetailModal.css";
 import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";
 import { updatePrenotazione } from "../store/prenotazioniSlice";
+
 
 const VehicleDetailModal = ({
   isOpen,
@@ -242,7 +243,13 @@ const VehicleDetailModal = ({
                 center: "title",
                 right: "dayGridMonth,dayGridWeek,dayGridDay",
               }}
-              eventSources={[
+              buttonText={{
+  prev: '‹',
+  next: '›', 
+
+}}
+
+          eventSources={[
                 {
                   events: (info, successCallback) => {
                     const viewStart = new Date(info.startStr);
@@ -715,55 +722,55 @@ const VehicleDetailModal = ({
                       <p>Nessuna manutenzione registrata.</p>
                     )}
 
-                    <div
-                      className="maintenance-form"
-                      style={{ marginTop: "20px" }}
-                    >
-                      <h5>Aggiungi nuova manutenzione:</h5>
-                      <input
-                        type="date"
-                        value={nuovaManutenzione.data}
-                        onChange={(e) =>
-                          setNuovaManutenzione((prev) => ({
-                            ...prev,
-                            data: e.target.value,
-                          }))
-                        }
-                        placeholder="Data"
-                        style={{ marginRight: "10px" }}
-                      />
-                      <input
-                        type="text"
-                        value={nuovaManutenzione.descrizione}
-                        onChange={(e) =>
-                          setNuovaManutenzione((prev) => ({
-                            ...prev,
-                            descrizione: e.target.value,
-                          }))
-                        }
-                        placeholder="Descrizione"
-                        style={{ marginRight: "10px" }}
-                      />
-                      <input
-                        type="number"
-                        value={nuovaManutenzione.costo}
-                        onChange={(e) =>
-                          setNuovaManutenzione((prev) => ({
-                            ...prev,
-                            costo: e.target.value,
-                          }))
-                        }
-                        placeholder="Costo (€)"
-                        style={{ width: "100px", marginRight: "10px" }}
-                      />
-                      <button
-                        onClick={onAddManutenzione}
-                        className="add-maintenance-btn"
-                      >
-                        ➕ Aggiungi
-                      </button>
-                    </div>
-                  </div>
+               <div className="maintenance-form-row">
+    <label>Data</label>
+    <input
+      type="date"
+      value={nuovaManutenzione.data}
+      onChange={(e) =>
+        setNuovaManutenzione((prev) => ({
+          ...prev,
+          data: e.target.value,
+        }))
+      }
+    />
+  </div>
+
+  <div className="maintenance-form-row">
+    <label>Descrizione</label>
+    <textarea
+      className="maintenance-textarea"
+      value={nuovaManutenzione.descrizione}
+      onChange={(e) =>
+        setNuovaManutenzione((prev) => ({
+          ...prev,
+          descrizione: e.target.value,
+        }))
+      }
+      placeholder="Descrizione dettagliata della manutenzione"
+    />
+  </div>
+
+  <div className="maintenance-form-row">
+    <label>Costo (€)</label>
+    <input
+      type="number"
+      value={nuovaManutenzione.costo}
+      onChange={(e) =>
+        setNuovaManutenzione((prev) => ({
+          ...prev,
+          costo: e.target.value,
+        }))
+      }
+    />
+  </div>
+
+  <div className="maintenance-form-row">
+    <button onClick={onAddManutenzione} className="add-maintenance-btn">
+      ➕ Aggiungi
+    </button>
+  </div>
+</div>
                 )}
               </div>
 

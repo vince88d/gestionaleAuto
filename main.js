@@ -3,7 +3,7 @@ const path = require('path');
 const nodemailer = require('nodemailer'); 
 const fs = require('fs');
 const fsPromises = require('fs').promises; 
-
+require('update-electron-app');
 
 
 async function inviaEmailPrenotazione({ bookingData, companyData, allegatoPath }) {
@@ -169,19 +169,19 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
-  
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-        callback({
-            responseHeaders: {
-                ...details.responseHeaders,
-                'Content-Security-Policy': [
-                    process.env.NODE_ENV === 'development' 
-                        ? "default-src 'self' http://localhost:3000; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
-                        : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
-                ]
-            }
-        });
+    const csp = process.env.NODE_ENV === 'development'
+      ? "default-src 'self' http://localhost:3000; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:3000 https://api.ipify.org;"
+      : "default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://api.ipify.org";
+
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp]
+      }
     });
+  });
+
     
   // 🔁 Ogni volta che il renderer chiede lo stato della licenza, lo verifichiamo
   ipcMain.handle('get-license-status', () => {

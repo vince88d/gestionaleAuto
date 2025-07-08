@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import './Booking.css';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -55,8 +55,11 @@ function Bookings() {
   const [concludiModalOpen, setConcludiModalOpen] = useState(false);
   const [prenotazioneDaConcludere, setPrenotazioneDaConcludere] = useState(null);
   const [paginaPrenotazioni, setPaginaPrenotazioni] = useState(1);
+  const [paginaClienti, setPaginaClienti] = useState(1);
+  const [filtroAttivo, setFiltroAttivo] = useState('');
   const location = useLocation();
   const righePerPagina = 10;
+  const listaRef = useRef(null);
 
   const [formData, setFormData] = useState({
     cliente: '',
@@ -186,6 +189,18 @@ useEffect(() => {
   
     caricaVeicoli();
   }, []);
+
+  const handleRicerca = (e) => {
+  e.preventDefault(); // evita il submit classico
+  setPaginaPrenotazioni(1)
+
+  // Scroll dopo un leggero delay
+  setTimeout(() => {
+    if (listaRef.current) {
+      listaRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, 100);
+};
 
 
   const getAvailableVehiclesForDate = (date, currentTarga = null, isNewBooking = true) => {
@@ -783,7 +798,8 @@ if(loading){
 const prenotazioniAttiveFiltrate = prenotazioniAttive.filter(p =>
   p.cliente.toLowerCase().includes(search.toLowerCase()) ||
   p.targa.toLowerCase().includes(search.toLowerCase()) ||
-  p.veicolo.toLowerCase().includes(search.toLowerCase())
+  p.veicolo.toLowerCase().includes(search.toLowerCase())||
+  p.emailCliente.toLowerCase().includes(search.toLowerCase())
 );
 const numeroPagine = Math.ceil(prenotazioniAttiveFiltrate.length / righePerPagina);
 
@@ -798,16 +814,49 @@ return (
     )}
   <h1 className="title">Gestione Prenotazioni</h1>
   
-  <div className="search-bar">
-      <Search className="search-icon" />
-      <input
-        type="text"
-        placeholder="Cerca per cliente, targa o veicolo..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="search-input-enhanced"
-      />
-    </div>
+<form onSubmit={handleRicerca} style={{ position: 'relative', display: 'flex', marginBottom: '1rem' }}>
+  <Search
+    size={18}
+    style={{
+      position: 'absolute',
+      left: '10px',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      color: '#888',
+      pointerEvents: 'none',
+    }}
+  />
+  <input
+    type="text"
+    placeholder="Cerca per cliente, targa o veicolo..."
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    style={{
+      flex: 1,
+      padding: '0.5rem 0.5rem 0.5rem 2rem',
+      fontSize: '1rem',
+      borderRadius: '6px',
+      border: '1px solid #ccc',
+    }}
+  />
+  <button
+    type="submit"
+    style={{
+      marginLeft: '0.5rem',
+      padding: '0.5rem 1rem',
+      fontSize: '1rem',
+      backgroundColor: '#2563eb',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '6px',
+      cursor: 'pointer',
+    }}
+  >
+    Cerca
+  </button>
+</form>
+
+
     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
     <button onClick={exportToCSV} className="export-btn">📁 Esporta CSV</button>
   </div>
@@ -827,6 +876,7 @@ return (
           }
           return arg.event.title;
         }}
+        buttonText={{prev:'<',next:'>'}}
       />
     </div>
   
@@ -984,7 +1034,7 @@ return (
   </BookingModal>
   
   
-    <div className="table-responsive">
+    <div className="table-responsive" ref={listaRef}>
       <table className="booking-table">
         <thead>
           <tr>
@@ -1000,14 +1050,17 @@ return (
           </tr>
         </thead>
         <tbody>
-         {prenotazioniAttive
-  .filter(p =>
-    p.cliente.toLowerCase().includes(search.toLowerCase()) ||
-    p.targa.toLowerCase().includes(search.toLowerCase()) ||
-    p.veicolo.toLowerCase().includes(search.toLowerCase())
-  )
-  .slice((paginaPrenotazioni - 1) * righePerPagina, paginaPrenotazioni * righePerPagina)
-  .map((p, index) => (
+          
+  {prenotazioniAttiveFiltrate.length === 0 ? (
+    <tr>
+      <td colSpan="9" style={{ textAlign: 'center', fontStyle: 'italic', color: '#888' }}>
+        Nessuna prenotazione trovata.
+      </td>
+    </tr>
+  ) : (
+    prenotazioniAttiveFiltrate
+      .slice((paginaPrenotazioni - 1) * righePerPagina, paginaPrenotazioni * righePerPagina)
+      .map((p, index) => (
               <tr key={index} className={
                 p.dataFine === new Date().toISOString().split('T')[0]
                   ? 'riga-scadenza-oggi'
@@ -1027,7 +1080,8 @@ return (
                    <button className="info-btn" onClick={() => openInfoModal(p)}><Info size={18} /></button>
                 </td>
               </tr>
-            ))}
+            ))
+          )}
         </tbody>
       </table>
       <div className="pagination">

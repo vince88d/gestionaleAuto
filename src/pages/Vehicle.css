@@ -42,6 +42,9 @@
   }
 
   .add-vehicle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     position: absolute;
     top: 20px;
     background-color: #3498db;
@@ -675,6 +678,37 @@
   background-color: #bdc3c7;
   border-color: #bdc3c7;
 }
+
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  position: relative;
+}
+.close-modal-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.close-modal-btn:hover {
+  transform: scale(1.1);
+  color: #000;
+}
+.badge-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 
 
 /* Responsive: sotto i 768px torna a 1 colonna */

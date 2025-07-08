@@ -1,3 +1,5 @@
+
+
 /* ============= SEZIONI PRINCIPALI ============= */
 .vehicle-damages-toggle,
 .vehicle-maintenance-toggle {
@@ -443,6 +445,51 @@
   justify-content: center;
   z-index: 1000;
 }
+
+.maintenance-form {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.maintenance-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  resize: vertical;
+  line-height: 1.5;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+  font-family: inherit;
+}
+.maintenance-form-row {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.maintenance-form-row label {
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.maintenance-form input[type="date"],
+.maintenance-form input[type="number"],
+.maintenance-form .maintenance-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  resize: vertical;
+}
+
+
 
 /* ============= MEDIA QUERIES ============= */
 @media (max-width: 768px) {

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { setPrenotazioni } from '../store/prenotazioniSlice';
-import { Info,Trash2, ShieldAlert } from 'lucide-react';
+import { Info,Trash2, ShieldAlert, Recycle } from 'lucide-react';
 import { ricaricaPrenotazioni } from '../utils/ricaricaPrenotazioni';
 import InfoModal from '../components/InfoModal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -279,14 +278,14 @@ const handleRestore = async (id) => {
     onClick={() => handleRestore(p.id)}
     title="Ripristina"
   >
-    ♻️
+<Recycle size={18} color="#4caf50" />
   </button>
   <button
     className="delete-btn"
     onClick={() => handleDelete(p.id)}
     title="Elimina"
   >
-    🗑️
+    <Trash2 size={18} />
   </button>
 </td>
 
@@ -349,7 +348,7 @@ const handleRestore = async (id) => {
     <td>{new Date(log.confermatoIl).toLocaleString()}</td>
     <td>{log.ip}</td>
     <td>
-    <button className="delete-btn-icon" onClick={() => handleDeleteOtpLog(log.confermatoIl)} title="Elimina questo log">
+    <button className='delete-btn'  onClick={() => handleDeleteOtpLog(log.confermatoIl)} title="Elimina questo log">
     <Trash2 size={18} />
     </button>                  
     </td>

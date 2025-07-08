@@ -3,13 +3,13 @@ import { useSelector, useDispatch } from 'react-redux';
 import { setVeicoli, addVeicolo, updateVeicolo, deleteVeicolo } from '../store/veicoliSlice';
 import { toast } from 'react-toastify';
 import Modal from 'react-modal';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
 import VehicleDetailModal from '../components/VehicleDetailModal';
 import { setPrenotazioni } from '../store/prenotazioniSlice';
 import ConfirmDialog from '../components/ConfirmDialog';
+import {Car, Calendar, Trash2, Edit3, Clock, CheckCircle, PlusCircle, XCircle, UploadCloud} from 'lucide-react';
+import VehicleCard from '../components/VeichleCard';
+import VehicleForm from '../components/VehicleForm';
 import './Vehicle.css';
-
 
 Modal.setAppElement('#root');
 
@@ -477,60 +477,29 @@ const handleToggleRepairStatus = (index) => {
 
       <h1>Gestione Veicoli</h1>
       <button onClick={() => handleOpenModal()} className="add-vehicle-btn">
-        ➕ Aggiungi Veicolo 
+        <PlusCircle size={25} style={{ marginRight: '6px' }} /> Aggiungi Veicolo
       </button>
 
-      <div className="vehicle-list">
+<div className="vehicle-list">
   {veicoli.length === 0 ? (
     <p>Nessun veicolo disponibile.</p>
   ) : (
-    veicoliOrdinati.filter((v) =>
-      v.modello.toLowerCase().includes(search.toLowerCase()) ||
-      v.marca.toLowerCase().includes(search.toLowerCase()) ||
-      v.targa.toLowerCase().includes(search.toLowerCase())
-    ).map((veicolo) => (
-      <div
-        key={veicolo.id}
-        className="vehicle-card"
-        onClick={() => handleOpenDetailModal(veicolo)} // Apre il modal con i dettagli
-        style={{ cursor: 'pointer' }}
-      >
-        {veicolo.immagine && (
-          <img
-            src={veicolo.immagine}
-            alt="Veicolo"
-            className="vehicle-image"
-            style={{
-              maxHeight: '140px',
-              width: '100%',
-              objectFit: 'cover',
-              borderRadius: '8px',
-            }}
-          />
-        )}
-        <h3>{veicolo.modello}</h3>
-<div className="vehicle-info-grid-card">
-  <div><strong>Prezzo:</strong> {veicolo.prezzo}€</div>
-  <div><strong>Km:</strong> {veicolo.km}</div>
-  <div><strong>Colore:</strong> {veicolo.colore}</div>
-  <div><strong>Anno:</strong> {veicolo.anno}</div>
-</div>
-<div className="scadenze-label">Scadenze</div>
-  <div className="scadenze-indicatori">
-    <span className={`pallino ${getScadenzaColor(veicolo.scadenze?.assicurazione)}`} title="Assicurazione"></span>
-    <span className={`pallino ${getScadenzaColor(veicolo.scadenze?.bollo)}`} title="Bollo"></span>
-    <span className={`pallino ${getScadenzaColor(veicolo.scadenze?.revisione)}`} title="Revisione"></span>
-  </div>
-
-<div className={`badge ${isDisponibile(veicolo) ? 'available' : 'unavailable'}`}>
-  {isDisponibile(veicolo) ? '🟢 Disponibile oggi' : '🔴 Occupato oggi'}
-</div>
-<div className="badge info">
-  🕒 Libero per {calcolaDisponibilitaConsecutiva(veicolo)} giorni
-</div>
-
-      </div>
-    ))
+    veicoliOrdinati
+      .filter((v) =>
+        v.modello.toLowerCase().includes(search.toLowerCase()) ||
+        v.marca.toLowerCase().includes(search.toLowerCase()) ||
+        v.targa.toLowerCase().includes(search.toLowerCase())
+      )
+      .map((veicolo) => (
+        <VehicleCard
+          key={veicolo.id}
+          veicolo={veicolo}
+          onClick={() => handleOpenDetailModal(veicolo)}
+          calcolaDisponibilitaConsecutiva={calcolaDisponibilitaConsecutiva}
+          isDisponibile={isDisponibile}
+          getScadenzaColor={getScadenzaColor}
+        />
+      ))
   )}
 </div>
 
@@ -604,175 +573,18 @@ const handleToggleRepairStatus = (index) => {
           afterOpen: 'Overlay--after-open',
           beforeClose: 'Overlay--before-close',
         }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>{editingVeicolo ? 'Modifica Veicolo' : 'Aggiungi Veicolo'}</h2>
-          <button
-            onClick={handleCloseModal}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '1.5rem',
-              cursor: 'pointer',
-              marginLeft: 'auto',
-            }}
-          >
-            ✖
-          </button>
-        </div>
+      >      
 
-        <form onSubmit={handleSubmit} className="vehicle-form two-columns">
-          {/* Bottone Carica Immagine */}
-          <div className="form-group full-width">
-            <label>Immagine Veicolo</label>
-            <button
-              type="button"
-              onClick={handleImageSelect}
-              style={{
-                padding: '10px 16px',
-                backgroundColor: '#3498db',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                marginBottom: '10px'
-              }}
-            >
-              📁 Carica Immagine
-            </button>
+<VehicleForm
+  formData={formData}
+  onChange={handleChange}
+  onSubmit={handleSubmit}
+  onClose={handleCloseModal}
+  onImageSelect={handleImageSelect}
+  isEditing={!!editingVeicolo}
+  setFormData={setFormData}
+/>
 
-            {formData.immagine && (
-              <img
-                src={formData.immagine}
-                alt="Anteprima"
-                style={{
-                  marginTop: '10px',
-                  maxWidth: '100%',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
-                }}
-              />
-            )}
-          </div>
-
-          {/* Altri campi input */}
-          <div className="form-group"><label>Modello</label><input type="text" name="modello" value={formData.modello} onChange={handleChange} required /></div>
-          <div className="form-group"><label>Marca</label><input type="text" name="marca" value={formData.marca} onChange={handleChange} /></div>
-          <div className="form-group"><label>Targa</label><input type="text" name="targa" value={formData.targa} onChange={handleChange} /></div>
-          <div className="form-group"><label>Anno</label><input type="number" name="anno" value={formData.anno} onChange={handleChange} /></div>
-          <div className="form-group"><label>Prezzo Giornaliero</label><input type="number" name="prezzo" value={formData.prezzo} onChange={handleChange} /></div>
-          <div className="form-group"><label>Colore</label><input type="text" name="colore" value={formData.colore} onChange={handleChange} /></div>
-          <div className="form-group"><label>KM</label><input type="number" name="km" value={formData.km} onChange={handleChange} /></div>
-          <div className="form-group"><label>Porte</label><input type="number" name="porte" value={formData.porte} onChange={handleChange} /></div>
-
-          {/* Select Carburante */}
-          <div className="form-group">
-            <label>Carburante</label>
-            <select name="carburante" value={formData.carburante} onChange={handleChange}>
-              <option value="">Seleziona...</option>
-              <option value="Benzina">Benzina</option>
-              <option value="Diesel">Diesel</option>
-              <option value="GPL">GPL</option>
-              <option value="Elettrico">Elettrico</option>
-              <option value="Ibrido">Ibrido</option>
-            </select>
-          </div>
-
-          {/* Select Cambio */}
-          <div className="form-group">
-            <label>Cambio</label>
-            <select name="cambio" value={formData.cambio} onChange={handleChange}>
-              <option value="">Seleziona...</option>
-              <option value="Manuale">Manuale</option>
-              <option value="Automatico">Automatico</option>
-              <option value="Semi-automatico">Semi-automatico</option>
-            </select>
-          </div>
-
-          {/* Select Categoria */}
-          <div className="form-group">
-  <label>Categoria</label>
-  <select
-    name="categoria"
-    value={formData.categoria}
-    onChange={handleChange}
-  >
-    <option value="">Seleziona...</option>
-    <option value="City Car">City Car</option>
-    <option value="SUV">SUV</option>
-    <option value="Furgone">Furgone</option>
-    <option value="Lusso">Lusso</option>
-    <option value="Sportiva">Sportiva</option>
-    <option value="Motociclo">Motociclo</option>
-    <option value="Imbarcazione">Imbarcazione</option>
-    <option value="Acquascooter">Acquascooter</option>
-    <option value="Mini Van">Mini Van</option>
-    <option value="Utilitaria">Utilitaria</option>
-    <option value="Berlina">Berlina</option>
-    <option value="Elettrica">Elettrica</option>
-    <option value="Ibrida">Ibrida</option>
-  </select>
-</div>
-
-             
-
-          {/* Note */}
-          <div className="form-group full-width">
-            <label>Note</label>
-            <textarea
-              name="note"
-              value={formData.note}
-              onChange={handleChange}
-              rows="3"
-              style={{ width: '100%', borderRadius: '6px', padding: '10px', fontSize: '14px' }}
-            />
-          </div>
-
-          {/* Date Scadenze */}
-<div className="form-group full-width">
-  <label>Scadenza Assicurazione</label>
-  <input
-    type="date"
-    name="assicurazione"
-    value={formData.scadenze.assicurazione}
-    onChange={(e) => setFormData(prev => ({
-      ...prev,
-      scadenze: { ...prev.scadenze, assicurazione: e.target.value }
-    }))}
-  />
-</div>
-
-<div className="form-group full-width">
-  <label>Scadenza Bollo</label>
-  <input
-    type="date"
-    name="bollo"
-    value={formData.scadenze.bollo}
-    onChange={(e) => setFormData(prev => ({
-      ...prev,
-      scadenze: { ...prev.scadenze, bollo: e.target.value }
-    }))}
-  />
-</div>
-
-<div className="form-group full-width">
-  <label>Scadenza Revisione</label>
-  <input
-    type="date"
-    name="revisione"
-    value={formData.scadenze.revisione}
-    onChange={(e) => setFormData(prev => ({
-      ...prev,
-      scadenze: { ...prev.scadenze, revisione: e.target.value }
-    }))}
-  />
-</div>
-
-
-          <button type="submit" className="save-btn">
-            {editingVeicolo ? 'Salva Modifiche' : 'Aggiungi Veicolo'}
-          </button>
-        </form>
       </Modal>
 
 

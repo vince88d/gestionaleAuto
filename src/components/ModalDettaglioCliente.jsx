@@ -1,5 +1,5 @@
 // ModalDettaglioCliente.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import Modal from 'react-modal';
 import { X } from 'lucide-react';
 import StoricoNoleggiTable from './StoricoNoleggiTable';
@@ -9,7 +9,11 @@ import '../styles/ModalDettaglioCliente.css';
 
 function ModalDettaglioCliente({ show, onClose, cliente }) {
     const prenotazioni = useSelector((state) => state.prenotazioni || []);
-    
+    const [showAll, setShowAll] = useState(false);
+    const [showAllDanni, setShowAllDanni] = useState(false);
+    const [showAllNoleggi, setShowAllNoleggi] = useState(false);
+
+
     if (!cliente) return null;
 
     const storicoCliente = prenotazioni.filter(
@@ -77,50 +81,40 @@ function ModalDettaglioCliente({ show, onClose, cliente }) {
     )}
  
 
- <div className="form-section">
+<div className="form-section">
   <h3>Storico Noleggi</h3>
   {storicoCliente.length > 0 ? (
-    <StoricoNoleggiTable noleggi={storicoCliente} contratti={cliente.contratti || []} />
+    <>
+      <StoricoNoleggiTable
+        noleggi={showAllNoleggi ? storicoCliente : storicoCliente.slice(0, 3)}
+        contratti={cliente.contratti || []}
+      />
 
+      {storicoCliente.length > 3 && (
+        <button
+          onClick={() => setShowAllNoleggi(prev => !prev)}
+          style={{
+            marginTop: '0.5rem',
+            cursor: 'pointer',
+            background: 'none',
+            border: 'none',
+            color: '#2563eb'
+          }}
+        >
+          {showAllNoleggi ? 'Nascondi' : 'Visualizza tutti'}
+        </button>
+      )}
+    </>
   ) : (
     <p>Nessun noleggio registrato.</p>
   )}
 </div>
 
 
-{cliente.contratti && cliente.contratti.length > 0 && (
-  <div className="form-section">
-    <h3>Contratti Firmati</h3>
-    {cliente.contratti.map((c, idx) => (
-      <div key={idx} style={{ marginBottom: '0.5rem' }}>
-        <p>
-          <strong>Data:</strong> {new Date(c.data).toLocaleString()}<br />
-          <strong>Targa:</strong> {c.targa}
-        </p>
-        <a href={c.contratto} target="_blank" rel="noreferrer">📄 Visualizza Contratto</a>
-        <hr />
-      </div>
-    ))}
-  </div>
-)}
 
 
    
-  <div className="form-section">
-  <h3>Storico Danni</h3>
-  {cliente.storicoDanni && cliente.storicoDanni.length > 0 ? (
-    cliente.storicoDanni.map((danno, i) => (
-      <div key={i} className="danno-entry">
-        <p><strong>Data:</strong> {new Date(danno.data).toLocaleDateString()}</p>
-        <p><strong>Descrizione:</strong> {danno.descrizione}</p>
-        <p><strong>Veicolo:</strong> {danno.veicolo} ({danno.targa})</p>
-        <hr />
-      </div>
-    ))
-  ) : (
-    <p>Nessun danno registrato.</p>
-  )}
-</div>
+
  </div>
 </Modal>
 

@@ -71,7 +71,23 @@
   margin: 2px;
 }
 
+button.delete-btn{
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  display: inline-flex;
+  align-items: center
+}
+button.delete-btn svg {
+  color: #dc2626; /* rosso per l’icona */
+  transition: background-color 0.2s ease;
+}
 
+button.delete-btn:hover {
+  background-color: #fee2e2; /* rosso chiaro in hover */
+  border-radius: 4px;
+}
 /* Fade In semplice */
 @keyframes fadeIn {
   from {

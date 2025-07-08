@@ -51,36 +51,56 @@ function StoricoNoleggiTable({ noleggi,contratti }) {
             <p><strong>Periodo:</strong> {noleggioSelezionato.dataInizio} - {noleggioSelezionato.dataFine}</p>
             <p><strong>Prezzo Totale:</strong> {noleggioSelezionato.prezzoTotale} €</p>
           
-          
-            {noleggioSelezionato.danni && (
-              <>
-                <h4>Danni riportati</h4>
-                <p>{noleggioSelezionato.danni}</p>
-              </>
-            )}
-            {noleggioSelezionato.schedaVeicolo?.fotoDanni && (
-              <img
-                src={noleggioSelezionato.schedaVeicolo.fotoDanni}
-                alt="Foto danni"
-                style={{ width: '100%', marginTop: '1rem' }}
-              />
-            )}
+<div style={{ marginTop: '1.5rem' }}>
+  <h4>Danni Riscontrati</h4>
+
+  {noleggioSelezionato.danni?.trim() ? (
+    <p style={{ background: '#fef2f2', padding: '0.75rem', borderRadius: '6px', color: '#991b1b' }}>
+      {noleggioSelezionato.danni}
+    </p>
+  ) : (
+    <p style={{ fontStyle: 'italic', color: '#6b7280' }}>Nessun danno segnalato.</p>
+  )}
+
+  {noleggioSelezionato.schedaVeicolo?.fotoDanni?.trim() ? (
+    <img
+      src={noleggioSelezionato.schedaVeicolo.fotoDanni}
+      alt="Foto danni"
+      style={{
+        width: '100%',
+        marginTop: '1rem',
+        border: '1px solid #ddd',
+        borderRadius: '8px'
+      }}
+    />
+  ) : (
+    <p style={{ fontStyle: 'italic', color: '#6b7280' }}>Nessuna immagine disponibile.</p>
+  )}
+</div>
 
 
-            {contratti && contratti.length > 0 && (
-  <div style={{ marginTop: '1rem' }}>
-    <h4>Contratti disponibili</h4>
-    {contratti
-      .filter(c => c.targa === noleggioSelezionato.targa)
-      .map((c, i) => (
-        <div key={i}>
-          <a href={c.contratto} target="_blank" rel="noreferrer">
-            Contratto del {new Date(c.data).toLocaleDateString()}
-          </a>
-        </div>
-      ))}
-  </div>
-)}
+
+
+{contratti && contratti.length > 0 && (() => {
+  // Trova il contratto più vicino per targa e data
+  const contrattoMatch = contratti
+    .filter(c => c.targa === noleggioSelezionato.targa)
+    .sort((a, b) =>
+      Math.abs(new Date(a.data) - new Date(noleggioSelezionato.dataInizio)) -
+      Math.abs(new Date(b.data) - new Date(noleggioSelezionato.dataInizio))
+    )[0];
+
+  return contrattoMatch ? (
+    <div style={{ marginTop: '1rem' }}>
+      <h4>Contratto Firmato</h4>
+      <p><strong>Data:</strong> {new Date(contrattoMatch.data).toLocaleDateString()}</p>
+      <a href={contrattoMatch.contratto} target="_blank" rel="noreferrer">
+        📄 Visualizza Contratto
+      </a>
+    </div>
+  ) : null;
+})()}
+
 
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setNoleggioSelezionato(null)}>Chiudi</button>

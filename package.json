@@ -1,6 +1,7 @@
 {
   "name": "react-electron",
   "version": "0.1.0",
+  "repository": "github:vince88d/gestionaleAuto",
   "description": "Software di gestione noleggio veicoli - Versione Demo",
   "author": "Il Tuo Nome o Nome Azienda",
   "private": true,
@@ -8,6 +9,7 @@
   "homepage": "./",
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
+    "@fortawesome/fontawesome-free": "^6.7.2",
     "@fullcalendar/daygrid": "^6.1.17",
     "@fullcalendar/interaction": "^6.1.17",
     "@fullcalendar/react": "^6.1.17",
@@ -45,6 +47,7 @@
     "recharts": "^2.15.3",
     "tailwindcss": "^3.4.17",
     "unzipper": "^0.12.3",
+    "update-electron-app": "^3.1.1",
     "web-vitals": "^2.1.4",
     "yup": "^1.6.1"
   },
@@ -52,11 +55,10 @@
     "start": "electron-forge start",
     "build": "react-scripts build",
     "electron": "react-scripts build && electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
     "clean:data": "node scripts/cleanData.js",
     "package": "electron-forge package",
-    "make": "electron-forge make && node scripts/copyAssets.js"
+    "premake": "npm run build",
+    "make": "cross-env DEBUG=electron-forge:* electron-forge make"
   },
   "eslintConfig": {
     "extends": [
@@ -86,22 +88,43 @@
     "@electron-forge/plugin-fuses": "^7.8.1",
     "@electron/fuses": "^1.8.0",
     "autoprefixer": "^10.4.21",
-    "electron": "^35.1.5",
+    "cross-env": "^7.0.3",
+    "electron": "^31.2.1",
     "electron-reload": "^2.0.0-alpha.1",
     "postcss": "^8.5.3"
   },
-  "build": {
-  "files": [
-    "build/**/*",
-    "main.js",
-    "preload.js"
-  ],
-  "extraResources": [
-    {
-      "from": "assets/pdf",
-      "to": "pdf"
+  "config": {
+    "forge": {
+      "packagerConfig": {
+        "icon": "assets/icon",
+        "asar": true,
+        "extraResource": [
+          "./assets"
+        ]
+      },
+      "rebuildConfig": {},
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "darwin"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-deb",
+          "config": {}
+        }
+      ],
+      "plugins": [
+        {
+          "name": "@electron-forge/plugin-auto-unpack-natives",
+          "config": {}
+        }
+      ]
     }
-  ]
-}
-
+  }
 }

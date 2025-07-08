@@ -1,13 +1,11 @@
-import React from 'react';
 import './Dashboard.css';
 import { useSelector } from 'react-redux';
-import { useEffect,useState } from 'react';
+import React, { useEffect,useState } from 'react';
 import { setVeicoli } from '../store/veicoliSlice';
 import { useDispatch } from 'react-redux';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
-import { Car, Users, CalendarCheck, Euro,CalendarDays } from 'lucide-react';
+import { Car, Users, CalendarCheck, Euro,CalendarDays,Bell, LineChartIcon} from 'lucide-react';
 import VehicleDetailModal from '../components/VehicleDetailModal';
 
 
@@ -42,28 +40,27 @@ const handleChiudiModaleVeicolo = () => {
   setSelectedVeicolo(null);
 };
 
-  useEffect(() => {  
-  if (veicoli.length > 0) {    
-    if (prenotazioni.length > 0) {
-      const oggi = new Date();
-      const fineSettimana = new Date();
-      fineSettimana.setDate(oggi.getDate() + 7);
+ useEffect(() => {
+  if (veicoli.length === 0) return;
 
-      const veicoliOccupati = prenotazioni.filter(p => {
-        const start = new Date(p.dataInizio);
-        const end = new Date(p.dataFine);
-        return oggi <= end && fineSettimana >= start;
-      }).map(p => p.targa);
+  const oggi = new Date();
+  const fineSettimana = new Date();
+  fineSettimana.setDate(oggi.getDate() + 7);
 
-      const disponibiliSettimana = veicoli.filter(v => !veicoliOccupati.includes(v.targa));
+  let veicoliOccupati = [];
 
-      setVeicoliDaMostrare(disponibiliSettimana);
-
-    } else {
-      setVeicoliDaMostrare(veicoli);
-    }
+  if (prenotazioni.length > 0) {
+    veicoliOccupati = prenotazioni.filter(p => {
+      const start = new Date(p.dataInizio);
+      const end = new Date(p.dataFine);
+      return oggi <= end && fineSettimana >= start;
+    }).map(p => p.targa);
   }
+
+  const disponibiliSettimana = veicoli.filter(v => !veicoliOccupati.includes(v.targa));
+  setVeicoliDaMostrare(disponibiliSettimana);
 }, [veicoli, prenotazioni]);
+
 
 
   useEffect(() => {
@@ -305,12 +302,12 @@ useEffect(() => {
 
   <div className="filtro-date">
     <label className='campo-data'>
-    <CalendarDays size={16} style={{ marginRight: '6px' }} />
+    <CalendarDays size={16} style={{ marginRight: '6px' }} color='#007bff' />
       Inizio:
       <input type="date" value={dataInizioRicerca} onChange={(e) => setDataInizioRicerca(e.target.value)} />
     </label>
     <label className='campo-data'>
-      <CalendarDays size={16} style={{ marginRight: '6px' }} />
+      <CalendarDays size={16} style={{ marginRight: '6px' }} color='#007bff'/>
      Fine:
       <input type="date" value={dataFineRicerca} onChange={(e) => setDataFineRicerca(e.target.value)} />
     </label>
@@ -352,7 +349,7 @@ useEffect(() => {
 
 <div className="graph">
   <div className="graph-card">
-    <h3>📈 Prenotazioni per mese</h3>
+    <h3><LineChartIcon size={19} color='#007bff' /> Prenotazioni per mese</h3>
     <ResponsiveContainer width="100%" height={200}>
       <LineChart data={prenotazioniPerMese}>
         <CartesianGrid strokeDasharray="3 3" />
@@ -365,7 +362,7 @@ useEffect(() => {
   </div>
 
   <div className="graph-card">
-    <h3>💶 Incasso per mese</h3>
+    <h3><Euro size={16} color='#388e3c'/> Incasso per mese</h3>
     <ResponsiveContainer width="100%" height={200}>
       <LineChart data={incassiPerMese}>
         <CartesianGrid strokeDasharray="3 3" />
@@ -383,7 +380,7 @@ useEffect(() => {
 
       {scadenzeProssime.length > 0 && (
         <div className="scadenze-box">
-          <h2>🔔 Scadenze in arrivo (entro 30 giorni)</h2>
+          <h2><Bell size={16} fill='gold'/> Scadenze in arrivo (entro 30 giorni)</h2>
           <table className="scadenze-table">
             <thead>
               <tr>

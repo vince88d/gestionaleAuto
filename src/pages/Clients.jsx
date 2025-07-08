@@ -5,7 +5,7 @@ import ModalEditClient from '../components/ModalEditClient';
 import { setClienti, addCliente, updateCliente, deleteCliente } from '../store/clientiSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import { Edit2,Trash2,Info } from 'lucide-react';
+import { Edit2,Trash2,Info,PlusIcon, Search } from 'lucide-react';
 import ModalDettaglioCliente from '../components/ModalDettaglioCliente';
 import {setPrenotazioni} from '../store/prenotazioniSlice';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -16,7 +16,6 @@ function Clients() {
   const dispatch = useDispatch();
   const[dettaglioCliente, setDettaglioCliente] = useState(null);
   const [isDettaglioOpen, setIsDettaglioOpen] = useState(false);
-  const [mostraListaClienti, setMostraListaClienti] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const[patenteScaduta,setPatenteScaduta] = useState(false);
@@ -26,8 +25,9 @@ function Clients() {
   const tabellaRef = useRef(null);
   const [clienteDaEliminare, setClienteDaEliminare] = useState(null);
   const [mostraDialogEliminazione, setMostraDialogEliminazione] = useState(false);
-
- 
+  const [mostraFormAggiunta, setMostraFormAggiunta] = useState(false);
+  const [paginaClienti, setPaginaClienti] = useState(1);
+  const righePerPagina = 10;
   const [formData, setFormData] = useState({
     nome: '',
     cognome: '',
@@ -64,10 +64,23 @@ const caricaClienti = async () => {
   }
 };
 
+const clientiFiltrati = clienti.filter(cliente => {
+  if (!filtroAttivo) return true;
+  const testo = `${cliente.nome} ${cliente.cognome} ${cliente.email} ${cliente.telefono}`.toLowerCase();
+  return testo.includes(filtroAttivo);
+});
+
+const numeroPagine = Math.ceil(clientiFiltrati.length / righePerPagina);
+const clientiDaMostrare = clientiFiltrati.slice(
+  (paginaClienti - 1) * righePerPagina,
+  paginaClienti * righePerPagina
+);
+
+
 const handleRicerca = (e) => {
   e.preventDefault();
-  setFiltroAttivo(termineRicerca.trim().toLowerCase());
-  setMostraListaClienti(true);
+  setFiltroAttivo(termineRicerca.trim().toLowerCase()); 
+  setPaginaClienti(1);
   
   // Scroll dopo un piccolo delay per assicurarsi che la tabella sia visibile
   setTimeout(() => {
@@ -197,20 +210,36 @@ const isPatenteScaduta = (dataScadenza) => {
   return (
     <div className="clienti-container">
       <h1 className="title">Gestione Clienti</h1>
+      
+
+
       <form onSubmit={handleRicerca} style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-  <input
-    type="text"
-    placeholder="Cerca per nome, cognome, email, targa..."
-    value={termineRicerca}
-    onChange={(e) => setTermineRicerca(e.target.value)}
-    style={{
-      flex: 1,
-      padding: '0.5rem',
-      fontSize: '1rem',
-      borderRadius: '6px',
-      border: '1px solid #ccc'
-    }}
-  />
+  <div style={{ position: 'relative', flex: 1 }}>
+    <Search 
+      size={18} 
+      style={{
+        position: 'absolute',
+        top: '50%',
+        left: '10px',
+        transform: 'translateY(-50%)',
+        color: '#888',
+        pointerEvents: 'none'
+      }} 
+    />
+    <input
+      type="text"
+      placeholder="Cerca per nome, cognome, email, targa..."
+      value={termineRicerca}
+      onChange={(e) => setTermineRicerca(e.target.value)}
+      style={{
+        width: '100%',
+        padding: '0.5rem 0.5rem 0.5rem 2rem', // padding-left aumentato per l'icona
+        fontSize: '1rem',
+        borderRadius: '6px',
+        border: '1px solid #ccc'
+      }}
+    />
+  </div>
   <button type="submit" style={{
     padding: '0.5rem 1rem',
     fontSize: '1rem',
@@ -224,7 +253,30 @@ const isPatenteScaduta = (dataScadenza) => {
   </button>
 </form>
 
-      <form onSubmit={handleSubmit} className="client-form">
+<div style={{ marginBottom: '1rem' }}>
+  <button
+    onClick={() => setMostraFormAggiunta(prev => !prev)}
+    style={{
+      padding: '0.5rem 1rem',
+      fontSize: '1rem',
+      backgroundColor: '#2563eb',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '6px',
+      cursor: 'pointer'
+    }}
+  >
+   {mostraFormAggiunta ? 'Annulla' : (
+  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+    <PlusIcon size={16} />
+    Aggiungi Cliente
+  </span>
+)}
+  </button>
+</div>
+
+{  mostraFormAggiunta && (
+<form onSubmit={handleSubmit} className="client-form">
 
   {/* DATI CLIENTE */}
   <div className="form-section">
@@ -334,74 +386,73 @@ const isPatenteScaduta = (dataScadenza) => {
 
   <button type="submit" className="save-btn">Salva Cliente</button>
 </form>
-<div style={{ textAlign: 'right', marginBottom: '1rem' }}>
-  <button
-    onClick={() => setMostraListaClienti(prev => !prev)}
-    style={{
-      padding: '6px 12px',
-      backgroundColor: '#4b5563',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-    }}
-  >
-    {mostraListaClienti ? 'Nascondi Lista Clienti' : 'Mostra Lista Clienti'}
-  </button>
-</div>
+)}
 
-  {
-    mostraListaClienti && (  
-      <table className="client-table" ref={tabellaRef}>
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Cognome</th>
-            <th>Email</th>
-            <th>Telefono</th>          
-            <th>Patente</th>
-            <th>Azioni</th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-          clienti.filter(cliente=>{
-            if(!filtroAttivo) return true;
-            const testo = `${cliente.nome} ${cliente.cognome} ${cliente.email} ${cliente.telefono}`.toLowerCase();
-    return testo.includes(filtroAttivo);
-          })
-          .map((cliente, index) => (
+
+
+  <>
+    <table className="client-table" ref={tabellaRef}>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Cognome</th>
+          <th>Email</th>
+          <th>Telefono</th>
+          <th>Patente</th>
+          <th>Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {clientiDaMostrare.map((cliente, index) => (
             <tr key={index}>
               <td>{cliente.nome}</td>
               <td>{cliente.cognome}</td>
               <td>{cliente.email}</td>
-              <td>{cliente.telefono}</td>           
+              <td>{cliente.telefono}</td>
               <td>
-<td>
-  {cliente.patente}
-  {isPatenteScaduta(cliente.scadenzaPatente) && (
-    <div style={{ color: 'red', fontSize: '0.6rem', marginTop: '4px' }}>
-      doc scaduto
-    </div>
-  )}
-</td>
+                {cliente.patente}
+                {isPatenteScaduta(cliente.scadenzaPatente) && (
+                  <div style={{ color: 'red', fontSize: '0.6rem', marginTop: '4px' }}>
+                    doc scaduto
+                  </div>
+                )}
               </td>
-
               <td>
                 <div className="action-btn-group">
-                   <button onClick={() => handleEdit(index)} className="action-btn edit-btn"><Edit2 size={14}/></button>
-             <button onClick={() => chiediConfermaEliminazione(cliente)} className="action-btn delete-btn">
-  <Trash2 size={14} />
-</button>
-
-              <button onClick={() => handleInfo(cliente)} className="action-btn info-btn"><Info size={14}/></button>
-                </div>    
+                      <button onClick={() => handleInfo(cliente)} className="action-btn info-btn">
+                    <Info size={14} />
+                  </button>
+                  <button onClick={() => handleEdit(index)} className="action-btn edit-btn">
+                    <Edit2 size={14} />
+                  </button>
+                  <button
+                    onClick={() => chiediConfermaEliminazione(cliente)}
+                    className="action-btn delete-btn"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+              
+                </div>
               </td>
             </tr>
           ))}
-        </tbody>
-      </table>
-    )}
+      </tbody>
+    </table>
+
+    <div className="pagination">
+{[...Array(numeroPagine)].map((_, i) => (
+  <button
+    key={i}
+    className={paginaClienti === i + 1 ? 'active' : ''}
+    onClick={() => setPaginaClienti(i + 1)}
+  >
+    {i + 1}
+  </button>
+))}
+    </div>
+  </>
+
+
 
       <ModalEditClient
         show={isModalOpen}

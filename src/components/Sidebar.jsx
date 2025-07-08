@@ -16,9 +16,9 @@ function Sidebar({ collapsed, toggleSidebar }) {
           <li><Link to="/">🏠 {collapsed ? '' : 'Dashboard'}</Link></li>
           <li><Link to="/vehicles">🚘 {collapsed ? '' : 'Veicoli'}</Link></li>
           <li><Link to="/clients">👤 {collapsed ? '' : 'Clienti'}</Link></li>
-          <li><Link to="/booking">📅 {collapsed ? '' : 'Prenotazioni'}</Link></li>
-          <li><Link to="/impostazioni-azienda">⚙️ {collapsed ? '' : 'Impostazioni '}</Link></li>        
+          <li><Link to="/booking">📅 {collapsed ? '' : 'Prenotazioni'}</Link></li>             
           <li><Link to="/archivio-prenotazione">📜{collapsed ? '' : 'archivio'}</Link></li>
+          <li><Link to="/impostazioni-azienda">⚙️ {collapsed ? '' : 'Impostazioni '}</Link></li>     
       </ul> 
      </nav>
     </div>
