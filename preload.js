@@ -1,9 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  sendBookingEmail: (data) => ipcRenderer.invoke('send-booking-email', data),
-  sendOtp: (data) => ipcRenderer.invoke('send-otp', data),
-  logOtpConfirmation: (data) => ipcRenderer.invoke('log-otp-confirmation', data),
   onEmailStatus: (callback) => {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on('email-sent-status', listener);
@@ -26,23 +23,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   generaContrattoCompleto: (data) => ipcRenderer.invoke('genera-contratto-completo', data),
 
-  readOtpLogs: () => ipcRenderer.invoke('read-otp-logs'),
-    deleteSingleOtpLog: (logTimestamp) => ipcRenderer.invoke('delete-single-otp-log', logTimestamp),
-  clearOtpLogs: () => ipcRenderer.invoke('clear-otp-logs'),
-    minimize: () => ipcRenderer.send('window-minimize'),
+  minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
 
-    salvaLicenza: (data) => ipcRenderer.invoke('salva-licenza', data),
-  readFile: (fileName) => ipcRenderer.invoke('read-file', fileName),
+  activateLicense: (code, customerName) => ipcRenderer.invoke('activate-license', { code, customerName }),
   getLicenseStatus: () => ipcRenderer.invoke('get-license-status'),
-  resetTrial: (codice) => ipcRenderer.invoke('reset-trial', codice),
+  getCompanySettings: () => ipcRenderer.invoke('get-company-settings'),
+  saveCompanySettings: (data) => ipcRenderer.invoke('save-company-settings', data),
   esportaBackup: () => ipcRenderer.invoke('esporta-backup'),
-  importaBackup:()=>ipcRenderer.invoke('importa-backup'),
+  importaBackup: () => ipcRenderer.invoke('importa-backup'),
   concludiPrenotazione: (data) => ipcRenderer.invoke('concludi-prenotazione', data),
   salvaContrattoPDF: (filePath) => ipcRenderer.invoke('salva-contratto-pdf', filePath),
- selezionaPdfContratto: () => ipcRenderer.invoke('seleziona-pdf-contratto'),
+  selezionaPdfContratto: () => ipcRenderer.invoke('seleziona-pdf-contratto'),
 
- confermaPrenotazione: (data) => ipcRenderer.invoke('conferma-prenotazione', data),
-  
+  salvaDocumentiPrenotazione: (data) => ipcRenderer.invoke('salva-documenti-prenotazione', data),
+  apriBozzaEmail: (data) => ipcRenderer.invoke('apri-bozza-email', data),
+  confermaPrenotazione: (data) => ipcRenderer.invoke('conferma-prenotazione', data),
 });

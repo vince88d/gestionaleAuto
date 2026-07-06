@@ -7,6 +7,8 @@ build/
 # Cartelle di output di Electron Forge
 out/
 dist/
+dist-installer/
+dist-installer-2/
 
 # Log e file di sistema
 *.log
@@ -19,3 +21,6 @@ Thumbs.db
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Backup locali
+node_modules.bak-*/

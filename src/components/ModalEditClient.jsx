@@ -1,13 +1,27 @@
-// ModalEditClient.jsx
 import React from 'react';
 import Modal from 'react-modal';
 import { X } from 'lucide-react';
 import './ModalEditClient.css';
 
+const DOCUMENT_TYPE_OPTIONS = [
+  { value: 'CI', label: "Carta d'Identita" },
+  { value: 'Patente', label: 'Patente' },
+  { value: 'Passaporto', label: 'Passaporto' },
+  { value: 'Permesso di soggiorno', label: 'Permesso di soggiorno' },
+  { value: 'Tessera sanitaria', label: 'Tessera sanitaria' },
+  { value: 'Altro', label: 'Altro' },
+];
+
 function ModalEditClient({ show, onClose, onSave, clientData, setClientData }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setClientData(prev => ({ ...prev, [name]: value }));
+
+    if (name === 'tipoDocumento' && value !== 'Altro') {
+      setClientData((prev) => ({ ...prev, [name]: value, tipoDocumentoAltro: '' }));
+      return;
+    }
+
+    setClientData((prev) => ({ ...prev, [name]: value }));
   };
 
   return (
@@ -32,7 +46,6 @@ function ModalEditClient({ show, onClose, onSave, clientData, setClientData }) {
         </div>
 
         <form className="client-form">
-          {/* Dati Cliente */}
           <div className="form-section">
             <h3>Dati Cliente</h3>
             <div className="field-group">
@@ -45,7 +58,6 @@ function ModalEditClient({ show, onClose, onSave, clientData, setClientData }) {
             </div>
           </div>
 
-          {/* Contatti */}
           <div className="form-section">
             <h3>Contatti</h3>
             <div className="field-group">
@@ -55,16 +67,26 @@ function ModalEditClient({ show, onClose, onSave, clientData, setClientData }) {
             </div>
           </div>
 
-          {/* Documenti */}
           <div className="form-section">
             <h3>Documento di Riconoscimento</h3>
             <div className="field-group">
               <select name="tipoDocumento" value={clientData.tipoDocumento || ''} onChange={handleChange}>
                 <option value="">Seleziona...</option>
-                <option value="CI">Carta d'Identità</option>
-                <option value="Passaporto">Passaporto</option>
-                <option value="Altro">Altro</option>
+                {DOCUMENT_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
+              {clientData.tipoDocumento === 'Altro' && (
+                <input
+                  type="text"
+                  name="tipoDocumentoAltro"
+                  placeholder="Specifica tipo documento"
+                  value={clientData.tipoDocumentoAltro || ''}
+                  onChange={handleChange}
+                />
+              )}
               <input type="text" name="documento" placeholder="Numero Documento" value={clientData.documento || ''} onChange={handleChange} />
               <input type="text" name="rilasciatoDaDocumento" placeholder="Rilasciato da" value={clientData.rilasciatoDaDocumento || ''} onChange={handleChange} />
               <input type="date" name="rilascioDocumento" value={clientData.rilascioDocumento || ''} onChange={handleChange} />
@@ -80,7 +102,6 @@ function ModalEditClient({ show, onClose, onSave, clientData, setClientData }) {
             </div>
           </div>
 
-          {/* Azienda */}
           <div className="form-section">
             <h3>Dati Aziendali</h3>
             <div className="field-group">

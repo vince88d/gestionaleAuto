@@ -1,17 +1,40 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import './BookingModal.css';
 
-function ConfirmDialog({ open, onCancel, onConfirm, message }) {
+function ConfirmDialog({
+  open,
+  onCancel,
+  onConfirm,
+  message,
+  title = 'Conferma',
+  confirmLabel = 'Conferma',
+  cancelLabel = 'Annulla',
+  tone = 'default',
+}) {
   return (
-    <Dialog.Root open={open} onOpenChange={() => onCancel()}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onCancel();
+        }
+      }}
+    >
       <Dialog.Portal>
         <Dialog.Overlay className="DialogOverlay" />
-        <Dialog.Content className="DialogContent">
-          <Dialog.Title>Conferma</Dialog.Title>
-          <p>{message}</p>
-          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-            <button onClick={onCancel}>Annulla</button>
-            <button onClick={onConfirm}>Conferma</button>
+        <Dialog.Content className="DialogContent confirm-dialog">
+          <Dialog.Title className="confirm-dialog-title">{title}</Dialog.Title>
+          <p className="confirm-dialog-message">{message}</p>
+          <div className="confirm-dialog-actions">
+            <button onClick={onCancel} className="confirm-dialog-btn confirm-dialog-btn-secondary">
+              {cancelLabel}
+            </button>
+            <button
+              onClick={onConfirm}
+              className={`confirm-dialog-btn ${tone === 'danger' ? 'confirm-dialog-btn-danger' : 'confirm-dialog-btn-primary'}`}
+            >
+              {confirmLabel}
+            </button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

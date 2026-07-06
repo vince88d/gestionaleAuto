@@ -15,6 +15,7 @@
 }
 
 .booking-form input,
+.booking-form select,
 .custom-datepicker {
   padding: 8px 10px;
   font-size: 14px;
@@ -67,4 +68,96 @@
 
 .booking-form button:hover {
   background-color: #0056b3;
+}
+
+.autocomplete-container {
+  position: relative;
+}
+
+.autocomplete-input {
+  width: 100%;
+}
+
+.autocomplete-input:focus,
+.booking-form select:focus,
+.custom-datepicker:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.suggestions-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.suggestion-item:hover {
+  background-color: #f8fbff;
+  border-left-color: #2563eb;
+}
+
+.suggestion-name {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.suggestion-email {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.availability-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #5f6f82;
+}
+
+.availability-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d8e4f2;
+  background: #f7fbff;
+  color: #35516e;
+  font-size: 12px;
+}
+
+.availability-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.availability-free {
+  background: #81c784;
+}
+
+.availability-busy {
+  background: #e57373;
 }

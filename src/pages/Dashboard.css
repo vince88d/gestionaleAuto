@@ -29,6 +29,31 @@ h1 {
   margin-bottom: 40px;
 }
 
+.scadenze-reminder-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: -10px 0 24px;
+  padding: 14px 18px;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fff8db, #fff1b8);
+  color: #8a5a00;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(250, 204, 21, 0.16);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.scadenze-reminder-top:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(250, 204, 21, 0.22);
+  background: linear-gradient(135deg, #fff7cc, #ffeaa0);
+}
+
 /* Sezione delle carte (statistiche) */
 .grid {
   display: grid;
@@ -246,6 +271,11 @@ font-size: 13px;
 
 /* Responsive: layout su dispositivi mobili */
 @media (max-width: 768px) {
+  .scadenze-reminder-top {
+    font-size: 14px;
+    padding: 12px 14px;
+  }
+
   .graph {
     flex-direction: column;
     align-items: center;

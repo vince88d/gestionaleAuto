@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Modal from 'react-modal';
 import { toast } from 'react-toastify';
-import { useState, useEffect } from 'react';
-import "../components/riepilogoModal.css";
+import '../components/riepilogoModal.css';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { useDispatch } from 'react-redux';
 import { setPrenotazioni } from '../store/prenotazioniSlice';
@@ -17,7 +16,7 @@ const boxStyle = {
 
 const titleStyle = {
   marginBottom: '0.5rem',
-  color: '#333'
+  color: '#333',
 };
 
 const buttonBase = {
@@ -26,39 +25,50 @@ const buttonBase = {
   borderRadius: '8px',
   cursor: 'pointer',
   border: 'none',
-  fontWeight: '600'
+  fontWeight: '600',
 };
 
 const cancelButtonStyle = {
   ...buttonBase,
   background: '#ccc',
-  color: '#333'
+  color: '#333',
 };
 
 const confirmButtonStyle = {
   ...buttonBase,
   background: '#28a745',
-  color: '#fff'
+  color: '#fff',
 };
 
 const printButtonStyle = {
   ...buttonBase,
   background: '#007bff',
-  color: '#fff'
+  color: '#fff',
 };
 
 function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, onConferma }) {
   const dispatch = useDispatch();
-
-  const [otpGenerato, setOtpGenerato] = useState('');
-  const [otpInserito, setOtpInserito] = useState('');
   const [ipPubblico, setIpPubblico] = useState(null);
   const [isSending, setIsSending] = useState(false);
-  const [otpInviato, setOtpInviato] = useState(false);
-  const [inviaContratto, setInviaContratto] = useState(true);
+  const [scaricaPdf, setScaricaPdf] = useState(true);
+  const [apriEmail, setApriEmail] = useState(false);
+  const [includiContrattoPdf, setIncludiContrattoPdf] = useState(true);
   const [contrattoSelezionato, setContrattoSelezionato] = useState(null);
   const [nomeContratto, setNomeContratto] = useState('');
-  const [inviaOtp, setInviaOtp] = useState(false);
+
+  const datiScheda = schedaVeicolo || {
+    carburante: '',
+    kmIniziali: '',
+    danni: '',
+    accessori: {},
+  };
+
+  useEffect(() => {
+    fetch('https://api.ipify.org?format=json')
+      .then((res) => res.json())
+      .then((data) => setIpPubblico(data.ip))
+      .catch((err) => console.warn('Errore ottenendo IP pubblico:', err));
+  }, []);
 
   const handlePrint = () => {
     const printContent = document.getElementById('riepilogo-print');
@@ -81,26 +91,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
     printWindow.close();
   };
 
-  const datiScheda = schedaVeicolo || {
-  carburante: '',
-  kmIniziali: '',
-  danni: '',
-  accessori: {}
-};
-
-
-  function generaOTP() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-  
-  useEffect(() => {
-    fetch('https://api.ipify.org?format=json')
-      .then(res => res.json())
-      .then(data => setIpPubblico(data.ip))
-      .catch(err => console.warn("Errore ottenendo IP pubblico:", err));
-  }, []);
-
-  async function generaRiepilogoPdf(formData, datiScheda) {
+  async function generaRiepilogoPdf(prenotazione, scheda) {
     const doc = await PDFDocument.create();
     const page = doc.addPage([595, 842]);
     const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -147,64 +138,60 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
         font: bold,
         color: rgb(0.2, 0.2, 0.2),
       });
-      page.drawText(value || "-", {
+      page.drawText(value || '-', {
         x: indent + 130,
         y,
         size: 12,
-        font: font,
+        font,
         color: rgb(0, 0, 0),
       });
       y -= lineSpacing;
     };
 
-    drawTitle("Riepilogo Prenotazione");
-    drawSection("Cliente");
-    drawField("Nome", formData.cliente);
-    drawField("Codice Fiscale", formData.codiceFiscale);
-    drawField("Patente", formData.patente);
-    drawField("Email", formData.emailCliente);
+    drawTitle('Riepilogo Prenotazione');
+    drawSection('Cliente');
+    drawField('Nome', prenotazione.cliente);
+    drawField('Codice Fiscale', prenotazione.codiceFiscale);
+    drawField('Patente', prenotazione.patente);
+    drawField('Email', prenotazione.emailCliente);
 
-    drawSection("Veicolo");
-    drawField("Modello", formData.veicolo);
-    drawField("Targa", formData.targa);
-    drawField("Periodo", `dal ${formData.dataInizio} al ${formData.dataFine}`);
-    drawField("Prezzo Totale", `${formData.prezzoTotale} €`);
+    drawSection('Veicolo');
+    drawField('Modello', prenotazione.veicolo);
+    drawField('Targa', prenotazione.targa);
+    drawField('Periodo', `dal ${prenotazione.dataInizio} al ${prenotazione.dataFine}`);
+    drawField('Prezzo Totale', `${prenotazione.prezzoTotale} EUR`);
 
-    drawSection("Scheda Veicolo");
-    drawField("Carburante", datiScheda.carburante);
-    drawField("Km Iniziali", datiScheda.kmIniziali);
-    drawField("Danni", datiScheda.danni || "Nessuno");
+    drawSection('Scheda Veicolo');
+    drawField('Carburante', scheda.carburante);
+    drawField('Km Iniziali', scheda.kmIniziali);
+    drawField('Danni', scheda.danni || 'Nessuno');
 
+    if (scheda.accessori && Object.keys(scheda.accessori).length) {
+      drawField('Accessori', '');
+      Object.entries(scheda.accessori)
+        .filter(([key]) => key !== 'altro')
+        .forEach(([key, value]) => {
+          page.drawText(`- ${key.charAt(0).toUpperCase() + key.slice(1)}: ${value ? 'SI' : 'NO'}`, {
+            x: indent + 20,
+            y,
+            size: 11,
+            font,
+            color: rgb(0.1, 0.1, 0.1),
+          });
+          y -= 14;
+        });
 
-if (datiScheda.accessori && Object.keys(datiScheda.accessori).length) {
-  drawField("Accessori", "");
-
-  Object.entries(datiScheda.accessori)
-    .filter(([k]) => k !== 'altro') // esclude 'altro' dalla mappa
-    .forEach(([k, v]) => {
-      page.drawText(`• ${k.charAt(0).toUpperCase() + k.slice(1)}: ${v ? "SI" : "NO"}`, {
-        x: indent + 20,
-        y,
-        size: 11,
-        font,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      y -= 14;
-    });
-
-  // Stampa "Altro" solo se valorizzato
-  if (datiScheda.accessori.altro) {
-    page.drawText(`• ${datiScheda.accessori.altro}: SI`, {
-      x: indent + 20,
-      y,
-      size: 11,
-      font,
-      color: rgb(0.1, 0.1, 0.1),
-    });
-    y -= 14;
-  }
-}
-
+      if (scheda.accessori.altro) {
+        page.drawText(`- ${scheda.accessori.altro}: SI`, {
+          x: indent + 20,
+          y,
+          size: 11,
+          font,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        y -= 14;
+      }
+    }
 
     y -= 30;
     page.drawLine({
@@ -213,7 +200,7 @@ if (datiScheda.accessori && Object.keys(datiScheda.accessori).length) {
       thickness: 1,
       color: rgb(0, 0, 0),
     });
-    page.drawText("Firma Cliente", {
+    page.drawText('Firma Cliente', {
       x: indent,
       y: y - 15,
       size: 12,
@@ -221,7 +208,7 @@ if (datiScheda.accessori && Object.keys(datiScheda.accessori).length) {
       color: rgb(0, 0, 0),
     });
 
-    return await doc.save();
+    return doc.save();
   }
 
   const handleConferma = async () => {
@@ -230,39 +217,80 @@ if (datiScheda.accessori && Object.keys(datiScheda.accessori).length) {
     toast.dismiss();
 
     try {
-      if (inviaOtp && otpInserito !== otpGenerato) {
-        toast.error("OTP errato. Controlla il codice ricevuto via email.");
+      const riepilogoBuffer = await generaRiepilogoPdf(formData, datiScheda);
+      const prenotazione = {
+        ...formData,
+        schedaVeicolo: datiScheda,
+      };
+
+      const result = await window.electronAPI.confermaPrenotazione({
+        prenotazione,
+        ip: ipPubblico || 'Non disponibile',
+      });
+
+      if (!result.success) {
+        toast.error(result.message || 'Errore durante la conferma');
         return;
       }
 
-      const azienda = JSON.parse(localStorage.getItem('datiAzienda'));
-      const riepilogoBuffer = await generaRiepilogoPdf(formData, datiScheda);
+      const riepilogoArray = Array.from(new Uint8Array(riepilogoBuffer));
+      const contrattoDaSalvare = includiContrattoPdf && contrattoSelezionato
+        ? Array.from(new Uint8Array(contrattoSelezionato))
+        : null;
 
-      // Invia i dati al backend Electron
-      const result = await window.electronAPI.confermaPrenotazione({
-        prenotazione: formData,
-        azienda,
-        riepilogoPdf: Array.from(new Uint8Array(riepilogoBuffer)),
-        contrattoPdf: contrattoSelezionato ? Array.from(new Uint8Array(contrattoSelezionato)) : null,
-        nomeContratto,
-        inviaContratto,
-        otp: inviaOtp ? otpInserito : null,
-        ip: ipPubblico || 'Non disponibile'
-      });
+      let documentiSalvati = [];
 
-      if (result.success) {
-        // Aggiorna lo stato Redux se necessario
-        const prenotazioniAggiornate = await window.electronAPI.readPrenotazioni();
-        dispatch(setPrenotazioni(prenotazioniAggiornate));
+      if (scaricaPdf) {
+        const saveResult = await window.electronAPI.salvaDocumentiPrenotazione({
+          prenotazione,
+          riepilogoPdf: riepilogoArray,
+          contrattoPdf: contrattoDaSalvare,
+          nomeContratto,
+        });
 
-        toast.success("Contratto inviato e conferma registrata ✅");
-        onConferma();
-      } else {
-        toast.error(result.message || "Errore durante la conferma");
+        if (saveResult.cancelled) {
+          toast.info('Salvataggio PDF annullato.');
+        } else if (!saveResult.success) {
+          toast.error(saveResult.error || 'Errore durante il salvataggio dei PDF');
+        } else {
+          documentiSalvati = saveResult.paths || [];
+        }
+      }
+
+      if (apriEmail) {
+        const allegatiText = documentiSalvati.length > 0
+          ? `\n\nDocumenti salvati:\n${documentiSalvati.join('\n')}\n\nAllega questi file prima di inviare l'email.`
+          : '\n\nSe vuoi allegare il riepilogo o il contratto, salvali prima dal gestionale.';
+
+        const emailResult = await window.electronAPI.apriBozzaEmail({
+          to: prenotazione.emailCliente || '',
+          subject: `Riepilogo prenotazione veicolo - ${prenotazione.targa}`,
+          body:
+            `Gentile ${prenotazione.cliente},` +
+            `\n\nIn allegato trovi il riepilogo della tua prenotazione.` +
+            `${contrattoDaSalvare ? '\nSe necessario, allega anche il contratto personalizzato.' : ''}` +
+            `\n\nPeriodo: dal ${prenotazione.dataInizio} al ${prenotazione.dataFine}` +
+            `\nVeicolo: ${prenotazione.veicolo} (${prenotazione.targa})` +
+            `\nPrezzo totale: ${prenotazione.prezzoTotale} EUR` +
+            `\n\nGrazie.` +
+            allegatiText,
+        });
+
+        if (!emailResult.success) {
+          toast.error(emailResult.error || 'Impossibile aprire il client email');
+        }
+      }
+
+      const prenotazioniAggiornate = await window.electronAPI.readPrenotazioni();
+      dispatch(setPrenotazioni(prenotazioniAggiornate));
+      toast.success('Prenotazione confermata.');
+
+      if (onConferma) {
+        await onConferma(result.booking);
       }
     } catch (err) {
-      console.error("Errore durante la conferma:", err);
-      toast.error("Errore imprevisto, guarda la console.");
+      console.error('Errore durante la conferma:', err);
+      toast.error('Errore imprevisto, guarda la console.');
     } finally {
       setIsSending(false);
     }
@@ -285,142 +313,85 @@ if (datiScheda.accessori && Object.keys(datiScheda.accessori).length) {
     >
       <div id="riepilogo-print">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>📝 Riepilogo Prenotazione</h2>
-          <button onClick={onClose} className="simple-btn">✖</button>
+          <h2>Riepilogo Prenotazione</h2>
+          <button onClick={onClose} className="simple-btn">X</button>
         </div>
 
         <div className="riepilogo-contenuto" style={{ marginTop: '1rem' }}>
-          {/* Sezione Cliente */}
           <div className="section" style={boxStyle}>
-            <h3 style={titleStyle}>👤 Cliente</h3>
+            <h3 style={titleStyle}>Cliente</h3>
             <p><strong>Nome:</strong> {formData.cliente}</p>
             <p><strong>Codice Fiscale:</strong> {formData.codiceFiscale}</p>
             <p><strong>Patente:</strong> {formData.patente}</p>
             <p><strong>Email:</strong> {formData.emailCliente}</p>
           </div>
 
-          {/* Sezione Veicolo */}
           <div className="section" style={boxStyle}>
-            <h3 style={titleStyle}>🚗 Veicolo</h3>
+            <h3 style={titleStyle}>Veicolo</h3>
             <p><strong>Modello:</strong> {formData.veicolo}</p>
             <p><strong>Targa:</strong> {formData.targa}</p>
             <p><strong>Dal:</strong> {formData.dataInizio}</p>
             <p><strong>Al:</strong> {formData.dataFine}</p>
-            <p><strong>Prezzo Totale:</strong> <span style={{ color: 'green', fontWeight: 'bold' }}>{formData.prezzoTotale} €</span></p>
+            <p><strong>Prezzo Totale:</strong> <span style={{ color: 'green', fontWeight: 'bold' }}>{formData.prezzoTotale} EUR</span></p>
           </div>
 
-          {/* Sezione Scheda Veicolo */}
           <div className="section" style={boxStyle}>
-            <h3 style={titleStyle}>🧾 Scheda Veicolo</h3>
+            <h3 style={titleStyle}>Scheda Veicolo</h3>
             <p><strong>Carburante:</strong> {datiScheda.carburante}</p>
             <p><strong>Km Iniziali:</strong> {datiScheda.kmIniziali}</p>
             <p><strong>Accessori:</strong></p>
             <ul style={{ paddingLeft: '20px' }}>
-              {Object.entries(datiScheda.accessori).map(([k, v]) => (
-                <li key={k}>{v ? '✅' : '❌'} {k.charAt(0).toUpperCase() + k.slice(1)}</li>
+              {Object.entries(datiScheda.accessori).map(([key, value]) => (
+                <li key={key}>{value ? 'SI' : 'NO'} {key.charAt(0).toUpperCase() + key.slice(1)}</li>
               ))}
-              {datiScheda.accessori.altro && (
-               <li>✅ {datiScheda.accessori.altro}</li>
-              )}
             </ul>
             <p><strong>Danni:</strong> {datiScheda.danni || 'Nessuno'}</p>
           </div>
 
-          {/* Sezione OTP */}
-                <div style={boxStyle}>
-            <h3 style={titleStyle}>🔐 Verifica Cliente</h3>
-            <label>
-              <input
-                type="checkbox"
-                checked={inviaOtp}
-                onChange={(e) => setInviaOtp(e.target.checked)}
-                style={{ marginRight: '8px' }}
-              />
-              Invia codice di verifica (OTP) via email al cliente
-            </label>
-          </div>
-
-          {/* MODIFICA: La sezione OTP viene mostrata solo se la checkbox è selezionata */}
-          {inviaOtp && (
-            <div style={boxStyle}>
-              <h3 style={titleStyle}>📨 Verifica OTP</h3>
-              <label htmlFor="otp">Inserisci il codice ricevuto via email:</label>
-              <input
-                type="text"
-                value={otpInserito}
-                onChange={(e) => setOtpInserito(e.target.value)}
-                placeholder="Es. 583294"
-                style={{ padding: '0.5rem', marginTop: '0.5rem', width: '100%', borderRadius: '6px', border: '1px solid #ccc' }}
-              />
-              <button
-                onClick={() => {
-                  const newOtp = generaOTP();
-                  setOtpGenerato(newOtp);
-                  const azienda = JSON.parse(localStorage.getItem('datiAzienda'));
-                  if (!azienda?.email || !azienda?.nome) {
-                    toast.error("Dati azienda mancanti. Non è possibile inviare il codice.");
-                    return;
-                  }
-                  window.electronAPI.sendOtp({
-                    email: formData.emailCliente,
-                    otp: newOtp,
-                    sender: azienda
-                  }).then((res) => {
-                    if (res.success) {
-                      setOtpInviato(true);
-                      toast.success("Codice OTP inviato");
-                    } else {
-                      toast.error("Errore invio OTP");
-                    }
-                  }).catch((err) => {
-                    console.error("Errore invio OTP:", err);
-                    toast.error("Errore durante l'invio del codice.");
-                  });
-                }}
-                style={{ marginTop: '1rem', padding: '0.4rem 1rem', borderRadius: '6px', backgroundColor: '#444', color: '#fff', border: 'none', cursor: 'pointer' }}
-              >
-                {otpInviato ? '🔁 Reinvia Codice' : '📨 Invia Codice'}
-              </button>
-            </div>
-          )}
-
-          {/* Sezione Contratto */}
           <div style={boxStyle}>
-            <h3 style={titleStyle}>📄 Contratto Personalizzato</h3>
+            <h3 style={titleStyle}>Contratto Personalizzato</h3>
             <input
               type="file"
               accept="application/pdf"
               onChange={async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                
+
                 try {
-                  // Verifica dimensione file (max 5MB)
                   if (file.size > 5 * 1024 * 1024) {
-                    toast.error("Il file è troppo grande (max 5MB)");
+                    toast.error('Il file e troppo grande (max 5MB)');
                     return;
                   }
 
                   const arrayBuffer = await file.arrayBuffer();
                   setContrattoSelezionato(arrayBuffer);
                   setNomeContratto(file.name);
-                  toast.success("Contratto caricato con successo!");
+                  toast.success('Contratto caricato con successo!');
                 } catch (err) {
-                  console.error("Errore lettura file:", err);
-                  toast.error("Errore nel caricamento del contratto");
+                  console.error('Errore lettura file:', err);
+                  toast.error('Errore nel caricamento del contratto');
                 }
               }}
             />
             {contrattoSelezionato && (
               <div style={{ marginTop: '0.5rem' }}>
-                <p style={{ color: 'green' }}>✔ {nomeContratto} - Pronto per l'invio</p>
-                <button 
+                <p style={{ color: 'green' }}>{nomeContratto} - Pronto</p>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={includiContrattoPdf}
+                    onChange={(e) => setIncludiContrattoPdf(e.target.checked)}
+                  />
+                  Includi anche questo contratto nel download dei PDF
+                </label>
+                <button
                   onClick={() => {
                     setContrattoSelezionato(null);
                     setNomeContratto('');
-                    toast.info("Contratto rimosso");
+                    setIncludiContrattoPdf(true);
+                    toast.info('Contratto rimosso');
                   }}
-                  style={{ 
+                  style={{
                     marginTop: '0.5rem',
                     padding: '0.3rem 0.6rem',
                     fontSize: '0.8rem',
@@ -428,7 +399,7 @@ if (datiScheda.accessori && Object.keys(datiScheda.accessori).length) {
                     color: 'white',
                     border: 'none',
                     borderRadius: '4px',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
                   }}
                 >
                   Rimuovi Contratto
@@ -437,39 +408,38 @@ if (datiScheda.accessori && Object.keys(datiScheda.accessori).length) {
             )}
           </div>
 
-          {/* Sezione Invio Contratto */}
           <div style={boxStyle}>
-            <h3 style={titleStyle}>📎 Invio Contratto</h3>
-            <label>
+            <h3 style={titleStyle}>Azioni Finali</h3>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
               <input
                 type="checkbox"
-                checked={inviaContratto}
-                onChange={(e) => setInviaContratto(e.target.checked)}
-                style={{ marginRight: '8px' }}
-                disabled={!contrattoSelezionato}
+                checked={scaricaPdf}
+                onChange={(e) => setScaricaPdf(e.target.checked)}
               />
-              Invia contratto via email al cliente
+              Scarica il PDF del riepilogo
             </label>
-            {!contrattoSelezionato && (
-              <p style={{ color: '#ff9800', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                ⚠ Carica un contratto per abilitare l'invio
-              </p>
-            )}
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="checkbox"
+                checked={apriEmail}
+                onChange={(e) => setApriEmail(e.target.checked)}
+              />
+              Apri l&apos;email precompilata nel client del PC
+            </label>
+            <p style={{ color: '#666', marginTop: '0.75rem', fontSize: '0.9rem' }}>
+              Se apri l&apos;email, il gestionale compila destinatario, oggetto e testo. Gli allegati vanno aggiunti dal client email.
+            </p>
           </div>
 
-          {/* Pulsanti */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem', marginBottom: '1rem' }}>
             <button onClick={onClose} style={cancelButtonStyle}>Annulla</button>
             <button
               onClick={handleConferma}
-              disabled={
-                isSending ||
-                (inviaOtp && (!otpGenerato || otpInserito !== otpGenerato))
-              }
+              disabled={isSending}
               style={{
                 ...confirmButtonStyle,
                 opacity: isSending ? 0.6 : 1,
-                cursor: isSending ? 'not-allowed' : 'pointer'
+                cursor: isSending ? 'not-allowed' : 'pointer',
               }}
             >
               {isSending ? 'Attendi...' : 'Conferma'}

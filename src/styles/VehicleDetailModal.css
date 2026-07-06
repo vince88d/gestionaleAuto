@@ -8,6 +8,16 @@
   border-top: 1px solid #e0e0e0;
 }
 
+.vehicle-calendar-hint {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #eef6ff;
+  border: 1px solid #cfe1f8;
+  color: #315f8f;
+  font-size: 0.9rem;
+}
+
 /* ============= PULSANTI TOGGLE ============= */
 .toggle-section-btn,
 .toggle-subsection-btn,

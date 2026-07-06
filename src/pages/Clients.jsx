@@ -10,6 +10,17 @@ import ModalDettaglioCliente from '../components/ModalDettaglioCliente';
 import {setPrenotazioni} from '../store/prenotazioniSlice';
 import ConfirmDialog from '../components/ConfirmDialog';
 
+const DOCUMENT_TYPE_OPTIONS = [
+  { value: 'CI', label: "Carta d'Identita" },
+  { value: 'Patente', label: 'Patente' },
+  { value: 'Passaporto', label: 'Passaporto' },
+  { value: 'Permesso di soggiorno', label: 'Permesso di soggiorno' },
+  { value: 'Tessera sanitaria', label: 'Tessera sanitaria' },
+  { value: 'Altro', label: 'Altro' },
+];
+
+const DOCUMENT_TYPE_VALUES = DOCUMENT_TYPE_OPTIONS.map((option) => option.value);
+
 
 function Clients() {  
   const clienti = useSelector((state) => state.clienti);
@@ -38,6 +49,7 @@ function Clients() {
     dataNascita: '',
     luogoNascita: '',
     tipoDocumento: '',
+    tipoDocumentoAltro: '',
     documento: '',
     scadenzaDocumento: '',
     codiceFiscale: '',
@@ -119,14 +131,48 @@ const handleChange = (e) => {
     setPatenteScaduta(isExpired);
   }
 
+  if (name === 'tipoDocumento' && value !== 'Altro') {
+    setFormData({ ...formData, tipoDocumento: value, tipoDocumentoAltro: '' });
+    return;
+  }
+
   setFormData({ ...formData, [name]: value });
 };
 
+const normalizzaCodiceFiscale = (value) => (value || '').trim().toUpperCase();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const codiceFiscaleNormalizzato = normalizzaCodiceFiscale(formData.codiceFiscale);
+    const patenteNormalizzata = (formData.patente || '').trim();
+
+    if (!patenteNormalizzata) {
+      toast.error("Inserisci la patente prima di salvare il cliente.");
+      return;
+    }
+
+    const codiceFiscaleDuplicato = (clienti || []).some(
+      (cliente) => normalizzaCodiceFiscale(cliente.codiceFiscale) === codiceFiscaleNormalizzato
+    );
+
+    if (codiceFiscaleDuplicato) {
+      toast.error("Esiste gia un cliente con questo codice fiscale.");
+      return;
+    }
+
     try {
-      const nuovoCliente = { ...formData,storicoDanni: [] };
+      const tipoDocumentoFinale =
+        formData.tipoDocumento === 'Altro'
+          ? (formData.tipoDocumentoAltro || '').trim()
+          : formData.tipoDocumento;
+      const nuovoCliente = {
+        ...formData,
+        codiceFiscale: codiceFiscaleNormalizzato,
+        patente: patenteNormalizzata,
+        tipoDocumento: tipoDocumentoFinale,
+        storicoDanni: [],
+      };
       const nuovaLista = [...(clienti || []), nuovoCliente];
       
       // Prima salva su disco
@@ -136,6 +182,7 @@ const handleChange = (e) => {
       }
       // Poi aggiorna lo stato
       dispatch(addCliente(nuovoCliente));
+      toast.success("Cliente salvato con successo.");
       
       // Resetta il form
       setFormData({
@@ -143,6 +190,8 @@ const handleChange = (e) => {
         cognome: '',
         email: '',
         telefono: '',
+        tipoDocumento: '',
+        tipoDocumentoAltro: '',
         documento: '',
         codiceFiscale: '',
         patente: '',
@@ -170,7 +219,17 @@ const handleChange = (e) => {
   
 
   const handleEdit = (index) => {
-    setEditingClient({ ...clienti[index], index });
+    const cliente = clienti[index];
+    const tipoDocumentoEsistente = cliente.tipoDocumento || '';
+    const isTipoPersonalizzato =
+      tipoDocumentoEsistente && !DOCUMENT_TYPE_VALUES.includes(tipoDocumentoEsistente);
+
+    setEditingClient({
+      ...cliente,
+      tipoDocumento: isTipoPersonalizzato ? 'Altro' : tipoDocumentoEsistente,
+      tipoDocumentoAltro: isTipoPersonalizzato ? tipoDocumentoEsistente : (cliente.tipoDocumentoAltro || ''),
+      index,
+    });
     setIsModalOpen(true);
   };
 
@@ -186,12 +245,21 @@ const isPatenteScaduta = (dataScadenza) => {
 };
 
   const handleSaveEdit = async () => {
+    const tipoDocumentoFinale =
+      editingClient.tipoDocumento === 'Altro'
+        ? (editingClient.tipoDocumentoAltro || '').trim()
+        : editingClient.tipoDocumento;
     const updated = {
       nome: editingClient.nome,
       cognome: editingClient.cognome,
       email: editingClient.email,
       telefono: editingClient.telefono,
+      tipoDocumento: tipoDocumentoFinale,
+      tipoDocumentoAltro: editingClient.tipoDocumento === 'Altro' ? (editingClient.tipoDocumentoAltro || '').trim() : '',
       documento: editingClient.documento,
+      scadenzaDocumento: editingClient.scadenzaDocumento,
+      rilascioDocumento: editingClient.rilascioDocumento,
+      rilasciatoDaDocumento: editingClient.rilasciatoDaDocumento,
       codiceFiscale: editingClient.codiceFiscale,
       patente: editingClient.patente,
       storicoDanni: editingClient.storicoDanni || [],
@@ -310,10 +378,26 @@ const isPatenteScaduta = (dataScadenza) => {
       <select name="tipoDocumento" value={formData.tipoDocumento} onChange={handleChange}>
         <option value="">Seleziona...</option>
         <option value="CI">Carta d'Identità</option>
+        <option value="Patente">Patente</option>
         <option value="Passaporto">Passaporto</option>
+        <option value="Permesso di soggiorno">Permesso di soggiorno</option>
+        <option value="Tessera sanitaria">Tessera sanitaria</option>
         <option value="Altro">Altro</option>
       </select>
     </div>
+
+    {formData.tipoDocumento === 'Altro' && (
+      <div className="field">
+        <label>Specifica Tipo Documento</label>
+        <input
+          type="text"
+          name="tipoDocumentoAltro"
+          value={formData.tipoDocumentoAltro || ''}
+          onChange={handleChange}
+          placeholder="Es. Carta professionale"
+        />
+      </div>
+    )}
 
     <div className="field">
       <label>Numero Documento</label>
@@ -346,7 +430,7 @@ const isPatenteScaduta = (dataScadenza) => {
   <div className="field-group">
     <div className="field">
       <label>Numero Patente</label>
-      <input type="text" name="patente" value={formData.patente} onChange={handleChange} />
+      <input type="text" name="patente" value={formData.patente} onChange={handleChange} required />
     </div>
 
     <div className="field">

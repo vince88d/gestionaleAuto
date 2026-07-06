@@ -3,6 +3,7 @@ import './Booking.css';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import itLocale from '@fullcalendar/core/locales/it';
 import BookingForm from '../components/BookingForm';
 import SchedaVeicoloModal from '../components/SchedaModalOpen';
 import RiepilogoPrenotazioneModal from '../components/RiepilogoPrenotazioneModal';
@@ -50,6 +51,7 @@ function Bookings() {
   const [availableVehiclesForBooking, setAvailableVehiclesForBooking] = useState([]);
   const [forceRenderKey, setForceRenderKey] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
   const clienti = useSelector((state) => state.clienti);
   const [concludiModalOpen, setConcludiModalOpen] = useState(false);
@@ -60,6 +62,7 @@ function Bookings() {
   const location = useLocation();
   const righePerPagina = 10;
   const listaRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     cliente: '',
@@ -121,17 +124,23 @@ accessori: {
 
 useEffect(() => {
   if (location.state?.targaSelezionata) {
-    const { targaSelezionata, modelloSelezionato, prezzoSelezionato } = location.state;
+    const {
+      targaSelezionata,
+      modelloSelezionato,
+      prezzoSelezionato,
+      dataSelezionata,
+    } = location.state;
 
     setFormData((prev) => ({
       ...prev,
       targa: targaSelezionata,
       veicolo: modelloSelezionato || '',
       prezzoGiornaliero: prezzoSelezionato || '',
-      dataInizio: '',
-      dataFine: '',
+      dataInizio: dataSelezionata || '',
+      dataFine: dataSelezionata || '',
     }));
 
+    setSelectedDate(dataSelezionata || null);
     setIsAddingNewBooking(true);
     setModalIsOpen(true);
   }
@@ -250,10 +259,14 @@ useEffect(() => {
      isAddingNewBooking
     );
   
-    console.log('Veicoli disponibili:', available);
-    setAvailableVehiclesForBooking(available);
+   console.log('Veicoli disponibili:', available);
+   setAvailableVehiclesForBooking(available);
   
    }, [selectedDate, prenotazioni, availableVehicles, formData?.targa, isAddingNewBooking]);
+
+  useEffect(() => {
+    setAvailableVehiclesForBooking(availableVehicles);
+  }, [availableVehicles, selectedDate, prenotazioni, formData?.targa, isAddingNewBooking]);
 
 
   const resetModal = () => {
@@ -267,11 +280,9 @@ useEffect(() => {
       if (root) root.removeAttribute('aria-hidden');
       console.log('aria-hidden rimosso:', root.getAttribute('aria-hidden'));
   
-      // Sposta il focus su un elemento visibile
-      const focusableElement = document.querySelector('.search-input-enhanced');
-      if (focusableElement) {
-        focusableElement.focus();
-        console.log('Focus spostato su:', focusableElement);
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        console.log('Focus spostato su:', searchInputRef.current);
       }
     }, 50);
   
@@ -304,6 +315,35 @@ accessori: {
     });
   };
 
+  const hasDraftBooking = () => (
+    isAddingNewBooking ||
+    editingIndex !== null ||
+    schedaModalOpen ||
+    riepilogoOpen ||
+    Boolean(
+      formData.cliente ||
+      formData.codiceFiscale ||
+      formData.patente ||
+      formData.veicolo ||
+      formData.targa ||
+      formData.emailCliente
+    )
+  );
+
+  const handleRequestCancelBooking = () => {
+    if (!hasDraftBooking() && !schedaModalOpen && !riepilogoOpen) {
+      resetModal();
+      return;
+    }
+
+    setCancelConfirmOpen(true);
+  };
+
+  const handleConfirmCancelBooking = () => {
+    setCancelConfirmOpen(false);
+    resetModal();
+  };
+
   
   const exportToCSV = () => {
     const header = [
@@ -324,6 +364,37 @@ accessori: {
     link.click();
     document.body.removeChild(link);
     showFeedback("Esportazione completata!");
+  };
+
+  const normalizzaData = (value) => {
+    if (!value) return null;
+    const data = new Date(value);
+    if (Number.isNaN(data.getTime())) return null;
+    data.setHours(0, 0, 0, 0);
+    return data;
+  };
+
+  const getGiorniAllaScadenza = (dataFine) => {
+    const fine = normalizzaData(dataFine);
+    const oggi = normalizzaData(new Date());
+    if (!fine || !oggi) return 0;
+    return Math.round((fine - oggi) / (1000 * 60 * 60 * 24));
+  };
+
+  const getClasseScadenza = (dataFine) => {
+    const giorni = getGiorniAllaScadenza(dataFine);
+    if (giorni <= 0) return 'riga-scadenza-urgente';
+    if (giorni === 1) return 'riga-scadenza-domani';
+    if (giorni <= 2) return 'riga-scadenza-prossima';
+    return '';
+  };
+
+  const getTestoScadenza = (dataFine) => {
+    const giorni = getGiorniAllaScadenza(dataFine);
+    if (giorni < 0) return `Scaduta da ${Math.abs(giorni)} gg`;
+    if (giorni === 0) return 'Scade oggi';
+    if (giorni === 1) return 'Scade domani';
+    return `${giorni} giorni`;
   };
 
   const calcGiorni = (inizio, fine) => {
@@ -377,7 +448,15 @@ accessori: {
     return;
   }
 
-  setFormData({ ...data, codiceFiscale: codiceFiscaleUpper, prezzoTotale: totale });
+  const prenotazioneCorrente = editingIndex !== null ? prenotazioni[editingIndex] : null;
+
+  setFormData({
+    ...data,
+    id: prenotazioneCorrente?.id,
+    status: prenotazioneCorrente?.status || 'attiva',
+    codiceFiscale: codiceFiscaleUpper,
+    prezzoTotale: totale,
+  });
 
   setModalIsOpen(false);
   setTimeout(() => {
@@ -542,6 +621,59 @@ accessori: {
     setRiepilogoOpen(true);
   };
 
+  const handleConfermaPrenotazioneCompletata = async () => {
+    try {
+      const prenotazioniAggiornate = await window.electronAPI.readPrenotazioni();
+      dispatch(setPrenotazioni(prenotazioniAggiornate));
+      showFeedback(
+        editingIndex !== null
+          ? "Prenotazione modificata con successo"
+          : "Prenotazione aggiunta con successo",
+        "success"
+      );
+    } catch (error) {
+      console.error("Errore aggiornamento stato prenotazioni:", error);
+      showFeedback("Prenotazione confermata, ma non Ã¨ stato possibile aggiornare la vista.", "error");
+    }
+
+    setFormData({
+      cliente: '',
+      codiceFiscale: '',
+      patente: '',
+      veicolo: '',
+      targa: '',
+      dataInizio: '',
+      dataFine: '',
+      prezzoGiornaliero: '',
+      prezzoTotale: '',
+      emailCliente: '',
+    });
+
+    setSchedaVeicolo({
+      carburante: '',
+      kmIniziali: '',
+      danni: '',
+      accessori: {
+        cric: false,
+        triangolo: false,
+        giubbotto: false,
+        ruotaScorta: false,
+        cavoRicarica: false,
+        cateneNeve: false,
+        altro: ''
+      }
+    });
+
+    setEditingIndex(null);
+    setModalIsOpen(false);
+    setTimeout(() => {
+      const root = document.getElementById('root');
+      if (root) root.removeAttribute('aria-hidden');
+    }, 50);
+    setSchedaModalOpen(false);
+    setRiepilogoOpen(false);
+  };
+
   const confermaEliminazione = async () => {
     const index = deleteIndex;
     if (index === null) return;
@@ -611,7 +743,6 @@ accessori: {
       setLoading(false);
     }
   
-    inviaEmailPrenotazioneIPC(nuovaPrenotazione);
   
     // --- 🚀 Dopo il salvataggio:
     setFormData({
@@ -651,23 +782,6 @@ accessori: {
     setSchedaModalOpen(false);
     setRiepilogoOpen(false);
   };
-  
-  
- // Funzione per inviare email tramite IPC al Main Process
- const inviaEmailPrenotazioneIPC = (prenotazione) => {
-  const azienda = JSON.parse(localStorage.getItem('datiAzienda')) || {};
-
-  if (window.electronAPI?.sendBookingEmail) {
-    window.electronAPI.sendBookingEmail({
-      bookingData: prenotazione,
-      companyData: azienda,
-    });
-  }
-  
-
-
-  console.log('Richiesta invio email inviata al main process.');
-};
 const handleBackToForm = () => {
   setSchedaModalOpen(false);
   setModalIsOpen(true);
@@ -780,6 +894,36 @@ if (daRiparare && prenotazione.targa) {
   setPrenotazioneDaConcludere(null);
 };
 
+const concludiPrenotazioniScadute = async () => {
+  const daConcludere = prenotazioniAttive.filter((p) => getGiorniAllaScadenza(p.dataFine) <= 0);
+
+  if (daConcludere.length === 0) {
+    showFeedback("Non ci sono prenotazioni da concludere oggi.", "error");
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const idsDaConcludere = new Set(daConcludere.map((p) => p.id));
+  const nuovePrenotazioni = prenotazioni.map((p) =>
+    idsDaConcludere.has(p.id)
+      ? {
+          ...p,
+          status: 'completata',
+          dataRientroEffettiva: now,
+        }
+      : p
+  );
+
+  try {
+    dispatch(setPrenotazioni(nuovePrenotazioni));
+    await window.electronAPI.writePrenotazioni(nuovePrenotazioni);
+    showFeedback(`${daConcludere.length} prenotazioni concluse automaticamente.`, "success");
+  } catch (error) {
+    console.error("Errore conclusione multipla prenotazioni:", error);
+    showFeedback("Errore durante la conclusione multipla.", "error");
+  }
+};
+
 
 
 if(loading){
@@ -801,6 +945,8 @@ const prenotazioniAttiveFiltrate = prenotazioniAttive.filter(p =>
   p.veicolo.toLowerCase().includes(search.toLowerCase())||
   p.emailCliente.toLowerCase().includes(search.toLowerCase())
 );
+const ricercaAttiva = search.trim();
+const prenotazioniDaConcludereOggi = prenotazioniAttive.filter((p) => getGiorniAllaScadenza(p.dataFine) <= 0);
 const numeroPagine = Math.ceil(prenotazioniAttiveFiltrate.length / righePerPagina);
 
 
@@ -814,7 +960,7 @@ return (
     )}
   <h1 className="title">Gestione Prenotazioni</h1>
   
-<form onSubmit={handleRicerca} style={{ position: 'relative', display: 'flex', marginBottom: '1rem' }}>
+<form onSubmit={handleRicerca} className="bookings-search-form">
   <Search
     size={18}
     style={{
@@ -827,6 +973,8 @@ return (
     }}
   />
   <input
+    ref={searchInputRef}
+    className="search-input-enhanced"
     type="text"
     placeholder="Cerca per cliente, targa o veicolo..."
     value={search}
@@ -856,6 +1004,20 @@ return (
   </button>
 </form>
 
+{ricercaAttiva && (
+  <div className="active-search-banner">
+    <span className="active-search-label">Ricerca attiva</span>
+    <span className="active-search-term">{ricercaAttiva}</span>
+    <button
+      type="button"
+      className="active-search-count active-search-count-button"
+      onClick={() => listaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+    >
+      {prenotazioniAttiveFiltrate.length} risultati
+    </button>
+  </div>
+)}
+
 
     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
     <button onClick={exportToCSV} className="export-btn">📁 Esporta CSV</button>
@@ -865,6 +1027,7 @@ return (
     <div className="calendar-wrapper">
       <FullCalendar
         plugins={[dayGridPlugin, interactionPlugin]}
+        locale={itLocale}
         initialView="dayGridMonth"
         selectable={true}
         dateClick={handleDateClick}
@@ -876,11 +1039,11 @@ return (
           }
           return arg.event.title;
         }}
-        buttonText={{prev:'<',next:'>'}}
+        buttonText={{ prev: '<', next: '>', today: 'Oggi', month: 'Mese', week: 'Settimana', day: 'Giorno' }}
       />
     </div>
   
-    <BookingModal key={forceRenderKey} open={modalIsOpen} onClose={resetModal}>
+    <BookingModal key={forceRenderKey} open={modalIsOpen} onClose={handleRequestCancelBooking}>
     {isAddingNewBooking ? (
       <div>
         <h2>{editingIndex !== null ? 'Modifica Prenotazione' : 'Aggiungi Prenotazione'}</h2>
@@ -1034,7 +1197,29 @@ return (
   </BookingModal>
   
   
-    <div className="table-responsive" ref={listaRef}>
+    <div className="bookings-table-tools">
+      <div className="bookings-deadline-summary">
+        <span className="deadline-chip deadline-chip-urgent">
+          A 0 giorni: {prenotazioniDaConcludereOggi.length}
+        </span>
+        <span className="deadline-chip deadline-chip-soon">
+          In scadenza: {prenotazioniAttive.filter((p) => {
+            const giorni = getGiorniAllaScadenza(p.dataFine);
+            return giorni === 1 || giorni === 2;
+          }).length}
+        </span>
+      </div>
+      <button
+        type="button"
+        className="bulk-complete-btn"
+        onClick={concludiPrenotazioniScadute}
+        disabled={prenotazioniDaConcludereOggi.length === 0}
+      >
+        Concludi tutte a 0 giorni
+      </button>
+    </div>
+
+    <div className={`table-responsive ${ricercaAttiva ? 'table-responsive-filtered' : ''}`} ref={listaRef}>
       <table className="booking-table">
         <thead>
           <tr>
@@ -1045,7 +1230,7 @@ return (
             <th>Inizio</th>
             <th>Fine</th>
             <th>Prezzo (€)</th>
-            <th>Termina tra</th>
+            <th>Scadenza</th>
             <th>Azioni</th>            
           </tr>
         </thead>
@@ -1061,13 +1246,7 @@ return (
     prenotazioniAttiveFiltrate
       .slice((paginaPrenotazioni - 1) * righePerPagina, paginaPrenotazioni * righePerPagina)
       .map((p, index) => (
-              <tr key={index} className={
-                p.dataFine === new Date().toISOString().split('T')[0]
-                  ? 'riga-scadenza-oggi'
-                  : p.dataFine === new Date(Date.now() + 86400000).toISOString().split('T')[0]
-                  ? 'riga-scadenza-domani'
-                  : ''
-              }>
+              <tr key={index} className={getClasseScadenza(p.dataFine)}>
                 <td>{p.cliente}</td>
                 <td>{p.emailCliente}</td>
                 <td>{p.veicolo}</td>
@@ -1075,9 +1254,25 @@ return (
                 <td>{p.dataInizio}</td>
                 <td>{p.dataFine}</td>
                 <td>{p.prezzoTotale}</td>
-                <td>{calcGiorni(new Date(), p.dataFine)} giorni</td>
                 <td>
+                  <span className={`deadline-badge ${getClasseScadenza(p.dataFine)}`}>
+                    {getTestoScadenza(p.dataFine)}
+                  </span>
+                </td>
+                <td className="table-actions-cell">
                    <button className="info-btn" onClick={() => openInfoModal(p)}><Info size={18} /></button>
+                   <button
+                     className="table-conclude-btn"
+                     onClick={() => {
+                       setInfoModalOpen(false);
+                       setModalIsOpen(false);
+                       setPrenotazioneDaConcludere(p);
+                       setConcludiModalOpen(true);
+                     }}
+                   >
+                     <CheckCircle size={16} />
+                     Concludi
+                   </button>
                 </td>
               </tr>
             ))
@@ -1151,10 +1346,10 @@ return (
   
   <RiepilogoPrenotazioneModal
     isOpen={riepilogoOpen}
-    onClose={() => setRiepilogoOpen(false)}
+    onClose={handleRequestCancelBooking}
     formData={formData}
     schedaVeicolo={formData.schedaVeicolo}
-    onConferma={confermaPrenotazione}
+    onConferma={handleConfermaPrenotazioneCompletata}
   />
   
   <ConfirmDialog
@@ -1162,6 +1357,19 @@ return (
     onCancel={() => setConfirmOpen(false)}
     onConfirm={confermaEliminazione}
     message="Sei sicuro di voler eliminare questa prenotazione?"
+    title="Elimina Prenotazione"
+    confirmLabel="Elimina"
+    tone="danger"
+  />
+
+  <ConfirmDialog
+    open={cancelConfirmOpen}
+    onCancel={() => setCancelConfirmOpen(false)}
+    onConfirm={handleConfirmCancelBooking}
+    title="Annullare Prenotazione?"
+    message="Se annulli ora, i dati inseriti in questa prenotazione verranno scartati. Vuoi continuare?"
+    confirmLabel="Sì, annulla"
+    tone="danger"
   />
 
   <ConcludiPrenotazioneModal

@@ -1,4 +1,3 @@
-// components/LicenzaPrompt.jsx
 import React, { useState } from 'react';
 
 function LicenzaPrompt({ onSuccess }) {
@@ -6,15 +5,20 @@ function LicenzaPrompt({ onSuccess }) {
   const [errore, setErrore] = useState('');
 
   const inviaLicenza = async () => {
-    const nuovaLicenza = { codice, unlocked: codice === 'XYZ123ABC2024' };
-    await window.electronAPI.salvaLicenza(nuovaLicenza);
+    const res = await window.electronAPI.activateLicense(codice, '');
 
-    const res = await window.electronAPI.getLicenseStatus();
-    if (res.status === 'licensed') {
-      onSuccess();
-    } else {
+    if (!res.success) {
       setErrore('Codice non valido.');
+      return;
     }
+
+    const status = await window.electronAPI.getLicenseStatus();
+    if (status.status === 'licensed') {
+      onSuccess();
+      return;
+    }
+
+    setErrore('Codice non valido.');
   };
 
   return (
@@ -22,7 +26,7 @@ function LicenzaPrompt({ onSuccess }) {
       <h2>Attiva Licenza</h2>
       <input
         value={codice}
-        onChange={e => setCodice(e.target.value)}
+        onChange={(e) => setCodice(e.target.value)}
         placeholder="Inserisci codice licenza"
         style={{ padding: '0.5rem', marginRight: '1rem' }}
       />

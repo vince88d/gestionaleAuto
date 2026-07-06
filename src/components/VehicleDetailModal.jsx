@@ -2,14 +2,14 @@ import React from "react";
 import Modal from "react-modal";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
+import itLocale from "@fullcalendar/core/locales/it";
 import { useNavigate } from "react-router-dom";
-import { Car, ChevronLeft,ChevronRight } from "lucide-react";
+import { Car } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
 import "../styles/VehicleDetailModal.css";
 import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";
 import { updatePrenotazione } from "../store/prenotazioniSlice";
-
 
 const VehicleDetailModal = ({
   isOpen,
@@ -48,24 +48,6 @@ const VehicleDetailModal = ({
   const fileInputRef = React.useRef();
   const dispatch = useDispatch();
 
-  const handleAddDamage = (e) => {
-    e.preventDefault();
-    if (!nuovoDanno.immagine || !nuovoDanno.descrizione) {
-      toast.error("Inserisci almeno una foto e una descrizione per il danno");
-      return;
-    }
-
-    onAddDamage(nuovoDanno);
-    setNuovoDanno({
-      immagine: "",
-      descrizione: "",
-      daRiparare: false,
-      data: new Date().toISOString().split("T")[0],
-    });
-    fileInputRef.current.value = "";
-    toast.success("Danno aggiunto con successo");
-  };
-
   const handleTogglePrenotazioneRepair = (prenotazioneId) => {
     const prenotazione = prenotazioni.find((p) => p.id === prenotazioneId);
     if (!prenotazione) return;
@@ -82,9 +64,7 @@ const VehicleDetailModal = ({
 
   const onRestoreFromRepairHistory = (index) => {
     const danno = veicolo.storicoRiparazioni[index];
-    const storicoRestante = veicolo.storicoRiparazioni.filter(
-      (_, i) => i !== index
-    );
+    const storicoRestante = veicolo.storicoRiparazioni.filter((_, i) => i !== index);
     const aggiornato = {
       ...veicolo,
       danni: [...veicolo.danni, { ...danno, daRiparare: true }],
@@ -96,13 +76,21 @@ const VehicleDetailModal = ({
 
   if (!veicolo) return null;
 
-  const getEventiDisponibilità = (veicolo, viewStart, viewEnd) => {
-    // Filtra le prenotazioni per questo veicolo (usando la targa)
+  const isGiornoOccupato = (dateStr) =>
+    prenotazioni.some((p) => {
+      if (p.targa !== veicolo.targa || p.status === "completata") return false;
+
+      const current = new Date(dateStr);
+      const start = new Date(p.dataInizio);
+      const end = new Date(p.dataFine);
+      return current >= start && current <= end;
+    });
+
+  const getEventiDisponibilita = (currentVeicolo, viewStart, viewEnd) => {
     const prenotazioniVeicolo = prenotazioni.filter(
-      (p) => p.targa === veicolo.targa && p.status !== "completata"
+      (p) => p.targa === currentVeicolo.targa && p.status !== "completata"
     );
 
-    // Crea un array di tutti i giorni nel range della vista
     const giorni = [];
     const giornoCorrente = new Date(viewStart);
 
@@ -111,7 +99,6 @@ const VehicleDetailModal = ({
       giornoCorrente.setDate(giornoCorrente.getDate() + 1);
     }
 
-    // Per ogni giorno, verifica se è occupato da una prenotazione
     return giorni.map((giorno) => {
       const giornoStr = giorno.toISOString().split("T")[0];
 
@@ -119,19 +106,48 @@ const VehicleDetailModal = ({
         const start = new Date(p.dataInizio);
         const end = new Date(p.dataFine);
         const current = new Date(giornoStr);
-
         return current >= start && current <= end;
       });
 
       return {
         start: giornoStr,
         end: giornoStr,
+        allDay: true,
         display: "background",
         backgroundColor: isOccupato ? "#ef9a9a" : "#a5d6a7",
         borderColor: isOccupato ? "#e57373" : "#81c784",
         overlap: false,
+        extendedProps: {
+          occupato: isOccupato,
+        },
       };
     });
+  };
+
+  const apriPrenotazioneDaData = (dateStr) => {
+    if (!dateStr) return;
+
+    if (isGiornoOccupato(dateStr)) {
+      toast.info("Questo giorno non è prenotabile per il veicolo selezionato.");
+      return;
+    }
+
+    navigate("/booking", {
+      state: {
+        targaSelezionata: veicolo.targa,
+        modelloSelezionato: veicolo.modello,
+        prezzoSelezionato: veicolo.prezzo,
+        dataSelezionata: dateStr,
+      },
+    });
+  };
+
+  const handleCalendarDateClick = (info) => {
+    apriPrenotazioneDaData(info.dateStr);
+  };
+
+  const handleCalendarEventClick = (info) => {
+    apriPrenotazioneDaData(info.event.startStr?.split("T")[0]);
   };
 
   return (
@@ -166,7 +182,7 @@ const VehicleDetailModal = ({
               zIndex: 10,
             }}
           >
-            ✖
+            ×
           </button>
 
           <h2>
@@ -188,43 +204,18 @@ const VehicleDetailModal = ({
           )}
 
           <div className="vehicle-info-grid">
-            <p>
-              <strong>Targa:</strong> {veicolo.targa}
-            </p>
-            <p>
-              <strong>Anno:</strong> {veicolo.anno}
-            </p>
-            <p>
-              <strong>Prezzo Giornaliero:</strong> {veicolo.prezzo} €
-            </p>
-            <p>
-              <strong>Colore:</strong> {veicolo.colore}
-            </p>
-            <p>
-              <strong>KM:</strong> {veicolo.km}
-            </p>
-            <p>
-              <strong>Porte:</strong> {veicolo.porte}
-            </p>
-            <p>
-              <strong>Carburante:</strong> {veicolo.carburante}
-            </p>
-            <p>
-              <strong>Cambio:</strong> {veicolo.cambio}
-            </p>
-            <p>
-              <strong>Categoria:</strong> {veicolo.categoria}
-            </p>
-            <p>
-              <strong>Assicurazione:</strong>{" "}
-              {veicolo.scadenze?.assicurazione || "—"}
-            </p>
-            <p>
-              <strong>Bollo:</strong> {veicolo.scadenze?.bollo || "—"}
-            </p>
-            <p>
-              <strong>Revisione:</strong> {veicolo.scadenze?.revisione || "—"}
-            </p>
+            <p><strong>Targa:</strong> {veicolo.targa}</p>
+            <p><strong>Anno:</strong> {veicolo.anno}</p>
+            <p><strong>Prezzo Giornaliero:</strong> {veicolo.prezzo} €</p>
+            <p><strong>Colore:</strong> {veicolo.colore}</p>
+            <p><strong>KM:</strong> {veicolo.km}</p>
+            <p><strong>Porte:</strong> {veicolo.porte}</p>
+            <p><strong>Carburante:</strong> {veicolo.carburante}</p>
+            <p><strong>Cambio:</strong> {veicolo.cambio}</p>
+            <p><strong>Categoria:</strong> {veicolo.categoria}</p>
+            <p><strong>Assicurazione:</strong> {veicolo.scadenze?.assicurazione || "—"}</p>
+            <p><strong>Bollo:</strong> {veicolo.scadenze?.bollo || "—"}</p>
+            <p><strong>Revisione:</strong> {veicolo.scadenze?.revisione || "—"}</p>
           </div>
 
           {veicolo.note && (
@@ -235,6 +226,9 @@ const VehicleDetailModal = ({
           )}
 
           <div className="vehicle-calendar-wrapper">
+            <div className="vehicle-calendar-hint">
+              Clicca un giorno verde per aprire direttamente una prenotazione per questo veicolo.
+            </div>
             <FullCalendar
               plugins={[dayGridPlugin]}
               initialView="dayGridMonth"
@@ -243,44 +237,31 @@ const VehicleDetailModal = ({
                 center: "title",
                 right: "dayGridMonth,dayGridWeek,dayGridDay",
               }}
-              buttonText={{
-  prev: '‹',
-  next: '›', 
-
-}}
-
-          eventSources={[
+              locale={itLocale}
+              buttonText={{ prev: "‹", next: "›", today: "Oggi", month: "Mese", week: "Settimana", day: "Giorno" }}
+              eventSources={[
                 {
                   events: (info, successCallback) => {
                     const viewStart = new Date(info.startStr);
                     const viewEnd = new Date(info.endStr);
-                    const eventi = getEventiDisponibilità(
-                      veicolo,
-                      viewStart,
-                      viewEnd
-                    );
-                    successCallback(eventi); // ✅ callback richiesto da FullCalendar
+                    const eventi = getEventiDisponibilita(veicolo, viewStart, viewEnd);
+                    successCallback(eventi);
                   },
                 },
               ]}
               height="auto"
               dayMaxEventRows={false}
-              selectable={false}
+              selectable={true}
               fixedWeekCount={false}
+              dateClick={handleCalendarDateClick}
+              eventClick={handleCalendarEventClick}
             />
           </div>
 
           {modalLite ? (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                marginTop: "30px",
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "center", marginTop: "30px" }}>
               <button
                 onClick={() => {
-                  onClose();
                   navigate("/booking", {
                     state: {
                       targaSelezionata: veicolo.targa,
@@ -302,9 +283,7 @@ const VehicleDetailModal = ({
                   transition: "background-color 0.2s ease",
                   boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
                 }}
-                onMouseOver={(e) =>
-                  (e.target.style.backgroundColor = "#0056b3")
-                }
+                onMouseOver={(e) => (e.target.style.backgroundColor = "#0056b3")}
                 onMouseOut={(e) => (e.target.style.backgroundColor = "#007bff")}
               >
                 <Car size={20} style={{ marginRight: "8px" }} />
@@ -314,19 +293,13 @@ const VehicleDetailModal = ({
           ) : (
             <>
               <div className="vehicle-damages-toggle">
-                <button
-                  className="toggle-section-btn"
-                  onClick={() => setShowDanni((prev) => !prev)}
-                >
+                <button className="toggle-section-btn" onClick={() => setShowDanni((prev) => !prev)}>
                   {showDanni ? "▲ Nascondi Danni" : "▼ Mostra Danni"}
                 </button>
 
                 {showDanni && (
                   <div className="vehicle-damages-section">
-                    {/* --- Sezione: Danni da prenotazioni concluse --- */}
-                    <h4 style={{ marginTop: "20px" }}>
-                      🧾 Danni riscontrati durante prenotazioni concluse:
-                    </h4>
+                    <h4 style={{ marginTop: "20px" }}>Danni riscontrati durante prenotazioni concluse:</h4>
                     {prenotazioni
                       .filter(
                         (p) =>
@@ -336,26 +309,14 @@ const VehicleDetailModal = ({
                       )
                       .map((p, idx) => (
                         <div key={idx} className="damage-box">
-                          <p>
-                            <strong>Periodo:</strong> {p.dataInizio} →{" "}
-                            {p.dataFine}
-                          </p>
+                          <p><strong>Periodo:</strong> {p.dataInizio} → {p.dataFine}</p>
                           {p.descrizioneDanno && (
-                            <p>
-                              <strong>Descrizione:</strong> {p.descrizioneDanno}
-                            </p>
+                            <p><strong>Descrizione:</strong> {p.descrizioneDanno}</p>
                           )}
                           {p.daRiparare && (
                             <div style={{ marginTop: "6px" }}>
-                              <p style={{ color: "red", fontWeight: 600 }}>
-                                ⚠️ Richiede riparazione
-                              </p>
-                              <button
-                                className="toggle-repair-btn"
-                                onClick={() =>
-                                  handleTogglePrenotazioneRepair(p.id)
-                                }
-                              >
+                              <p style={{ color: "red", fontWeight: 600 }}>Richiede riparazione</p>
+                              <button className="toggle-repair-btn" onClick={() => handleTogglePrenotazioneRepair(p.id)}>
                                 Segna come riparato
                               </button>
                             </div>
@@ -363,10 +324,7 @@ const VehicleDetailModal = ({
 
                           {p.fotoDanni && (
                             <div className="damage-gallery">
-                              {(Array.isArray(p.fotoDanni)
-                                ? p.fotoDanni
-                                : [p.fotoDanni]
-                              ).map((img, i) => (
+                              {(Array.isArray(p.fotoDanni) ? p.fotoDanni : [p.fotoDanni]).map((img, i) => (
                                 <img
                                   key={i}
                                   src={img}
@@ -383,21 +341,14 @@ const VehicleDetailModal = ({
                         </div>
                       ))}
 
-                    {/* --- Sezione: Danni manuali toggle --- */}
-                    <button
-                      className="toggle-subsection-btn"
-                      onClick={() => setShowManualDanni((prev) => !prev)}
-                    >
-                      {showManualDanni
-                        ? "▲ Nascondi Danni Manuali"
-                        : "▼ Mostra Danni Manuali / Preesistenti"}
+                    <button className="toggle-subsection-btn" onClick={() => setShowManualDanni((prev) => !prev)}>
+                      {showManualDanni ? "▲ Nascondi Danni Manuali" : "▼ Mostra Danni Manuali / Preesistenti"}
                     </button>
 
                     {showManualDanni && (
                       <>
                         <h4>Danni manuali / preesistenti:</h4>
 
-                        {/* Lista dei danni esistenti */}
                         {veicolo.danni?.length > 0 ? (
                           <div className="damage-gallery">
                             {veicolo.danni.map((danno, i) => (
@@ -411,36 +362,17 @@ const VehicleDetailModal = ({
                                   }}
                                   className="damage-photo"
                                 />
-                                <p className="damage-desc">
-                                  {danno.descrizione || "—"}
-                                </p>
-                                {danno.daRiparare && (
-                                  <p className="repair-warning">
-                                    ⚠️ Da riparare
-                                  </p>
-                                )}
+                                <p className="damage-desc">{danno.descrizione || "—"}</p>
+                                {danno.daRiparare && <p className="repair-warning">Da riparare</p>}
                                 <div className="damage-controls">
                                   <p className="repair-status">
-                                    Stato:{" "}
-                                    <strong>
-                                      {danno.daRiparare
-                                        ? "⚠️ Da riparare"
-                                        : "✅ Riparato"}
-                                    </strong>
+                                    Stato: <strong>{danno.daRiparare ? "Da riparare" : "Riparato"}</strong>
                                   </p>
-                                  <button
-                                    className="toggle-repair-btn"
-                                    onClick={() => onToggleRepairStatus(i)}
-                                  >
-                                    {danno.daRiparare
-                                      ? "Segna come riparato"
-                                      : "Riporta tra i danni da riparare"}
+                                  <button className="toggle-repair-btn" onClick={() => onToggleRepairStatus(i)}>
+                                    {danno.daRiparare ? "Segna come riparato" : "Riporta tra i danni da riparare"}
                                   </button>
-                                  <button
-                                    className="delete-damage-btn"
-                                    onClick={() => onDeleteDamage(i)}
-                                  >
-                                    ✖
+                                  <button className="delete-damage-btn" onClick={() => onDeleteDamage(i)}>
+                                    ×
                                   </button>
                                 </div>
                               </div>
@@ -450,11 +382,7 @@ const VehicleDetailModal = ({
                           <p>Nessun danno manuale registrato.</p>
                         )}
 
-                        {/* Form per aggiungere nuovo danno */}
-                        <div
-                          className="add-damage-form"
-                          style={{ marginTop: "20px" }}
-                        >
+                        <div className="add-damage-form" style={{ marginTop: "20px" }}>
                           <div style={{ marginBottom: "10px" }}>
                             <button
                               type="button"
@@ -498,19 +426,12 @@ const VehicleDetailModal = ({
                               <img
                                 src={nuovoDanno.immagine}
                                 alt="Anteprima"
-                                style={{
-                                  maxWidth: "200px",
-                                  maxHeight: "200px",
-                                  borderRadius: "6px",
-                                }}
+                                style={{ maxWidth: "200px", maxHeight: "200px", borderRadius: "6px" }}
                               />
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setNuovoDanno((prev) => ({
-                                    ...prev,
-                                    immagine: "",
-                                  }));
+                                  setNuovoDanno((prev) => ({ ...prev, immagine: "" }));
                                   fileInputRef.current.value = "";
                                 }}
                                 style={{
@@ -533,12 +454,7 @@ const VehicleDetailModal = ({
                             type="text"
                             placeholder="Descrizione danno"
                             value={nuovoDanno.descrizione}
-                            onChange={(e) =>
-                              setNuovoDanno((prev) => ({
-                                ...prev,
-                                descrizione: e.target.value,
-                              }))
-                            }
+                            onChange={(e) => setNuovoDanno((prev) => ({ ...prev, descrizione: e.target.value }))}
                             style={{
                               width: "100%",
                               padding: "8px",
@@ -548,22 +464,11 @@ const VehicleDetailModal = ({
                             }}
                           />
 
-                          <label
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              marginBottom: "10px",
-                            }}
-                          >
+                          <label style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
                             <input
                               type="checkbox"
                               checked={nuovoDanno.daRiparare}
-                              onChange={(e) =>
-                                setNuovoDanno((prev) => ({
-                                  ...prev,
-                                  daRiparare: e.target.checked,
-                                }))
-                              }
+                              onChange={(e) => setNuovoDanno((prev) => ({ ...prev, daRiparare: e.target.checked }))}
                               style={{ marginRight: "8px" }}
                             />
                             Richiede riparazione
@@ -572,16 +477,11 @@ const VehicleDetailModal = ({
                           <button
                             type="button"
                             className="add-damage-btn"
-                            disabled={
-                              !nuovoDanno.immagine || !nuovoDanno.descrizione
-                            }
+                            disabled={!nuovoDanno.immagine || !nuovoDanno.descrizione}
                             onClick={(e) => {
                               e.stopPropagation();
                               e.preventDefault();
-                              if (
-                                nuovoDanno.immagine &&
-                                nuovoDanno.descrizione
-                              ) {
+                              if (nuovoDanno.immagine && nuovoDanno.descrizione) {
                                 onAddDamage(nuovoDanno);
                                 setNuovoDanno({
                                   immagine: "",
@@ -599,10 +499,7 @@ const VehicleDetailModal = ({
                               border: "none",
                               borderRadius: "4px",
                               cursor: "pointer",
-                              opacity:
-                                !nuovoDanno.immagine || !nuovoDanno.descrizione
-                                  ? 0.5
-                                  : 1,
+                              opacity: !nuovoDanno.immagine || !nuovoDanno.descrizione ? 0.5 : 1,
                             }}
                           >
                             Salva danno
@@ -611,33 +508,18 @@ const VehicleDetailModal = ({
 
                         {veicolo.storicoRiparazioni?.length > 0 && (
                           <>
-                            <h4 style={{ marginTop: "30px" }}>
-                              🛠️ Storico Riparazioni
-                            </h4>
+                            <h4 style={{ marginTop: "30px" }}>Storico Riparazioni</h4>
                             <div className="damage-gallery">
                               {veicolo.storicoRiparazioni.map((danno, i) => (
                                 <div key={i} className="damage-photo-wrapper">
-                                  <img
-                                    src={danno.immagine}
-                                    alt={`Riparazione ${i + 1}`}
-                                    className="damage-photo"
-                                  />
-                                  <p className="damage-desc">
-                                    {danno.descrizione || "—"}
-                                  </p>
+                                  <img src={danno.immagine} alt={`Riparazione ${i + 1}`} className="damage-photo" />
+                                  <p className="damage-desc">{danno.descrizione || "—"}</p>
                                   <p className="repair-done">
-                                    Riparato il:{" "}
-                                    {new Date(
-                                      danno.riparatoIn
-                                    ).toLocaleDateString()}
+                                    Riparato il: {new Date(danno.riparatoIn).toLocaleDateString()}
                                   </p>
                                   <div className="damage-controls">
-                                    <button
-                                      onClick={() =>
-                                        onRestoreFromRepairHistory(i)
-                                      }
-                                    >
-                                      🔄 Riporta tra danni
+                                    <button onClick={() => onRestoreFromRepairHistory(i)}>
+                                      Riporta tra danni
                                     </button>
                                   </div>
                                 </div>
@@ -651,23 +533,13 @@ const VehicleDetailModal = ({
                 )}
               </div>
 
-              {/* --- Sezione: Manutenzioni --- */}
-
               <div className="vehicle-maintenance-toggle">
-                <button
-                  onClick={() => setMostraManutenzioni((prev) => !prev)}
-                  className="toggle-maintenance-btn"
-                >
-                  {mostraManutenzioni
-                    ? "▲ Nascondi Manutenzioni"
-                    : "▼ Visualizza Manutenzioni"}
+                <button onClick={() => setMostraManutenzioni((prev) => !prev)} className="toggle-maintenance-btn">
+                  {mostraManutenzioni ? "▲ Nascondi Manutenzioni" : "▼ Visualizza Manutenzioni"}
                 </button>
 
                 {mostraManutenzioni && (
-                  <div
-                    className="vehicle-maintenance-section"
-                    ref={manutenzioneRef}
-                  >
+                  <div className="vehicle-maintenance-section" ref={manutenzioneRef}>
                     <h4>Storico Manutenzioni</h4>
                     {veicolo.manutenzioni?.length > 0 ? (
                       <>
@@ -697,7 +569,7 @@ const VehicleDetailModal = ({
                                       cursor: "pointer",
                                     }}
                                   >
-                                    ✖
+                                    ×
                                   </button>
                                 </td>
                               </tr>
@@ -708,13 +580,7 @@ const VehicleDetailModal = ({
                         <p className="maintenance-total">
                           Totale:{" "}
                           <strong>
-                            {veicolo.manutenzioni
-                              .reduce(
-                                (acc, m) => acc + parseFloat(m.costo || 0),
-                                0
-                              )
-                              .toFixed(2)}{" "}
-                            €
+                            {veicolo.manutenzioni.reduce((acc, m) => acc + parseFloat(m.costo || 0), 0).toFixed(2)} €
                           </strong>
                         </p>
                       </>
@@ -722,72 +588,47 @@ const VehicleDetailModal = ({
                       <p>Nessuna manutenzione registrata.</p>
                     )}
 
-               <div className="maintenance-form-row">
-    <label>Data</label>
-    <input
-      type="date"
-      value={nuovaManutenzione.data}
-      onChange={(e) =>
-        setNuovaManutenzione((prev) => ({
-          ...prev,
-          data: e.target.value,
-        }))
-      }
-    />
-  </div>
+                    <div className="maintenance-form-row">
+                      <label>Data</label>
+                      <input
+                        type="date"
+                        value={nuovaManutenzione.data}
+                        onChange={(e) => setNuovaManutenzione((prev) => ({ ...prev, data: e.target.value }))}
+                      />
+                    </div>
 
-  <div className="maintenance-form-row">
-    <label>Descrizione</label>
-    <textarea
-      className="maintenance-textarea"
-      value={nuovaManutenzione.descrizione}
-      onChange={(e) =>
-        setNuovaManutenzione((prev) => ({
-          ...prev,
-          descrizione: e.target.value,
-        }))
-      }
-      placeholder="Descrizione dettagliata della manutenzione"
-    />
-  </div>
+                    <div className="maintenance-form-row">
+                      <label>Descrizione</label>
+                      <textarea
+                        className="maintenance-textarea"
+                        value={nuovaManutenzione.descrizione}
+                        onChange={(e) => setNuovaManutenzione((prev) => ({ ...prev, descrizione: e.target.value }))}
+                        placeholder="Descrizione dettagliata della manutenzione"
+                      />
+                    </div>
 
-  <div className="maintenance-form-row">
-    <label>Costo (€)</label>
-    <input
-      type="number"
-      value={nuovaManutenzione.costo}
-      onChange={(e) =>
-        setNuovaManutenzione((prev) => ({
-          ...prev,
-          costo: e.target.value,
-        }))
-      }
-    />
-  </div>
+                    <div className="maintenance-form-row">
+                      <label>Costo (€)</label>
+                      <input
+                        type="number"
+                        value={nuovaManutenzione.costo}
+                        onChange={(e) => setNuovaManutenzione((prev) => ({ ...prev, costo: e.target.value }))}
+                      />
+                    </div>
 
-  <div className="maintenance-form-row">
-    <button onClick={onAddManutenzione} className="add-maintenance-btn">
-      ➕ Aggiungi
-    </button>
-  </div>
-</div>
+                    <div className="maintenance-form-row">
+                      <button onClick={onAddManutenzione} className="add-maintenance-btn">
+                        Aggiungi
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
 
               <div className="vehicle-actions">
-                <button className="save-btn" onClick={() => onUpdate(veicolo)}>
-                  Salva
-                </button>
-
-                <button className="edit-btn" onClick={onEdit}>
-                  Modifica
-                </button>
-                <button
-                  className="delete-btn"
-                  onClick={() => setConfirmDeleteOpen(true)}
-                >
-                  Elimina
-                </button>
+                <button className="save-btn" onClick={() => onUpdate(veicolo)}>Salva</button>
+                <button className="edit-btn" onClick={onEdit}>Modifica</button>
+                <button className="delete-btn" onClick={() => setConfirmDeleteOpen(true)}>Elimina</button>
               </div>
             </>
           )}
@@ -813,18 +654,10 @@ const VehicleDetailModal = ({
             <img
               src={selectedDamagePhoto}
               alt="Foto Danno"
-              style={{
-                maxWidth: "90%",
-                maxHeight: "90vh",
-                borderRadius: "10px",
-              }}
+              style={{ maxWidth: "90%", maxHeight: "90vh", borderRadius: "10px" }}
             />
           )}
-          <button
-            onClick={() => setDamageModalOpen(false)}
-            className="close-damage-modal-btn"
-            style={{ marginTop: "20px" }}
-          >
+          <button onClick={() => setDamageModalOpen(false)} className="close-damage-modal-btn" style={{ marginTop: "20px" }}>
             Chiudi
           </button>
         </div>
@@ -839,6 +672,9 @@ const VehicleDetailModal = ({
           onClose();
         }}
         message="Sei sicuro di voler eliminare questo veicolo?"
+        title="Elimina Veicolo"
+        confirmLabel="Elimina"
+        tone="danger"
       />
     </>
   );

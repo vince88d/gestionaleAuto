@@ -9,11 +9,33 @@
     flex-direction: column;
   }
   
-  .impostazioni-container input {
+.impostazioni-container input {
     margin-bottom: 1rem;
     padding: 0.5rem;
     border-radius: 4px;
     border: 1px solid #ccc;
+  }
+
+  .settings-hint {
+    display: block;
+    margin-top: -0.55rem;
+    margin-bottom: 0.85rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .settings-hint-warning {
+    background: #fff4db;
+    color: #8a5a00;
+    border: 1px solid #f2d28b;
+  }
+
+  .settings-hint-info {
+    background: #eef6ff;
+    color: #315f8f;
+    border: 1px solid #c9def7;
   }
   
   .impostazioni-container button {

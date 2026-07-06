@@ -24,11 +24,11 @@
     "@testing-library/user-event": "^13.5.0",
     "archiver": "^7.0.1",
     "electron-squirrel-startup": "^1.0.1",
-    "electron-store": "^10.0.1",
     "firebase": "^11.6.0",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.3",
     "jspdf": "^3.0.1",
+    "keytar": "^7.9.0",
     "lucide-react": "^0.488.0",
     "nodemailer": "^6.10.1",
     "papaparse": "^5.5.2",
@@ -58,7 +58,9 @@
     "clean:data": "node scripts/cleanData.js",
     "package": "electron-forge package",
     "premake": "npm run build",
-    "make": "cross-env DEBUG=electron-forge:* electron-forge make"
+    "make": "cross-env DEBUG=electron-forge:* electron-forge make",
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "dist:dir": "npm run build && electron-builder --dir"
   },
   "eslintConfig": {
     "extends": [
@@ -90,8 +92,49 @@
     "autoprefixer": "^10.4.21",
     "cross-env": "^7.0.3",
     "electron": "^31.2.1",
+    "electron-builder": "^24.13.3",
     "electron-reload": "^2.0.0-alpha.1",
     "postcss": "^8.5.3"
+  },
+  "build": {
+    "extends": null,
+    "appId": "com.gestionaleauto.app",
+    "productName": "Gestionale Auto Noleggio",
+    "extraMetadata": {
+      "main": "main.js"
+    },
+    "directories": {
+      "output": "dist-installer"
+    },
+    "files": [
+      "build/**/*",
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Gestionale Auto Noleggio"
+    }
   },
   "config": {
     "forge": {

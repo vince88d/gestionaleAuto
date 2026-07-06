@@ -1,6 +1,6 @@
 import './Dashboard.css';
 import { useSelector } from 'react-redux';
-import React, { useEffect,useState } from 'react';
+import React, { useEffect,useRef,useState } from 'react';
 import { setVeicoli } from '../store/veicoliSlice';
 import { useDispatch } from 'react-redux';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -27,6 +27,7 @@ function Dashboard() {
   const [selectedVeicolo, setSelectedVeicolo] = useState(null);
   const [danniDaRiparare, setDanniDaRiparare] = useState([])
   const [veicoliDaMostrare,setVeicoliDaMostrare] = useState([]);
+  const scadenzeRef = useRef(null);
 
 
 
@@ -40,26 +41,48 @@ const handleChiudiModaleVeicolo = () => {
   setSelectedVeicolo(null);
 };
 
+const getVeicoliDisponibili = (dataInizio, dataFine, listaPrenotazioni = prenotazioni) => {
+  if (!Array.isArray(veicoli) || veicoli.length === 0) return [];
+
+  if (!dataInizio || !dataFine) {
+    return veicoli;
+  }
+
+  const inizio = new Date(dataInizio);
+  const fine = new Date(dataFine);
+
+  if (Number.isNaN(inizio.getTime()) || Number.isNaN(fine.getTime())) {
+    return veicoli;
+  }
+
+  const veicoliOccupati = listaPrenotazioni
+    .filter((p) => {
+      if (p.status === 'completata') return false;
+
+      const start = new Date(p.dataInizio);
+      const end = p.dataRientroEffettiva
+        ? new Date(p.dataRientroEffettiva)
+        : new Date(p.dataFine);
+
+      return inizio <= end && fine >= start;
+    })
+    .map((p) => p.targa);
+
+  return veicoli.filter((v) => !veicoliOccupati.includes(v.targa));
+};
+
  useEffect(() => {
   if (veicoli.length === 0) return;
 
-  const oggi = new Date();
-  const fineSettimana = new Date();
-  fineSettimana.setDate(oggi.getDate() + 7);
-
-  let veicoliOccupati = [];
-
-  if (prenotazioni.length > 0) {
-    veicoliOccupati = prenotazioni.filter(p => {
-      const start = new Date(p.dataInizio);
-      const end = new Date(p.dataFine);
-      return oggi <= end && fineSettimana >= start;
-    }).map(p => p.targa);
+  if (!dataInizioRicerca && !dataFineRicerca) {
+    setVeicoliDaMostrare(veicoli);
+    return;
   }
 
-  const disponibiliSettimana = veicoli.filter(v => !veicoliOccupati.includes(v.targa));
-  setVeicoliDaMostrare(disponibiliSettimana);
-}, [veicoli, prenotazioni]);
+  if (dataInizioRicerca && dataFineRicerca) {
+    setVeicoliDaMostrare(getVeicoliDisponibili(dataInizioRicerca, dataFineRicerca));
+  }
+}, [veicoli, prenotazioni, dataInizioRicerca, dataFineRicerca]);
 
 
 
@@ -257,18 +280,7 @@ useEffect(() => {
 
   try {
     const tuttePrenotazioni = await window.electronAPI.readPrenotazioni();
-
-    const veicoliOccupati = tuttePrenotazioni
-      .filter(p => {
-        const start = new Date(p.dataInizio);
-        const end = new Date(p.dataFine);
-        return (
-          (inizio <= end && fine >= start) // sovrapposizione
-        );
-      })
-      .map(p => p.targa);
-
-    const disponibili = veicoli.filter(v => !veicoliOccupati.includes(v.targa));
+    const disponibili = getVeicoliDisponibili(dataInizioRicerca, dataFineRicerca, tuttePrenotazioni);
     setVeicoliDaMostrare(disponibili);
   } catch (err) {
     console.error("Errore ricerca disponibilità:", err);
@@ -281,6 +293,18 @@ useEffect(() => {
   return (
     <div className="dashboard-page">
       <h1>Dashboard Noleggio Auto</h1>
+
+      {scadenzeProssime.length > 0 && (
+        <button
+          type="button"
+          className="scadenze-reminder-top"
+          onClick={() => scadenzeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        >
+          <Bell size={16} />
+          Hai {scadenzeProssime.length} scadenze in arrivo. Clicca per vederle.
+        </button>
+      )}
+
       <div className="grid">
         {stats.map((stat, index) => (
           <div
@@ -379,7 +403,7 @@ useEffect(() => {
 
 
       {scadenzeProssime.length > 0 && (
-        <div className="scadenze-box">
+        <div className="scadenze-box" ref={scadenzeRef}>
           <h2><Bell size={16} fill='gold'/> Scadenze in arrivo (entro 30 giorni)</h2>
           <table className="scadenze-table">
             <thead>

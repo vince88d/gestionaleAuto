@@ -15,7 +15,14 @@ function BookingModal({ open, onClose, children }) {
   }, [open]);
 
   return (
-    <Dialog.Root open={open} onOpenChange={onClose}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}
+    >
       <Dialog.Portal>
         <Dialog.Overlay className="DialogOverlay" />
         <Dialog.Content className="DialogContent">
