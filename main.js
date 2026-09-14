@@ -308,9 +308,10 @@ const createWindow = () => {
 
 app.whenReady().then(() => {
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const firebaseConnectSrc = 'https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com';
     const csp = process.env.NODE_ENV === 'development'
-      ? "default-src 'self' http://localhost:3000; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:3000 https://api.ipify.org;"
-      : "default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://api.ipify.org";
+      ? `default-src 'self' http://localhost:3000; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:3000 https://api.ipify.org ${firebaseConnectSrc};`
+      : `default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://api.ipify.org ${firebaseConnectSrc};`;
 
     callback({
       responseHeaders: {
