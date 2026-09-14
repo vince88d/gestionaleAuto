@@ -9,6 +9,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import {Car, Calendar, Trash2, Edit3, Clock, CheckCircle, PlusCircle, XCircle, UploadCloud} from 'lucide-react';
 import VehicleCard from '../components/VeichleCard';
 import VehicleForm from '../components/VehicleForm';
+import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
 import './Vehicle.css';
 
 Modal.setAppElement('#root');
@@ -86,7 +87,7 @@ function Vehicles() {
   useEffect(() => {
     const caricaVeicoli = async () => {
       try {
-        const dati = await window.electronAPI.readVeicoli();
+        const dati = await readVeicoli();
         dispatch(setVeicoli(dati));
       } catch (error) {
         console.error('Errore nel caricamento veicoli:', error);
@@ -186,7 +187,7 @@ function Vehicles() {
         nuovaLista = [...veicoli, nuovo];
         toast.success('Veicolo aggiunto!');
       }
-      await window.electronAPI.writeVeicoli(nuovaLista);
+      await writeVeicoli(nuovaLista);
       handleCloseModal();
     } catch (error) {
       console.error('Errore salvataggio:', error);
@@ -198,7 +199,7 @@ const handleDelete = async (id) => {
   try {
     const nuovaLista = veicoli.filter((v) => v.id !== id);
     dispatch(deleteVeicolo(id));
-    await window.electronAPI.writeVeicoli(nuovaLista);
+    await writeVeicoli(nuovaLista);
     toast.success('Veicolo eliminato!');
     return true; // Indica che l'eliminazione è avvenuta con successo
   } catch (error) {
@@ -344,7 +345,7 @@ const handleUpdate = async (veicoloAggiornato = selectedVeicolo) => {
       v.id === veicoloCompleto.id ? veicoloCompleto : v
     );
 
-    await window.electronAPI.writeVeicoli(nuovaLista);
+    await writeVeicoli(nuovaLista);
     setSelectedVeicolo(veicoloCompleto);
     toast.success("Modifiche salvate!");
   } catch (error) {
