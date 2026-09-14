@@ -9,6 +9,7 @@ import { Edit2,Trash2,Info,PlusIcon, Search } from 'lucide-react';
 import ModalDettaglioCliente from '../components/ModalDettaglioCliente';
 import {setPrenotazioni} from '../store/prenotazioniSlice';
 import { readPrenotazioni } from '../lib/firestorePrenotazioni';
+import { readClienti, writeClienti } from '../lib/firestoreClienti';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const DOCUMENT_TYPE_OPTIONS = [
@@ -66,7 +67,7 @@ const chiediConfermaEliminazione = (cliente) => {
 
 const caricaClienti = async () => {
   try {
-    const dati = await window.electronAPI.readClienti();
+    const dati = await readClienti();
     const clientiConDanni = (dati || []).map(cliente => ({
       ...cliente,
       storicoDanni: cliente.storicoDanni || []
@@ -177,7 +178,7 @@ const normalizzaCodiceFiscale = (value) => (value || '').trim().toUpperCase();
       const nuovaLista = [...(clienti || []), nuovoCliente];
       
       // Prima salva su disco
-      const success = await window.electronAPI.writeClienti(nuovaLista);
+      const success = await writeClienti(nuovaLista);
       if (!success) {
         throw new Error('Salvataggio fallito');
       }
@@ -207,7 +208,7 @@ const normalizzaCodiceFiscale = (value) => (value || '').trim().toUpperCase();
   try {
     const updated = clienti.filter(c => c !== clienteDaEliminare);
     dispatch(deleteCliente(clienti.indexOf(clienteDaEliminare)));
-    await window.electronAPI.writeClienti(updated);
+    await writeClienti(updated);
     toast.success("Cliente eliminato con successo");
   } catch (err) {
     toast.error("Errore durante l'eliminazione");
@@ -272,7 +273,7 @@ const isPatenteScaduta = (dataScadenza) => {
     const nuovaLista = [...clienti];
     nuovaLista[editingClient.index] = updated;
   
-    await window.electronAPI.writeClienti(nuovaLista); // <- SALVATAGGIO
+    await writeClienti(nuovaLista); // <- SALVATAGGIO
     setIsModalOpen(false);
   };
   

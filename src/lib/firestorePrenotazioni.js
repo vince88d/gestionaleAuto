@@ -1,5 +1,6 @@
 import { db } from '../components/firebase';
 import { collection, getDocs, doc, writeBatch, setDoc } from 'firebase/firestore';
+import { readClienti, writeClienti } from './firestoreClienti';
 
 const PRENOTAZIONI_COLLECTION = 'prenotazioni';
 
@@ -50,8 +51,8 @@ export async function confermaPrenotazione({ prenotazione, ip }) {
     const { id, ...dati } = bookingRecord;
     await setDoc(doc(db, PRENOTAZIONI_COLLECTION, id), dati, { merge: true });
 
-    if (window.electronAPI?.readClienti && window.electronAPI?.writeClienti) {
-      const clienti = await window.electronAPI.readClienti();
+    {
+      const clienti = await readClienti();
       const indexCliente = clienti.findIndex(
         (cliente) =>
           cliente.codiceFiscale?.toUpperCase() === bookingRecord.codiceFiscale?.toUpperCase()
@@ -64,7 +65,7 @@ export async function confermaPrenotazione({ prenotazione, ip }) {
           data: new Date().toISOString(),
           targa: bookingRecord.targa,
         });
-        await window.electronAPI.writeClienti(clienti);
+        await writeClienti(clienti);
       }
     }
 

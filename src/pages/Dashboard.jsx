@@ -4,6 +4,7 @@ import React, { useEffect,useRef,useState } from 'react';
 import { setVeicoli } from '../store/veicoliSlice';
 import { readPrenotazioni } from '../lib/firestorePrenotazioni';
 import { readVeicoli } from '../lib/firestoreVeicoli';
+import { readClienti } from '../lib/firestoreClienti';
 import { useDispatch } from 'react-redux';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'react-toastify';
@@ -109,7 +110,7 @@ const getVeicoliDisponibili = (dataInizio, dataFine, listaPrenotazioni = prenota
   useEffect(() => {
   const caricaDatiDashboard = async () => {
     try {
-      const clientiData = await window.electronAPI.readClienti();
+      const clientiData = await readClienti();
       const prenotazioniData = await readPrenotazioni();
 
       const meseCorrente = new Date().getMonth(); // 0-11

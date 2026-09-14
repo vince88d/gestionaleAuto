@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Info, Trash2, Recycle } from 'lucide-react';
 import { ricaricaPrenotazioni } from '../utils/ricaricaPrenotazioni';
 import { writePrenotazioni } from '../lib/firestorePrenotazioni';
+import { readClienti, writeClienti } from '../lib/firestoreClienti';
 import InfoModal from '../components/InfoModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import '../styles/ArchivioPrenotazioni.css';
@@ -76,7 +77,7 @@ function ArchivioPrenotazioni() {
 
     await writePrenotazioni(updatedList);
 
-    const clienti = await window.electronAPI.readClienti();
+    const clienti = await readClienti();
     const prenotazioneRipristinata = prenotazioni.find((prenotazione) => prenotazione.id === id);
     const clientiAggiornati = clienti.map((cliente) => {
       if (cliente.codiceFiscale !== prenotazioneRipristinata.codiceFiscale) {
@@ -93,7 +94,7 @@ function ArchivioPrenotazioni() {
       };
     });
 
-    await window.electronAPI.writeClienti(clientiAggiornati);
+    await writeClienti(clientiAggiornati);
     await ricaricaPrenotazioni(dispatch);
   };
 

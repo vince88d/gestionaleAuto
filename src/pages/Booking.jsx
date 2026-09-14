@@ -20,6 +20,7 @@ import ConcludiPrenotazioneModal from '../components/ConcludiPrenotazioneModal';
 import { useLocation } from 'react-router-dom';
 import { readPrenotazioni, writePrenotazioni } from '../lib/firestorePrenotazioni';
 import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
+import { readClienti, writeClienti } from '../lib/firestoreClienti';
 import{
   setPrenotazioni,
   addPrenotazione,
@@ -151,7 +152,7 @@ useEffect(() => {
   useEffect(() => {
     const caricaClienti = async () => {
       try {
-        const dati = await window.electronAPI.readClienti();
+        const dati = await readClienti();
         dispatch(setClienti(dati || []));
       } catch (err) {
         console.error("Errore caricamento clienti:", err);
@@ -850,7 +851,7 @@ const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoD
   dispatch(setPrenotazioni(nuovePrenotazioni));
 
   if (descrizioneDanno?.trim()) {
-    const clienti = await window.electronAPI.readClienti();
+    const clienti = await readClienti();
     const idxCliente = clienti.findIndex(c =>
       c.codiceFiscale === prenotazione.codiceFiscale ||
       c.email === prenotazione.emailCliente
@@ -865,7 +866,7 @@ const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoD
         targa: prenotazione.targa,
         riferimentoPrenotazione: prenotazione.id,
       });
-      await window.electronAPI.writeClienti(clienti);
+      await writeClienti(clienti);
       dispatch(setClienti(clienti));
     }
 
