@@ -2,6 +2,8 @@ import './Dashboard.css';
 import { useSelector } from 'react-redux';
 import React, { useEffect,useRef,useState } from 'react';
 import { setVeicoli } from '../store/veicoliSlice';
+import { readPrenotazioni } from '../lib/firestorePrenotazioni';
+import { readVeicoli } from '../lib/firestoreVeicoli';
 import { useDispatch } from 'react-redux';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'react-toastify';
@@ -108,7 +110,7 @@ const getVeicoliDisponibili = (dataInizio, dataFine, listaPrenotazioni = prenota
   const caricaDatiDashboard = async () => {
     try {
       const clientiData = await window.electronAPI.readClienti();
-      const prenotazioniData = await window.electronAPI.readPrenotazioni();
+      const prenotazioniData = await readPrenotazioni();
 
       const meseCorrente = new Date().getMonth(); // 0-11
       const annoCorrente = new Date().getFullYear();
@@ -224,7 +226,7 @@ useEffect(() => {
   useEffect(() => {
     const caricaVeicoli = async () => {
       try {
-        const dati = await window.electronAPI.readVeicoli();
+        const dati = await readVeicoli();
         dispatch(setVeicoli(dati));
       } catch (error) {
         console.error('Errore nel caricamento veicoli dalla Dashboard:', error);
@@ -279,7 +281,7 @@ useEffect(() => {
   }
 
   try {
-    const tuttePrenotazioni = await window.electronAPI.readPrenotazioni();
+    const tuttePrenotazioni = await readPrenotazioni();
     const disponibili = getVeicoliDisponibili(dataInizioRicerca, dataFineRicerca, tuttePrenotazioni);
     setVeicoliDaMostrare(disponibili);
   } catch (err) {

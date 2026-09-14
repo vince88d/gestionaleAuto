@@ -4,6 +4,7 @@ import './InfoModal.css';
 import { Pencil, Trash2, CheckCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
 
 
 function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, soloLettura = false }) {
@@ -16,7 +17,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
     if (!prenotazione?.targa || !isOpen) return;
 
     try {
-      const veicoli = await window.electronAPI.readVeicoli();
+      const veicoli = await readVeicoli();
       const veicolo = veicoli.find(v => v.targa === prenotazione.targa);
 
       if (veicolo?.danniAttivi) {
@@ -39,7 +40,7 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
   if (!prenotazione?.targa) return;
 
   try {
-    const veicoli = await window.electronAPI.readVeicoli();
+    const veicoli = await readVeicoli();
     const index = veicoli.findIndex(v => v.targa === prenotazione.targa);
     if (index === -1) return;
 
@@ -56,7 +57,7 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
       return d;
     });
 
-    await window.electronAPI.writeVeicoli(veicoli);
+    await writeVeicoli(veicoli);
 
     const nuoviAttivi = veicolo.danniAttivi.filter(d => d.daRiparare && !d.riparato);
     setDanniAttiviVeicolo(nuoviAttivi);

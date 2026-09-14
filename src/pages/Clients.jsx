@@ -8,6 +8,7 @@ import { toast } from 'react-toastify';
 import { Edit2,Trash2,Info,PlusIcon, Search } from 'lucide-react';
 import ModalDettaglioCliente from '../components/ModalDettaglioCliente';
 import {setPrenotazioni} from '../store/prenotazioniSlice';
+import { readPrenotazioni } from '../lib/firestorePrenotazioni';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const DOCUMENT_TYPE_OPTIONS = [
@@ -106,7 +107,7 @@ const handleRicerca = (e) => {
     useEffect(() => {
     const caricaPrenotazioni = async () => {
       try {
-        const dati = await window.electronAPI.readPrenotazioni();
+        const dati = await readPrenotazioni();
         dispatch(setPrenotazioni(dati || []));
       } catch (err) {
         console.error("Errore nel caricamento prenotazioni:", err);

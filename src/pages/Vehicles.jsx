@@ -10,6 +10,7 @@ import {Car, Calendar, Trash2, Edit3, Clock, CheckCircle, PlusCircle, XCircle, U
 import VehicleCard from '../components/VeichleCard';
 import VehicleForm from '../components/VehicleForm';
 import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
+import { readPrenotazioni } from '../lib/firestorePrenotazioni';
 import './Vehicle.css';
 
 Modal.setAppElement('#root');
@@ -101,7 +102,7 @@ function Vehicles() {
   useEffect(() => {
   const caricaPrenotazioni = async () => {
     try {
-      const dati = await window.electronAPI.readPrenotazioni();
+      const dati = await readPrenotazioni();
       dispatch(setPrenotazioni(dati));
     } catch (error) {
       console.error('Errore caricamento prenotazioni:', error);

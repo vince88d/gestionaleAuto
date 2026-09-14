@@ -18,6 +18,8 @@ import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
 import ConcludiPrenotazioneModal from '../components/ConcludiPrenotazioneModal';
 import { useLocation } from 'react-router-dom';
+import { readPrenotazioni, writePrenotazioni } from '../lib/firestorePrenotazioni';
+import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
 import{
   setPrenotazioni,
   addPrenotazione,
@@ -163,7 +165,7 @@ useEffect(() => {
     const caricaPrenotazioni = async () => {
       setLoading(true);
       try {
-        const dati = await window.electronAPI.readPrenotazioni();
+        const dati = await readPrenotazioni();
         console.log("dati caricati:", dati); // Debug
         dispatch(setPrenotazioni(dati));
       } catch (error) {
@@ -180,7 +182,7 @@ useEffect(() => {
     const caricaVeicoli = async () => {
       try {
         // Usa lo stesso nome usato nell'API (qui usiamo readVeicoli per coerenza)
-        const datiVeicoli = await window.electronAPI.readVeicoli();
+        const datiVeicoli = await readVeicoli();
         
         if (!Array.isArray(datiVeicoli)) {
           console.error("Dati veicoli non sono un array:", datiVeicoli);
@@ -623,7 +625,7 @@ accessori: {
 
   const handleConfermaPrenotazioneCompletata = async () => {
     try {
-      const prenotazioniAggiornate = await window.electronAPI.readPrenotazioni();
+      const prenotazioniAggiornate = await readPrenotazioni();
       dispatch(setPrenotazioni(prenotazioniAggiornate));
       showFeedback(
         editingIndex !== null
@@ -683,7 +685,7 @@ accessori: {
       const nuovaLista = [...prenotazioni];
       const [prenotazioneEliminata] = nuovaLista.splice(index, 1);
       dispatch(deletePrenotazione(prenotazioneEliminata.id));
-      await window.electronAPI.writePrenotazioni(nuovaLista);
+      await writePrenotazioni(nuovaLista);
       dispatch(setPrenotazioni(nuovaLista));
       resetModal();
       showFeedback("Prenotazione eliminata con successo.", "success");
@@ -732,7 +734,7 @@ accessori: {
         showFeedback("Prenotazione aggiunta con successo", "success");
       }
   
-      await window.electronAPI.writePrenotazioni(prenotazioniAggiornate);
+      await writePrenotazioni(prenotazioniAggiornate);
       setSelectedDate(prev => prev);
 
     } catch (error) {
@@ -805,7 +807,7 @@ const segnaComeCompletata = async (index) => {
   );
 
   dispatch(updatePrenotazione(aggiornata));
-  await window.electronAPI.writePrenotazioni(nuovePrenotazioni);
+  await writePrenotazioni(nuovePrenotazioni);
   dispatch(setPrenotazioni(nuovePrenotazioni));
   showFeedback("Prenotazione conclusa", "success");
   
@@ -844,7 +846,7 @@ const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoD
   );
 
   dispatch(updatePrenotazione(aggiornata));
-  await window.electronAPI.writePrenotazioni(nuovePrenotazioni);
+  await writePrenotazioni(nuovePrenotazioni);
   dispatch(setPrenotazioni(nuovePrenotazioni));
 
   if (descrizioneDanno?.trim()) {
@@ -868,7 +870,7 @@ const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoD
     }
 
 if (daRiparare && prenotazione.targa) {
-  const veicoli = await window.electronAPI.readVeicoli();
+  const veicoli = await readVeicoli();
   const index = veicoli.findIndex(v => v.targa === prenotazione.targa);
 
   if (index !== -1) {
@@ -884,7 +886,7 @@ if (daRiparare && prenotazione.targa) {
     veicoli[index].danni = veicoli[index].danni || [];
     veicoli[index].danni.push(nuovoDanno);
 
-    await window.electronAPI.writeVeicoli(veicoli);
+    await writeVeicoli(veicoli);
     showFeedback("Danno salvato nel veicolo", "success");
   }
 }
@@ -916,7 +918,7 @@ const concludiPrenotazioniScadute = async () => {
 
   try {
     dispatch(setPrenotazioni(nuovePrenotazioni));
-    await window.electronAPI.writePrenotazioni(nuovePrenotazioni);
+    await writePrenotazioni(nuovePrenotazioni);
     showFeedback(`${daConcludere.length} prenotazioni concluse automaticamente.`, "success");
   } catch (error) {
     console.error("Errore conclusione multipla prenotazioni:", error);
