@@ -2,6 +2,7 @@
 import React, { useState, useEffect,useRef } from 'react';
 import './Clients.css';
 import ModalEditClient from '../components/ModalEditClient';
+import ClientForm from '../components/ClientForm';
 import { setClienti, addCliente, updateCliente, deleteCliente } from '../store/clientiSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
@@ -346,132 +347,13 @@ const isPatenteScaduta = (dataScadenza) => {
 </div>
 
 {  mostraFormAggiunta && (
-<form onSubmit={handleSubmit} className="client-form">
-
-  {/* DATI CLIENTE */}
-  <div className="form-section">
-    <h3>Dati Cliente</h3>
-    <div className="field-group">
-      <input type="text" name="nome" placeholder="Nome" value={formData.nome} onChange={handleChange} required />
-      <input type="text" name="cognome" placeholder="Cognome" value={formData.cognome} onChange={handleChange} required />
-      <input type="text" name="codiceFiscale" placeholder="Codice Fiscale" value={formData.codiceFiscale} onChange={handleChange} required />
-      <input type="text" name="indirizzo" placeholder="Indirizzo" value={formData.indirizzo} onChange={handleChange} />
-      <input type="text" name="luogoNascita" placeholder="Luogo di nascita" value={formData.luogoNascita} onChange={handleChange} />
-      <input type="date" name="dataNascita" placeholder="Data di nascita" value={formData.dataNascita} onChange={handleChange} />
-    </div>
-  </div>
-
-  {/* CONTATTI */}
-  <div className="form-section">
-    <h3>Contatti</h3>
-    <div className="field-group">
-      <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} required />
-      <input type="tel" name="telefono" placeholder="Telefono Fisso" value={formData.telefono} onChange={handleChange} />
-      <input type="tel" name="cellulare" placeholder="Cellulare" value={formData.cellulare} onChange={handleChange} />
-    </div>
-  </div>
-
- {/* DOCUMENTI */}
-<div className="form-section">
-  <h3>Documento di Riconoscimento</h3>
-  <div className="field-group">
-    <div className="field">
-      <label>Tipo Documento</label>
-      <select name="tipoDocumento" value={formData.tipoDocumento} onChange={handleChange}>
-        <option value="">Seleziona...</option>
-        <option value="CI">Carta d'Identità</option>
-        <option value="Patente">Patente</option>
-        <option value="Passaporto">Passaporto</option>
-        <option value="Permesso di soggiorno">Permesso di soggiorno</option>
-        <option value="Tessera sanitaria">Tessera sanitaria</option>
-        <option value="Altro">Altro</option>
-      </select>
-    </div>
-
-    {formData.tipoDocumento === 'Altro' && (
-      <div className="field">
-        <label>Specifica Tipo Documento</label>
-        <input
-          type="text"
-          name="tipoDocumentoAltro"
-          value={formData.tipoDocumentoAltro || ''}
-          onChange={handleChange}
-          placeholder="Es. Carta professionale"
-        />
-      </div>
-    )}
-
-    <div className="field">
-      <label>Numero Documento</label>
-      <input type="text" name="documento" value={formData.documento} onChange={handleChange} />
-    </div>
-
-    <div className="field">
-      <label>Rilasciato da</label>
-      <input type="text" name="rilasciatoDaDocumento" value={formData.rilasciatoDaDocumento || ''} onChange={handleChange} />
-    </div>
-
-    <div className="field">
-      <label>Data Rilascio</label>
-      <input type="date" name="rilascioDocumento" value={formData.rilascioDocumento || ''} onChange={handleChange} />
-    </div>
-
-    <div className="field">
-      <label>Data Scadenza</label>
-      <input type="date" name="scadenzaDocumento" value={formData.scadenzaDocumento || ''} onChange={handleChange} />
-      {documentoScaduto && (
-  <span className="badge badge-error" style={{ marginTop: '4px' }}>
-    ⚠️ Documento Scaduto
-  </span>
-)}
-
-    </div>
-  </div>
-
-  <h3 style={{ marginTop: '1.5rem' }}>Patente di Guida</h3>
-  <div className="field-group">
-    <div className="field">
-      <label>Numero Patente</label>
-      <input type="text" name="patente" value={formData.patente} onChange={handleChange} required />
-    </div>
-
-    <div className="field">
-      <label>Rilasciata da</label>
-      <input type="text" name="rilasciataDaPatente" value={formData.rilasciataDaPatente || ''} onChange={handleChange} />
-    </div>
-
-    <div className="field">
-      <label>Data Rilascio</label>
-      <input type="date" name="rilascioPatente" value={formData.rilascioPatente || ''} onChange={handleChange} />
-    </div>
-
-    <div className="field">
-      <label>Data Scadenza</label>
-      <input type="date" name="scadenzaPatente" value={formData.scadenzaPatente || ''} onChange={handleChange} />
-      {patenteScaduta && (
-  <span className="badge badge-error" style={{ marginTop: '4px' }}>
-    ⚠️ Patente scaduta
-  </span>
-)}
-
-    </div>
-  </div>
-</div>
-
-
-  {/* AZIENDA */}
-  <div className="form-section">
-    <h3>Dati Aziendali</h3>
-    <div className="field-group">
-      <input type="text" name="ragioneSociale" placeholder="Ragione Sociale" value={formData.ragioneSociale} onChange={handleChange} />
-      <input type="text" name="piva" placeholder="Partita IVA" value={formData.piva} onChange={handleChange} />
-      <input type="text" name="pec" placeholder="PEC" value={formData.pec} onChange={handleChange} />
-      <input type="text" name="codiceUnivoco" placeholder="Codice Univoco SDI" value={formData.codiceUnivoco} onChange={handleChange} />
-    </div>
-  </div>
-
-  <button type="submit" className="save-btn">Salva Cliente</button>
-</form>
+  <ClientForm
+    formData={formData}
+    onChange={handleChange}
+    onSubmit={handleSubmit}
+    patenteScaduta={patenteScaduta}
+    documentoScaduto={documentoScaduto}
+  />
 )}
 
 
@@ -489,6 +371,13 @@ const isPatenteScaduta = (dataScadenza) => {
         </tr>
       </thead>
       <tbody>
+        {filtroAttivo && clientiFiltrati.length === 0 && (
+          <tr>
+            <td colSpan={6} style={{ textAlign: 'center', padding: '1.5rem', color: '#888' }}>
+              Nessun cliente trovato.
+            </td>
+          </tr>
+        )}
         {clientiDaMostrare.map((cliente, index) => (
             <tr key={index}>
               <td>{cliente.nome}</td>

@@ -1,5 +1,7 @@
 .DialogOverlay {
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(10, 16, 28, 0.66);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
     position: fixed;
     inset: 0;
     z-index: 9999;

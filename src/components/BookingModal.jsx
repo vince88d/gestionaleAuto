@@ -17,6 +17,7 @@ function BookingModal({ open, onClose, children }) {
   return (
     <Dialog.Root
       open={open}
+      modal={false}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
           onClose();
@@ -24,8 +25,23 @@ function BookingModal({ open, onClose, children }) {
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="DialogOverlay" />
-        <Dialog.Content className="DialogContent">
+        {/* Radix non renderizza Dialog.Overlay quando modal={false};
+            l'overlay esplicito mantiene in evidenza la prenotazione
+            senza interferire con il modal annidato per il nuovo cliente. */}
+        <div className="DialogOverlay" aria-hidden="true" />
+        <Dialog.Content
+          className="DialogContent"
+          onInteractOutside={(e) => {
+            if (e.target.closest?.('.AddClientOverlay, .AddClientModal')) {
+              e.preventDefault();
+            }
+          }}
+          onFocusOutside={(e) => {
+            if (e.target.closest?.('.AddClientOverlay, .AddClientModal')) {
+              e.preventDefault();
+            }
+          }}
+        >
           <Dialog.Title >
           <VisuallyHidden>Gestione Prenotazione</VisuallyHidden>
             </Dialog.Title>
