@@ -18,8 +18,9 @@ import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
 import ConcludiPrenotazioneModal from '../components/ConcludiPrenotazioneModal';
 import { useLocation } from 'react-router-dom';
-import { readPrenotazioni, writePrenotazioni } from '../lib/firestorePrenotazioni';
+import { readPrenotazioni, writePrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
 import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
+import { readHolds } from '../lib/firestoreHolds';
 import { readClienti, writeClienti } from '../lib/firestoreClienti';
 import{
   setPrenotazioni,
@@ -36,7 +37,11 @@ import{
 
 function Bookings() {
   const prenotazioni = useSelector((state) => state.prenotazioni);
-  const prenotazioniAttive = prenotazioni.filter(p => p.status !== 'completata');
+  // Solo per la visualizzazione (calendario, tabella, contatori): esclude anche
+  // i tentativi di checkout dal sito non andati a buon fine. Non usare questa
+  // lista per scrivere su Firestore, va usato sempre `prenotazioni` (vedi nota
+  // in firestorePrenotazioni.js).
+  const prenotazioniAttive = prenotazioni.filter(p => p.status !== 'completata' && isPrenotazioneVisibile(p));
   const dispatch = useDispatch();
   const [editingIndex, setEditingIndex] = useState(null);
   const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -51,6 +56,7 @@ function Bookings() {
   const [feedbackType, setFeedbackType] = useState('success');
   const [loading, setLoading] = useState(false);
   const [availableVehicles, setAvailableVehicles] = useState([]);
+  const [holds, setHolds] = useState([]);
   const [availableVehiclesForBooking, setAvailableVehiclesForBooking] = useState([]);
   const [forceRenderKey, setForceRenderKey] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -198,8 +204,25 @@ useEffect(() => {
         showFeedback("Errore nel caricamento dei veicoli", "error");
       }
     };
-  
+
     caricaVeicoli();
+  }, []);
+
+  // Hold del sito: servono a sapere se un'auto è momentaneamente bloccata da
+  // un cliente che sta pagando online, per non farla prenotare due volte.
+  useEffect(() => {
+    const caricaHolds = async () => {
+      try {
+        const datiHolds = await readHolds();
+        setHolds(datiHolds);
+      } catch (error) {
+        console.error("Errore lettura hold:", error);
+      }
+    };
+
+    caricaHolds();
+    const interval = setInterval(caricaHolds, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleRicerca = (e) => {
@@ -353,7 +376,7 @@ accessori: {
       "Cliente", "Codice Fiscale", "Patente", "Veicolo", "Targa",
       "Data Inizio", "Data Fine", "Prezzo Giornaliero", "Prezzo Totale"
     ];
-    const rows = prenotazioni.map(p => [
+    const rows = prenotazioniAttive.map(p => [
       p.cliente, p.codiceFiscale, p.patente, p.veicolo, p.targa,
       p.dataInizio, p.dataFine, p.prezzoGiornaliero, p.prezzoTotale
     ]);
@@ -1054,6 +1077,8 @@ return (
           onSubmit={handleBookingSubmit}
           initialValues={formData}
           availableVehicles={availableVehiclesForBooking}
+          veicoli={availableVehicles}
+          holds={holds}
           clienti = {clienti}
           prenotazioni={prenotazioni}
        />

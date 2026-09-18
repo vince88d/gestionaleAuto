@@ -13,6 +13,7 @@ import { writeClienti } from '../lib/firestoreClienti';
 import DatePicker from 'react-datepicker';
 import { it } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
+import { disponibiliPerCategoria } from '../utils/disponibilitaCategoria';
 import './BookingForm.css';
 
 const normalizzaCodiceFiscale = (value) => (value || '').trim().toUpperCase();
@@ -55,7 +56,15 @@ const schema = yup.object().shape({
     .required('Email cliente obbligatoria'),
 });
 
-function BookingForm({ onSubmit, initialValues, availableVehicles, clienti = [], prenotazioni = [] }) {
+function BookingForm({
+  onSubmit,
+  initialValues,
+  availableVehicles,
+  veicoli = [],
+  holds = [],
+  clienti = [],
+  prenotazioni = [],
+}) {
   const dispatch = useDispatch();
   const [clienteSelezionato, setClienteSelezionato] = useState(null);
   const [disabledDates, setDisabledDates] = useState([]);
@@ -229,6 +238,20 @@ function BookingForm({ onSubmit, initialValues, availableVehicles, clienti = [],
     });
   };
 
+  // Anche se questa targa specifica non ha conflitti diretti, la sua
+  // categoria potrebbe essere già "esaurita" da hold/prenotazioni del sito
+  // (che non sono legati a una targa precisa finché lo staff non la
+  // assegna): in tal caso nessun veicolo di quella categoria va dato,
+  // altrimenti si supera la flotta disponibile per quelle date.
+  const categoriaSatura = (vehicle) => {
+    if (!vehicle?.categoria || !dataInizio || !dataFine) return false;
+    return (
+      disponibiliPerCategoria(vehicle.categoria, dataInizio, dataFine, veicoli, prenotazioni, holds, {
+        escludiPrenotazioneId: bookingId,
+      }) <= 0
+    );
+  };
+
   const calcolaPrezzoTotale = () => {
     if (!dataInizio || !dataFine || !prezzoGiornaliero) return '';
     const start = new Date(dataInizio);
@@ -315,17 +338,21 @@ function BookingForm({ onSubmit, initialValues, availableVehicles, clienti = [],
           <option value="">Seleziona un veicolo</option>
           {veicoliSelezionabili.map((vehicle) => {
             const isUnavailable = hasVehicleConflict(vehicle.targa);
+            const categoriaEsaurita = !isUnavailable && categoriaSatura(vehicle);
+            const nonSelezionabile = isUnavailable || categoriaEsaurita;
             return (
               <option
                 key={vehicle.targa}
                 value={vehicle.targa}
-                disabled={isUnavailable && vehicle.targa !== initialValues?.targa}
+                disabled={nonSelezionabile && vehicle.targa !== initialValues?.targa}
               >
                 {vehicle.modello} - {vehicle.targa}
                 {dataInizio && dataFine
                   ? isUnavailable
                     ? ' | occupato nel periodo'
-                    : ' | disponibile'
+                    : categoriaEsaurita
+                      ? ' | categoria esaurita (hold sul sito)'
+                      : ' | disponibile'
                   : ''}
               </option>
             );

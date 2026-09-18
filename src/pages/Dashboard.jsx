@@ -2,7 +2,7 @@ import './Dashboard.css';
 import { useSelector } from 'react-redux';
 import React, { useEffect,useRef,useState } from 'react';
 import { setVeicoli } from '../store/veicoliSlice';
-import { readPrenotazioni } from '../lib/firestorePrenotazioni';
+import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
 import { readVeicoli } from '../lib/firestoreVeicoli';
 import { readClienti } from '../lib/firestoreClienti';
 import { useDispatch } from 'react-redux';
@@ -111,7 +111,7 @@ const getVeicoliDisponibili = (dataInizio, dataFine, listaPrenotazioni = prenota
   const caricaDatiDashboard = async () => {
     try {
       const clientiData = await readClienti();
-      const prenotazioniData = await readPrenotazioni();
+      const prenotazioniData = (await readPrenotazioni()).filter(isPrenotazioneVisibile);
 
       const meseCorrente = new Date().getMonth(); // 0-11
       const annoCorrente = new Date().getFullYear();
@@ -282,7 +282,7 @@ useEffect(() => {
   }
 
   try {
-    const tuttePrenotazioni = await readPrenotazioni();
+    const tuttePrenotazioni = (await readPrenotazioni()).filter(isPrenotazioneVisibile);
     const disponibili = getVeicoliDisponibili(dataInizioRicerca, dataFineRicerca, tuttePrenotazioni);
     setVeicoliDaMostrare(disponibili);
   } catch (err) {

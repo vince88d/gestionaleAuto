@@ -10,7 +10,7 @@ import {Car, Calendar, Trash2, Edit3, Clock, CheckCircle, PlusCircle, XCircle, U
 import VehicleCard from '../components/VeichleCard';
 import VehicleForm from '../components/VehicleForm';
 import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
-import { readPrenotazioni } from '../lib/firestorePrenotazioni';
+import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
 import './Vehicle.css';
 
 Modal.setAppElement('#root');
@@ -270,7 +270,7 @@ const handleDeleteDamagePhoto = (index) => {
 
 
 
-const prenotazioniAttive = prenotazioni.filter(p => p.status !== 'completata');
+const prenotazioniAttive = prenotazioni.filter(p => p.status !== 'completata' && isPrenotazioneVisibile(p));
 
 const isDisponibile = (veicolo) => {
   const oggi = new Date().toISOString().split('T')[0];

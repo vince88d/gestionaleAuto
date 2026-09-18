@@ -4,6 +4,25 @@ import { readClienti, writeClienti } from './firestoreClienti';
 
 const PRENOTAZIONI_COLLECTION = 'prenotazioni';
 
+// Stati creati dal sito durante il checkout che non rappresentano una
+// prenotazione reale: il cliente ha iniziato il pagamento ma non l'ha mai
+// completato (hold ancora in corso, scaduto o pagamento fallito). Restano
+// nel documento Firestore (servono alla Cloud Function per gestire l'hold),
+// ma vanno esclusi da qualunque lista mostrata allo staff con
+// isPrenotazioneVisibile — vedi Dashboard.jsx, Booking.jsx,
+// ArchivioPrenotazioni.jsx, Vehicles.jsx.
+//
+// Non filtrare invece qui in readPrenotazioni(): il suo risultato alimenta
+// anche writePrenotazioni() (via lo stato Redux), che sincronizza Firestore
+// cancellando ogni documento non presente nella lista passata. Se
+// readPrenotazioni() omettesse questi stati, il primo salvataggio fatto dal
+// gestionale cancellerebbe da Firestore gli hold del sito ancora in corso.
+export const STATI_PRENOTAZIONE_NON_CONFERMATE = ['richiesta-sito', 'scaduta', 'pagamento-fallito'];
+
+export function isPrenotazioneVisibile(prenotazione) {
+  return !STATI_PRENOTAZIONE_NON_CONFERMATE.includes(prenotazione?.status);
+}
+
 export async function readPrenotazioni() {
   const snapshot = await getDocs(collection(db, PRENOTAZIONI_COLLECTION));
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
