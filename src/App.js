@@ -4,6 +4,7 @@ import { HashRouter as Router, Routes, Route, useNavigate, Navigate } from 'reac
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+import AuthGate from './components/AuthGate';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Vehicles from './pages/Vehicles';
@@ -64,9 +65,11 @@ function App() {
   return (
     <>
       <ToastContainer />
-      <Router>
-        <AppContent />
-      </Router>
+      <AuthGate>
+        <Router>
+          <AppContent />
+        </Router>
+      </AuthGate>
     </>
   );
 }
