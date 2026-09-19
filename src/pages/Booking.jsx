@@ -17,6 +17,8 @@ import BookingModal from '../components/BookingModal';
 import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
 import ConcludiPrenotazioneModal from '../components/ConcludiPrenotazioneModal';
+import PrenotazioniDaAssegnare from '../components/PrenotazioniDaAssegnare';
+import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { useLocation } from 'react-router-dom';
 import { readPrenotazioni, writePrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
 import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
@@ -423,12 +425,7 @@ accessori: {
     return `${giorni} giorni`;
   };
 
-  const calcGiorni = (inizio, fine) => {
-    const start = new Date(inizio);
-    const end = new Date(fine);
-    const diff = end - start;
-    return diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
-  };
+  const calcGiorni = calcolaGiorniNoleggio;
 
   const openInfoModal = (prenotazione) => {
     setDettagliPrenotazione(prenotazione);
@@ -985,7 +982,9 @@ return (
       </div>
     )}
   <h1 className="title">Gestione Prenotazioni</h1>
-  
+
+  <PrenotazioniDaAssegnare prenotazioni={prenotazioni} veicoli={availableVehicles} />
+
 <form onSubmit={handleRicerca} className="bookings-search-form">
   <Search
     size={18}

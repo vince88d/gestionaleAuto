@@ -4,6 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import Modal from 'react-modal';
 import { X } from 'lucide-react';
+import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import AutocompleteClienti from './AutocompleteClienti';
@@ -254,10 +255,7 @@ function BookingForm({
 
   const calcolaPrezzoTotale = () => {
     if (!dataInizio || !dataFine || !prezzoGiornaliero) return '';
-    const start = new Date(dataInizio);
-    const end = new Date(dataFine);
-    const diff = end - start;
-    const giorni = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+    const giorni = calcolaGiorniNoleggio(dataInizio, dataFine);
     return giorni * parseFloat(prezzoGiornaliero || 0);
   };
 

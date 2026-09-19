@@ -1,6 +1,7 @@
 import { db } from '../components/firebase';
-import { collection, getDocs, doc, writeBatch, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, setDoc, updateDoc } from 'firebase/firestore';
 import { readClienti, writeClienti } from './firestoreClienti';
+import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 
 const PRENOTAZIONI_COLLECTION = 'prenotazioni';
 
@@ -48,6 +49,33 @@ export async function writePrenotazioni(nuovaLista) {
 
   await batch.commit();
   return true;
+}
+
+// Assegna il veicolo fisico a una prenotazione arrivata dal sito (che riserva
+// solo la categoria) e, se disponibile, registra la patente controllata in
+// sede. Aggiorna solo questi campi con updateDoc: non passa da
+// writePrenotazioni(), che riscrive l'intera collezione.
+// Il sito salva il totale pagato in `totale`, mentre il gestionale legge
+// `prezzoTotale`/`prezzoGiornaliero`: li allineiamo qui se mancano, senza
+// ricalcolare l'importo che il cliente ha già pagato.
+export async function assegnaVeicolo({ prenotazione, veicolo, patente }) {
+  const aggiornamenti = {
+    targa: veicolo.targa,
+    veicolo: veicolo.modello,
+    veicoloAssegnatoIl: new Date().toISOString(),
+  };
+
+  const patentePulita = (patente || '').trim().toUpperCase();
+  if (patentePulita) aggiornamenti.patente = patentePulita;
+
+  if (prenotazione.totale != null && !prenotazione.prezzoTotale) {
+    const giorni = calcolaGiorniNoleggio(prenotazione.dataInizio, prenotazione.dataFine) || 1;
+    aggiornamenti.prezzoTotale = prenotazione.totale;
+    aggiornamenti.prezzoGiornaliero = Math.round((prenotazione.totale / giorni) * 100) / 100;
+  }
+
+  await updateDoc(doc(db, PRENOTAZIONI_COLLECTION, prenotazione.id), aggiornamenti);
+  return { ...prenotazione, ...aggiornamenti };
 }
 
 // Aggiorna anche lo storico contratti del cliente corrispondente.
