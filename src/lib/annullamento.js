@@ -17,5 +17,6 @@ export function messaggioErroreRimborso(err) {
   if (err?.code === 'functions/permission-denied' || err?.code === 'functions/unauthenticated') {
     return "Non hai i permessi per annullare: accedi di nuovo come staff.";
   }
-  return err?.message || 'Impossibile annullare la prenotazione, riprova.';
+  // L'SDK di Firebase aggiunge " [codice HTTP]" in coda al messaggio: lo togliamo.
+  return err?.message?.replace(/\s*\[\d{3}\]$/, '') || 'Impossibile annullare la prenotazione, riprova.';
 }
