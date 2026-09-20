@@ -5,6 +5,7 @@ import { Pencil, Trash2, CheckCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
+import { isPagataOnline } from '../utils/pagamentoOnline';
 
 
 function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, soloLettura = false }) {
@@ -264,7 +265,9 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
         {!soloLettura && (
           <div className="modal-footer no-print">
             <button className="btn btn-secondary" onClick={() => onModifica(prenotazione)}><Pencil size={16} /> Modifica</button>
-            <button className="btn btn-danger" onClick={() => onElimina(prenotazione)}><Trash2 size={16} /> Elimina</button>
+            <button className="btn btn-danger" onClick={() => onElimina(prenotazione)}>
+              <Trash2 size={16} /> {isPagataOnline(prenotazione) ? 'Annulla e rimborsa' : 'Elimina'}
+            </button>
             <button className="btn btn-success" onClick={() => onConcludi(prenotazione)}><CheckCircle size={16} /> Concludi</button>
           </div>
         )}

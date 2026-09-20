@@ -20,7 +20,8 @@ import ConcludiPrenotazioneModal from '../components/ConcludiPrenotazioneModal';
 import PrenotazioniDaAssegnare from '../components/PrenotazioniDaAssegnare';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { useLocation } from 'react-router-dom';
-import { readPrenotazioni, writePrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
+import { readPrenotazioni, writePrenotazioni, isPrenotazioneVisibile, isPagataOnline } from '../lib/firestorePrenotazioni';
+import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento';
 import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
 import { readHolds } from '../lib/firestoreHolds';
 import { readClienti, writeClienti } from '../lib/firestoreClienti';
@@ -64,6 +65,9 @@ function Bookings() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
+  // Prenotazione pagata online da annullare con rimborso su Stripe.
+  const [daRimborsare, setDaRimborsare] = useState(null);
+  const [rimborsoInCorso, setRimborsoInCorso] = useState(false);
   const clienti = useSelector((state) => state.clienti);
   const [concludiModalOpen, setConcludiModalOpen] = useState(false);
   const [prenotazioneDaConcludere, setPrenotazioneDaConcludere] = useState(null);
@@ -438,8 +442,42 @@ accessori: {
   };
 
   const handleDelete = (index) => {
+    // Una prenotazione pagata online non si elimina: il cliente resterebbe
+    // addebitato. Si annulla con rimborso su Stripe.
+    if (isPagataOnline(prenotazioni[index])) {
+      setDaRimborsare(prenotazioni[index]);
+      return;
+    }
     setDeleteIndex(index);
     setConfirmOpen(true);
+  };
+
+  const confermaRimborso = async () => {
+    const prenotazione = daRimborsare;
+    if (!prenotazione || rimborsoInCorso) return;
+    setRimborsoInCorso(true);
+    try {
+      const { rimborsato, giaRimborsato } = await annullaConRimborso(prenotazione.id);
+      dispatch(updatePrenotazione({
+        ...prenotazione,
+        status: 'annullata',
+        ...(rimborsato > 0 ? { rimborsato } : {}),
+      }));
+      setDaRimborsare(null);
+      setInfoModalOpen(false);
+      showFeedback(
+        giaRimborsato
+          ? 'Prenotazione annullata (il pagamento risultava già rimborsato su Stripe).'
+          : `Prenotazione annullata. Rimborsati ${rimborsato.toFixed(2)} € al cliente.`,
+        'success',
+      );
+    } catch (error) {
+      console.error('Errore annullamento con rimborso:', error);
+      // La prenotazione resta attiva: nessun rimborso è stato registrato.
+      showFeedback(messaggioErroreRimborso(error), 'error');
+    } finally {
+      setRimborsoInCorso(false);
+    }
   };
 
   
@@ -1386,6 +1424,18 @@ return (
     message="Sei sicuro di voler eliminare questa prenotazione?"
     title="Elimina Prenotazione"
     confirmLabel="Elimina"
+    tone="danger"
+  />
+
+  <ConfirmDialog
+    open={Boolean(daRimborsare)}
+    onCancel={() => !rimborsoInCorso && setDaRimborsare(null)}
+    onConfirm={confermaRimborso}
+    title="Annullare e rimborsare?"
+    message={daRimborsare
+      ? `La prenotazione di ${daRimborsare.cliente} (${daRimborsare.dataInizio} → ${daRimborsare.dataFine}) è stata pagata online. Verrà annullata e verranno rimborsati ${Number(daRimborsare.totale ?? daRimborsare.prezzoTotale ?? 0).toFixed(2)} € sulla carta del cliente. L'operazione non si può annullare.`
+      : ''}
+    confirmLabel={rimborsoInCorso ? 'Rimborso in corso…' : 'Sì, annulla e rimborsa'}
     tone="danger"
   />
 

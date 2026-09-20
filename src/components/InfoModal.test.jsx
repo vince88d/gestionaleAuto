@@ -26,6 +26,17 @@ test('le info di una prenotazione del sito, senza scheda veicolo, si aprono senz
   expect(screen.queryByText('Accessori')).toBeNull();
 });
 
+test('una prenotazione pagata online mostra "Annulla e rimborsa" invece di "Elimina"', () => {
+  render(<InfoModal isOpen prenotazione={{ ...prenotazioneDalSito, paymentIntentId: 'pi_1' }} {...azioni} />);
+  expect(screen.getByText('Annulla e rimborsa')).toBeTruthy();
+  expect(screen.queryByText('Elimina')).toBeNull();
+});
+
+test('una prenotazione creata dal gestionale (senza pagamento online) mostra "Elimina"', () => {
+  render(<InfoModal isOpen prenotazione={{ ...prenotazioneDalSito, origine: undefined }} {...azioni} />);
+  expect(screen.getByText('Elimina')).toBeTruthy();
+});
+
 test('con la scheda veicolo compilata mostra gli accessori', () => {
   const conScheda = {
     ...prenotazioneDalSito,

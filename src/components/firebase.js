@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { getFunctions } from "firebase/functions";
 import {getStorage} from "firebase/storage";
 
 const firebaseConfig = {
@@ -24,4 +25,7 @@ const storage = getStorage(app);
 // Autenticazione staff (vedi AuthGate.jsx)
 const auth = getAuth(app);
 
-export { db, storage, auth };
+// Cloud Functions del sito (rimborsi). Regione di functions/src/index.ts.
+const functions = getFunctions(app, "europe-west1");
+
+export { db, storage, auth, functions };

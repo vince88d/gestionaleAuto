@@ -20,9 +20,16 @@ const PRENOTAZIONI_COLLECTION = 'prenotazioni';
 // gestionale cancellerebbe da Firestore gli hold del sito ancora in corso.
 export const STATI_PRENOTAZIONE_NON_CONFERMATE = ['richiesta-sito', 'scaduta', 'pagamento-fallito'];
 
+// Le prenotazioni annullate (con l'eventuale rimborso già fatto) restano in
+// Firestore come storico, ma non compaiono nelle liste di lavoro dello staff.
 export function isPrenotazioneVisibile(prenotazione) {
-  return !STATI_PRENOTAZIONE_NON_CONFERMATE.includes(prenotazione?.status);
+  return (
+    prenotazione?.status !== 'annullata' &&
+    !STATI_PRENOTAZIONE_NON_CONFERMATE.includes(prenotazione?.status)
+  );
 }
+
+export { isPagataOnline } from '../utils/pagamentoOnline';
 
 export async function readPrenotazioni() {
   const snapshot = await getDocs(collection(db, PRENOTAZIONI_COLLECTION));
