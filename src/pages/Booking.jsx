@@ -18,6 +18,7 @@ import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
 import ConcludiPrenotazioneModal from '../components/ConcludiPrenotazioneModal';
 import PrenotazioniDaAssegnare from '../components/PrenotazioniDaAssegnare';
+import AnnullaConPenaleModal from '../components/AnnullaConPenaleModal';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { useLocation } from 'react-router-dom';
 import { readPrenotazioni, writePrenotazioni, isPrenotazioneVisibile, isPagataOnline } from '../lib/firestorePrenotazioni';
@@ -452,23 +453,27 @@ accessori: {
     setConfirmOpen(true);
   };
 
-  const confermaRimborso = async () => {
+  // `penale` (facoltativa): { percentuale } o { importo } da trattenere.
+  const confermaRimborso = async (penale) => {
     const prenotazione = daRimborsare;
     if (!prenotazione || rimborsoInCorso) return;
     setRimborsoInCorso(true);
     try {
-      const { rimborsato, giaRimborsato } = await annullaConRimborso(prenotazione.id);
+      const { rimborsato, trattenuto, giaRimborsato } = await annullaConRimborso(prenotazione.id, penale);
       dispatch(updatePrenotazione({
         ...prenotazione,
         status: 'annullata',
         ...(rimborsato > 0 ? { rimborsato } : {}),
+        ...(trattenuto > 0 ? { penaleTrattenuta: trattenuto } : {}),
       }));
       setDaRimborsare(null);
       setInfoModalOpen(false);
       showFeedback(
         giaRimborsato
           ? 'Prenotazione annullata (il pagamento risultava già rimborsato su Stripe).'
-          : `Prenotazione annullata. Rimborsati ${rimborsato.toFixed(2)} € al cliente.`,
+          : trattenuto > 0
+            ? `Prenotazione annullata. Rimborsati ${rimborsato.toFixed(2)} € al cliente, trattenuti ${trattenuto.toFixed(2)} € di penale.`
+            : `Prenotazione annullata. Rimborsati ${rimborsato.toFixed(2)} € al cliente.`,
         'success',
       );
     } catch (error) {
@@ -1427,16 +1432,12 @@ return (
     tone="danger"
   />
 
-  <ConfirmDialog
-    open={Boolean(daRimborsare)}
-    onCancel={() => !rimborsoInCorso && setDaRimborsare(null)}
-    onConfirm={confermaRimborso}
-    title="Annullare e rimborsare?"
-    message={daRimborsare
-      ? `La prenotazione di ${daRimborsare.cliente} (${daRimborsare.dataInizio} → ${daRimborsare.dataFine}) è stata pagata online. Verrà annullata e verranno rimborsati ${Number(daRimborsare.totale ?? daRimborsare.prezzoTotale ?? 0).toFixed(2)} € sulla carta del cliente. L'operazione non si può annullare.`
-      : ''}
-    confirmLabel={rimborsoInCorso ? 'Rimborso in corso…' : 'Sì, annulla e rimborsa'}
-    tone="danger"
+  <AnnullaConPenaleModal
+    key={daRimborsare?.id || 'nessuna'}
+    prenotazione={daRimborsare}
+    inCorso={rimborsoInCorso}
+    onClose={() => setDaRimborsare(null)}
+    onConferma={confermaRimborso}
   />
 
   <ConfirmDialog
