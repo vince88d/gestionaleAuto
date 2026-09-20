@@ -152,7 +152,7 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
 </div>
 
 
-{prenotazione.schedaVeicolo.accessori && (
+{prenotazione.schedaVeicolo?.accessori && (
   <>
     <h4 style={{ marginTop: '10px' }}>Accessori</h4>
     <div style={{
@@ -317,7 +317,7 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
   </div>
 
 
-{prenotazione.schedaVeicolo.accessori && (
+{prenotazione.schedaVeicolo?.accessori && (
   <>
     <h4 style={{ marginTop: '10px' }}>Accessori</h4>
     <div style={{
