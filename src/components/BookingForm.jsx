@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import Modal from 'react-modal';
 import { X } from 'lucide-react';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
+import { confrontaConListino, devoApplicareListino, prezzoIniziale } from '../utils/prezzoListino';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import AutocompleteClienti from './AutocompleteClienti';
@@ -167,15 +168,25 @@ function BookingForm({
   const prezzoGiornaliero = watch('prezzoGiornaliero');
   const bookingId = initialValues?.id;
 
+  // Il prezzo giornaliero parte dal listino dell'auto ma il gestore può cambiarlo.
+  // Il listino si applica solo quando sceglie un'auto diversa: aggiornare la lista
+  // dei veicoli o riaprire una prenotazione non deve rimettere a listino il prezzo
+  // concordato.
+  const targaAllineata = useRef(initialValues?.targa || '');
+
   useEffect(() => {
     if (watchTarga && availableVehicles) {
       const selectedVehicle = availableVehicles.find((v) => v.targa === watchTarga);
       if (selectedVehicle) {
         setValue('veicolo', selectedVehicle.modello || '');
-        setValue('prezzoGiornaliero', selectedVehicle.prezzo || '');
+        if (devoApplicareListino({ targaScelta: watchTarga, targaAllineata: targaAllineata.current })) {
+          setValue('prezzoGiornaliero', selectedVehicle.prezzo || '');
+          targaAllineata.current = watchTarga;
+        }
       } else {
         setValue('veicolo', '');
         setValue('prezzoGiornaliero', '');
+        targaAllineata.current = '';
       }
     }
   }, [watchTarga, availableVehicles, setValue]);
@@ -209,12 +220,17 @@ function BookingForm({
 
   useEffect(() => {
     reset({ ...initialValues });
+    targaAllineata.current = initialValues?.targa || '';
 
     if (initialValues?.targa && availableVehicles?.length > 0) {
       const selected = availableVehicles.find((v) => v.targa === initialValues.targa);
       if (selected) {
         setValue('veicolo', selected.modello || initialValues.veicolo || '');
-        setValue('prezzoGiornaliero', selected.prezzo || initialValues.prezzoGiornaliero || '');
+        // Un prezzo già salvato (anche diverso dal listino) resta com'è.
+        setValue(
+          'prezzoGiornaliero',
+          prezzoIniziale({ prezzoSalvato: initialValues.prezzoGiornaliero, listino: selected.prezzo }),
+        );
       }
     }
   }, [initialValues, reset, availableVehicles, setValue]);
@@ -252,6 +268,12 @@ function BookingForm({
       }) <= 0
     );
   };
+
+  // Listino dell'auto scelta (dall'elenco completo, non dalla voce di ripiego che
+  // usa il prezzo della prenotazione) e scarto rispetto al prezzo applicato.
+  const listinoAuto = (veicoli.find((v) => v.targa === watchTarga) || {}).prezzo;
+  const confrontoListino = confrontaConListino(prezzoGiornaliero, listinoAuto);
+  const euro = (valore) => `${Number(valore).toFixed(2).replace('.', ',')} €`;
 
   const calcolaPrezzoTotale = () => {
     if (!dataInizio || !dataFine || !prezzoGiornaliero) return '';
@@ -371,6 +393,13 @@ function BookingForm({
       <div className="form-group">
         <label>Prezzo Giornaliero (EUR)</label>
         <input type="number" step="0.01" {...register('prezzoGiornaliero')} placeholder="Es. 30" />
+        {confrontoListino.stato !== 'nessuno' && (
+          <p className={`listino-info listino-${confrontoListino.stato}`}>
+            Listino: {euro(confrontoListino.listino)} al giorno
+            {confrontoListino.stato === 'sopra' && ` · prezzo concordato: +${euro(confrontoListino.differenza)} al giorno`}
+            {confrontoListino.stato === 'sotto' && ` · prezzo concordato: ${euro(confrontoListino.differenza)} al giorno`}
+          </p>
+        )}
         <p className="error">{errors.prezzoGiornaliero?.message}</p>
       </div>
 

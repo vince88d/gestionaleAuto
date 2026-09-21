@@ -275,3 +275,18 @@
   color: #555;
   padding: 4px;
 }
+
+/* Listino dell'auto sotto il prezzo giornaliero: evidenzia i prezzi concordati. */
+.listino-info {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+.listino-sopra {
+  color: #b45309;
+  font-weight: 600;
+}
+.listino-sotto {
+  color: #1d4ed8;
+  font-weight: 600;
+}
