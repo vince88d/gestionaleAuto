@@ -2,11 +2,38 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import Modal from 'react-modal';
+import { X } from 'lucide-react';
+import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
+import { useDispatch } from 'react-redux';
+import { toast } from 'react-toastify';
 import AutocompleteClienti from './AutocompleteClienti';
+import ClientForm from './ClientForm';
+import { addCliente } from '../store/clientiSlice';
+import { writeClienti } from '../lib/firestoreClienti';
 import DatePicker from 'react-datepicker';
 import { it } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
+import { disponibiliPerCategoria } from '../utils/disponibilitaCategoria';
 import './BookingForm.css';
+
+const normalizzaCodiceFiscale = (value) => (value || '').trim().toUpperCase();
+
+const emptyClientFormData = {
+  nome: '',
+  cognome: '',
+  email: '',
+  telefono: '',
+  indirizzo: '',
+  luogoNascita: '',
+  dataNascita: '',
+  tipoDocumento: '',
+  tipoDocumentoAltro: '',
+  documento: '',
+  codiceFiscale: '',
+  patente: '',
+  piva: '',
+};
 
 const schema = yup.object().shape({
   cliente: yup.string().required('Il nome e cognome sono obbligatori'),
@@ -30,9 +57,71 @@ const schema = yup.object().shape({
     .required('Email cliente obbligatoria'),
 });
 
-function BookingForm({ onSubmit, initialValues, availableVehicles, clienti = [], prenotazioni = [] }) {
+function BookingForm({
+  onSubmit,
+  initialValues,
+  availableVehicles,
+  veicoli = [],
+  holds = [],
+  clienti = [],
+  prenotazioni = [],
+}) {
+  const dispatch = useDispatch();
   const [clienteSelezionato, setClienteSelezionato] = useState(null);
   const [disabledDates, setDisabledDates] = useState([]);
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [nuovoClienteData, setNuovoClienteData] = useState(emptyClientFormData);
+
+  const handleNuovoClienteChange = (e) => {
+    const { name, value } = e.target;
+    setNuovoClienteData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleNuovoClienteSubmit = async (e) => {
+    e.preventDefault();
+
+    const codiceFiscaleNormalizzato = normalizzaCodiceFiscale(nuovoClienteData.codiceFiscale);
+    const patenteNormalizzata = (nuovoClienteData.patente || '').trim();
+
+    if (!patenteNormalizzata) {
+      toast.error('Inserisci la patente prima di salvare il cliente.');
+      return;
+    }
+
+    const codiceFiscaleDuplicato = clienti.some(
+      (cliente) => normalizzaCodiceFiscale(cliente.codiceFiscale) === codiceFiscaleNormalizzato
+    );
+
+    if (codiceFiscaleDuplicato) {
+      toast.error('Esiste gia un cliente con questo codice fiscale.');
+      return;
+    }
+
+    try {
+      const tipoDocumentoFinale =
+        nuovoClienteData.tipoDocumento === 'Altro'
+          ? (nuovoClienteData.tipoDocumentoAltro || '').trim()
+          : nuovoClienteData.tipoDocumento;
+      const nuovoCliente = {
+        ...nuovoClienteData,
+        codiceFiscale: codiceFiscaleNormalizzato,
+        patente: patenteNormalizzata,
+        tipoDocumento: tipoDocumentoFinale,
+        storicoDanni: [],
+      };
+
+      await writeClienti([...clienti, nuovoCliente]);
+      dispatch(addCliente(nuovoCliente));
+      toast.success('Cliente salvato con successo.');
+
+      setClienteSelezionato(nuovoCliente);
+      setNuovoClienteData(emptyClientFormData);
+      setShowAddClient(false);
+    } catch (error) {
+      console.error('Errore salvataggio cliente:', error);
+      toast.error('Errore durante il salvataggio del cliente');
+    }
+  };
 
   const veicoliSelezionabili = [
     ...(availableVehicles || []),
@@ -150,12 +239,23 @@ function BookingForm({ onSubmit, initialValues, availableVehicles, clienti = [],
     });
   };
 
+  // Anche se questa targa specifica non ha conflitti diretti, la sua
+  // categoria potrebbe essere già "esaurita" da hold/prenotazioni del sito
+  // (che non sono legati a una targa precisa finché lo staff non la
+  // assegna): in tal caso nessun veicolo di quella categoria va dato,
+  // altrimenti si supera la flotta disponibile per quelle date.
+  const categoriaSatura = (vehicle) => {
+    if (!vehicle?.categoria || !dataInizio || !dataFine) return false;
+    return (
+      disponibiliPerCategoria(vehicle.categoria, dataInizio, dataFine, veicoli, prenotazioni, holds, {
+        escludiPrenotazioneId: bookingId,
+      }) <= 0
+    );
+  };
+
   const calcolaPrezzoTotale = () => {
     if (!dataInizio || !dataFine || !prezzoGiornaliero) return '';
-    const start = new Date(dataInizio);
-    const end = new Date(dataFine);
-    const diff = end - start;
-    const giorni = diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
+    const giorni = calcolaGiorniNoleggio(dataInizio, dataFine);
     return giorni * parseFloat(prezzoGiornaliero || 0);
   };
 
@@ -169,6 +269,9 @@ function BookingForm({ onSubmit, initialValues, availableVehicles, clienti = [],
           onInputChange={(value) => setValue('cliente', value, { shouldValidate: true })}
           initialValue={initialValues?.cliente || ''}
         />
+        <button type="button" className="add-client-link" onClick={() => setShowAddClient(true)}>
+          + Aggiungi nuovo cliente
+        </button>
         <input type="hidden" {...register('cliente')} />
         <p className="error">{errors.cliente?.message}</p>
       </div>
@@ -233,17 +336,21 @@ function BookingForm({ onSubmit, initialValues, availableVehicles, clienti = [],
           <option value="">Seleziona un veicolo</option>
           {veicoliSelezionabili.map((vehicle) => {
             const isUnavailable = hasVehicleConflict(vehicle.targa);
+            const categoriaEsaurita = !isUnavailable && categoriaSatura(vehicle);
+            const nonSelezionabile = isUnavailable || categoriaEsaurita;
             return (
               <option
                 key={vehicle.targa}
                 value={vehicle.targa}
-                disabled={isUnavailable && vehicle.targa !== initialValues?.targa}
+                disabled={nonSelezionabile && vehicle.targa !== initialValues?.targa}
               >
                 {vehicle.modello} - {vehicle.targa}
                 {dataInizio && dataFine
                   ? isUnavailable
                     ? ' | occupato nel periodo'
-                    : ' | disponibile'
+                    : categoriaEsaurita
+                      ? ' | categoria esaurita (hold sul sito)'
+                      : ' | disponibile'
                   : ''}
               </option>
             );
@@ -273,6 +380,35 @@ function BookingForm({ onSubmit, initialValues, availableVehicles, clienti = [],
       </div>
 
       <button type="submit" className="full-width">Avanti</button>
+
+      <Modal
+        isOpen={showAddClient}
+        onRequestClose={() => setShowAddClient(false)}
+        contentLabel="Aggiungi Cliente"
+        ariaHideApp={false}
+        className="AddClientModal"
+        overlayClassName="AddClientOverlay"
+        style={{ content: {}, overlay: {} }}
+      >
+        <div className="modal-header">
+          <h2>Aggiungi Cliente</h2>
+          <button type="button" className="btn-close" onClick={() => setShowAddClient(false)}>
+            <X size={22} />
+          </button>
+        </div>
+        <div
+          className="AddClientScrollArea"
+          onWheel={(e) => {
+            e.currentTarget.scrollTop += e.deltaY;
+          }}
+        >
+          <ClientForm
+            formData={nuovoClienteData}
+            onChange={handleNuovoClienteChange}
+            onSubmit={handleNuovoClienteSubmit}
+          />
+        </div>
+      </Modal>
     </form>
   );
 }

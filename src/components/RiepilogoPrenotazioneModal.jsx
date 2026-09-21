@@ -5,6 +5,7 @@ import '../components/riepilogoModal.css';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { useDispatch } from 'react-redux';
 import { setPrenotazioni } from '../store/prenotazioniSlice';
+import { readPrenotazioni, confermaPrenotazione as confermaPrenotazioneFirestore } from '../lib/firestorePrenotazioni';
 
 const boxStyle = {
   border: '1px solid #ccc',
@@ -223,7 +224,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
         schedaVeicolo: datiScheda,
       };
 
-      const result = await window.electronAPI.confermaPrenotazione({
+      const result = await confermaPrenotazioneFirestore({
         prenotazione,
         ip: ipPubblico || 'Non disponibile',
       });
@@ -281,7 +282,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
         }
       }
 
-      const prenotazioniAggiornate = await window.electronAPI.readPrenotazioni();
+      const prenotazioniAggiornate = await readPrenotazioni();
       dispatch(setPrenotazioni(prenotazioniAggiornate));
       toast.success('Prenotazione confermata.');
 

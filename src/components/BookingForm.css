@@ -44,13 +44,32 @@
 }
 
 .Toastify__toast-container {
-  z-index: 2000 !important;
+  z-index: 2147483647 !important;
 }
 
 .error {
   font-size: 11px;
   color: #cc0000;
   margin-top: 2px;
+}
+
+.add-client-link {
+  grid-column: unset;
+  align-self: flex-start;
+  margin-top: 4px !important;
+  padding: 0 !important;
+  background: none !important;
+  border: none;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.add-client-link:hover {
+  background: none !important;
+  color: #1d4ed8;
 }
 
 /* Pulsante submit */
@@ -68,6 +87,38 @@
 
 .booking-form button:hover {
   background-color: #0056b3;
+}
+
+/* Azione principale per aggiungere un cliente: la regola generica
+   `.booking-form button` non deve renderlo bianco/invisibile. */
+.booking-form button.add-client-link {
+  grid-column: auto;
+  align-self: flex-start;
+  width: fit-content;
+  margin-top: 6px !important;
+  padding: 8px 13px !important;
+  border: 1px solid #1d4ed8;
+  border-radius: 7px;
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.22);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.booking-form button.add-client-link:hover {
+  background: #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 12px rgba(37, 99, 235, 0.3);
+  transform: translateY(-1px);
+}
+
+.booking-form button.add-client-link:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 2px;
 }
 
 .autocomplete-container {
@@ -160,4 +211,67 @@
 
 .availability-busy {
   background: #e57373;
+}
+
+/* Modale "Aggiungi Cliente" dentro il form prenotazione.
+   Serve uno z-index più alto delle altre modali dell'app perché questa
+   si apre sopra il modale "Aggiungi Prenotazione" (Radix Dialog, z-index 9999-10000),
+   e pointer-events esplicito perché Radix disattiva i click sul resto della pagina
+   mentre è aperto, e questa modale ne farebbe parte per via del portal. */
+.AddClientOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(10, 16, 28, 0.66);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  z-index: 10001;
+  pointer-events: auto;
+}
+
+.AddClientModal.AddClientModal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 2rem;
+  z-index: 10002;
+  border-radius: 10px;
+  max-width: 700px;
+  width: 90%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+}
+
+.AddClientModal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+/* La modale "Aggiungi Prenotazione" (Radix Dialog) blocca lo scroll con
+   la rotella su tutto tranne se stessa (react-remove-scroll, per
+   accessibilità). Gestiamo lo scroll di quest'area a mano via onWheel,
+   invece di affidarci al comportamento nativo del browser che Radix
+   intercetta e blocca. */
+.AddClientScrollArea {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.AddClientModal .btn-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #555;
+  padding: 4px;
 }

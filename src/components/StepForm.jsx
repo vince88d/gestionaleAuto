@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../pages/Booking.css';
+import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -103,12 +104,7 @@ function Bookings() {
     document.body.removeChild(link);
   };
 
-  const calcGiorni = (inizio, fine) => {
-    const start = new Date(inizio);
-    const end = new Date(fine);
-    const diff = end - start;
-    return diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
-  };
+  const calcGiorni = calcolaGiorniNoleggio;
 
   const openInfoModal = (prenotazione) => {
     setDettagliPrenotazione(prenotazione);

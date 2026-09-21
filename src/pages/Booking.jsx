@@ -17,7 +17,15 @@ import BookingModal from '../components/BookingModal';
 import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
 import ConcludiPrenotazioneModal from '../components/ConcludiPrenotazioneModal';
+import PrenotazioniDaAssegnare from '../components/PrenotazioniDaAssegnare';
+import AnnullaConPenaleModal from '../components/AnnullaConPenaleModal';
+import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { useLocation } from 'react-router-dom';
+import { readPrenotazioni, writePrenotazioni, isPrenotazioneVisibile, isPagataOnline } from '../lib/firestorePrenotazioni';
+import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento';
+import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
+import { readHolds } from '../lib/firestoreHolds';
+import { readClienti, writeClienti } from '../lib/firestoreClienti';
 import{
   setPrenotazioni,
   addPrenotazione,
@@ -33,7 +41,11 @@ import{
 
 function Bookings() {
   const prenotazioni = useSelector((state) => state.prenotazioni);
-  const prenotazioniAttive = prenotazioni.filter(p => p.status !== 'completata');
+  // Solo per la visualizzazione (calendario, tabella, contatori): esclude anche
+  // i tentativi di checkout dal sito non andati a buon fine. Non usare questa
+  // lista per scrivere su Firestore, va usato sempre `prenotazioni` (vedi nota
+  // in firestorePrenotazioni.js).
+  const prenotazioniAttive = prenotazioni.filter(p => p.status !== 'completata' && isPrenotazioneVisibile(p));
   const dispatch = useDispatch();
   const [editingIndex, setEditingIndex] = useState(null);
   const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -48,11 +60,15 @@ function Bookings() {
   const [feedbackType, setFeedbackType] = useState('success');
   const [loading, setLoading] = useState(false);
   const [availableVehicles, setAvailableVehicles] = useState([]);
+  const [holds, setHolds] = useState([]);
   const [availableVehiclesForBooking, setAvailableVehiclesForBooking] = useState([]);
   const [forceRenderKey, setForceRenderKey] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
+  // Prenotazione pagata online da annullare con rimborso su Stripe.
+  const [daRimborsare, setDaRimborsare] = useState(null);
+  const [rimborsoInCorso, setRimborsoInCorso] = useState(false);
   const clienti = useSelector((state) => state.clienti);
   const [concludiModalOpen, setConcludiModalOpen] = useState(false);
   const [prenotazioneDaConcludere, setPrenotazioneDaConcludere] = useState(null);
@@ -149,7 +165,7 @@ useEffect(() => {
   useEffect(() => {
     const caricaClienti = async () => {
       try {
-        const dati = await window.electronAPI.readClienti();
+        const dati = await readClienti();
         dispatch(setClienti(dati || []));
       } catch (err) {
         console.error("Errore caricamento clienti:", err);
@@ -163,7 +179,7 @@ useEffect(() => {
     const caricaPrenotazioni = async () => {
       setLoading(true);
       try {
-        const dati = await window.electronAPI.readPrenotazioni();
+        const dati = await readPrenotazioni();
         console.log("dati caricati:", dati); // Debug
         dispatch(setPrenotazioni(dati));
       } catch (error) {
@@ -180,7 +196,7 @@ useEffect(() => {
     const caricaVeicoli = async () => {
       try {
         // Usa lo stesso nome usato nell'API (qui usiamo readVeicoli per coerenza)
-        const datiVeicoli = await window.electronAPI.readVeicoli();
+        const datiVeicoli = await readVeicoli();
         
         if (!Array.isArray(datiVeicoli)) {
           console.error("Dati veicoli non sono un array:", datiVeicoli);
@@ -195,8 +211,25 @@ useEffect(() => {
         showFeedback("Errore nel caricamento dei veicoli", "error");
       }
     };
-  
+
     caricaVeicoli();
+  }, []);
+
+  // Hold del sito: servono a sapere se un'auto è momentaneamente bloccata da
+  // un cliente che sta pagando online, per non farla prenotare due volte.
+  useEffect(() => {
+    const caricaHolds = async () => {
+      try {
+        const datiHolds = await readHolds();
+        setHolds(datiHolds);
+      } catch (error) {
+        console.error("Errore lettura hold:", error);
+      }
+    };
+
+    caricaHolds();
+    const interval = setInterval(caricaHolds, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleRicerca = (e) => {
@@ -350,7 +383,7 @@ accessori: {
       "Cliente", "Codice Fiscale", "Patente", "Veicolo", "Targa",
       "Data Inizio", "Data Fine", "Prezzo Giornaliero", "Prezzo Totale"
     ];
-    const rows = prenotazioni.map(p => [
+    const rows = prenotazioniAttive.map(p => [
       p.cliente, p.codiceFiscale, p.patente, p.veicolo, p.targa,
       p.dataInizio, p.dataFine, p.prezzoGiornaliero, p.prezzoTotale
     ]);
@@ -397,12 +430,7 @@ accessori: {
     return `${giorni} giorni`;
   };
 
-  const calcGiorni = (inizio, fine) => {
-    const start = new Date(inizio);
-    const end = new Date(fine);
-    const diff = end - start;
-    return diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
-  };
+  const calcGiorni = calcolaGiorniNoleggio;
 
   const openInfoModal = (prenotazione) => {
     setDettagliPrenotazione(prenotazione);
@@ -415,8 +443,46 @@ accessori: {
   };
 
   const handleDelete = (index) => {
+    // Una prenotazione pagata online non si elimina: il cliente resterebbe
+    // addebitato. Si annulla con rimborso su Stripe.
+    if (isPagataOnline(prenotazioni[index])) {
+      setDaRimborsare(prenotazioni[index]);
+      return;
+    }
     setDeleteIndex(index);
     setConfirmOpen(true);
+  };
+
+  // `penale` (facoltativa): { percentuale } o { importo } da trattenere.
+  const confermaRimborso = async (penale) => {
+    const prenotazione = daRimborsare;
+    if (!prenotazione || rimborsoInCorso) return;
+    setRimborsoInCorso(true);
+    try {
+      const { rimborsato, trattenuto, giaRimborsato } = await annullaConRimborso(prenotazione.id, penale);
+      dispatch(updatePrenotazione({
+        ...prenotazione,
+        status: 'annullata',
+        ...(rimborsato > 0 ? { rimborsato } : {}),
+        ...(trattenuto > 0 ? { penaleTrattenuta: trattenuto } : {}),
+      }));
+      setDaRimborsare(null);
+      setInfoModalOpen(false);
+      showFeedback(
+        giaRimborsato
+          ? 'Prenotazione annullata (il pagamento risultava già rimborsato su Stripe).'
+          : trattenuto > 0
+            ? `Prenotazione annullata. Rimborsati ${rimborsato.toFixed(2)} € al cliente, trattenuti ${trattenuto.toFixed(2)} € di penale.`
+            : `Prenotazione annullata. Rimborsati ${rimborsato.toFixed(2)} € al cliente.`,
+        'success',
+      );
+    } catch (error) {
+      console.error('Errore annullamento con rimborso:', error);
+      // La prenotazione resta attiva: nessun rimborso è stato registrato.
+      showFeedback(messaggioErroreRimborso(error), 'error');
+    } finally {
+      setRimborsoInCorso(false);
+    }
   };
 
   
@@ -623,7 +689,7 @@ accessori: {
 
   const handleConfermaPrenotazioneCompletata = async () => {
     try {
-      const prenotazioniAggiornate = await window.electronAPI.readPrenotazioni();
+      const prenotazioniAggiornate = await readPrenotazioni();
       dispatch(setPrenotazioni(prenotazioniAggiornate));
       showFeedback(
         editingIndex !== null
@@ -683,7 +749,7 @@ accessori: {
       const nuovaLista = [...prenotazioni];
       const [prenotazioneEliminata] = nuovaLista.splice(index, 1);
       dispatch(deletePrenotazione(prenotazioneEliminata.id));
-      await window.electronAPI.writePrenotazioni(nuovaLista);
+      await writePrenotazioni(nuovaLista);
       dispatch(setPrenotazioni(nuovaLista));
       resetModal();
       showFeedback("Prenotazione eliminata con successo.", "success");
@@ -732,7 +798,7 @@ accessori: {
         showFeedback("Prenotazione aggiunta con successo", "success");
       }
   
-      await window.electronAPI.writePrenotazioni(prenotazioniAggiornate);
+      await writePrenotazioni(prenotazioniAggiornate);
       setSelectedDate(prev => prev);
 
     } catch (error) {
@@ -805,7 +871,7 @@ const segnaComeCompletata = async (index) => {
   );
 
   dispatch(updatePrenotazione(aggiornata));
-  await window.electronAPI.writePrenotazioni(nuovePrenotazioni);
+  await writePrenotazioni(nuovePrenotazioni);
   dispatch(setPrenotazioni(nuovePrenotazioni));
   showFeedback("Prenotazione conclusa", "success");
   
@@ -844,11 +910,11 @@ const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoD
   );
 
   dispatch(updatePrenotazione(aggiornata));
-  await window.electronAPI.writePrenotazioni(nuovePrenotazioni);
+  await writePrenotazioni(nuovePrenotazioni);
   dispatch(setPrenotazioni(nuovePrenotazioni));
 
   if (descrizioneDanno?.trim()) {
-    const clienti = await window.electronAPI.readClienti();
+    const clienti = await readClienti();
     const idxCliente = clienti.findIndex(c =>
       c.codiceFiscale === prenotazione.codiceFiscale ||
       c.email === prenotazione.emailCliente
@@ -863,12 +929,12 @@ const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoD
         targa: prenotazione.targa,
         riferimentoPrenotazione: prenotazione.id,
       });
-      await window.electronAPI.writeClienti(clienti);
+      await writeClienti(clienti);
       dispatch(setClienti(clienti));
     }
 
 if (daRiparare && prenotazione.targa) {
-  const veicoli = await window.electronAPI.readVeicoli();
+  const veicoli = await readVeicoli();
   const index = veicoli.findIndex(v => v.targa === prenotazione.targa);
 
   if (index !== -1) {
@@ -884,7 +950,7 @@ if (daRiparare && prenotazione.targa) {
     veicoli[index].danni = veicoli[index].danni || [];
     veicoli[index].danni.push(nuovoDanno);
 
-    await window.electronAPI.writeVeicoli(veicoli);
+    await writeVeicoli(veicoli);
     showFeedback("Danno salvato nel veicolo", "success");
   }
 }
@@ -916,7 +982,7 @@ const concludiPrenotazioniScadute = async () => {
 
   try {
     dispatch(setPrenotazioni(nuovePrenotazioni));
-    await window.electronAPI.writePrenotazioni(nuovePrenotazioni);
+    await writePrenotazioni(nuovePrenotazioni);
     showFeedback(`${daConcludere.length} prenotazioni concluse automaticamente.`, "success");
   } catch (error) {
     console.error("Errore conclusione multipla prenotazioni:", error);
@@ -959,7 +1025,9 @@ return (
       </div>
     )}
   <h1 className="title">Gestione Prenotazioni</h1>
-  
+
+  <PrenotazioniDaAssegnare prenotazioni={prenotazioni} veicoli={availableVehicles} />
+
 <form onSubmit={handleRicerca} className="bookings-search-form">
   <Search
     size={18}
@@ -1051,6 +1119,8 @@ return (
           onSubmit={handleBookingSubmit}
           initialValues={formData}
           availableVehicles={availableVehiclesForBooking}
+          veicoli={availableVehicles}
+          holds={holds}
           clienti = {clienti}
           prenotazioni={prenotazioni}
        />
@@ -1360,6 +1430,14 @@ return (
     title="Elimina Prenotazione"
     confirmLabel="Elimina"
     tone="danger"
+  />
+
+  <AnnullaConPenaleModal
+    key={daRimborsare?.id || 'nessuna'}
+    prenotazione={daRimborsare}
+    inCorso={rimborsoInCorso}
+    onClose={() => setDaRimborsare(null)}
+    onConferma={confermaRimborso}
   />
 
   <ConfirmDialog

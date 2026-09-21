@@ -4,6 +4,7 @@ import Modal from 'react-modal';
 import { X } from 'lucide-react';
 import StoricoNoleggiTable from './StoricoNoleggiTable';
 import { useSelector } from 'react-redux';
+import { isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
 import '../styles/ModalDettaglioCliente.css';
 
 
@@ -17,7 +18,7 @@ function ModalDettaglioCliente({ show, onClose, cliente }) {
     if (!cliente) return null;
 
     const storicoCliente = prenotazioni.filter(
-      (p) => p.codiceFiscale?.toUpperCase() === cliente.codiceFiscale?.toUpperCase()
+      (p) => p.codiceFiscale?.toUpperCase() === cliente.codiceFiscale?.toUpperCase() && isPrenotazioneVisibile(p)
     );
 
   return (
