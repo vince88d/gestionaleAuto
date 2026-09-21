@@ -42,7 +42,6 @@ const VehicleForm = ({
           { name: 'marca', label: 'Marca' },
           { name: 'targa', label: 'Targa' },
           { name: 'anno', label: 'Anno', type: 'number' },
-          { name: 'prezzo', label: 'Prezzo Giornaliero', type: 'number' },
           { name: 'colore', label: 'Colore' },
           { name: 'km', label: 'KM', type: 'number' },
           { name: 'porte', label: 'Porte', type: 'number' },
@@ -93,6 +92,7 @@ const VehicleForm = ({
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
+          <small className="hint-tariffe">Il prezzo al giorno si imposta per categoria, nella sezione Tariffe.</small>
         </div>
 
         {/* Note */}

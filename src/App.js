@@ -11,6 +11,7 @@ import Vehicles from './pages/Vehicles';
 import Clients from './pages/Clients';
 import Booking from './pages/Booking';
 import ImpostazioniAzienda from './pages/ImpostazioniAzienda';
+import Tariffe from './pages/Tariffe';
 import ArchivioPrenotazione from './pages/ArchivioPrenotazioni';
 
 function AppContent() {
@@ -52,6 +53,7 @@ function AppContent() {
           <Route path="/vehicles" element={<Vehicles />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/booking" element={<Booking />} />
+          <Route path="/tariffe" element={<Tariffe />} />
           <Route path="/impostazioni-azienda" element={<ImpostazioniAzienda />} />
           <Route path="/archivio-prenotazione" element={<ArchivioPrenotazione />} />
           <Route path="*" element={<Navigate to="/" />} />

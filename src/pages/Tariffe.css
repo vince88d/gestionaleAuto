@@ -1,0 +1,63 @@
+.tariffe-page {
+  padding: 24px;
+  max-width: 760px;
+}
+.tariffe-page h1 {
+  margin: 0 0 8px;
+}
+.tariffe-intro {
+  margin: 0 0 20px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+.tariffe-tabella {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.tariffe-tabella th,
+.tariffe-tabella td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+.tariffe-tabella input {
+  width: 110px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+.tariffe-ok {
+  color: #15803d;
+  font-weight: 600;
+}
+.tariffe-manca {
+  color: #b45309;
+  font-weight: 600;
+}
+.tariffe-salva {
+  margin-top: 16px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 8px;
+  background: #007bff;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.tariffe-salva:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+.tariffe-nota {
+  margin-top: 12px;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+.tariffe-errore {
+  color: #b91c1c;
+}
