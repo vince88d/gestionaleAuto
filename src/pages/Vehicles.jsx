@@ -10,6 +10,7 @@ import {Car, Calendar, Trash2, Edit3, Clock, CheckCircle, PlusCircle, XCircle, U
 import VehicleCard from '../components/VeichleCard';
 import VehicleForm from '../components/VehicleForm';
 import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
+import { caricaFotoVeicolo } from '../lib/storageFoto';
 import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
 import './Vehicle.css';
 
@@ -210,18 +211,31 @@ const handleDelete = async (id) => {
   }
 };
 
-  const handleImageSelect = async () => {
-    try {
-      const paths = await window.electronAPI.selezionaImmagine();
-      if (paths && paths.length > 0) {
-        const savedPath = await window.electronAPI.salvaImmagineLocale(paths[0]);
-        if (savedPath) {
-          setFormData(prev => ({ ...prev, immagine: savedPath }));
-        }
+  // La foto del veicolo va su Firebase Storage (non più sul computer), così la vede
+  // anche il sito: si salva nel veicolo l'indirizzo web della foto.
+  const handleImageSelect = () => {
+    const scelta = document.createElement('input');
+    scelta.type = 'file';
+    scelta.accept = 'image/jpeg,image/png,image/webp';
+    scelta.onchange = async () => {
+      const file = scelta.files && scelta.files[0];
+      if (!file) return;
+      const caricamento = toast.loading('Carico la foto…');
+      try {
+        const indirizzo = await caricaFotoVeicolo(file);
+        setFormData((prev) => ({ ...prev, immagine: indirizzo }));
+        toast.update(caricamento, { render: 'Foto caricata.', type: 'success', isLoading: false, autoClose: 2500 });
+      } catch (error) {
+        console.error('Errore caricamento foto:', error);
+        toast.update(caricamento, {
+          render: error.message || 'Non sono riuscito a caricare la foto. Riprova.',
+          type: 'error',
+          isLoading: false,
+          autoClose: 5000,
+        });
       }
-    } catch (error) {
-      console.error('Errore selezione immagine:', error);
-    }
+    };
+    scelta.click();
   };
 
 

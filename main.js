@@ -310,9 +310,11 @@ app.whenReady().then(() => {
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     // cloudfunctions.net e run.app servono per chiamare le Cloud Functions (rimborsi).
     const firebaseConnectSrc = 'https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://*.run.app';
+    // Immagini: file del gestionale, dati incorporati (foto dei danni) e le foto dei veicoli su Firebase Storage.
+    const imgSrc = "img-src 'self' data: blob: file: https://firebasestorage.googleapis.com";
     const csp = process.env.NODE_ENV === 'development'
-      ? `default-src 'self' http://localhost:3000; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:3000 https://api.ipify.org ${firebaseConnectSrc};`
-      : `default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://api.ipify.org ${firebaseConnectSrc};`;
+      ? `default-src 'self' http://localhost:3000; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:3000 https://api.ipify.org ${firebaseConnectSrc}; ${imgSrc} http://localhost:3000;`
+      : `default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://api.ipify.org ${firebaseConnectSrc}; ${imgSrc};`;
 
     callback({
       responseHeaders: {
