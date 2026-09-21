@@ -53,6 +53,7 @@
   },
   "scripts": {
     "start": "electron-forge start",
+    "test": "react-scripts test --watchAll=false",
     "build": "react-scripts build",
     "electron": "react-scripts build && electron .",
     "clean:data": "node scripts/cleanData.js",
