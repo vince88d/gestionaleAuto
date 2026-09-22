@@ -10,6 +10,7 @@ const VehicleForm = ({
   onImageSelect,
   isEditing,
   setFormData,
+  categorie = [],
 }) => {
   return (
     <>
@@ -84,15 +85,15 @@ const VehicleForm = ({
           <label>Categoria</label>
           <select name="categoria" value={formData.categoria} onChange={onChange}>
             <option value="">Seleziona...</option>
-            {[
-              'City Car', 'SUV', 'Furgone', 'Lusso', 'Sportiva', 'Motociclo',
-              'Imbarcazione', 'Acquascooter', 'Mini Van', 'Utilitaria', 'Berlina',
-              'Elettrica', 'Ibrida'
-            ].map((cat) => (
+            {categorie.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
-          <small className="hint-tariffe">Il prezzo al giorno si imposta per categoria, nella sezione Tariffe.</small>
+          {categorie.length === 0 ? (
+            <small className="hint-tariffe">Nessuna categoria ancora: aggiungine una nella sezione Categorie.</small>
+          ) : (
+            <small className="hint-tariffe">Il prezzo al giorno si imposta per categoria, nella sezione Tariffe.</small>
+          )}
         </div>
 
         {/* Note */}

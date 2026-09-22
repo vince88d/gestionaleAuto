@@ -1,0 +1,86 @@
+.categorie-page {
+  padding: 24px;
+  max-width: 760px;
+}
+.categorie-page h1 {
+  margin: 0 0 8px;
+}
+.categorie-intro {
+  margin: 0 0 20px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+.categorie-tabella {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.categorie-tabella th,
+.categorie-tabella td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+.categorie-tabella input {
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+.categorie-azioni {
+  display: flex;
+  gap: 8px;
+}
+.categorie-azioni button {
+  padding: 6px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.categorie-azioni button:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+}
+.categorie-elimina {
+  color: #b91c1c;
+  border-color: #fecaca !important;
+}
+.categorie-aggiungi {
+  margin-top: 20px;
+  display: flex;
+  gap: 8px;
+}
+.categorie-aggiungi input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+.categorie-aggiungi button {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #007bff;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.categorie-aggiungi button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+.categorie-nota {
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+.categorie-errore {
+  color: #b91c1c;
+}
