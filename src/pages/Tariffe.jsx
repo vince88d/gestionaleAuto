@@ -3,7 +3,9 @@ import { toast } from 'react-toastify';
 import { Save, RotateCcw, AlertTriangle, Undo2 } from 'lucide-react';
 import { ascoltaVeicoli } from '../lib/firestoreVeicoli';
 import { ascoltaTariffe, writeTariffe } from '../lib/firestoreTariffe';
+import { ascoltaCategorie } from '../lib/firestoreCategorie';
 import { suggerisciTariffe, tariffeDaCampi, differenzeTariffe } from '../utils/tariffe';
+import { normalizzaElencoCategorie, contaVeicoliPerCategoria } from '../utils/categorie';
 import ConfirmDialog from '../components/ConfirmDialog';
 import './Tariffe.css';
 
@@ -18,9 +20,11 @@ const formattaPrezzo = (valore) => (
 function Tariffe() {
   const [veicoliCaricati, setVeicoliCaricati] = useState(false);
   const [tariffeCaricate, setTariffeCaricate] = useState(false);
+  const [categorieCaricate, setCategorieCaricate] = useState(false);
   const [errore, setErrore] = useState('');
   const [salvataggio, setSalvataggio] = useState(false);
   const [veicoli, setVeicoli] = useState([]);
+  const [categorieList, setCategorieList] = useState([]);
   const [salvate, setSalvate] = useState({});
   const [campi, setCampi] = useState({});
   // Categorie che il gestore ha iniziato a modificare: i loro campi non si
@@ -48,17 +52,29 @@ function Tariffe() {
     },
   ), []);
 
-  const righe = useMemo(() => {
-    const perCategoria = new Map();
-    veicoli.forEach((v) => {
-      if (v.categoria) perCategoria.set(v.categoria, (perCategoria.get(v.categoria) || 0) + 1);
-    });
-    return [...perCategoria.entries()]
-      .sort(([a], [b]) => a.localeCompare(b, 'it'))
-      .map(([categoria, numero]) => ({ categoria, numero }));
-  }, [veicoli]);
+  useEffect(() => ascoltaCategorie(
+    (dati) => { setCategorieList(dati); setCategorieCaricate(true); },
+    (err) => {
+      console.error('Errore lettura categorie:', err);
+      setErrore('Impossibile leggere le categorie. Controlla la connessione e riprova.');
+    },
+  ), []);
 
-  const categorieAttuali = useMemo(() => new Set(righe.map((r) => r.categoria)), [righe]);
+  const conteggioVeicoli = useMemo(() => contaVeicoliPerCategoria(veicoli), [veicoli]);
+  // L'elenco delle categorie gestite (pagina Categorie) più le eventuali
+  // categorie presenti solo sui veicoli: così una categoria appena creata, con
+  // ancora zero auto, non sembra "mancante" invece che semplicemente vuota.
+  const tutteLeCategorie = useMemo(() => {
+    const usate = veicoli.map((v) => v.categoria).filter(Boolean);
+    return normalizzaElencoCategorie([...categorieList, ...usate]);
+  }, [categorieList, veicoli]);
+
+  const righe = useMemo(
+    () => tutteLeCategorie.map((categoria) => ({ categoria, numero: conteggioVeicoli.get(categoria) || 0 })),
+    [tutteLeCategorie, conteggioVeicoli],
+  );
+
+  const categorieAttuali = useMemo(() => new Set(tutteLeCategorie), [tutteLeCategorie]);
   const suggerite = useMemo(() => suggerisciTariffe(veicoli), [veicoli]);
 
   // Tiene aggiornati i campi non toccati quando arrivano dati nuovi (nuova
@@ -177,7 +193,9 @@ function Tariffe() {
   }, [differenze, conflitti]);
 
   if (errore) return <div className="tar"><p className="tar-errore">{errore}</p></div>;
-  if (!veicoliCaricati || !tariffeCaricate) return <div className="tar"><p className="tar-nota">Caricamento…</p></div>;
+  if (!veicoliCaricati || !tariffeCaricate || !categorieCaricate) {
+    return <div className="tar"><p className="tar-nota">Caricamento…</p></div>;
+  }
 
   return (
     <div className="tar">
@@ -196,7 +214,7 @@ function Tariffe() {
       </p>
 
       {righe.length === 0 ? (
-        <p className="tar-nota">Non ci sono veicoli con una categoria: aggiungili dalla sezione Veicoli.</p>
+        <p className="tar-nota">Non ci sono ancora categorie: aggiungine una dalla pagina Categorie.</p>
       ) : (
         <form onSubmit={apriConferma}>
           <div className="tar-elenco">
@@ -213,7 +231,11 @@ function Tariffe() {
                 {righe.map(({ categoria, numero }) => (
                   <tr key={categoria} className={conflitti.includes(categoria) ? 'tar-riga--conflitto' : ''}>
                     <td className="tar-categoria">{categoria}</td>
-                    <td>{numero}</td>
+                    <td>
+                      {numero === 0
+                        ? <span className="tar-nessun-veicolo">Nessun veicolo</span>
+                        : `${numero} ${numero === 1 ? 'veicolo' : 'veicoli'}`}
+                    </td>
                     <td>
                       <input
                         type="text"
@@ -262,9 +284,9 @@ function Tariffe() {
 
           {orfane.length > 0 && (
             <div className="tar-orfane">
-              <h2 className="tar-orfane-titolo">Tariffe salvate senza veicoli</h2>
+              <h2 className="tar-orfane-titolo">Tariffe di categorie non più gestite</h2>
               <p className="tar-nota">
-                Queste categorie non hanno più veicoli (rinominate o eliminate), ma la tariffa è ancora salvata e
+                Queste categorie non sono più nell'elenco (rinominate o eliminate da Categorie), ma la tariffa è ancora salvata e
                 resta com'era finché non la togli.
               </p>
               <ul className="tar-orfane-elenco">

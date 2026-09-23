@@ -3,11 +3,14 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import Tariffe from './Tariffe';
 import { ascoltaVeicoli } from '../lib/firestoreVeicoli';
 import { ascoltaTariffe, writeTariffe } from '../lib/firestoreTariffe';
+import { ascoltaCategorie } from '../lib/firestoreCategorie';
 
-// Nessun accesso a Firestore: veicoli e tariffe sono finti, "trasmessi" come
-// farebbe onSnapshot chiamando subito la callback con i dati di ogni test.
+// Nessun accesso a Firestore: veicoli, tariffe e categorie sono finti,
+// "trasmessi" come farebbe onSnapshot chiamando subito la callback coi dati
+// di ogni test.
 jest.mock('../lib/firestoreVeicoli', () => ({ ascoltaVeicoli: jest.fn() }));
 jest.mock('../lib/firestoreTariffe', () => ({ ascoltaTariffe: jest.fn(), writeTariffe: jest.fn() }));
+jest.mock('../lib/firestoreCategorie', () => ({ ascoltaCategorie: jest.fn() }));
 jest.mock('react-toastify', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 
 const flotta = [
@@ -16,8 +19,9 @@ const flotta = [
   { id: '3', categoria: 'SUV', prezzo: 35 },
 ];
 
-// Simula ascoltaVeicoli/ascoltaTariffe: chiama subito onDati coi dati dati, e
-// tiene la callback per mandare un secondo aggiornamento nel test (onSnapshot).
+// Simula ascoltaVeicoli/ascoltaTariffe/ascoltaCategorie: chiama subito onDati
+// coi dati dati, e tiene la callback per mandare un secondo aggiornamento nel
+// test (onSnapshot).
 function finteVeicoli(veicoli) {
   let onDati;
   ascoltaVeicoli.mockImplementation((cb) => { onDati = cb; cb(veicoli); return () => {}; });
@@ -28,10 +32,18 @@ function finteTariffe(tariffe) {
   ascoltaTariffe.mockImplementation((cb) => { onDati = cb; cb(tariffe); return () => {}; });
   return (nuove) => onDati(nuove);
 }
+function finteCategorie(elenco) {
+  let onDati;
+  ascoltaCategorie.mockImplementation((cb) => { onDati = cb; cb(elenco); return () => {}; });
+  return (nuovo) => onDati(nuovo);
+}
 
 beforeEach(() => {
   jest.clearAllMocks();
   writeTariffe.mockResolvedValue(true);
+  // Di default l'elenco categorie coincide con quelle già sui veicoli: i test
+  // esistenti non devono accorgersi della nuova fonte dati.
+  finteCategorie(['City Car', 'SUV']);
 });
 
 const campo = (categoria) => screen.getByLabelText(`Prezzo al giorno ${categoria}`);
@@ -127,13 +139,24 @@ test('"Annulla modifiche" riporta i campi toccati al valore salvato', async () =
   expect(screen.getByRole('button', { name: /salva tariffe/i })).toBeDisabled();
 });
 
-test('una tariffa senza più veicoli si vede in fondo e si può togliere', async () => {
+test('una categoria dell\'elenco senza ancora veicoli si vede comunque, non sembra mancante', async () => {
+  finteVeicoli(flotta);
+  finteTariffe({});
+  finteCategorie(['City Car', 'SUV', 'Berlina']);
+  render(<Tariffe />);
+  await waitFor(() => expect(campo('City Car').value).toBe('25'));
+
+  expect(campo('Berlina')).toBeInTheDocument();
+  expect(screen.getByText('Nessun veicolo')).toBeInTheDocument();
+});
+
+test('una tariffa di una categoria non più nell\'elenco si vede in fondo e si può togliere', async () => {
   finteVeicoli(flotta);
   finteTariffe({ 'City Car': 25, SUV: 35, Van: 60 });
   render(<Tariffe />);
   await waitFor(() => expect(campo('City Car').value).toBe('25'));
 
-  expect(screen.getByText(/tariffe salvate senza veicoli/i)).toBeInTheDocument();
+  expect(screen.getByText(/tariffe di categorie non più gestite/i)).toBeInTheDocument();
   expect(screen.getByText(/Van: 60 €/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /salva tariffe/i })).toBeDisabled();
 

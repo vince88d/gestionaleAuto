@@ -1,6 +1,6 @@
 import { db } from '../components/firebase';
 import {
-  doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, writeBatch,
+  doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, writeBatch, onSnapshot,
 } from 'firebase/firestore';
 import { normalizzaElencoCategorie } from '../utils/categorie';
 
@@ -25,6 +25,19 @@ export async function readCategorie(veicoli = []) {
   if (Array.isArray(elenco)) return normalizzaElencoCategorie(elenco);
   const usate = veicoli.map((v) => v.categoria).filter(Boolean);
   return normalizzaElencoCategorie([...CATEGORIE_SEED, ...usate]);
+}
+
+// Elenco delle categorie in tempo reale (senza i veicoli: chi la usa unisce da
+// sé le categorie eventualmente presenti solo sui veicoli, come fa Tariffe).
+export function ascoltaCategorie(onDati, onErrore) {
+  return onSnapshot(
+    doc(db, ...CATEGORIE_DOC),
+    (snapshot) => {
+      const elenco = snapshot.data()?.elenco;
+      onDati(normalizzaElencoCategorie(Array.isArray(elenco) ? elenco : CATEGORIE_SEED));
+    },
+    onErrore,
+  );
 }
 
 export async function writeCategorie(elenco) {

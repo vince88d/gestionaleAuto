@@ -66,6 +66,11 @@
 
 .tar-categoria { font-weight: 600; }
 
+.tar-nessun-veicolo {
+  color: #9ca3af;
+  font-style: italic;
+}
+
 .tar-input {
   width: 120px;
   padding: 8px 10px;
