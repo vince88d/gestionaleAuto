@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { setVeicoli, addVeicolo, updateVeicolo, deleteVeicolo } from '../store/veicoliSlice';
 import { toast } from 'react-toastify';
@@ -16,6 +16,7 @@ import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenot
 import { readHolds } from '../lib/firestoreHolds';
 import { disponibiliPerCategoria } from '../utils/disponibilitaCategoria';
 import { cambiaStatoRiparazione } from '../utils/danniVeicolo';
+import { coloreScadenza } from '../utils/scadenze';
 import './Vehicle.css';
 
 Modal.setAppElement('#root');
@@ -59,25 +60,19 @@ function Vehicles() {
   const [selectedDamagePhoto, setSelectedDamagePhoto] = useState(null);
   const [damageModalOpen, setDamageModalOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [mostraManutenzioni, setMostraManutenzioni] = useState(false);
   const [nuovaManutenzione, setNuovaManutenzione] = useState({
     data: '',
     descrizione: '',
     costo: ''
   });
   
-  const manutenzioneRef = useRef(null);
    const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
    const [categorie, setCategorie] = useState([]);
    const [holds, setHolds] = useState([]);
 
 
 
- useEffect(()=>{
-  if (mostraManutenzioni && manutenzioneRef.current) {
-    manutenzioneRef.current.scrollIntoView({ behavior: 'smooth' });
-  }
- },[mostraManutenzioni]);
+
 
 
   useEffect(() => {
@@ -158,7 +153,6 @@ function Vehicles() {
   const handleCloseDetailModal = () => {
     setDetailModalOpen(false);
     setSelectedVeicolo(null);
-    setMostraManutenzioni(false);
   };
 
 
@@ -384,16 +378,7 @@ const veicoliFiltrati = paroleCercate.length
     })
   : veicoliOrdinati;
 
-const getScadenzaColor = (dataStr) => {
-  if (!dataStr) return 'grigio';
-  const oggi = new Date();
-  const data = new Date(dataStr);
-  const diffGiorni = Math.floor((data - oggi) / (1000 * 60 * 60 * 24));
-
-  if (diffGiorni < 0) return 'rosso';
-  if (diffGiorni <= 30) return 'giallo';
-  return 'verde';
-};
+const getScadenzaColor = coloreScadenza;
 
 
 // Nuovo danno dalla scheda: la foto va su Storage (cartella danni/), nel
@@ -499,9 +484,6 @@ const handleToggleRepairStatus = (index) => {
   setDamageModalOpen={setDamageModalOpen}
   selectedDamagePhoto={selectedDamagePhoto}
   setSelectedDamagePhoto={setSelectedDamagePhoto}
-  mostraManutenzioni={mostraManutenzioni}
-  setMostraManutenzioni={setMostraManutenzioni}
-  manutenzioneRef={manutenzioneRef}
   nuovaManutenzione={nuovaManutenzione}
   setNuovaManutenzione={setNuovaManutenzione}
   onAddManutenzione={handleAddManutenzione}

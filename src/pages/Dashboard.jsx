@@ -474,9 +474,6 @@ useEffect(() => {
   setDamageModalOpen={() => {}}
   selectedDamagePhoto={null}
   setSelectedDamagePhoto={() => {}}
-  mostraManutenzioni={false}
-  setMostraManutenzioni={() => {}}
-  manutenzioneRef={null}
   nuovaManutenzione={{ data: '', descrizione: '', costo: '' }}
   setNuovaManutenzione={() => {}}
   onAddManutenzione={() => {}}
