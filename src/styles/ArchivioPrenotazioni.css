@@ -1,141 +1,52 @@
-.tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 1rem;
-  }
-  
-  .tabs button {
-    padding: 0.5rem 1rem;
-    border: 1px solid #ccc;
-    background: #f0f0f0;
-    cursor: pointer;
-    border-radius: 5px;
-    font-weight: bold;
-  }
-  
-  .tabs button.active {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
-  }
+/* Pagina Archivio: usa barra, tabella e filtri di Prenotazioni (Booking.css,
+   classi bk-). Qui solo i dettagli propri, con prefisso arc-. Prima c'erano
+   regole generiche (.Modal, .Overlay, .pagination, button.info-btn e un
+   altro @keyframes fadeIn) che cambiavano tutto il gestionale. */
 
-  .Modal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 30px;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-  z-index: 1000;
-  opacity: 0;
-  animation: fadeIn 0.3s forwards;
-}
-  .Overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(5px);
-  z-index: 999;
+.arc-importi { justify-content: flex-end; }
+.arc-danno { color: #c0392b; font-weight: 600; }
+
+.bk-azioni-riga .arc-elimina:hover:not(:disabled) {
+  border-color: #f5c6c0;
+  background: #fdecea;
+  color: #c0392b;
 }
 
-.pagination {
-  margin-top: 1rem;
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-}
+.arc-periodo { display: inline-flex; gap: 6px; }
 
-.pagination button {
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  background-color: white;
+.arc-periodo select {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  border-radius: 4px;
 }
 
-.pagination button.active {
-  font-weight: bold;
-  background-color: #007bff;
-  color: white;
-  border-radius: 4px;
-  padding: 4px 10px;
-  margin: 2px;
+.arc-periodo select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.arc-spiegazione {
+  margin: -4px 0 12px;
+  font-size: 13px;
+  color: #7f8c9a;
 }
 
-.archivio-actions-cell {
+.arc-totali {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-  min-width: 120px;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 14px;
+  color: #5d6d7e;
 }
 
-.archivio-actions-cell .info-btn,
-.archivio-actions-cell .restore-btn,
-.archivio-actions-cell .delete-btn {
-  margin: 0;
-  flex: 0 0 auto;
-}
-
-button.delete-btn{
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 5px;
-  display: inline-flex;
-  align-items: center
-}
-button.delete-btn svg {
-  color: #dc2626; /* rosso per l’icona */
-  transition: background-color 0.2s ease;
-}
-
-button.delete-btn:hover {
-  background-color: #fee2e2; /* rosso chiaro in hover */
-  border-radius: 4px;
-}
-
-button.restore-btn,
-button.info-btn {
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 5px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-button.restore-btn:hover,
-button.info-btn:hover {
-  border-radius: 4px;
-  background-color: #eff6ff;
-}
-/* Fade In semplice */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -60%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%);
-  }
-}
-
-@media (max-width: 1200px) {
-  .archivio-actions-cell {
-    min-width: 110px;
-    gap: 6px;
-  }
-}
+.arc-totali strong { color: #2c3e50; }
+.arc-totali-periodo { font-weight: 700; color: #2c3e50; margin-right: auto; }
