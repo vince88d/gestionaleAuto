@@ -80,9 +80,8 @@ function Categorie() {
     }
     setInCorso(true);
     try {
-      await rinominaCategoriaOvunque(vecchia, nuovoNome);
       const aggiornate = normalizzaElencoCategorie(categorie.map((c) => (c === vecchia ? nuovoNome : c)));
-      await writeCategorie(aggiornate);
+      await rinominaCategoriaOvunque(vecchia, nuovoNome, aggiornate);
       setCategorie(aggiornate);
       setVeicoli((prima) => prima.map((v) => (v.categoria === vecchia ? { ...v, categoria: nuovoNome } : v)));
       setRinominando(null);
@@ -120,8 +119,7 @@ function Categorie() {
       <h1>Categorie</h1>
       <p className="categorie-intro">
         Le categorie disponibili quando aggiungi o modifichi un veicolo. Una categoria con veicoli non si può
-        eliminare; rinominarla aggiorna automaticamente i veicoli, le prenotazioni non ancora assegnate e la
-        tariffa collegati ad essa.
+        eliminare; rinominarla aggiorna automaticamente i veicoli, le prenotazioni e la tariffa collegati ad essa.
       </p>
 
       {categorie.length === 0 ? (

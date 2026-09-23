@@ -35,14 +35,19 @@ export async function writeCategorie(elenco) {
   return true;
 }
 
-// Rinomina una categoria ovunque compaia: veicoli, prenotazioni non ancora
-// assegnate e l'eventuale tariffa. Un unico batch, o va tutto a buon fine o
-// niente (evita di lasciare veicoli e prenotazioni con nomi diversi).
+// Rinomina una categoria ovunque compaia: elenco categorie, veicoli,
+// prenotazioni (tutte, anche quelle già assegnate: la disponibilità legge per
+// prima cosa il loro campo `categoria`) e l'eventuale tariffa. Un unico batch,
+// o va tutto a buon fine o niente (evita di lasciare nomi diversi in giro).
 // Nota: gli `holds` temporanei non sono inclusi perché non scrivibili dal
 // client (solo le Cloud Functions), rischio trascurabile: scadono da soli
 // entro 30 minuti.
-export async function rinominaCategoriaOvunque(vecchia, nuova) {
+export async function rinominaCategoriaOvunque(vecchia, nuova, elencoAggiornato) {
   const batch = writeBatch(db);
+  batch.set(doc(db, ...CATEGORIE_DOC), {
+    elenco: normalizzaElencoCategorie(elencoAggiornato),
+    aggiornatoIl: serverTimestamp(),
+  });
 
   const [veicoliSnap, prenotazioniSnap, tariffeSnap] = await Promise.all([
     getDocs(query(collection(db, 'veicoli'), where('categoria', '==', vecchia))),
