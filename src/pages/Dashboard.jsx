@@ -2,11 +2,11 @@ import './Dashboard.css';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'react-toastify';
 import {
-  Car, CalendarCheck, CalendarClock, Euro, CalendarDays, LineChartIcon,
-  LogIn, LogOut, ClipboardList, Wrench, Bell, CheckCircle2,
+  Car, CalendarCheck, CalendarClock, Euro, CalendarDays, BarChart3,
+  LogIn, LogOut, ClipboardList, Wrench, Bell, CheckCircle2, CalendarPlus,
 } from 'lucide-react';
 import { setVeicoli } from '../store/veicoliSlice';
 import { setPrenotazioni } from '../store/prenotazioniSlice';
@@ -16,9 +16,22 @@ import { readHolds } from '../lib/firestoreHolds';
 import { riepilogoDashboard, serieUltimi12Mesi, veicoliLiberiNelPeriodo } from '../utils/dashboard';
 import { formattaData, giornoLocale } from '../utils/scadenze';
 import VehicleDetailModal from '../components/VehicleDetailModal';
+import { EVENTO_AZIENDA_AGGIORNATA } from '../components/Sidebar';
 
 const euro = (valore) => `€ ${Number(valore || 0).toLocaleString('it-IT', { maximumFractionDigits: 2 })}`;
 const nomeVeicolo = (v) => [v?.marca, v?.modello].filter(Boolean).join(' ') || 'Veicolo';
+
+// Saluto secondo l'ora del giorno.
+function saluto(ora = new Date().getHours()) {
+  if (ora < 13) return 'Buongiorno';
+  if (ora < 18) return 'Buon pomeriggio';
+  return 'Buonasera';
+}
+
+// Stile comune dei due grafici a barre: sull'asse solo il mese, nel riquadro
+// al passaggio del mouse anche l'anno.
+const ASSE = { fill: '#95a3b1', fontSize: 12 };
+const etichettaMese = (nome, payload) => payload?.[0]?.payload?.mese || nome;
 
 function testoGiorni(giorni) {
   if (giorni < 0) return `scaduta da ${-giorni} ${giorni === -1 ? 'giorno' : 'giorni'}`;
@@ -37,6 +50,22 @@ function Dashboard() {
   const [dataFineRicerca, setDataFineRicerca] = useState('');
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedVeicolo, setSelectedVeicolo] = useState(null);
+  const [nomeAzienda, setNomeAzienda] = useState('');
+
+  // Nome dell'azienda cliente (Impostazioni), come in testa alla sidebar.
+  useEffect(() => {
+    const leggi = async () => {
+      try {
+        const settings = await window.electronAPI?.getCompanySettings();
+        setNomeAzienda(settings?.nome?.trim() || '');
+      } catch (err) {
+        console.error('Errore lettura nome azienda:', err);
+      }
+    };
+    leggi();
+    window.addEventListener(EVENTO_AZIENDA_AGGIORNATA, leggi);
+    return () => window.removeEventListener(EVENTO_AZIENDA_AGGIORNATA, leggi);
+  }, []);
 
   // Stessi dati delle altre pagine (store condiviso): prima la Dashboard aveva
   // una copia sua delle prenotazioni e poteva mostrare numeri vecchi.
@@ -81,15 +110,15 @@ function Dashboard() {
     navigate('/vehicles', { state: { apriVeicoloId: veicolo.id, scheda } });
 
   const stats = [
-    { title: 'Flotta', value: r.flotta, sotto: `${r.liberiOggi.length} liberi oggi`, icon: <Car size={28} />, colorClass: 'blue' },
-    { title: 'Noleggi in corso', value: r.inCorso.length, sotto: 'oggi', icon: <CalendarCheck size={28} />, colorClass: 'green' },
-    { title: 'Prenotazioni in arrivo', value: r.inArrivo.length, sotto: 'da domani in poi', icon: <CalendarClock size={28} />, colorClass: 'yellow' },
+    { title: 'Flotta', value: r.flotta, sotto: `${r.liberiOggi.length} liberi oggi`, Icona: Car, tono: 'blu' },
+    { title: 'Noleggi in corso', value: r.inCorso.length, sotto: 'oggi', Icona: CalendarCheck, tono: 'verde' },
+    { title: 'Prenotazioni in arrivo', value: r.inArrivo.length, sotto: 'da domani in poi', Icona: CalendarClock, tono: 'ambra' },
     {
       title: 'Incasso del mese',
       value: euro(r.incassoMese),
       sotto: new Date().toLocaleString('it-IT', { month: 'long', year: 'numeric' }),
-      icon: <Euro size={28} />,
-      colorClass: 'purple',
+      Icona: Euro,
+      tono: 'viola',
     },
   ];
 
@@ -119,18 +148,32 @@ function Dashboard() {
   );
 
   return (
-    <div className="dashboard-page">
-      <h1>Dashboard</h1>
+    <div className="dash">
+      {/* Intestazione: saluto, data e azienda al posto del vecchio banner blu. */}
+      <header className="dash-testa">
+        <div>
+          <p className="dash-data">
+            {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {nomeAzienda ? ` · ${nomeAzienda}` : ''}
+          </p>
+          <h1 className="dash-saluto">{saluto()}</h1>
+        </div>
+        <button type="button" className="dash-btn dash-btn--primario" onClick={() => navigate('/booking')}>
+          <CalendarPlus size={16} aria-hidden="true" /> Nuova prenotazione
+        </button>
+      </header>
 
-      <div className="grid">
-        {stats.map((stat) => (
-          <div key={stat.title} className={`card ${stat.colorClass}`}>
-            <div>
-              <div className="title">{stat.title}</div>
-              <div className="value">{stat.value}</div>
-              <div className="sotto">{stat.sotto}</div>
+      <div className="dash-stat">
+        {stats.map(({ title, value, sotto, Icona, tono }) => (
+          <div key={title} className="dash-stat-card">
+            <span className={`dash-stat-icona dash-stat-icona--${tono}`} aria-hidden="true">
+              <Icona size={20} />
+            </span>
+            <div className="dash-stat-testi">
+              <span className="dash-stat-titolo">{title}</span>
+              <span className="dash-stat-valore">{value}</span>
+              <span className="dash-stat-sotto">{sotto}</span>
             </div>
-            <div className="icon">{stat.icon}</div>
           </div>
         ))}
       </div>
@@ -224,88 +267,96 @@ function Dashboard() {
         </section>
       </div>
 
-      <div className="box-veicoli-dashboard">
-        <h2>
-          <Car size={20} style={{ marginRight: '6px' }} />
-          {dateValide ? 'Veicoli liberi nel periodo' : 'Veicoli liberi oggi'}
-        </h2>
-
-        <div className="filtro-date">
-          <label className="campo-data">
-            <CalendarDays size={16} style={{ marginRight: '6px' }} color="#007bff" />
-            Dal:
-            <input type="date" value={dataInizioRicerca} onChange={(e) => setDataInizioRicerca(e.target.value)} />
-          </label>
-          <label className="campo-data">
-            <CalendarDays size={16} style={{ marginRight: '6px' }} color="#007bff" />
-            Al:
-            <input type="date" value={dataFineRicerca} onChange={(e) => setDataFineRicerca(e.target.value)} />
-          </label>
-          {(dataInizioRicerca || dataFineRicerca) && (
-            <button
-              type="button"
-              onClick={() => {
-                setDataInizioRicerca('');
-                setDataFineRicerca('');
-              }}
-            >
-              Torna a oggi
-            </button>
-          )}
+      <section className="dash-box">
+        <div className="dash-box-barra">
+          <h2 className="dash-box-titolo">
+            <Car size={18} aria-hidden="true" />
+            {dateValide ? 'Veicoli liberi nel periodo' : 'Veicoli liberi oggi'}
+            <span className="dash-contatore">{veicoliDaMostrare.length}</span>
+          </h2>
+          <div className="dash-filtro">
+            <label className="dash-campo-data">
+              <span>Dal</span>
+              <input type="date" value={dataInizioRicerca} onChange={(e) => setDataInizioRicerca(e.target.value)} />
+            </label>
+            <label className="dash-campo-data">
+              <span>Al</span>
+              <input type="date" value={dataFineRicerca} onChange={(e) => setDataFineRicerca(e.target.value)} />
+            </label>
+            {(dataInizioRicerca || dataFineRicerca) && (
+              <button
+                type="button"
+                className="dash-btn"
+                onClick={() => {
+                  setDataInizioRicerca('');
+                  setDataFineRicerca('');
+                }}
+              >
+                Torna a oggi
+              </button>
+            )}
+          </div>
         </div>
         {dateInvertite && <p className="dash-avviso">La data di fine è prima di quella di inizio.</p>}
 
-        <div className="scroll-veicoli">
-          {veicoliDaMostrare.length > 0 ? (
-            veicoliDaMostrare.map((v) => (
-              <div
+        {veicoliDaMostrare.length > 0 ? (
+          <div className="dash-veicoli">
+            {veicoliDaMostrare.map((v) => (
+              <button
                 key={v.id}
-                className="card-veicolo-dashboard"
+                type="button"
+                className="dash-veicolo"
                 onClick={() => {
                   setSelectedVeicolo(v);
                   setDetailModalOpen(true);
                 }}
-                style={{ cursor: 'pointer' }}
               >
-                {v.immagine && <img src={v.immagine} className="img-card-veicolo" alt={nomeVeicolo(v)} />}
-                <div className="info-card-veicolo">
-                  <div className="titolo">{nomeVeicolo(v)}</div>
-                  <div className="targa">{v.targa}</div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p>Nessun veicolo libero {dateValide ? 'nel periodo scelto' : 'oggi'}.</p>
-          )}
-        </div>
-      </div>
+                <span className="dash-veicolo-foto">
+                  {v.immagine ? <img src={v.immagine} alt="" /> : <Car size={28} aria-hidden="true" />}
+                </span>
+                <span className="dash-veicolo-nome">{nomeVeicolo(v)}</span>
+                <span className="dash-veicolo-meta">
+                  {v.targa}
+                  {v.categoria ? ` · ${v.categoria}` : ''}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="dash-vuoto">Nessun veicolo libero {dateValide ? 'nel periodo scelto' : 'oggi'}.</p>
+        )}
+      </section>
 
-      <div className="graph">
-        <div className="graph-card">
-          <h3><LineChartIcon size={19} color="#007bff" /> Prenotazioni, ultimi 12 mesi</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={serie}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="mese" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Line type="monotone" dataKey="prenotazioni" name="Prenotazioni" stroke="#8884d8" />
-            </LineChart>
+      <div className="dash-grafici">
+        <section className="dash-box">
+          <h2 className="dash-box-titolo">
+            <BarChart3 size={18} aria-hidden="true" /> Prenotazioni, ultimi 12 mesi
+          </h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={serie} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+              <CartesianGrid vertical={false} stroke="#eef1f5" />
+              <XAxis dataKey="nome" tick={ASSE} axisLine={false} tickLine={false} interval={0} />
+              <YAxis allowDecimals={false} tick={ASSE} axisLine={false} tickLine={false} />
+              <Tooltip cursor={{ fill: '#f4f6f8' }} labelFormatter={etichettaMese} />
+              <Bar dataKey="prenotazioni" name="Prenotazioni" fill="#3498db" radius={[4, 4, 0, 0]} maxBarSize={28} />
+            </BarChart>
           </ResponsiveContainer>
-        </div>
+        </section>
 
-        <div className="graph-card">
-          <h3><Euro size={16} color="#388e3c" /> Incasso, ultimi 12 mesi</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={serie}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="mese" />
-              <YAxis />
-              <Tooltip formatter={(valore) => euro(valore)} />
-              <Line type="monotone" dataKey="incasso" name="Incasso" stroke="#28a745" />
-            </LineChart>
+        <section className="dash-box">
+          <h2 className="dash-box-titolo">
+            <Euro size={18} aria-hidden="true" /> Incasso, ultimi 12 mesi
+          </h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={serie} margin={{ top: 8, right: 8, left: -6, bottom: 0 }}>
+              <CartesianGrid vertical={false} stroke="#eef1f5" />
+              <XAxis dataKey="nome" tick={ASSE} axisLine={false} tickLine={false} interval={0} />
+              <YAxis tick={ASSE} axisLine={false} tickLine={false} tickFormatter={(v) => `€${v}`} />
+              <Tooltip cursor={{ fill: '#f4f6f8' }} formatter={(valore) => euro(valore)} labelFormatter={etichettaMese} />
+              <Bar dataKey="incasso" name="Incasso" fill="#2ecc71" radius={[4, 4, 0, 0]} maxBarSize={28} />
+            </BarChart>
           </ResponsiveContainer>
-        </div>
+        </section>
       </div>
 
       <VehicleDetailModal

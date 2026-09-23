@@ -84,7 +84,8 @@ export function serieUltimi12Mesi(prenotazioni, oggi) {
     const data = new Date(anno, meseOggi - 1 - (11 - i), 1);
     const chiave = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
     const nome = data.toLocaleString('it-IT', { month: 'short' });
-    return { chiave, mese: `${nome} ${String(data.getFullYear()).slice(2)}`, prenotazioni: 0, incasso: 0 };
+    // `nome` per l'asse del grafico (solo il mese), `mese` con l'anno per il riquadro al passaggio del mouse.
+    return { chiave, nome, mese: `${nome} ${data.getFullYear()}`, prenotazioni: 0, incasso: 0 };
   });
   const perChiave = new Map(mesi.map((m) => [m.chiave, m]));
   (prenotazioni || []).filter(conta).forEach((p) => {
