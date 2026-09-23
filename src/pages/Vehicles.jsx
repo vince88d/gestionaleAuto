@@ -10,6 +10,7 @@ import {Car, Calendar, Trash2, Edit3, Clock, CheckCircle, PlusCircle, XCircle, U
 import VehicleCard from '../components/VeichleCard';
 import VehicleForm from '../components/VehicleForm';
 import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
+import { readCategorie } from '../lib/firestoreCategorie';
 import { caricaFotoVeicolo } from '../lib/storageFoto';
 import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
 import './Vehicle.css';
@@ -76,6 +77,7 @@ function Vehicles() {
   
   const manutenzioneRef = useRef(null);
    const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
+   const [categorie, setCategorie] = useState([]);
 
 
 
@@ -91,6 +93,7 @@ function Vehicles() {
       try {
         const dati = await readVeicoli();
         dispatch(setVeicoli(dati));
+        setCategorie(await readCategorie(dati));
       } catch (error) {
         console.error('Errore nel caricamento veicoli:', error);
       }
@@ -599,6 +602,7 @@ const handleToggleRepairStatus = (index) => {
   onImageSelect={handleImageSelect}
   isEditing={!!editingVeicolo}
   setFormData={setFormData}
+  categorie={categorie}
 />
 
       </Modal>
