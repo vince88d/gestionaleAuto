@@ -783,6 +783,27 @@
   text-overflow: ellipsis;
 }
 
+.vcard-titolo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vcard-prezzo {
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.vcard-prezzo small {
+  font-size: 12px;
+  font-weight: 500;
+  color: #7f8c9a;
+}
+
 .vcard-meta {
   display: flex;
   flex-wrap: wrap;

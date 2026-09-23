@@ -31,3 +31,9 @@ export function nomeFileVeicolo(adesso = Date.now(), casuale = Math.random()) {
 export function eImmagineOnline(url) {
   return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
 }
+
+// Foto incorporata nel dato (data:image/...;base64), come si salvavano prima le
+// foto dei danni dentro il documento Firestore del veicolo.
+export function eFotoIncorporata(valore) {
+  return typeof valore === 'string' && /^data:image\//i.test(valore);
+}

@@ -10,6 +10,16 @@ import "../styles/VehicleDetailModal.css";
 import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";
 import { updatePrenotazione } from "../store/prenotazioniSlice";
+import { isPrenotazioneVisibile, segnaDannoPrenotazioneRiparato } from "../lib/firestorePrenotazioni";
+import { disponibiliPerCategoria } from "../utils/disponibilitaCategoria";
+
+const DANNO_VUOTO = () => ({
+  file: null,
+  anteprima: "",
+  descrizione: "",
+  daRiparare: false,
+  data: new Date().toISOString().split("T")[0],
+});
 
 const VehicleDetailModal = ({
   isOpen,
@@ -34,32 +44,32 @@ const VehicleDetailModal = ({
   onToggleRepairStatus,
   modalLite = false,
   prenotazioni,
+  veicoli = [],
+  holds = [],
 }) => {
   const navigate = useNavigate();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
   const [showDanni, setShowDanni] = React.useState(false);
   const [showManualDanni, setShowManualDanni] = React.useState(false);
-  const [nuovoDanno, setNuovoDanno] = React.useState({
-    immagine: "",
-    descrizione: "",
-    daRiparare: false,
-    data: new Date().toISOString().split("T")[0],
-  });
+  const [nuovoDanno, setNuovoDanno] = React.useState(DANNO_VUOTO);
+  const [salvandoDanno, setSalvandoDanno] = React.useState(false);
   const fileInputRef = React.useRef();
   const dispatch = useDispatch();
 
-  const handleTogglePrenotazioneRepair = (prenotazioneId) => {
+  // Prima cambiava solo lo stato a schermo e si perdeva riaprendo il
+  // gestionale: ora scrive su Firestore e poi aggiorna lo stato.
+  const handleTogglePrenotazioneRepair = async (prenotazioneId) => {
     const prenotazione = prenotazioni.find((p) => p.id === prenotazioneId);
     if (!prenotazione) return;
 
-    const prenotazioneAggiornata = {
-      ...prenotazione,
-      daRiparare: false,
-      riparatoIn: new Date().toISOString(),
-    };
-
-    dispatch(updatePrenotazione(prenotazioneAggiornata));
-    toast.success("Danno della prenotazione segnato come riparato.");
+    try {
+      const campi = await segnaDannoPrenotazioneRiparato(prenotazioneId);
+      dispatch(updatePrenotazione({ ...prenotazione, ...campi }));
+      toast.success("Danno della prenotazione segnato come riparato.");
+    } catch (error) {
+      console.error("Errore salvataggio riparazione:", error);
+      toast.error("Non sono riuscito a salvare la riparazione. Riprova.");
+    }
   };
 
   const onRestoreFromRepairHistory = (index) => {
@@ -67,30 +77,61 @@ const VehicleDetailModal = ({
     const storicoRestante = veicolo.storicoRiparazioni.filter((_, i) => i !== index);
     const aggiornato = {
       ...veicolo,
-      danni: [...veicolo.danni, { ...danno, daRiparare: true }],
+      danni: [...(veicolo.danni || []), { ...danno, daRiparare: true }],
       storicoRiparazioni: storicoRestante,
     };
-    onUpdate(aggiornato);
-    toast.info("Danno riportato tra quelli da riparare.");
+    onUpdate(aggiornato, "Danno riportato tra quelli da riparare.");
+  };
+
+  const scegliFotoDanno = (file) => {
+    if (!file) return;
+    if (nuovoDanno.anteprima) URL.revokeObjectURL(nuovoDanno.anteprima);
+    setNuovoDanno((prev) => ({ ...prev, file, anteprima: URL.createObjectURL(file) }));
+  };
+
+  const togliFotoDanno = () => {
+    if (nuovoDanno.anteprima) URL.revokeObjectURL(nuovoDanno.anteprima);
+    setNuovoDanno((prev) => ({ ...prev, file: null, anteprima: "" }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const salvaNuovoDanno = async () => {
+    if (!nuovoDanno.file || !nuovoDanno.descrizione || salvandoDanno) return;
+    setSalvandoDanno(true);
+    const { anteprima, ...dati } = nuovoDanno;
+    const ok = await onAddDamage(dati);
+    setSalvandoDanno(false);
+    if (ok) {
+      if (anteprima) URL.revokeObjectURL(anteprima);
+      setNuovoDanno(DANNO_VUOTO());
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   if (!veicolo) return null;
 
-  const isGiornoOccupato = (dateStr) =>
-    prenotazioni.some((p) => {
-      if (p.targa !== veicolo.targa || p.status === "completata") return false;
+  // Prenotazioni che occupano davvero il veicolo: niente annullate, richieste
+  // del sito non pagate/scadute (prima coloravano di rosso giorni liberi) e
+  // noleggi gia' conclusi.
+  const prenotazioniValide = prenotazioni.filter(
+    (p) => p.status !== "completata" && isPrenotazioneVisibile(p)
+  );
 
-      const current = new Date(dateStr);
-      const start = new Date(p.dataInizio);
-      const end = new Date(p.dataFine);
-      return current >= start && current <= end;
-    });
-
-  const getEventiDisponibilita = (currentVeicolo, viewStart, viewEnd) => {
-    const prenotazioniVeicolo = prenotazioni.filter(
-      (p) => p.targa === currentVeicolo.targa && p.status !== "completata"
+  // Un giorno e' occupato se c'e' una prenotazione su questa targa, oppure se
+  // la categoria e' piena quel giorno per hold/prenotazioni del sito non ancora
+  // assegnati a un veicolo (stessa regola dell'etichetta sulla card). Il
+  // controllo di categoria serve la flotta: senza (es. dalla Dashboard) si
+  // guarda solo la targa.
+  const isGiornoOccupato = (dateStr) => {
+    const perTarga = prenotazioniValide.some(
+      (p) => p.targa === veicolo.targa && p.dataInizio <= dateStr && p.dataFine >= dateStr
     );
+    if (perTarga) return true;
+    if (!veicolo.categoria || veicoli.length === 0) return false;
+    return disponibiliPerCategoria(veicolo.categoria, dateStr, dateStr, veicoli, prenotazioniValide, holds) === 0;
+  };
 
+  const getEventiDisponibilita = (viewStart, viewEnd) => {
     const giorni = [];
     const giornoCorrente = new Date(viewStart);
 
@@ -101,13 +142,7 @@ const VehicleDetailModal = ({
 
     return giorni.map((giorno) => {
       const giornoStr = giorno.toISOString().split("T")[0];
-
-      const isOccupato = prenotazioniVeicolo.some((p) => {
-        const start = new Date(p.dataInizio);
-        const end = new Date(p.dataFine);
-        const current = new Date(giornoStr);
-        return current >= start && current <= end;
-      });
+      const isOccupato = isGiornoOccupato(giornoStr);
 
       return {
         start: giornoStr,
@@ -206,7 +241,13 @@ const VehicleDetailModal = ({
           <div className="vehicle-info-grid">
             <p><strong>Targa:</strong> {veicolo.targa}</p>
             <p><strong>Anno:</strong> {veicolo.anno}</p>
-            <p><strong>Prezzo Giornaliero:</strong> {veicolo.prezzo} €</p>
+            <p>
+              <strong>Prezzo al giorno:</strong>{" "}
+              {veicolo.prezzo ? `${veicolo.prezzo} €` : "—"}
+              {"prezzoVeicolo" in veicolo && veicolo.categoria && (
+                <span className="prezzo-da-tariffa"> (tariffa {veicolo.categoria})</span>
+              )}
+            </p>
             <p><strong>Colore:</strong> {veicolo.colore}</p>
             <p><strong>KM:</strong> {veicolo.km}</p>
             <p><strong>Porte:</strong> {veicolo.porte}</p>
@@ -244,7 +285,7 @@ const VehicleDetailModal = ({
                   events: (info, successCallback) => {
                     const viewStart = new Date(info.startStr);
                     const viewEnd = new Date(info.endStr);
-                    const eventi = getEventiDisponibilita(veicolo, viewStart, viewEnd);
+                    const eventi = getEventiDisponibilita(viewStart, viewEnd);
                     successCallback(eventi);
                   },
                 },
@@ -369,7 +410,7 @@ const VehicleDetailModal = ({
                                     Stato: <strong>{danno.daRiparare ? "Da riparare" : "Riparato"}</strong>
                                   </p>
                                   <button className="toggle-repair-btn" onClick={() => onToggleRepairStatus(i)}>
-                                    {danno.daRiparare ? "Segna come riparato" : "Riporta tra i danni da riparare"}
+                                    {danno.daRiparare ? "Segna come riparato" : "Segna da riparare"}
                                   </button>
                                   <button className="delete-damage-btn" onClick={() => onDeleteDamage(i)}>
                                     ×
@@ -405,34 +446,21 @@ const VehicleDetailModal = ({
                               accept="image/*"
                               ref={fileInputRef}
                               style={{ display: "none" }}
-                              onChange={(e) => {
-                                const file = e.target.files[0];
-                                if (file) {
-                                  const reader = new FileReader();
-                                  reader.onload = (event) => {
-                                    setNuovoDanno((prev) => ({
-                                      ...prev,
-                                      immagine: event.target.result,
-                                    }));
-                                  };
-                                  reader.readAsDataURL(file);
-                                }
-                              }}
+                              onChange={(e) => scegliFotoDanno(e.target.files[0])}
                             />
                           </div>
 
-                          {nuovoDanno.immagine && (
+                          {nuovoDanno.anteprima && (
                             <div style={{ marginBottom: "10px" }}>
                               <img
-                                src={nuovoDanno.immagine}
+                                src={nuovoDanno.anteprima}
                                 alt="Anteprima"
                                 style={{ maxWidth: "200px", maxHeight: "200px", borderRadius: "6px" }}
                               />
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setNuovoDanno((prev) => ({ ...prev, immagine: "" }));
-                                  fileInputRef.current.value = "";
+                                  togliFotoDanno();
                                 }}
                                 style={{
                                   display: "block",
@@ -477,20 +505,11 @@ const VehicleDetailModal = ({
                           <button
                             type="button"
                             className="add-damage-btn"
-                            disabled={!nuovoDanno.immagine || !nuovoDanno.descrizione}
+                            disabled={!nuovoDanno.file || !nuovoDanno.descrizione || salvandoDanno}
                             onClick={(e) => {
                               e.stopPropagation();
                               e.preventDefault();
-                              if (nuovoDanno.immagine && nuovoDanno.descrizione) {
-                                onAddDamage(nuovoDanno);
-                                setNuovoDanno({
-                                  immagine: "",
-                                  descrizione: "",
-                                  daRiparare: false,
-                                  data: new Date().toISOString().split("T")[0],
-                                });
-                                fileInputRef.current.value = "";
-                              }
+                              salvaNuovoDanno();
                             }}
                             style={{
                               padding: "10px 15px",
@@ -499,10 +518,10 @@ const VehicleDetailModal = ({
                               border: "none",
                               borderRadius: "4px",
                               cursor: "pointer",
-                              opacity: !nuovoDanno.immagine || !nuovoDanno.descrizione ? 0.5 : 1,
+                              opacity: !nuovoDanno.file || !nuovoDanno.descrizione || salvandoDanno ? 0.5 : 1,
                             }}
                           >
-                            Salva danno
+                            {salvandoDanno ? "Salvataggio…" : "Salva danno"}
                           </button>
                         </div>
 
@@ -626,7 +645,6 @@ const VehicleDetailModal = ({
               </div>
 
               <div className="vehicle-actions">
-                <button className="save-btn" onClick={() => onUpdate(veicolo)}>Salva</button>
                 <button className="edit-btn" onClick={onEdit}>Modifica</button>
                 <button className="delete-btn" onClick={() => setConfirmDeleteOpen(true)}>Elimina</button>
               </div>

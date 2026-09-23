@@ -49,7 +49,15 @@ const VehicleCard = ({
       </div>
 
       <div className="vcard-corpo">
-        <h3 className="vcard-nome">{nome}</h3>
+        <div className="vcard-titolo">
+          <h3 className="vcard-nome">{nome}</h3>
+          {/* Prezzo della tariffa di categoria (readVeicoli lo applica ai veicoli). */}
+          {veicolo.prezzo ? (
+            <span className="vcard-prezzo">
+              € {Number(veicolo.prezzo).toLocaleString('it-IT')}<small>/giorno</small>
+            </span>
+          ) : null}
+        </div>
         <div className="vcard-meta">
           {veicolo.targa && <span className="vcard-targa">{veicolo.targa}</span>}
           {veicolo.categoria && <span className="vcard-categoria">{veicolo.categoria}</span>}

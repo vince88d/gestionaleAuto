@@ -129,3 +129,11 @@ export async function confermaPrenotazione({ prenotazione, ip }) {
     return { success: false, message: error.message };
   }
 }
+
+// Segna come riparato il danno rilevato alla riconsegna di una prenotazione.
+// Aggiorna solo quei due campi del documento (prima il cambio restava solo
+// nella schermata e si perdeva riaprendo il gestionale).
+export async function segnaDannoPrenotazioneRiparato(prenotazioneId, riparatoIn = new Date().toISOString()) {
+  await updateDoc(doc(db, PRENOTAZIONI_COLLECTION, prenotazioneId), { daRiparare: false, riparatoIn });
+  return { daRiparare: false, riparatoIn };
+}

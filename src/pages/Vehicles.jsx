@@ -9,12 +9,13 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { Plus, Search } from 'lucide-react';
 import VehicleCard from '../components/VeichleCard';
 import VehicleForm from '../components/VehicleForm';
-import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
+import { readVeicoli, salvaVeicolo, eliminaVeicolo } from '../lib/firestoreVeicoli';
 import { readCategorie } from '../lib/firestoreCategorie';
-import { caricaFotoVeicolo } from '../lib/storageFoto';
+import { caricaFotoVeicolo, caricaFotoDanno } from '../lib/storageFoto';
 import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
 import { readHolds } from '../lib/firestoreHolds';
 import { disponibiliPerCategoria } from '../utils/disponibilitaCategoria';
+import { cambiaStatoRiparazione } from '../utils/danniVeicolo';
 import './Vehicle.css';
 
 Modal.setAppElement('#root');
@@ -35,18 +36,7 @@ const emptyFormData = {
   categoria: '',
   note: '',
   immagine: '',
-"danni": [
-  {
-    "id": "abc123",
-    "data": "2025-06-03",
-    "descrizione": "graffio paraurti posteriore",
-    "immagine": "base64...",
-    "daPrenotazione": true,
-    "prenotazioneId": "idPrenotazione123",
-    "stato": "attivo",
-    "riparatoIn": null
-  }
-],
+  danni: [],
   storicoRiparazioni:[],
   prenotazioni: [],
   scadenze: {
@@ -68,7 +58,6 @@ function Vehicles() {
   const [selectedVeicolo, setSelectedVeicolo] = useState(null); 
   const [selectedDamagePhoto, setSelectedDamagePhoto] = useState(null);
   const [damageModalOpen, setDamageModalOpen] = useState(false);
-  const [originalVeicolo, setOriginalVeicolo] = useState(null);
   const [search, setSearch] = useState('');
   const [mostraManutenzioni, setMostraManutenzioni] = useState(false);
   const [nuovaManutenzione, setNuovaManutenzione] = useState({
@@ -161,48 +150,33 @@ function Vehicles() {
   };
   const handleOpenDetailModal = (veicolo) => {
     setSelectedVeicolo(veicolo);
-    setOriginalVeicolo(veicolo); 
     setDetailModalOpen(true);
   };
 
+  // Nella scheda ogni azione salva subito, quindi alla chiusura non c'e'
+  // nulla da confermare.
   const handleCloseDetailModal = () => {
-    if (selectedVeicolo && JSON.stringify(selectedVeicolo) !== JSON.stringify(originalVeicolo)) {
-      setConfirmDialog({
-        open: true,
-        message: 'Hai modifiche non salvate. Vuoi chiudere comunque?',
-        onConfirm: () => {
-          setDetailModalOpen(false);
-          setSelectedVeicolo(null);
-          setOriginalVeicolo(null);
-          setMostraManutenzioni(false);
-          setConfirmDialog({ open: false, message: '', onConfirm: null });
-        }
-      });
-    } else {
-      setDetailModalOpen(false);
-      setSelectedVeicolo(null);
-      setOriginalVeicolo(null);
-      setMostraManutenzioni(false);
-    }
+    setDetailModalOpen(false);
+    setSelectedVeicolo(null);
+    setMostraManutenzioni(false);
   };
 
 
+  // Salva solo il veicolo aggiunto o modificato (prima si riscriveva tutta la
+  // flotta con la copia locale, cancellando i veicoli aggiunti nel frattempo da
+  // un'altra postazione). Lo stato si aggiorna dopo che Firestore ha risposto.
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      let nuovaLista;
       if (editingVeicolo) {
-        const aggiornato = { ...formData, id: editingVeicolo.id };
-        dispatch(updateVeicolo(aggiornato));
-        nuovaLista = veicoli.map((v) => (v.id === aggiornato.id ? aggiornato : v));
+        const salvato = await salvaVeicolo({ ...formData, id: editingVeicolo.id });
+        dispatch(updateVeicolo(salvato));
         toast.success('Veicolo aggiornato!');
       } else {
-        const nuovo = { ...formData, id: crypto.randomUUID(), danni: [] };
-        dispatch(addVeicolo(nuovo));
-        nuovaLista = [...veicoli, nuovo];
+        const salvato = await salvaVeicolo({ ...formData, id: crypto.randomUUID(), danni: [] });
+        dispatch(addVeicolo(salvato));
         toast.success('Veicolo aggiunto!');
       }
-      await writeVeicoli(nuovaLista);
       handleCloseModal();
     } catch (error) {
       console.error('Errore salvataggio:', error);
@@ -212,9 +186,8 @@ function Vehicles() {
 
 const handleDelete = async (id) => {
   try {
-    const nuovaLista = veicoli.filter((v) => v.id !== id);
+    await eliminaVeicolo(id);
     dispatch(deleteVeicolo(id));
-    await writeVeicoli(nuovaLista);
     toast.success('Veicolo eliminato!');
     return true; // Indica che l'eliminazione è avvenuta con successo
   } catch (error) {
@@ -252,32 +225,6 @@ const handleDelete = async (id) => {
   };
 
 
-  const handleAddDamagePhoto = async () => {
-    if (!selectedVeicolo) return;
-    try {
-      const paths = await window.electronAPI.selezionaImmagine();
-      if (paths && paths.length > 0) {
-        const savedPath = await window.electronAPI.salvaImmagineLocale(paths[0]);
-        if (savedPath) {
-          const aggiornato = {
-            ...selectedVeicolo,
-            danni: [...(selectedVeicolo.danni || []), savedPath],
-          };
-  
-          // Aggiorna solo lo stato locale del veicolo selezionato
-          setSelectedVeicolo(aggiornato);
-          
-          // Mostra il messaggio di successo
-          toast.success('Foto danno aggiunta con successo!');
-        }
-      }
-    } catch (error) {
-      console.error('Errore aggiunta foto danno:', error);
-      toast.error('Errore durante l\'aggiunta della foto del danno.');
-    }
-  };
-  
-
 const handleDeleteDamagePhoto = (index) => {
   if (!selectedVeicolo) return;
 
@@ -287,10 +234,8 @@ const handleDeleteDamagePhoto = (index) => {
     onConfirm: () => {
       const danniAggiornati = selectedVeicolo.danni.filter((_, i) => i !== index);
       const aggiornato = { ...selectedVeicolo, danni: danniAggiornati };
-      setSelectedVeicolo(aggiornato);
-      handleUpdate(aggiornato); // <-- salva su file
-      toast.info('Foto eliminata.');
       setConfirmDialog({ open: false, message: '', onConfirm: null });
+      handleUpdate(aggiornato, 'Danno eliminato.');
     }
   });
 };
@@ -317,15 +262,20 @@ const isDisponibile = (veicolo) => {
   return disponibiliPerCategoria(veicolo.categoria, oggi, oggi, veicoli, prenotazioniAttive, holds) > 0;
 };
 const handleDeleteManutenzione = (index) => {
-  const aggiornato = {
-    ...selectedVeicolo,
-    manutenzioni: selectedVeicolo.manutenzioni.filter((_, i) => i !== index),
-  };
-  setSelectedVeicolo(aggiornato);
-  toast.info("Manutenzione rimossa. Ricorda di salvare!");
+  setConfirmDialog({
+    open: true,
+    message: 'Eliminare questa manutenzione?',
+    onConfirm: () => {
+      setConfirmDialog({ open: false, message: '', onConfirm: null });
+      handleUpdate(
+        { ...selectedVeicolo, manutenzioni: selectedVeicolo.manutenzioni.filter((_, i) => i !== index) },
+        'Manutenzione eliminata.'
+      );
+    },
+  });
 };
 
-const handleAddManutenzione = () => {
+const handleAddManutenzione = async () => {
   if (
     !nuovaManutenzione.data ||
     !nuovaManutenzione.descrizione ||
@@ -340,13 +290,11 @@ const handleAddManutenzione = () => {
     costo: parseFloat(nuovaManutenzione.costo),
   };
 
-  setSelectedVeicolo((prev) => ({
-    ...prev,
-    manutenzioni: [...(prev.manutenzioni || []), nuova],
-  }));
-
-  setNuovaManutenzione({ data: '', descrizione: '', costo: '' });
-  toast.success("Manutenzione aggiunta!");
+  const salvato = await handleUpdate(
+    { ...selectedVeicolo, manutenzioni: [...(selectedVeicolo.manutenzioni || []), nuova] },
+    'Manutenzione aggiunta.'
+  );
+  if (salvato) setNuovaManutenzione({ data: '', descrizione: '', costo: '' });
 };
 
 
@@ -356,7 +304,10 @@ const handleEdit = () => {
 };
 
 
-const handleUpdate = async (veicoloAggiornato = selectedVeicolo) => {
+// Salva il veicolo aperto nella scheda. Ogni azione della scheda (danni,
+// riparazioni, manutenzioni) passa da qui e salva subito: non c'e' piu' un
+// pulsante "Salva" da ricordarsi. Restituisce true se il salvataggio e' andato.
+const handleUpdate = async (veicoloAggiornato = selectedVeicolo, messaggio = 'Modifiche salvate!') => {
   try {
     // Trova il veicolo originale
     const originale = veicoli.find((v) => v.id === veicoloAggiornato.id);
@@ -376,22 +327,17 @@ const handleUpdate = async (veicoloAggiornato = selectedVeicolo) => {
       },
     };
 
-    dispatch(updateVeicolo(veicoloCompleto));
-
-    const nuovaLista = veicoli.map((v) =>
-      v.id === veicoloCompleto.id ? veicoloCompleto : v
-    );
-
-    await writeVeicoli(nuovaLista);
-    setSelectedVeicolo(veicoloCompleto);
-    toast.success("Modifiche salvate!");
+    const salvato = await salvaVeicolo(veicoloCompleto);
+    dispatch(updateVeicolo(salvato));
+    setSelectedVeicolo(salvato);
+    toast.success(messaggio);
+    return true;
   } catch (error) {
     console.error("Errore durante l'aggiornamento:", error);
     toast.error("Errore salvataggio.");
+    return false;
   }
 };
-
-
 
   // Calcola disponibilità consecutiva da oggi
 const calcolaDisponibilitaConsecutiva = (veicolo) => {
@@ -449,68 +395,40 @@ const getScadenzaColor = (dataStr) => {
   return 'verde';
 };
 
-const handleAddManualDamage = (nuovoDanno) => {
-  if (!selectedVeicolo) return;
 
-  const danniAggiornati = [...(selectedVeicolo.danni || []), nuovoDanno];
-  const aggiornato = { ...selectedVeicolo, danni: danniAggiornati };
-  setSelectedVeicolo(aggiornato);
-
-  toast.success("Danno aggiunto. Ricorda di salvare!");
-};
-
-
-const getEventiDisponibilità = (veicolo) => {
-  const oggi = new Date();
-  const giorniFuturi = 30;
-  const eventi = [];
-
-  for (let i = 0; i < giorniFuturi; i++) {
-    const giorno = new Date(oggi);
-    giorno.setDate(oggi.getDate() + i);
-    const iso = giorno.toISOString().split('T')[0];
-
-    const occupato = prenotazioniAttive.some(p =>
-      p.targa === veicolo.targa &&
-      p.dataInizio <= iso &&
-      p.dataFine >= iso
+// Nuovo danno dalla scheda: la foto va su Storage (cartella danni/), nel
+// veicolo resta solo il suo indirizzo. Restituisce true se e' andato tutto bene.
+const handleAddManualDamage = async ({ file, ...dati }) => {
+  if (!selectedVeicolo) return false;
+  const caricamento = toast.loading('Carico la foto del danno…');
+  try {
+    const immagine = await caricaFotoDanno(file);
+    toast.dismiss(caricamento);
+    return handleUpdate(
+      { ...selectedVeicolo, danni: [...(selectedVeicolo.danni || []), { ...dati, immagine }] },
+      'Danno aggiunto.'
     );
-
-    eventi.push({
-      start: iso,
-      end: iso,
-      display: 'background',
-      color: occupato ? '#ffcccc' : '#ccffcc', // rosso chiaro / verde chiaro
+  } catch (error) {
+    console.error('Errore caricamento foto danno:', error);
+    toast.update(caricamento, {
+      render: error.message || 'Non sono riuscito a caricare la foto. Riprova.',
+      type: 'error',
+      isLoading: false,
+      autoClose: 5000,
     });
+    return false;
   }
-
-  return eventi;
 };
 
 
+// Riparato / da riparare: la regola sta in utils/danniVeicolo (testata).
 const handleToggleRepairStatus = (index) => {
-  const danno = selectedVeicolo.danni[index];
-  if (!danno) return;
-
-  const danniRestanti = selectedVeicolo.danni.filter((_, i) => i !== index);
-  const storicoCorrente = selectedVeicolo.storicoRiparazioni || [];
-
-  const aggiornato = {
-    ...selectedVeicolo,
-    danni: danno.daRiparare
-      ? danniRestanti
-      : [...danniRestanti, { ...danno, daRiparare: true }],
-    storicoRiparazioni: danno.daRiparare
-      ? [...storicoCorrente, { ...danno, daRiparare: false, riparatoIn: new Date().toISOString() }]
-      : storicoCorrente.filter((_, i) => i !== index)
-  };
-
-  setSelectedVeicolo(aggiornato);
-  handleUpdate(aggiornato); // <-- Salva subito su file
-  toast.success(
-    danno.daRiparare
-      ? 'Danno spostato nello storico delle riparazioni.'
-      : 'Danno riportato tra quelli da riparare.'
+  const danno = selectedVeicolo.danni?.[index];
+  const aggiornato = cambiaStatoRiparazione(selectedVeicolo, index);
+  if (!aggiornato) return;
+  handleUpdate(
+    aggiornato,
+    danno.daRiparare ? 'Danno spostato nello storico delle riparazioni.' : 'Danno segnato da riparare.'
   );
 };
 
@@ -570,6 +488,8 @@ const handleToggleRepairStatus = (index) => {
   onClose={handleCloseDetailModal}
   veicolo={selectedVeicolo}
   prenotazioni={prenotazioni}
+  veicoli={veicoli}
+  holds={holds}
   onUpdate={handleUpdate}
   onEdit={handleEdit}
   onDelete={handleDelete}
@@ -589,36 +509,6 @@ const handleToggleRepairStatus = (index) => {
   onToggleRepairStatus={handleToggleRepairStatus}
 />
 
-
-
-{/* Modal per la visualizzazione della foto del danno */}
-<Modal
-  isOpen={damageModalOpen}
-  onRequestClose={() => setDamageModalOpen(false)}
-  className={{
-    base: 'Modal',
-    afterOpen: 'Modal--after-open',
-    beforeClose: 'Modal--before-close',
-  }}
-  overlayClassName={{
-    base: 'Overlay',
-    afterOpen: 'Overlay--after-open',
-    beforeClose: 'Overlay--before-close',
-  }}
->
-  <div style={{ textAlign: 'center' }}>
-    {selectedDamagePhoto && (
-      <img
-        src={selectedDamagePhoto}
-        alt="Foto Danno"
-        style={{ maxWidth: '90%', maxHeight: '90vh', borderRadius: '10px' }}
-      />
-    )}
-    <button onClick={() => setDamageModalOpen(false)} className="close-damage-modal-btn" style={{ marginTop: '20px' }}>
-      Chiudi
-    </button>
-  </div>
-</Modal>
 
 
       {/* Modal */}
