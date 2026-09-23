@@ -1,445 +1,294 @@
 // src/pages/Clients.jsx
-import React, { useState, useEffect,useRef } from 'react';
-import './Clients.css';
-import ModalEditClient from '../components/ModalEditClient';
-import ClientForm from '../components/ClientForm';
-import { setClienti, addCliente, updateCliente, deleteCliente } from '../store/clientiSlice';
+import React, { useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import { Edit2,Trash2,Info,PlusIcon, Search } from 'lucide-react';
+import { Pencil, Trash2, Info, Plus, Search, Building2 } from 'lucide-react';
+import './Clients.css';
+import ClienteFormModal from '../components/ClienteFormModal';
 import ModalDettaglioCliente from '../components/ModalDettaglioCliente';
-import { readClienti, writeClienti } from '../lib/firestoreClienti';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { addCliente, updateCliente, deleteCliente } from '../store/clientiSlice';
+import { creaCliente, aggiornaCliente, eliminaCliente, messaggioErroreCliente } from '../lib/firestoreClienti';
+import { isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
+import { prenotazioniDelCliente, cercaClienti } from '../utils/validaCliente';
+import { coloreScadenza, testoScadenza, formattaData } from '../utils/scadenze';
 
-const DOCUMENT_TYPE_OPTIONS = [
-  { value: 'CI', label: "Carta d'Identita" },
-  { value: 'Patente', label: 'Patente' },
-  { value: 'Passaporto', label: 'Passaporto' },
-  { value: 'Permesso di soggiorno', label: 'Permesso di soggiorno' },
-  { value: 'Tessera sanitaria', label: 'Tessera sanitaria' },
-  { value: 'Altro', label: 'Altro' },
-];
+const RIGHE_PER_PAGINA = 15;
 
-const DOCUMENT_TYPE_VALUES = DOCUMENT_TYPE_OPTIONS.map((option) => option.value);
-
-
-function Clients() {  
-  const clienti = useSelector((state) => state.clienti);
-  const dispatch = useDispatch();
-  const[dettaglioCliente, setDettaglioCliente] = useState(null);
-  const [isDettaglioOpen, setIsDettaglioOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const[patenteScaduta,setPatenteScaduta] = useState(false);
-  const[documentoScaduto,setDocumentoScaduto] = useState(false);
-  const [termineRicerca, setTermineRicerca] = useState('');
-  const [filtroAttivo, setFiltroAttivo] = useState('');
-  const tabellaRef = useRef(null);
-  const [clienteDaEliminare, setClienteDaEliminare] = useState(null);
-  const [mostraDialogEliminazione, setMostraDialogEliminazione] = useState(false);
-  const [mostraFormAggiunta, setMostraFormAggiunta] = useState(false);
-  const [paginaClienti, setPaginaClienti] = useState(1);
-  const righePerPagina = 10;
-  const [formData, setFormData] = useState({
-    nome: '',
-    cognome: '',
-    email: '',
-    telefono: '',
-    indirizzo: '',
-    nazione: '',
-    dataNascita: '',
-    luogoNascita: '',
-    tipoDocumento: '',
-    tipoDocumentoAltro: '',
-    documento: '',
-    scadenzaDocumento: '',
-    codiceFiscale: '',
-    patente: '',
-    piva: '',
-    isAzienda: false,
-  });
-  
-const chiediConfermaEliminazione = (cliente) => {
-  setClienteDaEliminare(cliente);
-  setMostraDialogEliminazione(true);
-};
-
-const caricaClienti = async () => {
-  try {
-    const dati = await readClienti();
-    const clientiConDanni = (dati || []).map(cliente => ({
-      ...cliente,
-      storicoDanni: cliente.storicoDanni || []
-    }));
-    dispatch(setClienti(clientiConDanni));
-  } catch (err) {
-    console.error("Errore nel caricamento clienti:", err);
-  }
-};
-
-const clientiFiltrati = clienti.filter(cliente => {
-  if (!filtroAttivo) return true;
-  const testo = `${cliente.nome} ${cliente.cognome} ${cliente.email} ${cliente.telefono}`.toLowerCase();
-  return testo.includes(filtroAttivo);
-});
-
-const numeroPagine = Math.ceil(clientiFiltrati.length / righePerPagina);
-const clientiDaMostrare = clientiFiltrati.slice(
-  (paginaClienti - 1) * righePerPagina,
-  paginaClienti * righePerPagina
-);
-
-
-const handleRicerca = (e) => {
-  e.preventDefault();
-  setFiltroAttivo(termineRicerca.trim().toLowerCase()); 
-  setPaginaClienti(1);
-  
-  // Scroll dopo un piccolo delay per assicurarsi che la tabella sia visibile
-  setTimeout(() => {
-    if (tabellaRef.current) {
-      tabellaRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, 100);
-};
-
-
-    useEffect(() => {
-    // Le prenotazioni arrivano in tempo reale da App.js.
-    caricaClienti();
-  }, [dispatch]);
-
-  
- const handleInfo = (cliente) => {
-  setDettaglioCliente(cliente);
-  setIsDettaglioOpen(true);
- }
- 
-const handleChange = (e) => {
-  const { name, value } = e.target;
-
-  if (name === "scadenzaPatente") {
-    const isExpired = new Date(value) < new Date();
-    setPatenteScaduta(isExpired);
-  }
-
-  if (name === 'tipoDocumento' && value !== 'Altro') {
-    setFormData({ ...formData, tipoDocumento: value, tipoDocumentoAltro: '' });
-    return;
-  }
-
-  setFormData({ ...formData, [name]: value });
-};
-
-const normalizzaCodiceFiscale = (value) => (value || '').trim().toUpperCase();
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const codiceFiscaleNormalizzato = normalizzaCodiceFiscale(formData.codiceFiscale);
-    const patenteNormalizzata = (formData.patente || '').trim();
-
-    if (!patenteNormalizzata) {
-      toast.error("Inserisci la patente prima di salvare il cliente.");
-      return;
-    }
-
-    const codiceFiscaleDuplicato = (clienti || []).some(
-      (cliente) => normalizzaCodiceFiscale(cliente.codiceFiscale) === codiceFiscaleNormalizzato
-    );
-
-    if (codiceFiscaleDuplicato) {
-      toast.error("Esiste gia un cliente con questo codice fiscale.");
-      return;
-    }
-
-    try {
-      const tipoDocumentoFinale =
-        formData.tipoDocumento === 'Altro'
-          ? (formData.tipoDocumentoAltro || '').trim()
-          : formData.tipoDocumento;
-      const nuovoCliente = {
-        ...formData,
-        codiceFiscale: codiceFiscaleNormalizzato,
-        patente: patenteNormalizzata,
-        tipoDocumento: tipoDocumentoFinale,
-        storicoDanni: [],
-      };
-      const nuovaLista = [...(clienti || []), nuovoCliente];
-      
-      // Prima salva su disco
-      const success = await writeClienti(nuovaLista);
-      if (!success) {
-        throw new Error('Salvataggio fallito');
-      }
-      // Poi aggiorna lo stato
-      dispatch(addCliente(nuovoCliente));
-      toast.success("Cliente salvato con successo.");
-      
-      // Resetta il form
-      setFormData({
-        nome: '',
-        cognome: '',
-        email: '',
-        telefono: '',
-        tipoDocumento: '',
-        tipoDocumentoAltro: '',
-        documento: '',
-        codiceFiscale: '',
-        patente: '',
-      });
-    } catch (err) {
-      console.error("Errore salvataggio cliente:", err);
-      toast.error("Errore durante il salvataggio del cliente");
-    }
-  };
-
- const handleDelete = async () => {
-  try {
-    const updated = clienti.filter(c => c !== clienteDaEliminare);
-    dispatch(deleteCliente(clienti.indexOf(clienteDaEliminare)));
-    await writeClienti(updated);
-    toast.success("Cliente eliminato con successo");
-  } catch (err) {
-    toast.error("Errore durante l'eliminazione");
-  } finally {
-    setMostraDialogEliminazione(false);
-    setClienteDaEliminare(null);
-  }
-};
-
-  
-
-  const handleEdit = (index) => {
-    const cliente = clienti[index];
-    const tipoDocumentoEsistente = cliente.tipoDocumento || '';
-    const isTipoPersonalizzato =
-      tipoDocumentoEsistente && !DOCUMENT_TYPE_VALUES.includes(tipoDocumentoEsistente);
-
-    setEditingClient({
-      ...cliente,
-      tipoDocumento: isTipoPersonalizzato ? 'Altro' : tipoDocumentoEsistente,
-      tipoDocumentoAltro: isTipoPersonalizzato ? tipoDocumentoEsistente : (cliente.tipoDocumentoAltro || ''),
-      index,
-    });
-    setIsModalOpen(true);
-  };
-
-
-    const isDocumentoScaduto = (dataScadenza) => {
-  if (!dataScadenza) return false;
-  return new Date(dataScadenza) < new Date();
-};
-
-const isPatenteScaduta = (dataScadenza) => {
-  if (!dataScadenza) return false;
-  return new Date(dataScadenza) < new Date();
-};
-
-  const handleSaveEdit = async () => {
-    const tipoDocumentoFinale =
-      editingClient.tipoDocumento === 'Altro'
-        ? (editingClient.tipoDocumentoAltro || '').trim()
-        : editingClient.tipoDocumento;
-    const updated = {
-      nome: editingClient.nome,
-      cognome: editingClient.cognome,
-      email: editingClient.email,
-      telefono: editingClient.telefono,
-      tipoDocumento: tipoDocumentoFinale,
-      tipoDocumentoAltro: editingClient.tipoDocumento === 'Altro' ? (editingClient.tipoDocumentoAltro || '').trim() : '',
-      documento: editingClient.documento,
-      scadenzaDocumento: editingClient.scadenzaDocumento,
-      rilascioDocumento: editingClient.rilascioDocumento,
-      rilasciatoDaDocumento: editingClient.rilasciatoDaDocumento,
-      codiceFiscale: editingClient.codiceFiscale,
-      patente: editingClient.patente,
-      storicoDanni: editingClient.storicoDanni || [],
-    };
-
-  
-  
-    dispatch(updateCliente({ index: editingClient.index, updated }));
-    const nuovaLista = [...clienti];
-    nuovaLista[editingClient.index] = updated;
-  
-    await writeClienti(nuovaLista); // <- SALVATAGGIO
-    setIsModalOpen(false);
-  };
-  
+// Patente o documento scaduti o in scadenza (30 giorni): una riga colorata
+// sotto il numero. Niente se in regola o senza data.
+export function AvvisoScadenza({ etichetta, data }) {
+  const colore = coloreScadenza(data);
+  if (colore !== 'rosso' && colore !== 'giallo') return null;
   return (
-    <div className="clienti-container">
-      <h1 className="title">Gestione Clienti</h1>
-      
+    <span className={`cli-scadenza cli-scadenza--${colore}`} title={`${etichetta}: ${formattaData(data)}`}>
+      {etichetta}: {testoScadenza(data).toLowerCase()}
+    </span>
+  );
+}
 
+function Clients() {
+  const clienti = useSelector((state) => state.clienti);
+  const prenotazioni = useSelector((state) => state.prenotazioni);
+  const dispatch = useDispatch();
 
-      <form onSubmit={handleRicerca} style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-  <div style={{ position: 'relative', flex: 1 }}>
-    <Search 
-      size={18} 
-      style={{
-        position: 'absolute',
-        top: '50%',
-        left: '10px',
-        transform: 'translateY(-50%)',
-        color: '#888',
-        pointerEvents: 'none'
-      }} 
-    />
-    <input
-      type="text"
-      placeholder="Cerca per nome, cognome, email, targa..."
-      value={termineRicerca}
-      onChange={(e) => setTermineRicerca(e.target.value)}
-      style={{
-        width: '100%',
-        padding: '0.5rem 0.5rem 0.5rem 2rem', // padding-left aumentato per l'icona
-        fontSize: '1rem',
-        borderRadius: '6px',
-        border: '1px solid #ccc'
-      }}
-    />
-  </div>
-  <button type="submit" style={{
-    padding: '0.5rem 1rem',
-    fontSize: '1rem',
-    backgroundColor: '#2563eb',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer'
-  }}>
-    Cerca
-  </button>
-</form>
+  const [cerca, setCerca] = useState('');
+  const [pagina, setPagina] = useState(1);
+  // Form cliente: null = chiuso, { cliente: null } = nuovo, { cliente } = modifica.
+  const [form, setForm] = useState(null);
+  const [dettaglioId, setDettaglioId] = useState(null);
+  const [daEliminare, setDaEliminare] = useState(null);
+  // Modifica con codice fiscale cambiato: si chiede conferma prima di
+  // aggiornare anche le prenotazioni del cliente.
+  const [cambioCodiceFiscale, setCambioCodiceFiscale] = useState(null);
 
-<div style={{ marginBottom: '1rem' }}>
-  <button
-    onClick={() => setMostraFormAggiunta(prev => !prev)}
-    style={{
-      padding: '0.5rem 1rem',
-      fontSize: '1rem',
-      backgroundColor: '#2563eb',
-      color: '#fff',
-      border: 'none',
-      borderRadius: '6px',
-      cursor: 'pointer'
-    }}
-  >
-   {mostraFormAggiunta ? 'Annulla' : (
-  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-    <PlusIcon size={16} />
-    Aggiungi Cliente
-  </span>
-)}
-  </button>
-</div>
+  // Noleggi per cliente (per codice fiscale), senza annullate e pagamenti del
+  // sito non conclusi.
+  const noleggiPerCliente = useMemo(() => {
+    const mappa = new Map();
+    prenotazioni.filter(isPrenotazioneVisibile).forEach((p) => {
+      const cf = (p.codiceFiscale || '').trim().toUpperCase();
+      if (!cf) return;
+      const elenco = mappa.get(cf) || [];
+      elenco.push(p);
+      mappa.set(cf, elenco);
+    });
+    return mappa;
+  }, [prenotazioni]);
+  const noleggiDi = (cliente) => noleggiPerCliente.get((cliente.codiceFiscale || '').toUpperCase()) || [];
 
-{  mostraFormAggiunta && (
-  <ClientForm
-    formData={formData}
-    onChange={handleChange}
-    onSubmit={handleSubmit}
-    patenteScaduta={patenteScaduta}
-    documentoScaduto={documentoScaduto}
-  />
-)}
+  // Ricerca mentre si scrive, su piu' parole: nome, contatti, codice fiscale,
+  // patente, azienda e targhe noleggiate. In ordine alfabetico per cognome.
+  const filtrati = useMemo(
+    () => cercaClienti(clienti, cerca, prenotazioni)
+      .slice()
+      .sort((a, b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it')),
+    [clienti, cerca, prenotazioni]
+  );
+  const numeroPagine = Math.ceil(filtrati.length / RIGHE_PER_PAGINA);
+  const paginaValida = Math.min(pagina, Math.max(numeroPagine, 1));
+  const daMostrare = filtrati.slice((paginaValida - 1) * RIGHE_PER_PAGINA, paginaValida * RIGHE_PER_PAGINA);
+  const dettaglio = clienti.find((c) => c.id === dettaglioId) || null;
 
+  const salvaModifica = async (aggiornato, originale, prenotazioniDaAggiornare = []) => {
+    try {
+      const campi = await aggiornaCliente(originale.id, aggiornato, {
+        prenotazioniDaAggiornare: prenotazioniDaAggiornare.map((p) => p.id),
+      });
+      dispatch(updateCliente({ id: originale.id, ...campi }));
+      toast.success(
+        prenotazioniDaAggiornare.length > 0
+          ? `Cliente salvato; aggiornate anche ${prenotazioniDaAggiornare.length} prenotazioni.`
+          : 'Cliente salvato.'
+      );
+      setForm(null);
+    } catch (err) {
+      console.error('Errore modifica cliente:', err);
+      toast.error(messaggioErroreCliente(err, 'Modifiche non salvate, riprova.'));
+    }
+  };
 
+  // Dal form (dati gia' controllati): nuovo cliente o modifica di tutti i campi.
+  const salva = async (pronto) => {
+    const originale = form?.cliente?.id ? clienti.find((c) => c.id === form.cliente.id) : null;
+    if (form?.cliente?.id && !originale) {
+      toast.error('Il cliente non esiste più: forse è stato eliminato da un\'altra postazione.');
+      return;
+    }
+    if (!originale) {
+      try {
+        const salvato = await creaCliente(pronto);
+        dispatch(addCliente(salvato));
+        toast.success(`Cliente ${salvato.nome} ${salvato.cognome} aggiunto.`);
+        setForm(null);
+      } catch (err) {
+        console.error('Errore salvataggio cliente:', err);
+        toast.error(messaggioErroreCliente(err, 'Errore durante il salvataggio del cliente'));
+      }
+      return;
+    }
+    const collegate = pronto.codiceFiscale !== (originale.codiceFiscale || '').toUpperCase()
+      ? prenotazioniDelCliente(originale.codiceFiscale, prenotazioni)
+      : [];
+    if (collegate.length > 0) {
+      setCambioCodiceFiscale({ aggiornato: pronto, originale, collegate });
+      return;
+    }
+    await salvaModifica(pronto, originale);
+  };
 
-  <>
-    <table className="client-table" ref={tabellaRef}>
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>Cognome</th>
-          <th>Email</th>
-          <th>Telefono</th>
-          <th>Patente</th>
-          <th>Azioni</th>
-        </tr>
-      </thead>
-      <tbody>
-        {filtroAttivo && clientiFiltrati.length === 0 && (
-          <tr>
-            <td colSpan={6} style={{ textAlign: 'center', padding: '1.5rem', color: '#888' }}>
-              Nessun cliente trovato.
-            </td>
-          </tr>
-        )}
-        {clientiDaMostrare.map((cliente, index) => (
-            <tr key={index}>
-              <td>{cliente.nome}</td>
-              <td>{cliente.cognome}</td>
-              <td>{cliente.email}</td>
-              <td>{cliente.telefono}</td>
-              <td>
-                {cliente.patente}
-                {isPatenteScaduta(cliente.scadenzaPatente) && (
-                  <div style={{ color: 'red', fontSize: '0.6rem', marginTop: '4px' }}>
-                    doc scaduto
-                  </div>
-                )}
-              </td>
-              <td>
-                <div className="action-btn-group">
-                      <button onClick={() => handleInfo(cliente)} className="action-btn info-btn">
-                    <Info size={14} />
-                  </button>
-                  <button onClick={() => handleEdit(index)} className="action-btn edit-btn">
-                    <Edit2 size={14} />
-                  </button>
-                  <button
-                    onClick={() => chiediConfermaEliminazione(cliente)}
-                    className="action-btn delete-btn"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-              
-                </div>
-              </td>
+  const elimina = async () => {
+    const cliente = daEliminare;
+    setDaEliminare(null);
+    if (!cliente?.id) return;
+    try {
+      await eliminaCliente(cliente.id);
+      dispatch(deleteCliente(cliente.id));
+      if (dettaglioId === cliente.id) setDettaglioId(null);
+      toast.success('Cliente eliminato.');
+    } catch (err) {
+      console.error('Errore eliminazione cliente:', err);
+      toast.error("Errore durante l'eliminazione");
+    }
+  };
+
+  const apriModifica = (cliente) => {
+    setDettaglioId(null);
+    setForm({ cliente });
+  };
+
+  return (
+    <div className="cli">
+      <div className="cli-toolbar">
+        <div>
+          <h1 className="cli-titolo">Clienti</h1>
+          <span className="cli-conteggio">
+            {cerca.trim()
+              ? `${filtrati.length} su ${clienti.length} clienti`
+              : `${clienti.length} ${clienti.length === 1 ? 'cliente' : 'clienti'}`}
+          </span>
+        </div>
+        <div className="cli-azioni">
+          <label className="cli-cerca">
+            <Search size={16} aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Cerca nome, codice fiscale, telefono, targa…"
+              aria-label="Cerca clienti"
+              value={cerca}
+              onChange={(e) => { setCerca(e.target.value); setPagina(1); }}
+            />
+          </label>
+          <button type="button" className="cli-btn cli-btn--primario" onClick={() => setForm({ cliente: null })}>
+            <Plus size={16} aria-hidden="true" /> Nuovo cliente
+          </button>
+        </div>
+      </div>
+
+      <div className="cli-elenco">
+        <table className="cli-tabella">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Contatti</th>
+              <th>Codice fiscale</th>
+              <th>Patente</th>
+              <th>Noleggi</th>
+              <th aria-label="Azioni" />
             </tr>
-          ))}
-      </tbody>
-    </table>
+          </thead>
+          <tbody>
+            {daMostrare.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="cli-vuoto">
+                  {cerca.trim()
+                    ? `Nessun cliente trovato per “${cerca.trim()}”.`
+                    : 'Nessun cliente. Aggiungine uno con «Nuovo cliente»: i clienti del sito entrano da soli alla consegna.'}
+                </td>
+              </tr>
+            ) : daMostrare.map((cliente) => {
+              const noleggi = noleggiDi(cliente);
+              const ultimo = noleggi.map((p) => p.dataInizio).filter(Boolean).sort().pop();
+              return (
+                <tr key={cliente.id} className="cli-riga" onClick={() => setDettaglioId(cliente.id)}>
+                  <td>
+                    <span className="cli-principale">{`${cliente.nome || ''} ${cliente.cognome || ''}`.trim() || '—'}</span>
+                    {cliente.ragioneSociale && (
+                      <span className="cli-secondario"><Building2 size={12} aria-hidden="true" /> {cliente.ragioneSociale}</span>
+                    )}
+                    {cliente.origine === 'sito' && <span className="cli-etichetta">dal sito</span>}
+                  </td>
+                  <td>
+                    <span className="cli-principale cli-normale">{cliente.email || '—'}</span>
+                    {(cliente.cellulare || cliente.telefono) && (
+                      <span className="cli-secondario">{cliente.cellulare || cliente.telefono}</span>
+                    )}
+                  </td>
+                  <td><span className="cli-cf">{cliente.codiceFiscale || '—'}</span></td>
+                  <td>
+                    <span className="cli-principale cli-normale">{cliente.patente || '—'}</span>
+                    <AvvisoScadenza etichetta="Patente" data={cliente.scadenzaPatente} />
+                    <AvvisoScadenza etichetta="Documento" data={cliente.scadenzaDocumento} />
+                  </td>
+                  <td>
+                    <span className="cli-principale">{noleggi.length}</span>
+                    {ultimo && <span className="cli-secondario">ultimo {formattaData(ultimo)}</span>}
+                  </td>
+                  <td className="cli-azioni-riga" onClick={(e) => e.stopPropagation()}>
+                    <button type="button" className="cli-icona" onClick={() => setDettaglioId(cliente.id)} title="Scheda cliente" aria-label="Scheda cliente">
+                      <Info size={16} aria-hidden="true" />
+                    </button>
+                    <button type="button" className="cli-icona" onClick={() => apriModifica(cliente)} title="Modifica" aria-label="Modifica">
+                      <Pencil size={16} aria-hidden="true" />
+                    </button>
+                    <button type="button" className="cli-icona cli-icona--pericolo" onClick={() => setDaEliminare(cliente)} title="Elimina" aria-label="Elimina">
+                      <Trash2 size={16} aria-hidden="true" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {numeroPagine > 1 && (
+          <div className="cli-pagine">
+            {[...Array(numeroPagine)].map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                className={paginaValida === i + 1 ? 'cli-pagina--attiva' : ''}
+                onClick={() => setPagina(i + 1)}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
-    <div className="pagination">
-{[...Array(numeroPagine)].map((_, i) => (
-  <button
-    key={i}
-    className={paginaClienti === i + 1 ? 'active' : ''}
-    onClick={() => setPaginaClienti(i + 1)}
-  >
-    {i + 1}
-  </button>
-))}
-    </div>
-  </>
-
-
-
-      <ModalEditClient
-        show={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveEdit}
-        clientData={editingClient || {}}
-        setClientData={setEditingClient}
+      <ClienteFormModal
+        isOpen={form !== null}
+        cliente={form?.cliente || null}
+        clienti={clienti}
+        onClose={() => setForm(null)}
+        onSalva={salva}
       />
- { dettaglioCliente &&(
-  <ModalDettaglioCliente
-        show={isDettaglioOpen}
-        onClose={() => setIsDettaglioOpen(false)}
-        cliente={dettaglioCliente}
-      />
- )}
-     
- <ConfirmDialog
-  open={mostraDialogEliminazione}
-  onCancel={() => setMostraDialogEliminazione(false)}
-  onConfirm={handleDelete}
-  message={`Sei sicuro di voler eliminare il cliente "${clienteDaEliminare?.nome} ${clienteDaEliminare?.cognome}"?`}
-/>
 
+      <ModalDettaglioCliente
+        show={dettaglio !== null}
+        onClose={() => setDettaglioId(null)}
+        cliente={dettaglio}
+        onModifica={apriModifica}
+        onElimina={(c) => setDaEliminare(c)}
+      />
+
+      <ConfirmDialog
+        open={daEliminare !== null}
+        onCancel={() => setDaEliminare(null)}
+        onConfirm={elimina}
+        title="Eliminare il cliente?"
+        message={daEliminare ? (() => {
+          const n = prenotazioniDelCliente(daEliminare.codiceFiscale, prenotazioni).length;
+          return `Eliminare "${daEliminare.nome} ${daEliminare.cognome}" dai Clienti? ${n > 0 ? `Le sue ${n} prenotazioni restano, ma non saranno più collegate a una scheda cliente.` : 'Non ha prenotazioni.'}`;
+        })() : ''}
+        confirmLabel="Elimina"
+        tone="danger"
+      />
+
+      <ConfirmDialog
+        open={cambioCodiceFiscale !== null}
+        onCancel={() => setCambioCodiceFiscale(null)}
+        onConfirm={() => {
+          const { aggiornato, originale, collegate } = cambioCodiceFiscale;
+          setCambioCodiceFiscale(null);
+          salvaModifica(aggiornato, originale, collegate);
+        }}
+        title="Cambiare il codice fiscale?"
+        message={cambioCodiceFiscale
+          ? `${cambioCodiceFiscale.collegate.length === 1 ? 'C\'è 1 prenotazione' : `Ci sono ${cambioCodiceFiscale.collegate.length} prenotazioni`} con il vecchio codice fiscale (${cambioCodiceFiscale.originale.codiceFiscale}). Le aggiorno con quello nuovo (${cambioCodiceFiscale.aggiornato.codiceFiscale}), così lo storico noleggi resta del cliente.`
+          : ''}
+        confirmLabel="Aggiorna tutto"
+      />
     </div>
   );
 }

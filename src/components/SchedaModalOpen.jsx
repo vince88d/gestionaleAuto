@@ -3,7 +3,8 @@ import Modal from 'react-modal';
 import { toast } from 'react-toastify';
 import { Upload, X } from 'lucide-react';
 import { caricaFotoDanno } from '../lib/storageFoto';
-import { formattaData } from '../utils/scadenze';
+import { formattaData, giornoLocale } from '../utils/scadenze';
+import { controllaPatente } from '../utils/validaCliente';
 import '../components/schedaModal.css';
 import '../styles/Prenotazione.css';
 
@@ -46,15 +47,28 @@ function SchedaVeicoloModal({
   prenotazione,
   schedaVeicolo,
   setSchedaVeicolo,
-  patente,
-  onPatenteChange,
+  cliente,
+  documenti = {},
+  onDocumentiChange,
   onSave,
 }) {
   const [uploading, setUploading] = useState(false);
   const [mancaCarburante, setMancaCarburante] = useState(false);
   const inputFoto = useRef(null);
-  // La patente si chiede solo se la prenotazione non ce l'ha (es. arrivata dal sito).
+  // La patente si chiede solo se la prenotazione non ce l'ha (es. arrivata dal
+  // sito); la scadenza se il cliente in anagrafica non ce l'ha.
   const chiediPatente = Boolean(prenotazione) && !prenotazione.patente;
+  const scadenzaInAnagrafica = cliente?.scadenzaPatente || '';
+  const chiediScadenza = Boolean(prenotazione) && !scadenzaInAnagrafica;
+  const scadenzaPatente = scadenzaInAnagrafica || documenti.scadenzaPatente || '';
+  const esitoPatente = prenotazione
+    ? controllaPatente(scadenzaPatente, {
+        ritiro: giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio,
+        riconsegna: prenotazione.dataFine,
+      })
+    : {};
+  const documentoScaduto = cliente?.scadenzaDocumento && cliente.scadenzaDocumento < giornoLocale();
+  const aggiornaDocumento = (campo, valore) => onDocumentiChange({ ...documenti, [campo]: valore });
 
   const aggiorna = (campo, valore) => setSchedaVeicolo((prev) => ({ ...prev, [campo]: valore }));
   const aggiornaAccessorio = (chiave, valore) =>
@@ -81,6 +95,10 @@ function SchedaVeicoloModal({
   const invia = (e) => {
     e.preventDefault();
     // Il carburante e' a pulsanti: il browser non lo controlla da solo.
+    if (esitoPatente.blocca) {
+      toast.error(esitoPatente.blocca);
+      return;
+    }
     if (!schedaVeicolo.carburante) {
       setMancaCarburante(true);
       return;
@@ -115,24 +133,65 @@ function SchedaVeicoloModal({
         </header>
 
         <div className="pz-corpo">
-          {chiediPatente && (
-            <section className="pz-sezione">
-              <h3 className="pz-titolo-sezione">Documenti</h3>
-              <label className="pz-campo" htmlFor="consegna-patente">
-                <span className="pz-etichetta">Numero patente <span className="pz-obbligatorio">*</span></span>
-                <input
-                  id="consegna-patente"
-                  type="text"
-                  value={patente || ''}
-                  onChange={(e) => onPatenteChange(e.target.value)}
-                  placeholder="Es. AB1234567"
-                  style={{ textTransform: 'uppercase' }}
-                  required
-                />
-                <p className="pz-aiuto">La prenotazione è arrivata senza patente: controllala in sede e scrivila qui.</p>
-              </label>
-            </section>
-          )}
+          <section className="pz-sezione">
+            <h3 className="pz-titolo-sezione">Documenti del cliente</h3>
+            {(chiediPatente || chiediScadenza) ? (
+              <div className="pz-griglia pz-griglia--2">
+                {chiediPatente ? (
+                  <label className="pz-campo" htmlFor="consegna-patente">
+                    <span className="pz-etichetta">Numero patente <span className="pz-obbligatorio">*</span></span>
+                    <input
+                      id="consegna-patente"
+                      type="text"
+                      value={documenti.patente || ''}
+                      onChange={(e) => aggiornaDocumento('patente', e.target.value)}
+                      placeholder="Es. AB1234567"
+                      style={{ textTransform: 'uppercase' }}
+                      required
+                    />
+                  </label>
+                ) : (
+                  <div className="pz-campo">
+                    <span className="pz-etichetta">Numero patente</span>
+                    <strong style={{ fontSize: 14, lineHeight: '40px' }}>{prenotazione.patente}</strong>
+                  </div>
+                )}
+                {chiediScadenza ? (
+                  <label className="pz-campo" htmlFor="consegna-scadenza-patente">
+                    <span className="pz-etichetta">Scadenza patente <span className="pz-obbligatorio">*</span></span>
+                    <input
+                      id="consegna-scadenza-patente"
+                      type="date"
+                      value={documenti.scadenzaPatente || ''}
+                      onChange={(e) => aggiornaDocumento('scadenzaPatente', e.target.value)}
+                      required
+                    />
+                  </label>
+                ) : (
+                  <div className="pz-campo">
+                    <span className="pz-etichetta">Scadenza patente</span>
+                    <strong style={{ fontSize: 14, lineHeight: '40px' }}>{formattaData(scadenzaPatente)}</strong>
+                  </div>
+                )}
+                <p className="pz-aiuto pz-intera">
+                  Controlla la patente in sede. I dati vanno anche nella scheda del cliente
+                  {cliente ? '' : ', che verrà aggiunto ai Clienti'}.
+                </p>
+              </div>
+            ) : (
+              <dl className="pz-dati">
+                <div><dt>Numero patente</dt><dd>{prenotazione?.patente}</dd></div>
+                <div><dt>Scadenza patente</dt><dd>{formattaData(scadenzaPatente)}</dd></div>
+              </dl>
+            )}
+            {esitoPatente.blocca && <p className="pz-avviso pz-avviso--errore" role="alert" style={{ marginTop: 12 }}>{esitoPatente.blocca}</p>}
+            {esitoPatente.avviso && <p className="pz-avviso pz-avviso--attenzione" style={{ marginTop: 12 }}>{esitoPatente.avviso}</p>}
+            {documentoScaduto && (
+              <p className="pz-avviso pz-avviso--attenzione" style={{ marginTop: 12 }}>
+                Il documento d'identità del cliente è scaduto il {formattaData(cliente.scadenzaDocumento)}: fattene mostrare uno valido e aggiornalo nei Clienti.
+              </p>
+            )}
+          </section>
 
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Stato del veicolo</h3>
@@ -222,7 +281,7 @@ function SchedaVeicoloModal({
 
         <footer className="pz-piede">
           <button type="button" className="vd-btn" onClick={onRequestClose}>Annulla</button>
-          <button type="submit" className="vd-btn vd-btn--primario" disabled={uploading}>
+          <button type="submit" className="vd-btn vd-btn--primario" disabled={uploading || Boolean(esitoPatente.blocca)}>
             {uploading ? 'Attendi…' : 'Avanti: riepilogo e contratto'}
           </button>
         </footer>

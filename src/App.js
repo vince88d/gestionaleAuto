@@ -18,6 +18,8 @@ import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import { ascoltaPrenotazioni } from './lib/firestorePrenotazioni';
 import { setPrenotazioni } from './store/prenotazioniSlice';
+import { ascoltaClienti } from './lib/firestoreClienti';
+import { setClienti } from './store/clientiSlice';
 
 function AppContent() {
   const [collapsed, setCollapsed] = useState(false);
@@ -46,6 +48,13 @@ function AppContent() {
       console.error('Errore aggiornamento prenotazioni:', error);
       toast.error('Non riesco ad aggiornare le prenotazioni: controlla la connessione.');
     },
+  ), [dispatch]);
+
+  // Anche i clienti in tempo reale (nuovi clienti o modifiche da un'altra
+  // postazione, contratti e danni registrati alla consegna/riconsegna).
+  useEffect(() => ascoltaClienti(
+    (dati) => dispatch(setClienti(dati)),
+    (error) => console.error('Errore aggiornamento clienti:', error),
   ), [dispatch]);
 
   const toggleSidebar = () => setCollapsed(prev => !prev);

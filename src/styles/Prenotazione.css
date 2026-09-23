@@ -712,3 +712,93 @@
 @media (max-width: 720px) {
   .sv-lista { grid-template-columns: 1fr; }
 }
+
+.pz-avviso--attenzione { border-color: #fcd34d; background: #fffbeb; color: #78350f; }
+.pz-avviso--errore { border-color: #fca5a5; background: #fef2f2; color: #991b1b; font-weight: 600; }
+
+/* Finestra aperta sopra il form di prenotazione (Radix, z-index 10000). */
+.Overlay.pz-sopra { z-index: 10001; }
+.Modal.pz-sopra { z-index: 10002; }
+
+/* ---------- Scheda cliente (ModalDettaglioCliente) ---------- */
+.Modal.pz-modal--largo { max-width: 860px; height: 86vh; }
+
+.pz-testa--schede { padding-bottom: 0; }
+
+.pz-schede { display: flex; gap: 4px; margin-top: 12px; }
+
+.pz .pz-scheda {
+  margin: 0 0 -1px;
+  padding: 8px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: #7f8c9a;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pz .pz-scheda:hover { color: #2c3e50; }
+.pz .pz-scheda--attiva { border-bottom-color: #3498db; color: #1f6fa8; }
+
+.pz-scadenza {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.pz-scadenza--rosso { color: #c0392b; }
+.pz-scadenza--giallo { color: #b45309; }
+
+/* Tabelle dentro le finestre (storico noleggi) */
+.pz-tabella-contenitore {
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+  overflow-x: auto;
+}
+
+.pz-tabella { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+.pz-tabella th {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e3e8ee;
+  background: #f8fafc;
+  color: #7f8c9a;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pz-tabella td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef1f5;
+  vertical-align: middle;
+}
+
+.pz-tabella tbody tr:last-child td { border-bottom: none; }
+.pz-tabella .pz-destra { text-align: right; }
+.pz-testo-pericolo { color: #c0392b; font-weight: 600; }
+
+/* Centratura e animazione proprie: in altri CSS ci sono piu' "@keyframes
+   fadeIn" diversi (uno sposta, uno ingrandisce) e, a seconda dell'ordine in
+   cui vengono caricati, la finestra poteva finire fuori centro. */
+.Modal.pz-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: pz-apri 0.25s ease forwards;
+}
+
+.Modal.pz-modal.Modal--after-open,
+.Modal.pz-modal.Modal--before-close { transform: translate(-50%, -50%); }
+
+@keyframes pz-apri {
+  from { opacity: 0; transform: translate(-50%, -48%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}

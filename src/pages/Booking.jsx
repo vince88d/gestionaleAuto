@@ -30,7 +30,7 @@ import {
 import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento';
 import { readVeicoli } from '../lib/firestoreVeicoli';
 import { useHolds } from '../lib/firestoreHolds';
-import { readClienti, aggiungiDannoCliente } from '../lib/firestoreClienti';
+import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
 import {
   controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, promemoria,
@@ -136,7 +136,12 @@ function Bookings() {
   const [salvandoPrenotazione, setSalvandoPrenotazione] = useState(false);
   // Prenotazione che si sta consegnando (scheda veicolo -> riepilogo).
   const [consegnaDi, setConsegnaDi] = useState(null);
-  const [patenteConsegna, setPatenteConsegna] = useState('');
+  // Patente e sua scadenza inserite alla consegna (se mancano).
+  const [documentiConsegna, setDocumentiConsegna] = useState({});
+  // Il cliente in anagrafica della prenotazione in consegna (per codice fiscale).
+  const clienteConsegna = consegnaDi
+    ? clienti.find((c) => (c.codiceFiscale || '').toUpperCase() === (consegnaDi.codiceFiscale || '').trim().toUpperCase())
+    : null;
   const location = useLocation();
   const righePerPagina = 10;
   const listaRef = useRef(null);
@@ -224,17 +229,7 @@ useEffect(() => {
   }
 }, [location.state]);
   
-  useEffect(() => {
-    const caricaClienti = async () => {
-      try {
-        const dati = await readClienti();
-        dispatch(setClienti(dati || []));
-      } catch (err) {
-        console.error("Errore caricamento clienti:", err);
-      }
-    };
-    caricaClienti();
-  }, [dispatch]);
+  // Clienti e prenotazioni arrivano in tempo reale da App.js.
   
 
   // Le prenotazioni arrivano in tempo reale da App.js (ascoltaPrenotazioni).
@@ -564,7 +559,7 @@ accessori: {
   const avviaConsegna = (prenotazione) => {
     const veicolo = availableVehicles.find((v) => v.targa === prenotazione.targa);
     setConsegnaDi(prenotazione);
-    setPatenteConsegna('');
+    setDocumentiConsegna({});
     // I km partono da quelli segnati sul veicolo: si correggono se diversi.
     setSchedaVeicolo({ ...schedaVuota(), kmIniziali: veicolo?.km ?? '' });
     setInfoModalOpen(false);
@@ -1105,8 +1100,9 @@ return (
     prenotazione={consegnaDi}
     schedaVeicolo={schedaVeicolo}
     setSchedaVeicolo={setSchedaVeicolo}
-    patente={patenteConsegna}
-    onPatenteChange={setPatenteConsegna}
+    cliente={clienteConsegna}
+    documenti={documentiConsegna}
+    onDocumentiChange={setDocumentiConsegna}
     onSave={handleSaveSchedaVeicolo}
   />
 
@@ -1114,7 +1110,8 @@ return (
     <RiepilogoPrenotazioneModal
       isOpen={riepilogoOpen}
       onClose={chiudiConsegna}
-      formData={{ ...consegnaDi, patente: consegnaDi.patente || patenteConsegna.trim().toUpperCase() }}
+      formData={{ ...consegnaDi, patente: consegnaDi.patente || (documentiConsegna.patente || '').trim().toUpperCase() }}
+      scadenzaPatente={clienteConsegna?.scadenzaPatente || documentiConsegna.scadenzaPatente || ''}
       schedaVeicolo={schedaVeicolo}
       onConsegnaSalvata={handleConsegnaSalvata}
     />

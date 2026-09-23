@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Info, Trash2, Recycle } from 'lucide-react';
 import { ricaricaPrenotazioni } from '../utils/ricaricaPrenotazioni';
 import { aggiornaPrenotazione, eliminaPrenotazione, messaggioErrorePrenotazione } from '../lib/firestorePrenotazioni';
-import { readClienti, salvaCliente } from '../lib/firestoreClienti';
+import { readClienti, togliDanniPrenotazioneCliente } from '../lib/firestoreClienti';
 import { toast } from 'react-toastify';
 import InfoModal from '../components/InfoModal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -79,12 +79,8 @@ function ArchivioPrenotazioni() {
       const clienti = await readClienti();
       const cliente = clienti.find((c) => c.codiceFiscale && c.codiceFiscale === prenotazioneRipristinata.codiceFiscale);
       if (cliente) {
-        const nuovoStorico = (cliente.storicoDanni || []).filter(
-          (danno) => danno.riferimentoPrenotazione !== prenotazioneRipristinata.id
-        );
-        if (nuovoStorico.length !== (cliente.storicoDanni || []).length) {
-          await salvaCliente({ ...cliente, storicoDanni: nuovoStorico });
-        }
+        // Solo le voci di questa prenotazione (prima si riscriveva tutto il cliente).
+        await togliDanniPrenotazioneCliente(cliente.id, prenotazioneRipristinata.id);
       }
       await ricaricaPrenotazioni(dispatch);
     } catch (error) {
