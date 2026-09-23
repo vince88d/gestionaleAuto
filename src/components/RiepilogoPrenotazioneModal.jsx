@@ -21,7 +21,7 @@ const NOMI_ACCESSORI = {
 
 // Secondo passo della consegna: riepilogo, contratto, PDF ed email. "Conferma
 // consegna" salva la scheda sulla prenotazione (la prenotazione esiste gia').
-function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, onConsegnaSalvata }) {
+function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, scadenzaPatente, onConsegnaSalvata }) {
   const prezzoTotale = prezzoPrenotazione(formData);
   const [ipPubblico, setIpPubblico] = useState(null);
   const [isSending, setIsSending] = useState(false);
@@ -141,14 +141,16 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
     try {
       if (!consegnaSalvata) {
         try {
-          const campi = await registraConsegna({
+          const { campi, cliente } = await registraConsegna({
             prenotazione,
             scheda: datiScheda,
             patente: formData.patente,
+            scadenzaPatente,
             ip: ipPubblico || 'Non disponibile',
           });
           setConsegnaSalvata(true);
           onConsegnaSalvata?.(campi);
+          if (cliente === 'creato') toast.info(`${formData.cliente} aggiunto ai Clienti.`);
         } catch (error) {
           console.error('Errore consegna:', error);
           toast.error(messaggioErrorePrenotazione(error, 'Consegna non salvata, riprova.'));

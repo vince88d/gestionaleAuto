@@ -3,7 +3,7 @@ import {
   isPrenotazioneVisibile, isPagataOnline, segnaDannoPrenotazioneRiparato,
   aggiornaPrenotazione, salvaPrenotazione, registraConsegna, PrenotazioneCambiata,
 } from './firestorePrenotazioni';
-import { readClienti, aggiungiContrattoCliente } from './firestoreClienti';
+import { readClienti, aggiungiContrattoCliente, creaCliente, aggiornaCampiCliente } from './firestoreClienti';
 
 // Niente connessione a Firebase nei test: qui servono solo le funzioni pure.
 jest.mock('../components/firebase', () => ({ db: {} }));
@@ -11,7 +11,10 @@ jest.mock('firebase/firestore', () => ({
   collection: jest.fn(), getDocs: jest.fn(), doc: jest.fn(), setDoc: jest.fn(),
   updateDoc: jest.fn(), deleteDoc: jest.fn(), runTransaction: jest.fn(),
 }));
-jest.mock('./firestoreClienti', () => ({ readClienti: jest.fn(), aggiungiContrattoCliente: jest.fn() }));
+jest.mock('./firestoreClienti', () => ({
+  readClienti: jest.fn(), aggiungiContrattoCliente: jest.fn(), creaCliente: jest.fn(), aggiornaCampiCliente: jest.fn(),
+  normalizzaCodiceFiscale: (v) => (v || '').trim().toUpperCase(),
+}));
 
 describe('isPrenotazioneVisibile', () => {
   test.each([
@@ -115,18 +118,38 @@ describe('salvaPrenotazione', () => {
 describe('registraConsegna', () => {
   beforeEach(() => {
     doc.mockImplementation((_db, collezione, id) => `${collezione}/${id}`);
-    readClienti.mockResolvedValue([{ id: 'CF1', codiceFiscale: 'CF1' }]);
+    readClienti.mockResolvedValue([{ id: 'RSSMRA80A01H501U', codiceFiscale: 'RSSMRA80A01H501U', email: 'gia@presente.it' }]);
     aggiungiContrattoCliente.mockResolvedValue();
+    creaCliente.mockImplementation(async (c) => ({ ...c, id: c.codiceFiscale }));
+    aggiornaCampiCliente.mockResolvedValue();
   });
 
   test('salva scheda, ora di consegna e patente; il contratto va solo sul suo cliente', async () => {
     const t = transazioneCon({ status: 'attiva' });
     const scheda = { kmIniziali: '45000', carburante: 'Pieno' };
-    await registraConsegna({ prenotazione: { id: 'p1', codiceFiscale: 'cf1', targa: 'AA111AA' }, scheda, patente: ' ab123 ', ip: '1.2.3.4' });
+    const esito = await registraConsegna({ prenotazione: { id: 'p1', codiceFiscale: 'rssmra80a01h501u', targa: 'AA111AA', emailCliente: 'nuova@mail.it' }, scheda, patente: ' ab123 ', ip: '1.2.3.4' });
     const campi = t.update.mock.calls[0][1];
+    expect(esito.campi).toEqual(campi);
     expect(campi).toEqual(expect.objectContaining({ schedaVeicolo: scheda, patente: 'AB123', ipConsegna: '1.2.3.4' }));
     expect(campi.consegnataIl).toBeTruthy();
-    expect(aggiungiContrattoCliente).toHaveBeenCalledWith('CF1', expect.objectContaining({ targa: 'AA111AA' }));
+    expect(aggiungiContrattoCliente).toHaveBeenCalledWith('RSSMRA80A01H501U', expect.objectContaining({ targa: 'AA111AA' }));
+    // Cliente gia' in anagrafica: si completa solo cio' che manca (la patente), l'email resta.
+    expect(aggiornaCampiCliente).toHaveBeenCalledWith('RSSMRA80A01H501U', { patente: 'AB123' });
+    expect(esito.cliente).toBe('aggiornato');
+    expect(creaCliente).not.toHaveBeenCalled();
+  });
+
+  test('cliente del sito non in anagrafica: alla consegna viene creato', async () => {
+    transazioneCon({ status: 'attiva' });
+    const esito = await registraConsegna({
+      prenotazione: { id: 'p2', origine: 'sito', cliente: 'Anna Verdi', codiceFiscale: 'vrdnna90a41h501x', emailCliente: 'a@b.it', telefono: '333', targa: 'BB222BB' },
+      scheda: {}, patente: 'xy99', scadenzaPatente: '2030-05-01',
+    });
+    expect(creaCliente).toHaveBeenCalledWith(expect.objectContaining({
+      nome: 'Anna', cognome: 'Verdi', codiceFiscale: 'VRDNNA90A41H501X', email: 'a@b.it', patente: 'XY99', scadenzaPatente: '2030-05-01', origine: 'sito',
+    }));
+    expect(aggiungiContrattoCliente).toHaveBeenCalledWith('VRDNNA90A41H501X', expect.objectContaining({ targa: 'BB222BB' }));
+    expect(esito.cliente).toBe('creato');
   });
 
   test('non consegna una prenotazione annullata nel frattempo', async () => {

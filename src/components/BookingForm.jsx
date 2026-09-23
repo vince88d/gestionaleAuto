@@ -17,10 +17,10 @@ import { it } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
 import { giorniOccupati } from '../utils/regolePrenotazione';
 import SceltaVeicolo from './SceltaVeicolo';
+import { preparaCliente, validaCliente } from '../utils/validaCliente';
 import './BookingForm.css';
 import '../styles/Prenotazione.css';
 
-const normalizzaCodiceFiscale = (value) => (value || '').trim().toUpperCase();
 
 const emptyClientFormData = {
   nome: '',
@@ -87,36 +87,15 @@ function BookingForm({
     // senza fermarlo, il submit arriverebbe anche alla prenotazione e la salverebbe.
     e.stopPropagation();
 
-    const codiceFiscaleNormalizzato = normalizzaCodiceFiscale(nuovoClienteData.codiceFiscale);
-    const patenteNormalizzata = (nuovoClienteData.patente || '').trim();
-
-    if (!patenteNormalizzata) {
-      toast.error('Inserisci la patente prima di salvare il cliente.');
-      return;
-    }
-
-    const codiceFiscaleDuplicato = clienti.some(
-      (cliente) => normalizzaCodiceFiscale(cliente.codiceFiscale) === codiceFiscaleNormalizzato
-    );
-
-    if (codiceFiscaleDuplicato) {
-      toast.error('Esiste gia un cliente con questo codice fiscale.');
+    // Stessi controlli della pagina Clienti.
+    const nuovoCliente = preparaCliente(nuovoClienteData);
+    const errori = validaCliente(nuovoCliente, clienti);
+    if (Object.keys(errori).length > 0) {
+      toast.error(Object.values(errori)[0]);
       return;
     }
 
     try {
-      const tipoDocumentoFinale =
-        nuovoClienteData.tipoDocumento === 'Altro'
-          ? (nuovoClienteData.tipoDocumentoAltro || '').trim()
-          : nuovoClienteData.tipoDocumento;
-      const nuovoCliente = {
-        ...nuovoClienteData,
-        codiceFiscale: codiceFiscaleNormalizzato,
-        patente: patenteNormalizzata,
-        tipoDocumento: tipoDocumentoFinale,
-        storicoDanni: [],
-      };
-
       // Salva solo il nuovo cliente (prima si riscrivevano tutti i clienti).
       const salvato = await creaCliente(nuovoCliente);
       dispatch(addCliente(salvato));

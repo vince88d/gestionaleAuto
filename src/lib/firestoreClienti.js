@@ -92,6 +92,11 @@ export async function aggiornaCliente(id, cliente, { prenotazioniDaAggiornare = 
   return campi;
 }
 
+// Aggiorna solo i campi indicati (es. patente completata alla consegna).
+export async function aggiornaCampiCliente(id, campi) {
+  await updateDoc(doc(db, CLIENTI_COLLECTION, id), senzaUndefined(campi));
+}
+
 export async function eliminaCliente(id) {
   await deleteDoc(doc(db, CLIENTI_COLLECTION, id));
 }

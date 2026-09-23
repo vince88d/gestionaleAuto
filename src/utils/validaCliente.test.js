@@ -36,3 +36,39 @@ test('prenotazioni del cliente senza badare alle maiuscole', () => {
   const p = [{ id: 'a', codiceFiscale: 'rssmra80a01h501u' }, { id: 'b', codiceFiscale: 'ALTRO' }, { id: 'c' }];
   expect(prenotazioniDelCliente('RSSMRA80A01H501U', p).map((x) => x.id)).toEqual(['a']);
 });
+
+describe('cercaClienti', () => {
+  const { cercaClienti } = require('./validaCliente');
+  const clienti = [
+    { id: '1', nome: 'Mario', cognome: 'Rossi', codiceFiscale: 'RSSMRA80A01H501U', telefono: '333111' },
+    { id: '2', nome: 'Maria', cognome: 'Bianchi', codiceFiscale: 'BNCMRA85B41F205X', ragioneSociale: 'Bianchi srl' },
+  ];
+  const prenotazioni = [{ codiceFiscale: 'rssmra80a01h501u', targa: 'AB123CD' }];
+  test('piu\' parole, codice fiscale, telefono, azienda e targa noleggiata', () => {
+    expect(cercaClienti(clienti, 'mario rossi').map((c) => c.id)).toEqual(['1']);
+    expect(cercaClienti(clienti, 'bncmra').map((c) => c.id)).toEqual(['2']);
+    expect(cercaClienti(clienti, '333').map((c) => c.id)).toEqual(['1']);
+    expect(cercaClienti(clienti, 'srl').map((c) => c.id)).toEqual(['2']);
+    expect(cercaClienti(clienti, 'ab123', prenotazioni).map((c) => c.id)).toEqual(['1']);
+    expect(cercaClienti(clienti, '  ')).toHaveLength(2);
+  });
+});
+
+describe('controllaPatente', () => {
+  const { controllaPatente } = require('./validaCliente');
+  const periodo = { ritiro: '2026-10-01', riconsegna: '2026-10-05' };
+  test('scaduta prima del ritiro: blocca; scade durante: avviso; poi: ok', () => {
+    expect(controllaPatente('2026-09-30', periodo).blocca).toMatch(/scaduta il 30\/09\/2026/);
+    expect(controllaPatente('2026-10-03', periodo).avviso).toMatch(/prima della riconsegna/);
+    expect(controllaPatente('2027-01-01', periodo)).toEqual({});
+    expect(controllaPatente('', periodo)).toEqual({});
+  });
+});
+
+test('clienteDaPrenotazione separa nome e cognome e prende la patente della consegna', () => {
+  const { clienteDaPrenotazione } = require('./validaCliente');
+  const c = clienteDaPrenotazione(
+    { cliente: 'Anna Maria Verdi', codiceFiscale: 'vrdnmr90a41h501x', emailCliente: 'a@b.it', telefono: '333', origine: 'sito' },
+    { patente: ' ab12 ', scadenzaPatente: '2030-01-01' });
+  expect(c).toEqual({ nome: 'Anna', cognome: 'Maria Verdi', codiceFiscale: 'VRDNMR90A41H501X', email: 'a@b.it', telefono: '333', patente: 'AB12', scadenzaPatente: '2030-01-01', origine: 'sito' });
+});

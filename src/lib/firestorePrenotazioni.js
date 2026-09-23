@@ -1,6 +1,9 @@
 import { db } from '../components/firebase';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, runTransaction, onSnapshot } from 'firebase/firestore';
-import { readClienti, aggiungiContrattoCliente } from './firestoreClienti';
+import {
+  readClienti, aggiungiContrattoCliente, creaCliente, aggiornaCampiCliente, normalizzaCodiceFiscale,
+} from './firestoreClienti';
+import { clienteDaPrenotazione } from '../utils/validaCliente';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { senzaUndefined } from '../utils/senzaUndefined';
 
@@ -148,8 +151,12 @@ export async function salvaPrenotazione(dati, originale = null) {
 
 // Consegna del veicolo al cliente: salva la scheda (km, carburante, accessori,
 // danni gia' presenti), l'ora della consegna e, se inserita ora, la patente.
-// Poi registra il contratto sul cliente (solo il suo documento).
-export async function registraConsegna({ prenotazione, scheda, patente, ip }) {
+// Poi aggiorna l'anagrafica: se il cliente non c'e' (es. prenotazione dal
+// sito) lo crea con i dati della prenotazione; se c'e', completa i campi
+// vuoti (patente, scadenza, email, telefono) e aggiunge il contratto.
+// Restituisce { campi } salvati sulla prenotazione e `cliente`: 'creato',
+// 'aggiornato' o null (anagrafica non toccata o non riuscita).
+export async function registraConsegna({ prenotazione, scheda, patente, scadenzaPatente, ip }) {
   const campi = {
     schedaVeicolo: scheda || {},
     consegnataIl: new Date().toISOString(),
@@ -160,23 +167,41 @@ export async function registraConsegna({ prenotazione, scheda, patente, ip }) {
 
   await aggiornaPrenotazione(prenotazione.id, campi, { statoAtteso: 'attiva' });
 
+  let cliente = null;
   try {
-    const codiceFiscale = prenotazione.codiceFiscale?.toUpperCase();
-    const clienti = codiceFiscale ? await readClienti() : [];
-    const cliente = clienti.find((c) => c.codiceFiscale?.toUpperCase() === codiceFiscale);
-    if (cliente?.id) {
-      await aggiungiContrattoCliente(cliente.id, {
-        contratto: null,
-        data: campi.consegnataIl,
-        targa: prenotazione.targa || '',
-      });
-    }
+    cliente = await aggiornaAnagraficaAllaConsegna(
+      { ...prenotazione, ...campi },
+      { patente: patentePulita, scadenzaPatente },
+    );
   } catch (error) {
-    // La consegna e' salvata: il contratto sul cliente e' secondario.
-    console.error('Contratto non registrato sul cliente:', error);
+    // La consegna e' salvata: l'anagrafica e' secondaria.
+    console.error('Anagrafica cliente non aggiornata alla consegna:', error);
   }
 
-  return campi;
+  return { campi, cliente };
+}
+
+async function aggiornaAnagraficaAllaConsegna(prenotazione, documenti) {
+  const dati = clienteDaPrenotazione(prenotazione, documenti);
+  if (!/^[A-Z0-9]{16}$/.test(dati.codiceFiscale)) return null;
+  const contratto = { contratto: null, data: prenotazione.consegnataIl, targa: prenotazione.targa || '' };
+
+  const clienti = await readClienti();
+  const esistente = clienti.find((c) => normalizzaCodiceFiscale(c.codiceFiscale) === dati.codiceFiscale);
+  if (!esistente) {
+    const nuovo = await creaCliente(dati);
+    await aggiungiContrattoCliente(nuovo.id, contratto);
+    return 'creato';
+  }
+  // Solo i campi vuoti: quello che lo staff ha gia' scritto non si tocca.
+  const daCompletare = Object.fromEntries(
+    ['patente', 'scadenzaPatente', 'email', 'telefono']
+      .filter((campo) => dati[campo] && !esistente[campo])
+      .map((campo) => [campo, dati[campo]])
+  );
+  if (Object.keys(daCompletare).length > 0) await aggiornaCampiCliente(esistente.id, daCompletare);
+  await aggiungiContrattoCliente(esistente.id, contratto);
+  return 'aggiornato';
 }
 
 // Segna come riparato il danno rilevato alla riconsegna di una prenotazione.

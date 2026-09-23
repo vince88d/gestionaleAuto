@@ -712,3 +712,6 @@
 @media (max-width: 720px) {
   .sv-lista { grid-template-columns: 1fr; }
 }
+
+.pz-avviso--attenzione { border-color: #fcd34d; background: #fffbeb; color: #78350f; }
+.pz-avviso--errore { border-color: #fca5a5; background: #fef2f2; color: #991b1b; font-weight: 600; }

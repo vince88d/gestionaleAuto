@@ -5,21 +5,26 @@ import { X } from 'lucide-react';
 import StoricoNoleggiTable from './StoricoNoleggiTable';
 import { useSelector } from 'react-redux';
 import { isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
+import { prenotazioniDelCliente } from '../utils/validaCliente';
+import { formattaData } from '../utils/scadenze';
 import '../styles/ModalDettaglioCliente.css';
 
 
 function ModalDettaglioCliente({ show, onClose, cliente }) {
     const prenotazioni = useSelector((state) => state.prenotazioni || []);
-    const [showAll, setShowAll] = useState(false);
     const [showAllDanni, setShowAllDanni] = useState(false);
     const [showAllNoleggi, setShowAllNoleggi] = useState(false);
 
 
     if (!cliente) return null;
 
-    const storicoCliente = prenotazioni.filter(
-      (p) => p.codiceFiscale?.toUpperCase() === cliente.codiceFiscale?.toUpperCase() && isPrenotazioneVisibile(p)
-    );
+    // Dal piu' recente; senza annullate e pagamenti del sito non conclusi.
+    const storicoCliente = prenotazioniDelCliente(cliente.codiceFiscale, prenotazioni)
+      .filter(isPrenotazioneVisibile)
+      .sort((a, b) => String(b.dataInizio).localeCompare(String(a.dataInizio)));
+    const storicoDanni = (cliente.storicoDanni || [])
+      .slice()
+      .sort((a, b) => String(b.data).localeCompare(String(a.data)));
 
   return (
     <Modal
@@ -88,7 +93,6 @@ function ModalDettaglioCliente({ show, onClose, cliente }) {
     <>
       <StoricoNoleggiTable
         noleggi={showAllNoleggi ? storicoCliente : storicoCliente.slice(0, 3)}
-        contratti={cliente.contratti || []}
       />
 
       {storicoCliente.length > 3 && (
@@ -108,6 +112,28 @@ function ModalDettaglioCliente({ show, onClose, cliente }) {
     </>
   ) : (
     <p>Nessun noleggio registrato.</p>
+  )}
+</div>
+
+<div className="form-section">
+  <h3>Danni causati</h3>
+  {storicoDanni.length > 0 ? (
+    <ul className="storico-danni">
+      {(showAllDanni ? storicoDanni : storicoDanni.slice(0, 3)).map((d, i) => (
+        <li key={`${d.riferimentoPrenotazione || ''}-${i}`}>
+          <strong>{formattaData(String(d.data || '').slice(0, 10))}</strong>
+          {' · '}{d.veicolo}{d.targa ? ` (${d.targa})` : ''}
+          <span>{d.descrizioneDanno}</span>
+        </li>
+      ))}
+      {storicoDanni.length > 3 && (
+        <button type="button" className="storico-mostra" onClick={() => setShowAllDanni((v) => !v)}>
+          {showAllDanni ? 'Nascondi' : `Visualizza tutti (${storicoDanni.length})`}
+        </button>
+      )}
+    </ul>
+  ) : (
+    <p>Nessun danno registrato alle riconsegne.</p>
   )}
 </div>
 

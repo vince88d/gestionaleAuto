@@ -56,3 +56,53 @@ export function prenotazioniDelCliente(codiceFiscale, prenotazioni = []) {
   if (!cf) return [];
   return prenotazioni.filter((p) => normalizzaCodiceFiscale(p.codiceFiscale) === cf);
 }
+
+// Ricerca immediata su piu' parole: nome, cognome, contatti, codice fiscale,
+// patente, ragione sociale e targhe dei veicoli che ha noleggiato.
+export function cercaClienti(clienti = [], testo = '', prenotazioni = []) {
+  const parole = testo.toLowerCase().split(/\s+/).filter(Boolean);
+  if (parole.length === 0) return clienti;
+  const targhePerCf = new Map();
+  prenotazioni.forEach((p) => {
+    const cf = normalizzaCodiceFiscale(p.codiceFiscale);
+    if (cf && p.targa) targhePerCf.set(cf, `${targhePerCf.get(cf) || ''} ${p.targa}`);
+  });
+  return clienti.filter((c) => {
+    const testoCliente = [
+      c.nome, c.cognome, c.email, c.telefono, c.cellulare, c.codiceFiscale, c.patente, c.ragioneSociale,
+      targhePerCf.get(normalizzaCodiceFiscale(c.codiceFiscale)),
+    ].filter(Boolean).join(' ').toLowerCase();
+    return parole.every((parola) => testoCliente.includes(parola));
+  });
+}
+
+// Patente alla consegna: { blocca } se e' gia' scaduta (o scade prima del
+// ritiro), { avviso } se scade durante il noleggio, {} se va bene o manca la data.
+export function controllaPatente(scadenza, { ritiro, riconsegna }) {
+  if (!scadenza) return {};
+  const data = String(scadenza).slice(0, 10);
+  if (data < String(ritiro).slice(0, 10)) {
+    return { blocca: `La patente è scaduta il ${data.split('-').reverse().join('/')}: non si può consegnare il veicolo.` };
+  }
+  if (riconsegna && data < String(riconsegna).slice(0, 10)) {
+    return { avviso: `La patente scade il ${data.split('-').reverse().join('/')}, prima della riconsegna.` };
+  }
+  return {};
+}
+
+// Dati per l'anagrafica presi da una prenotazione (es. arrivata dal sito, che
+// salva nome e cognome insieme in `cliente`): alla consegna il cliente entra
+// in anagrafica.
+export function clienteDaPrenotazione(prenotazione, { patente, scadenzaPatente } = {}) {
+  const [nome = '', ...resto] = String(prenotazione.cliente || '').trim().split(/\s+/);
+  return {
+    nome: prenotazione.nomeCliente || nome,
+    cognome: prenotazione.cognomeCliente || resto.join(' '),
+    codiceFiscale: normalizzaCodiceFiscale(prenotazione.codiceFiscale),
+    email: prenotazione.emailCliente || '',
+    telefono: prenotazione.telefono || '',
+    patente: (patente || prenotazione.patente || '').trim().toUpperCase(),
+    scadenzaPatente: scadenzaPatente || '',
+    origine: prenotazione.origine === 'sito' ? 'sito' : 'gestionale',
+  };
+}

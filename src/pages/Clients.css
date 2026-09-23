@@ -197,3 +197,13 @@
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
 }
+
+/* Patente/documento scaduti o in scadenza sotto il numero. */
+.cli-scadenza {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.cli-scadenza--rosso { color: #c0392b; }
+.cli-scadenza--giallo { color: #b45309; }
