@@ -23,19 +23,68 @@
 
   .top-section {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     flex-shrink: 0;
+    padding: 0 4px 16px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #3d5166;
   }
-  
-  .logo {
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 30px;
-    text-align: left;
+
+  /* Intestazione in stile SaaS: iniziali dell'azienda cliente in un
+     quadratino + nome azienda, con il nome del prodotto in piccolo. */
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .brand-badge {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #3498db;
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.5px;
+  }
+
+  .brand-testi {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.2;
+  }
+
+  .brand-nome {
+    font-size: 15px;
+    font-weight: 700;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  
+
+  .brand-prodotto {
+    font-size: 11px;
+    color: #b8c4d0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Barra ridotta: iniziali sopra, tasto per riaprire sotto, centrati. */
+  .sidebar.collapsed .top-section {
+    flex-direction: column;
+    padding: 0 0 12px;
+  }
+
   .sidebar nav {
     /* flex-grow:0 (non flex:1): la nav resta alta quanto il suo contenuto e
        lascia lo spazio libero al margin-top:auto di .user-section, che lo
@@ -87,21 +136,27 @@
     background-color: #34495e;
   }
 
+  /* Icona discreta a pannello (non una X, che fa pensare a "chiudi"):
+     grigia, si evidenzia solo al passaggio del mouse. */
   .toggle-btn {
+    flex-shrink: 0;
     background: none;
     border: none;
-    color: white;
-    font-size: 1.5rem;
+    color: #b8c4d0;
     cursor: pointer;
-    padding: 8px;
-    transition: transform 0.2s;
-    flex-shrink: 0;
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
   }
-  
+
   .toggle-btn:hover {
-    transform: scale(1.1);
+    background-color: #34495e;
+    color: white;
   }
-  
+
 .user-section {
   /* Prima era position:absolute + bottom:20px: con 8 voci di menu e una
      finestra bassa, si sovrapponeva alla nav invece di spingerla verso
