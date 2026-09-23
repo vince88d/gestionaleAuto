@@ -39,8 +39,17 @@
   color: #b45309;
   font-weight: 600;
 }
-.tariffe-salva {
+.tariffe-conflitto {
+  color: #b91c1c;
+  font-weight: 600;
+}
+.tariffe-azioni {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-top: 16px;
+}
+.tariffe-salva {
   padding: 10px 22px;
   border: none;
   border-radius: 8px;
@@ -53,6 +62,19 @@
   background: #9ca3af;
   cursor: not-allowed;
 }
+.tariffe-annulla {
+  padding: 10px 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.tariffe-annulla:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
 .tariffe-nota {
   margin-top: 12px;
   color: #6b7280;
@@ -60,4 +82,42 @@
 }
 .tariffe-errore {
   color: #b91c1c;
+}
+.tariffe-orfane {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+.tariffe-orfane h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+.tariffe-orfane ul {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.tariffe-orfane li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  background: #fff;
+}
+.tariffe-orfane li.tariffe-orfana--da-togliere {
+  background: #fef2f2;
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+.tariffe-link {
+  border: none;
+  background: none;
+  color: #007bff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
 }

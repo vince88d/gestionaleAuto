@@ -1,5 +1,5 @@
 import { db } from '../components/firebase';
-import { collection, getDocs, doc, writeBatch, setDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, setDoc, deleteDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { readTariffe } from './firestoreTariffe';
 import { applicaTariffe, perSalvataggio } from '../utils/tariffe';
 import { spostaFotoDanniSuStorage } from './storageFoto';
@@ -19,6 +19,17 @@ export async function readVeicoli() {
     console.error('Tariffe non lette, uso i prezzi dei veicoli:', error);
     return veicoli;
   }
+}
+
+// Elenco veicoli in tempo reale, senza applicare le tariffe: per la pagina
+// Tariffe, che ha bisogno solo di sapere quante auto ha ogni categoria e non
+// deve dipendere anche dalle tariffe (che è lei stessa a modificare).
+export function ascoltaVeicoli(onDati, onErrore) {
+  return onSnapshot(
+    collection(db, VEICOLI_COLLECTION),
+    (snapshot) => onDati(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    onErrore,
+  );
 }
 
 // Salva UN veicolo (il suo documento e basta). Prima c'era writeVeicoli, che
