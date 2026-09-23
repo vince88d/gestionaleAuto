@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Info, Trash2, RotateCcw, Search } from 'lucide-react';
+import { Info, Trash2, RotateCcw, Search, Download } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { aggiornaPrenotazione, eliminaPrenotazione, messaggioErrorePrenotazione } from '../lib/firestorePrenotazioni';
 import { togliDanniPrenotazioneCliente } from '../lib/firestoreClienti';
@@ -9,7 +9,8 @@ import InfoModal from '../components/InfoModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import {
   eAnnullamento, dataAnnullamento, puoEliminareDaArchivio, CAMPI_RIPRISTINO, conflittoRipristino,
-  cercaArchivio, ordinaPerRecenti, importiArchivio,
+  cercaArchivio, ordinaPerRecenti, importiArchivio, anniDisponibili, filtraPeriodo, riepilogoConclusi,
+  riepilogoAnnullati, righeCsv, testoCsv,
 } from '../utils/archivio';
 import { formattaData } from '../utils/scadenze';
 import '../pages/Booking.css';
@@ -17,6 +18,26 @@ import '../styles/ArchivioPrenotazioni.css';
 
 const RIGHE_PER_PAGINA = 15;
 const euro = (n) => `€ ${Number(n).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+
+const SPIEGAZIONE = {
+  concluse: 'Noleggi finiti, con il veicolo riconsegnato: sia quelli prenotati sul sito sia quelli fatti in ufficio. Nel periodo contano per il giorno di fine noleggio.',
+  annullate: 'Prenotazioni annullate prima del noleggio: dal cliente con il link dell\'email o da voi con «Annulla e rimborsa». Sono quelle pagate sul sito (in ufficio si eliminano). Nel periodo contano per il giorno dell\'annullamento.',
+};
+
+// Scarica il CSV (con BOM, cosi' Excel apre bene le lettere accentate).
+function scaricaCsv(nomeFile, testo) {
+  const blob = new Blob(['\uFEFF', testo], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nomeFile;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 const periodo = (p) => `${formattaData(p.dataInizio)} → ${formattaData(p.dataFine)}`;
 
 function ArchivioPrenotazioni() {
@@ -28,12 +49,32 @@ function ArchivioPrenotazioni() {
   const [cerca, setCerca] = useState('');
   const [pagina, setPagina] = useState(1);
   const [dettaglio, setDettaglio] = useState(null);
+  // Periodo: anno '' = tutto, mese '' = tutto l'anno. Parte dall'anno in corso.
+  const [anno, setAnno] = useState(() => String(new Date().getFullYear()));
+  const [mese, setMese] = useState('');
   const [daRipristinare, setDaRipristinare] = useState(null);
   const [daEliminare, setDaEliminare] = useState(null);
 
   const concluse = useMemo(() => prenotazioni.filter((p) => p.status === 'completata'), [prenotazioni]);
   const annullate = useMemo(() => prenotazioni.filter(eAnnullamento), [prenotazioni]);
-  const elenco = ordinaPerRecenti(cercaArchivio(scheda === 'concluse' ? concluse : annullate, cerca));
+  const anni = useMemo(() => {
+    const presenti = anniDisponibili([...concluse, ...annullate]);
+    const corrente = String(new Date().getFullYear());
+    return presenti.includes(corrente) ? presenti : [corrente, ...presenti];
+  }, [concluse, annullate]);
+  const periodoScelto = { anno, mese: anno ? mese : '' };
+  const conclusePeriodo = filtraPeriodo(concluse, periodoScelto);
+  const annullatePeriodo = filtraPeriodo(annullate, periodoScelto);
+  const elenco = ordinaPerRecenti(cercaArchivio(scheda === 'concluse' ? conclusePeriodo : annullatePeriodo, cerca));
+  const totConclusi = riepilogoConclusi(elenco);
+  const totAnnullati = riepilogoAnnullati(elenco);
+  const nomePeriodo = !anno ? 'tutto l\'archivio' : mese ? `${MESI[Number(mese) - 1]} ${anno}` : `tutto il ${anno}`;
+
+  const esporta = () => {
+    const tipo = scheda === 'concluse' ? 'conclusi' : 'annullati';
+    const parte = !anno ? 'tutto' : mese ? `${anno}-${mese}` : anno;
+    scaricaCsv(`archivio-${tipo}-${parte}.csv`, testoCsv(righeCsv(elenco, tipo)));
+  };
   const numeroPagine = Math.ceil(elenco.length / RIGHE_PER_PAGINA);
   const paginaValida = Math.min(pagina, Math.max(numeroPagine, 1));
   const daMostrare = elenco.slice((paginaValida - 1) * RIGHE_PER_PAGINA, paginaValida * RIGHE_PER_PAGINA);
@@ -97,10 +138,22 @@ function ArchivioPrenotazioni() {
         <div>
           <h1 className="bk-titolo">Archivio</h1>
           <span className="bk-conteggio">
-            {concluse.length} {concluse.length === 1 ? 'noleggio concluso' : 'noleggi conclusi'} · {annullate.length} {annullate.length === 1 ? 'annullato' : 'annullati'}
+            {concluse.length} {concluse.length === 1 ? 'noleggio concluso' : 'noleggi conclusi'} · {annullate.length} {annullate.length === 1 ? 'prenotazione annullata' : 'prenotazioni annullate'}
           </span>
         </div>
         <div className="bk-azioni">
+          <div className="arc-periodo" role="group" aria-label="Periodo">
+            <select value={anno} onChange={(e) => { setAnno(e.target.value); setPagina(1); }} aria-label="Anno">
+              <option value="">Tutti gli anni</option>
+              {anni.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <select value={mese} onChange={(e) => { setMese(e.target.value); setPagina(1); }} aria-label="Mese" disabled={!anno}>
+              <option value="">Tutto l'anno</option>
+              {MESI.map((nome, i) => (
+                <option key={nome} value={String(i + 1).padStart(2, '0')}>{nome.charAt(0).toUpperCase() + nome.slice(1)}</option>
+              ))}
+            </select>
+          </div>
           <label className="bk-cerca">
             <Search size={16} aria-hidden="true" />
             <input
@@ -111,12 +164,15 @@ function ArchivioPrenotazioni() {
               onChange={(e) => { setCerca(e.target.value); setPagina(1); }}
             />
           </label>
+          <button type="button" className="bk-btn" onClick={esporta} disabled={elenco.length === 0} title="Scarica l'elenco mostrato, per Excel o il commercialista">
+            <Download size={16} aria-hidden="true" /> Esporta CSV
+          </button>
         </div>
       </div>
 
       <div className="bk-barra">
         <div className="bookings-filtri" role="tablist" aria-label="Archivio">
-          {[['concluse', 'Conclusi', concluse.length], ['annullate', 'Annullati', annullate.length]].map(([chiave, etichetta, n]) => (
+          {[['concluse', 'Noleggi conclusi', conclusePeriodo.length], ['annullate', 'Prenotazioni annullate', annullatePeriodo.length]].map(([chiave, etichetta, n]) => (
             <button
               key={chiave}
               type="button"
@@ -129,6 +185,24 @@ function ArchivioPrenotazioni() {
             </button>
           ))}
         </div>
+      </div>
+      <p className="arc-spiegazione">{SPIEGAZIONE[scheda]}</p>
+
+      <div className="arc-totali" aria-live="polite">
+        <span className="arc-totali-periodo">{nomePeriodo.charAt(0).toUpperCase() + nomePeriodo.slice(1)}{cerca.trim() ? ' · con la ricerca' : ''}</span>
+        {scheda === 'concluse' ? (
+          <>
+            <span><strong>{totConclusi.numero}</strong> {totConclusi.numero === 1 ? 'noleggio' : 'noleggi'}</span>
+            <span>Incassato <strong>{euro(totConclusi.incassato)}</strong></span>
+          </>
+        ) : (
+          <>
+            <span><strong>{totAnnullati.numero}</strong> {totAnnullati.numero === 1 ? 'annullata' : 'annullate'}</span>
+            <span>Pagato <strong>{euro(totAnnullati.pagato)}</strong></span>
+            <span>Rimborsato <strong>{euro(totAnnullati.rimborsato)}</strong></span>
+            <span>Penali trattenute <strong>{euro(totAnnullati.trattenuto)}</strong></span>
+          </>
+        )}
       </div>
 
       <div className="bk-elenco">
@@ -149,7 +223,7 @@ function ArchivioPrenotazioni() {
                 <td colSpan={6} className="bk-vuoto">
                   {cerca.trim()
                     ? `Nessun risultato per “${cerca.trim()}”.`
-                    : scheda === 'concluse' ? 'Nessun noleggio concluso.' : 'Nessuna prenotazione annullata.'}
+                    : scheda === 'concluse' ? `Nessun noleggio concluso in ${nomePeriodo}.` : `Nessuna prenotazione annullata in ${nomePeriodo}.`}
                 </td>
               </tr>
             ) : daMostrare.map((p) => {
@@ -185,7 +259,7 @@ function ArchivioPrenotazioni() {
                     ) : (
                       <>
                         <span className="bk-principale">{dataAnnullamento(p) ? formattaData(dataAnnullamento(p).slice(0, 10)) : '—'}</span>
-                        <span className="bk-secondario">{p.annullataDa === 'cliente' ? 'dal cliente' : 'dallo staff'}</span>
+                        <span className="bk-secondario">{p.annullataDa === 'cliente' ? 'dal cliente, con il link' : 'da voi, con rimborso'}</span>
                       </>
                     )}
                   </td>

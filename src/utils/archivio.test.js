@@ -52,3 +52,36 @@ test('ordine dal piu\' recente e importi', () => {
   expect(ordinaPerRecenti([{ id: 'a', dataFine: '2026-01-01' }, { id: 'b', dataFine: '2026-05-01' }]).map((x) => x.id)).toEqual(['b', 'a']);
   expect(importiArchivio({ totale: 240, rimborsato: 200, penaleTrattenuta: 40 })).toEqual({ totale: 240, rimborsato: 200, trattenuto: 40 });
 });
+
+describe('periodo, totali e CSV', () => {
+  const {
+    filtraPeriodo, anniDisponibili, riepilogoConclusi, riepilogoAnnullati, righeCsv, testoCsv,
+  } = require('./archivio');
+  const conclusi = [
+    { id: '1', status: 'completata', dataInizio: '2026-08-28', dataFine: '2026-09-02', prezzoTotale: 150, cliente: 'Mario "Mimmo" Rossi' },
+    { id: '2', status: 'completata', dataInizio: '2026-09-10', dataFine: '2026-09-12', totale: 240.5, origine: 'sito' },
+    { id: '3', status: 'completata', dataInizio: '2025-12-30', dataFine: '2026-01-02', prezzoTotale: 90 },
+    { id: '4', status: 'completata', dataInizio: '2025-05-01', dataFine: '2025-05-03', prezzoTotale: 60 },
+  ];
+  test('il noleggio cade nel mese in cui finisce', () => {
+    expect(filtraPeriodo(conclusi, { anno: '2026', mese: '09' }).map((p) => p.id)).toEqual(['1', '2']);
+    expect(filtraPeriodo(conclusi, { anno: '2026' }).map((p) => p.id)).toEqual(['1', '2', '3']);
+    expect(filtraPeriodo(conclusi, {})).toHaveLength(4);
+    expect(anniDisponibili(conclusi)).toEqual(['2026', '2025']);
+  });
+  test('totali', () => {
+    expect(riepilogoConclusi(filtraPeriodo(conclusi, { anno: '2026', mese: '09' }))).toEqual({ numero: 2, incassato: 390.5 });
+    const annullati = [
+      { status: 'annullata', annullataDa: 'staff', annullataIl: '2026-09-18T09:00:00Z', totale: 200, rimborsato: 160, penaleTrattenuta: 40 },
+      { status: 'annullata', annullataDa: 'cliente', annullataIl: '2026-09-20T09:00:00Z', totale: 100, rimborsato: 100 },
+    ];
+    expect(riepilogoAnnullati(annullati)).toEqual({ numero: 2, pagato: 300, rimborsato: 260, trattenuto: 40 });
+    expect(filtraPeriodo(annullati, { anno: '2026', mese: '09' })).toHaveLength(2);
+  });
+  test('CSV per Excel italiano: punto e virgola, virgola decimale, date gg/mm/aaaa, virgolette protette', () => {
+    const righe = righeCsv([conclusi[0], conclusi[1]]);
+    expect(righe[0][0]).toBe('Cliente');
+    expect(righe[2]).toEqual(expect.arrayContaining(['240,5', 'Sito', '10/09/2026']));
+    expect(testoCsv(righe).split('\r\n')[1].startsWith('"Mario ""Mimmo"" Rossi";')).toBe(true);
+  });
+});
