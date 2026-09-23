@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Info, Trash2, Recycle } from 'lucide-react';
 import { ricaricaPrenotazioni } from '../utils/ricaricaPrenotazioni';
-import { writePrenotazioni } from '../lib/firestorePrenotazioni';
-import { readClienti, writeClienti } from '../lib/firestoreClienti';
+import { aggiornaPrenotazione, eliminaPrenotazione, messaggioErrorePrenotazione } from '../lib/firestorePrenotazioni';
+import { readClienti, salvaCliente } from '../lib/firestoreClienti';
+import { toast } from 'react-toastify';
 import InfoModal from '../components/InfoModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import '../styles/ArchivioPrenotazioni.css';
@@ -62,40 +63,34 @@ function ArchivioPrenotazioni() {
     setInfoModalOpen(false);
   };
 
+  // Ripristina un noleggio concluso: aggiorna solo quella prenotazione e lo
+  // storico danni del suo cliente (prima si riscrivevano tutte le prenotazioni,
+  // cancellando anche quelle arrivate dal sito nel frattempo, e tutti i clienti).
   const handleRestore = async (id) => {
-    const updatedList = prenotazioni.map((prenotazione) =>
-      prenotazione.id === id
-        ? {
-            ...prenotazione,
-            status: 'attiva',
-            danniFinali: '',
-            fotoDanni: null,
-            daRiparare: false
-          }
-        : prenotazione
-    );
-
-    await writePrenotazioni(updatedList);
-
-    const clienti = await readClienti();
     const prenotazioneRipristinata = prenotazioni.find((prenotazione) => prenotazione.id === id);
-    const clientiAggiornati = clienti.map((cliente) => {
-      if (cliente.codiceFiscale !== prenotazioneRipristinata.codiceFiscale) {
-        return cliente;
-      }
-
-      const nuovoStorico = (cliente.storicoDanni || []).filter(
-        (danno) => danno.riferimentoPrenotazione !== prenotazioneRipristinata.id
+    if (!prenotazioneRipristinata) return;
+    try {
+      await aggiornaPrenotazione(
+        id,
+        { status: 'attiva', danniFinali: '', fotoDanni: null, daRiparare: false },
+        { statoAtteso: 'completata' }
       );
 
-      return {
-        ...cliente,
-        storicoDanni: nuovoStorico
-      };
-    });
-
-    await writeClienti(clientiAggiornati);
-    await ricaricaPrenotazioni(dispatch);
+      const clienti = await readClienti();
+      const cliente = clienti.find((c) => c.codiceFiscale && c.codiceFiscale === prenotazioneRipristinata.codiceFiscale);
+      if (cliente) {
+        const nuovoStorico = (cliente.storicoDanni || []).filter(
+          (danno) => danno.riferimentoPrenotazione !== prenotazioneRipristinata.id
+        );
+        if (nuovoStorico.length !== (cliente.storicoDanni || []).length) {
+          await salvaCliente({ ...cliente, storicoDanni: nuovoStorico });
+        }
+      }
+      await ricaricaPrenotazioni(dispatch);
+    } catch (error) {
+      console.error('Errore ripristino prenotazione:', error);
+      toast.error(messaggioErrorePrenotazione(error, 'Errore durante il ripristino.'));
+    }
   };
 
   const executeConfirmedAction = () => {
@@ -115,11 +110,17 @@ function ArchivioPrenotazioni() {
     setConfirmOpen(true);
   };
 
+  // Elimina solo quel documento (prima si riscriveva tutta la collezione).
   const confermaEliminazionePrenotazione = async (id) => {
-    const updatedList = prenotazioni.filter((prenotazione) => prenotazione.id !== id);
-    await writePrenotazioni(updatedList);
-    await ricaricaPrenotazioni(dispatch);
+    try {
+      await eliminaPrenotazione(id);
+      await ricaricaPrenotazioni(dispatch);
+    } catch (error) {
+      console.error('Errore eliminazione prenotazione:', error);
+      toast.error("Errore nell'eliminazione.");
+    }
   };
+
 
   return (
     <div className="archivio-container">

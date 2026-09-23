@@ -1,7 +1,8 @@
 import { db } from '../components/firebase';
-import { collection, getDocs, doc, writeBatch, setDoc, updateDoc } from 'firebase/firestore';
-import { readClienti, writeClienti } from './firestoreClienti';
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { readClienti, aggiungiContrattoCliente } from './firestoreClienti';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
+import { senzaUndefined } from '../utils/senzaUndefined';
 
 const PRENOTAZIONI_COLLECTION = 'prenotazioni';
 
@@ -13,11 +14,8 @@ const PRENOTAZIONI_COLLECTION = 'prenotazioni';
 // isPrenotazioneVisibile — vedi Dashboard.jsx, Booking.jsx,
 // ArchivioPrenotazioni.jsx, Vehicles.jsx.
 //
-// Non filtrare invece qui in readPrenotazioni(): il suo risultato alimenta
-// anche writePrenotazioni() (via lo stato Redux), che sincronizza Firestore
-// cancellando ogni documento non presente nella lista passata. Se
-// readPrenotazioni() omettesse questi stati, il primo salvataggio fatto dal
-// gestionale cancellerebbe da Firestore gli hold del sito ancora in corso.
+// Non filtrare invece qui in readPrenotazioni(): lo stato Redux deve avere
+// tutte le prenotazioni, ogni pagina filtra quello che mostra.
 export const STATI_PRENOTAZIONE_NON_CONFERMATE = ['richiesta-sito', 'scaduta', 'pagamento-fallito'];
 
 // Le prenotazioni annullate (con l'eventuale rimborso già fatto) restano in
@@ -36,32 +34,57 @@ export async function readPrenotazioni() {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function writePrenotazioni(nuovaLista) {
-  const snapshot = await getDocs(collection(db, PRENOTAZIONI_COLLECTION));
-  const idEsistenti = new Set(snapshot.docs.map((d) => d.id));
-  const idNuovi = new Set(nuovaLista.map((p) => p.id));
+// --- Salvataggi di UNA prenotazione -------------------------------------
+// Prima c'era writePrenotazioni, che riscriveva tutta la collezione con la
+// copia locale e cancellava i documenti che non vedeva. Il sito pero' crea
+// prenotazioni e ne cambia lo stato di continuo (pagamento confermato,
+// annullamento dal link del cliente): con la copia vecchia si cancellavano
+// prenotazioni pagate o si rimettevano "attive" quelle annullate e rimborsate.
 
-  const batch = writeBatch(db);
-
-  nuovaLista.forEach((prenotazione) => {
-    const { id, ...dati } = prenotazione;
-    batch.set(doc(db, PRENOTAZIONI_COLLECTION, id), dati);
-  });
-
-  idEsistenti.forEach((id) => {
-    if (!idNuovi.has(id)) {
-      batch.delete(doc(db, PRENOTAZIONI_COLLECTION, id));
-    }
-  });
-
-  await batch.commit();
-  return true;
+// Errore di una prenotazione cambiata (o sparita) nel frattempo.
+export class PrenotazioneCambiata extends Error {
+  constructor(messaggio) {
+    super(messaggio);
+    this.name = 'PrenotazioneCambiata';
+  }
 }
+
+// Aggiorna solo i campi passati. Con `statoAtteso` prima rilegge il documento
+// e si ferma se lo stato non e' piu' quello che lo staff aveva a schermo (es.
+// il cliente l'ha annullata dal sito mentre la pagina era aperta).
+export async function aggiornaPrenotazione(id, campi, { statoAtteso } = {}) {
+  const riferimento = doc(db, PRENOTAZIONI_COLLECTION, id);
+  await runTransaction(db, async (transazione) => {
+    const attuale = await transazione.get(riferimento);
+    if (!attuale.exists()) {
+      throw new PrenotazioneCambiata('La prenotazione non esiste più: forse è stata eliminata da un\'altra postazione.');
+    }
+    const stato = attuale.data().status;
+    if (statoAtteso && stato !== statoAtteso) {
+      throw new PrenotazioneCambiata(
+        stato === 'annullata'
+          ? 'La prenotazione è stata annullata nel frattempo (forse dal cliente dal sito): ricarica la pagina.'
+          : 'La prenotazione è stata modificata nel frattempo: ricarica la pagina e riprova.'
+      );
+    }
+    transazione.update(riferimento, senzaUndefined(campi));
+  });
+  return campi;
+}
+
+export async function eliminaPrenotazione(id) {
+  await deleteDoc(doc(db, PRENOTAZIONI_COLLECTION, id));
+}
+
+// Messaggio da mostrare allo staff per un errore di salvataggio.
+export function messaggioErrorePrenotazione(error, generico = 'Errore durante il salvataggio.') {
+  return error instanceof PrenotazioneCambiata ? error.message : generico;
+}
+
 
 // Assegna il veicolo fisico a una prenotazione arrivata dal sito (che riserva
 // solo la categoria) e, se disponibile, registra la patente controllata in
-// sede. Aggiorna solo questi campi con updateDoc: non passa da
-// writePrenotazioni(), che riscrive l'intera collezione.
+// sede. Aggiorna solo questi campi con updateDoc.
 // Il sito salva il totale pagato in `totale`, mentre il gestionale legge
 // `prezzoTotale`/`prezzoGiornaliero`: li allineiamo qui se mancano, senza
 // ricalcolare l'importo che il cliente ha già pagato.
@@ -85,49 +108,63 @@ export async function assegnaVeicolo({ prenotazione, veicolo, patente }) {
   return { ...prenotazione, ...aggiornamenti };
 }
 
-// Aggiorna anche lo storico contratti del cliente corrispondente.
-// I clienti non sono ancora migrati su Firestore: quella parte resta
-// sui file JSON locali tramite window.electronAPI, finché non si fa
-// anche quel passaggio.
-export async function confermaPrenotazione({ prenotazione, ip }) {
-  try {
-    const bookingId = prenotazione.id || crypto.randomUUID();
-    const bookingRecord = {
-      ...prenotazione,
-      id: bookingId,
-      status: prenotazione.status || 'attiva',
-      schedaVeicolo: prenotazione.schedaVeicolo || {},
-      contrattoFirmato: prenotazione.contrattoFirmato || null,
-      confermatoIl: new Date().toISOString(),
-      ipConferma: ip || null,
-    };
+// Campi che si scelgono prenotando (finestra "Nuova prenotazione"/"Modifica").
+// La scheda del veicolo, il contratto e lo stato si scrivono in altri momenti.
+export const CAMPI_PRENOTAZIONE = [
+  'cliente', 'codiceFiscale', 'patente', 'emailCliente',
+  'veicolo', 'targa', 'dataInizio', 'dataFine', 'prezzoGiornaliero', 'prezzoTotale',
+];
 
-    const { id, ...dati } = bookingRecord;
-    await setDoc(doc(db, PRENOTAZIONI_COLLECTION, id), dati, { merge: true });
+const soloCampiPrenotazione = (dati) =>
+  Object.fromEntries(CAMPI_PRENOTAZIONE.filter((c) => dati[c] !== undefined).map((c) => [c, dati[c]]));
 
-    {
-      const clienti = await readClienti();
-      const indexCliente = clienti.findIndex(
-        (cliente) =>
-          cliente.codiceFiscale?.toUpperCase() === bookingRecord.codiceFiscale?.toUpperCase()
-      );
-
-      if (indexCliente !== -1) {
-        clienti[indexCliente].contratti = clienti[indexCliente].contratti || [];
-        clienti[indexCliente].contratti.push({
-          contratto: null,
-          data: new Date().toISOString(),
-          targa: bookingRecord.targa,
-        });
-        await writeClienti(clienti);
-      }
-    }
-
-    return { success: true, booking: bookingRecord };
-  } catch (error) {
-    console.error('Errore conferma prenotazione:', error);
-    return { success: false, message: error.message };
+// Salva una prenotazione (senza consegna): nuova se `originale` manca,
+// altrimenti aggiorna solo i campi della prenotazione, fermandosi se nel
+// frattempo e' cambiata (es. annullata dal cliente sul sito).
+// Restituisce la prenotazione come va messa nello stato dell'app.
+export async function salvaPrenotazione(dati, originale = null) {
+  const campi = soloCampiPrenotazione(dati);
+  if (originale?.id) {
+    await aggiornaPrenotazione(originale.id, campi, { statoAtteso: originale.status });
+    return { ...originale, ...campi };
   }
+  const id = crypto.randomUUID();
+  const nuova = { ...campi, status: 'attiva', creataIl: new Date().toISOString() };
+  await setDoc(doc(db, PRENOTAZIONI_COLLECTION, id), senzaUndefined(nuova));
+  return { id, ...nuova };
+}
+
+// Consegna del veicolo al cliente: salva la scheda (km, carburante, accessori,
+// danni gia' presenti), l'ora della consegna e, se inserita ora, la patente.
+// Poi registra il contratto sul cliente (solo il suo documento).
+export async function registraConsegna({ prenotazione, scheda, patente, ip }) {
+  const campi = {
+    schedaVeicolo: scheda || {},
+    consegnataIl: new Date().toISOString(),
+    ipConsegna: ip || null,
+  };
+  const patentePulita = (patente || '').trim().toUpperCase();
+  if (patentePulita) campi.patente = patentePulita;
+
+  await aggiornaPrenotazione(prenotazione.id, campi, { statoAtteso: 'attiva' });
+
+  try {
+    const codiceFiscale = prenotazione.codiceFiscale?.toUpperCase();
+    const clienti = codiceFiscale ? await readClienti() : [];
+    const cliente = clienti.find((c) => c.codiceFiscale?.toUpperCase() === codiceFiscale);
+    if (cliente?.id) {
+      await aggiungiContrattoCliente(cliente.id, {
+        contratto: null,
+        data: campi.consegnataIl,
+        targa: prenotazione.targa || '',
+      });
+    }
+  } catch (error) {
+    // La consegna e' salvata: il contratto sul cliente e' secondario.
+    console.error('Contratto non registrato sul cliente:', error);
+  }
+
+  return campi;
 }
 
 // Segna come riparato il danno rilevato alla riconsegna di una prenotazione.

@@ -1,71 +1,24 @@
-import React, { useState, useRef,useEffect } from 'react';
+import React, { useRef } from 'react';
 import Modal from 'react-modal';
 import './InfoModal.css';
-import { Pencil, Trash2, CheckCircle } from 'lucide-react';
+import { Pencil, Trash2, CheckCircle, KeyRound } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
 import { isPagataOnline } from '../utils/pagamentoOnline';
+import { puoConcludere, puoConsegnare, eConsegnata } from '../utils/regolePrenotazione';
+import { prezzoPrenotazione } from '../utils/dashboard';
+import { salvaPdfConsegna } from '../utils/pdfConsegna';
+import { toast } from 'react-toastify';
 
 
-function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, soloLettura = false }) {
+function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, onConsegna, soloLettura = false }) {
   const printRef = useRef();
-  const [danniAttiviVeicolo, setDanniAttiviVeicolo] = useState([]);
+  
 
-
-  useEffect(() => {
-  const caricaDanniVeicolo = async () => {
-    if (!prenotazione?.targa || !isOpen) return;
-
-    try {
-      const veicoli = await readVeicoli();
-      const veicolo = veicoli.find(v => v.targa === prenotazione.targa);
-
-      if (veicolo?.danniAttivi) {
-        const attiviNonRiparati = veicolo.danniAttivi.filter(d => d.daRiparare && !d.riparato);
-        setDanniAttiviVeicolo(attiviNonRiparati);
-      } else {
-        setDanniAttiviVeicolo([]);
-      }
-    } catch (err) {
-      console.error("Errore caricamento danni veicolo:", err);
-      setDanniAttiviVeicolo([]);
-    }
-  };
-
-  caricaDanniVeicolo();
-}, [prenotazione, isOpen]);
-
-
-const marcaComeRiparato = async (riferimentoPrenotazione) => {
-  if (!prenotazione?.targa) return;
-
-  try {
-    const veicoli = await readVeicoli();
-    const index = veicoli.findIndex(v => v.targa === prenotazione.targa);
-    if (index === -1) return;
-
-    const veicolo = veicoli[index];
-
-    veicolo.danniAttivi = veicolo.danniAttivi.map(d => {
-      if (d.riferimentoPrenotazione === riferimentoPrenotazione) {
-        return {
-          ...d,
-          riparato: true,
-          dataRiparazione: new Date().toISOString()
-        };
-      }
-      return d;
-    });
-
-    await writeVeicoli(veicoli);
-
-    const nuoviAttivi = veicolo.danniAttivi.filter(d => d.daRiparare && !d.riparato);
-    setDanniAttiviVeicolo(nuoviAttivi);
-  } catch (error) {
-    console.error("Errore durante la marcatura del danno come riparato:", error);
-  }
-};
+  // Qui c'era una sezione "Danni attivi sul veicolo" che leggeva il campo
+  // `danniAttivi`, che nessuno scrive piu' (non mostrava mai nulla) e che per
+  // segnare un danno riparato riscriveva tutta la flotta. I danni rilevati
+  // alla riconsegna si vedono e si segnano riparati nella scheda del veicolo.
 
 
   const handleDownloadPDF = async () => {
@@ -87,6 +40,18 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
     await renderToPDF(page2, true);
 
     pdf.save(`Prenotazione_${prenotazione?.cliente || 'cliente'}.pdf`);
+  };
+
+  // Lo stesso PDF della consegna, da riscaricare quando serve.
+  const scaricaPdfConsegna = async () => {
+    try {
+      const esito = await salvaPdfConsegna({ prenotazione });
+      if (esito.success) toast.success('PDF della consegna salvato.');
+      else if (!esito.cancelled) toast.error(esito.error || 'PDF non salvato.');
+    } catch (error) {
+      console.error('Errore PDF consegna:', error);
+      toast.error('PDF non salvato.');
+    }
   };
 
   if (!prenotazione) return null;
@@ -148,8 +113,28 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
   </div>
     <div className="info-item">
     <span className="info-label">Prezzo</span>
-    <span className="info-value">{prenotazione.prezzoTotale}</span>
+    <span className="info-value">{prezzoPrenotazione(prenotazione) || '—'} €</span>
   </div>
+  <div className="info-item">
+    <span className="info-label">Consegna</span>
+    <span className="info-value">
+      {prenotazione.consegnataIl
+        ? `Fatta il ${new Date(prenotazione.consegnataIl).toLocaleDateString('it-IT')}`
+        : eConsegnata(prenotazione) ? 'Fatta' : 'Non ancora'}
+    </span>
+  </div>
+  {eConsegnata(prenotazione) && (
+    <>
+      <div className="info-item">
+        <span className="info-label">Km alla consegna</span>
+        <span className="info-value">{prenotazione.schedaVeicolo?.kmIniziali || '—'}</span>
+      </div>
+      <div className="info-item">
+        <span className="info-label">Carburante</span>
+        <span className="info-value">{prenotazione.schedaVeicolo?.carburante || '—'}</span>
+      </div>
+    </>
+  )}
 </div>
 
 
@@ -238,29 +223,6 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
   </div>
 )}
 
-{danniAttiviVeicolo.length > 0 && (
-  <div style={{ marginTop: '20px' }}>
-    <h3>Danni Attivi sul Veicolo</h3>
-    <ul>
-      {danniAttiviVeicolo.map((danno, idx) => (
-        <li key={idx} style={{ marginBottom: '10px' }}>
-          <strong>{danno.descrizioneDanno}</strong><br />
-          <small>Data: {new Date(danno.data).toLocaleDateString()}</small><br />
-          <small>Rif. Prenotazione: {danno.riferimentoPrenotazione}</small><br />
-          <button
-            className="btn btn-success"
-            onClick={() => marcaComeRiparato(danno.riferimentoPrenotazione)}
-            style={{ marginTop: '5px' }}
-          >
-            Segna come Riparato
-          </button>
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
-
-
         {/* Pulsanti */}
         {!soloLettura && (
           <div className="modal-footer no-print">
@@ -268,11 +230,19 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
             <button className="btn btn-danger" onClick={() => onElimina(prenotazione)}>
               <Trash2 size={16} /> {isPagataOnline(prenotazione) ? 'Annulla e rimborsa' : 'Elimina'}
             </button>
-            <button className="btn btn-success" onClick={() => onConcludi(prenotazione)}><CheckCircle size={16} /> Concludi</button>
+            {puoConsegnare(prenotazione) && onConsegna && (
+              <button className="btn btn-primary" onClick={() => onConsegna(prenotazione)}><KeyRound size={16} /> Consegna</button>
+            )}
+            {puoConcludere(prenotazione) && (
+              <button className="btn btn-success" onClick={() => onConcludi(prenotazione)}><CheckCircle size={16} /> Concludi</button>
+            )}
           </div>
         )}
         <div className="modal-footer no-print">
           <button className="btn btn-primary" onClick={handleDownloadPDF}>Scarica PDF</button>
+          {eConsegnata(prenotazione) && window.electronAPI?.salvaDocumentiPrenotazione && (
+            <button className="btn btn-secondary" onClick={scaricaPdfConsegna}>PDF della consegna</button>
+          )}
         </div>
       </div>
 
@@ -315,7 +285,7 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
     </div>
     <div className="info-item">
       <span className="info-label">Prezzo</span>
-      <span className="info-value">{prenotazione.prezzoTotale} €</span>
+      <span className="info-value">{prezzoPrenotazione(prenotazione)} €</span>
     </div>
   </div>
 

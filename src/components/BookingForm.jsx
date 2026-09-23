@@ -11,7 +11,7 @@ import { toast } from 'react-toastify';
 import AutocompleteClienti from './AutocompleteClienti';
 import ClientForm from './ClientForm';
 import { addCliente } from '../store/clientiSlice';
-import { writeClienti } from '../lib/firestoreClienti';
+import { salvaCliente } from '../lib/firestoreClienti';
 import DatePicker from 'react-datepicker';
 import { it } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -66,6 +66,7 @@ function BookingForm({
   holds = [],
   clienti = [],
   prenotazioni = [],
+  salvando = false,
 }) {
   const dispatch = useDispatch();
   const [clienteSelezionato, setClienteSelezionato] = useState(null);
@@ -111,11 +112,12 @@ function BookingForm({
         storicoDanni: [],
       };
 
-      await writeClienti([...clienti, nuovoCliente]);
-      dispatch(addCliente(nuovoCliente));
+      // Salva solo il nuovo cliente (prima si riscrivevano tutti i clienti).
+      const salvato = await salvaCliente(nuovoCliente);
+      dispatch(addCliente(salvato));
       toast.success('Cliente salvato con successo.');
 
-      setClienteSelezionato(nuovoCliente);
+      setClienteSelezionato(salvato);
       setNuovoClienteData(emptyClientFormData);
       setShowAddClient(false);
     } catch (error) {
@@ -408,7 +410,12 @@ function BookingForm({
         <input type="number" value={calcolaPrezzoTotale()} readOnly />
       </div>
 
-      <button type="submit" className="full-width">Avanti</button>
+      <button type="submit" className="full-width" disabled={salvando}>
+        {salvando ? 'Salvataggio…' : initialValues?.id ? 'Salva modifiche' : 'Salva prenotazione'}
+      </button>
+      <small className="availability-hint">
+        Km, carburante, accessori e contratto si compilano il giorno del ritiro, con «Consegna».
+      </small>
 
       <Modal
         isOpen={showAddClient}

@@ -12,7 +12,7 @@ import {toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { setClienti } from '../store/clientiSlice';
-import { Search, Info, CheckCircle, AlertCircle, Edit3, Trash2 } from 'lucide-react';
+import { Search, Info, CheckCircle, AlertCircle, Edit3, Trash2, KeyRound, Plus } from 'lucide-react';
 import BookingModal from '../components/BookingModal';
 import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
@@ -21,11 +21,21 @@ import PrenotazioniDaAssegnare from '../components/PrenotazioniDaAssegnare';
 import AnnullaConPenaleModal from '../components/AnnullaConPenaleModal';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { useLocation } from 'react-router-dom';
-import { readPrenotazioni, writePrenotazioni, isPrenotazioneVisibile, isPagataOnline } from '../lib/firestorePrenotazioni';
+import {
+  readPrenotazioni, isPrenotazioneVisibile, isPagataOnline,
+  aggiornaPrenotazione, eliminaPrenotazione, messaggioErrorePrenotazione, salvaPrenotazione,
+} from '../lib/firestorePrenotazioni';
 import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento';
-import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
+import { readVeicoli } from '../lib/firestoreVeicoli';
 import { readHolds } from '../lib/firestoreHolds';
-import { readClienti, writeClienti } from '../lib/firestoreClienti';
+import { readClienti, aggiungiDannoCliente } from '../lib/firestoreClienti';
+import { fotoIncorporataSuStorage } from '../lib/storageFoto';
+import {
+  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, promemoria,
+} from '../utils/regolePrenotazione';
+import { prezzoPrenotazione } from '../utils/dashboard';
+import { daAssegnare } from '../utils/assegnazioneVeicolo';
+import { giornoLocale } from '../utils/scadenze';
 import{
   setPrenotazioni,
   addPrenotazione,
@@ -38,6 +48,30 @@ import{
 
 
 
+
+// Filtri della tabella: a che punto e' il lavoro su ogni prenotazione.
+const FILTRI_FASE = [
+  { chiave: 'tutte', etichetta: 'Tutte' },
+  { chiave: 'da-consegnare', etichetta: 'Da consegnare' },
+  { chiave: 'in-corso', etichetta: 'In corso' },
+  { chiave: 'da-concludere', etichetta: 'Finiti da concludere' },
+];
+
+const ETICHETTA_FASE = {
+  'da-consegnare': 'Da consegnare',
+  'in-corso': 'In corso',
+  'da-concludere': 'Da concludere',
+};
+
+const schedaVuota = () => ({
+  carburante: '',
+  kmIniziali: '',
+  danni: '',
+  accessori: {
+    cric: false, triangolo: false, giubbotto: false, ruotaScorta: false,
+    cavoRicarica: false, cateneNeve: false, altro: '',
+  },
+});
 
 function Bookings() {
   const prenotazioni = useSelector((state) => state.prenotazioni);
@@ -72,9 +106,14 @@ function Bookings() {
   const clienti = useSelector((state) => state.clienti);
   const [concludiModalOpen, setConcludiModalOpen] = useState(false);
   const [prenotazioneDaConcludere, setPrenotazioneDaConcludere] = useState(null);
+  const [confermaInBlocco, setConfermaInBlocco] = useState(null);
   const [paginaPrenotazioni, setPaginaPrenotazioni] = useState(1);
   const [paginaClienti, setPaginaClienti] = useState(1);
-  const [filtroAttivo, setFiltroAttivo] = useState('');
+  const [filtroFase, setFiltroFase] = useState('tutte');
+  const [salvandoPrenotazione, setSalvandoPrenotazione] = useState(false);
+  // Prenotazione che si sta consegnando (scheda veicolo -> riepilogo).
+  const [consegnaDi, setConsegnaDi] = useState(null);
+  const [patenteConsegna, setPatenteConsegna] = useState('');
   const location = useLocation();
   const righePerPagina = 10;
   const listaRef = useRef(null);
@@ -122,7 +161,7 @@ accessori: {
   
   useEffect(() => {
   setPaginaPrenotazioni(1);
-}, [search]);
+}, [search, filtroFase]);
 
 
   useEffect(() => {
@@ -351,8 +390,6 @@ accessori: {
   const hasDraftBooking = () => (
     isAddingNewBooking ||
     editingIndex !== null ||
-    schedaModalOpen ||
-    riepilogoOpen ||
     Boolean(
       formData.cliente ||
       formData.codiceFiscale ||
@@ -364,7 +401,7 @@ accessori: {
   );
 
   const handleRequestCancelBooking = () => {
-    if (!hasDraftBooking() && !schedaModalOpen && !riepilogoOpen) {
+    if (!hasDraftBooking()) {
       resetModal();
       return;
     }
@@ -397,37 +434,6 @@ accessori: {
     link.click();
     document.body.removeChild(link);
     showFeedback("Esportazione completata!");
-  };
-
-  const normalizzaData = (value) => {
-    if (!value) return null;
-    const data = new Date(value);
-    if (Number.isNaN(data.getTime())) return null;
-    data.setHours(0, 0, 0, 0);
-    return data;
-  };
-
-  const getGiorniAllaScadenza = (dataFine) => {
-    const fine = normalizzaData(dataFine);
-    const oggi = normalizzaData(new Date());
-    if (!fine || !oggi) return 0;
-    return Math.round((fine - oggi) / (1000 * 60 * 60 * 24));
-  };
-
-  const getClasseScadenza = (dataFine) => {
-    const giorni = getGiorniAllaScadenza(dataFine);
-    if (giorni <= 0) return 'riga-scadenza-urgente';
-    if (giorni === 1) return 'riga-scadenza-domani';
-    if (giorni <= 2) return 'riga-scadenza-prossima';
-    return '';
-  };
-
-  const getTestoScadenza = (dataFine) => {
-    const giorni = getGiorniAllaScadenza(dataFine);
-    if (giorni < 0) return `Scaduta da ${Math.abs(giorni)} gg`;
-    if (giorni === 0) return 'Scade oggi';
-    if (giorni === 1) return 'Scade domani';
-    return `${giorni} giorni`;
   };
 
   const calcGiorni = calcolaGiorniNoleggio;
@@ -486,52 +492,92 @@ accessori: {
   };
 
   
-  const handleBookingSubmit = (data) => {
-  const giorni = calcGiorni(data.dataInizio, data.dataFine);
-  const totale = giorni * parseFloat(data.prezzoGiornaliero || 0);
+  // Salva subito la prenotazione (nuova o modificata). Km, carburante,
+  // accessori e contratto si fanno dopo, il giorno del ritiro, con "Consegna".
+  const handleBookingSubmit = async (data) => {
+    if (salvandoPrenotazione) return;
+    const prenotazioneCorrente = editingIndex !== null ? prenotazioni[editingIndex] : null;
 
-  const codiceFiscaleUpper = data.codiceFiscale?.toUpperCase() || '';
+    // Date, veicolo libero (stessa regola di Veicoli e Dashboard: le annullate e
+    // le richieste del sito non pagate non bloccano, la categoria piena si') e
+    // prezzo: quello pagato sul sito non si ricalcola.
+    const esito = controllaPrenotazione({
+      dati: data,
+      originale: prenotazioneCorrente,
+      veicoli: availableVehicles,
+      prenotazioni,
+      holds,
+      oggi: giornoLocale(),
+    });
+    if (esito.errore) {
+      showFeedback(esito.errore, "error");
+      return;
+    }
 
-  const sovrapposta = prenotazioni.some((p, i) => {
-    if (editingIndex !== null && i === editingIndex) return false;
-    if (p.targa !== data.targa) return false;
-    if (p.status === 'completata') return false; 
+    setSalvandoPrenotazione(true);
+    try {
+      const salvata = await salvaPrenotazione(
+        {
+          ...data,
+          codiceFiscale: data.codiceFiscale?.toUpperCase() || '',
+          prezzoTotale: esito.prezzoTotale,
+        },
+        prenotazioneCorrente,
+      );
+      dispatch(prenotazioneCorrente ? updatePrenotazione(salvata) : addPrenotazione(salvata));
+      showFeedback(prenotazioneCorrente ? "Prenotazione modificata." : "Prenotazione salvata. Al ritiro usa «Consegna».");
+      setEditingIndex(null);
+      setIsAddingNewBooking(false);
+      resetModal();
+    } catch (error) {
+      console.error("Errore salvataggio prenotazione:", error);
+      showFeedback(messaggioErrorePrenotazione(error, "Prenotazione non salvata, riprova."), "error");
+    } finally {
+      setSalvandoPrenotazione(false);
+    }
+  };
 
-    const inizioA = new Date(p.dataInizio);
-    const fineA = new Date(p.dataFine);
-    const inizioB = new Date(data.dataInizio);
-    const fineB = new Date(data.dataFine);
+  const apriNuovaPrenotazione = () => {
+    setFormData({
+      cliente: '', codiceFiscale: '', patente: '', veicolo: '', targa: '',
+      dataInizio: '', dataFine: '', prezzoGiornaliero: '', prezzoTotale: '', emailCliente: '',
+    });
+    setSelectedDate(null);
+    setEditingIndex(null);
+    setIsAddingNewBooking(true);
+    setModalIsOpen(true);
+  };
 
-    return (
-      (inizioB <= fineA && inizioB >= inizioA) ||
-      (fineB >= inizioA && fineB <= fineA) ||
-      (inizioB <= inizioA && fineB >= fineA)
-    );
-  });
+  // --- Consegna: scheda del veicolo, poi riepilogo con contratto e PDF ---
+  const avviaConsegna = (prenotazione) => {
+    const veicolo = availableVehicles.find((v) => v.targa === prenotazione.targa);
+    setConsegnaDi(prenotazione);
+    setPatenteConsegna('');
+    // I km partono da quelli segnati sul veicolo: si correggono se diversi.
+    setSchedaVeicolo({ ...schedaVuota(), kmIniziali: veicolo?.km ?? '' });
+    setInfoModalOpen(false);
+    setModalIsOpen(false);
+    setSchedaModalOpen(true);
+  };
 
-  if (sovrapposta) {
-    showFeedback("Prenotazione sovrapposta per la stessa targa.", "error");
-    return;
-  }
+  const chiudiConsegna = () => {
+    setSchedaModalOpen(false);
+    setRiepilogoOpen(false);
+    setConsegnaDi(null);
+  };
 
-  const prenotazioneCorrente = editingIndex !== null ? prenotazioni[editingIndex] : null;
+  const handleSaveSchedaVeicolo = () => {
+    setSchedaModalOpen(false);
+    setRiepilogoOpen(true);
+  };
 
-  setFormData({
-    ...data,
-    id: prenotazioneCorrente?.id,
-    status: prenotazioneCorrente?.status || 'attiva',
-    codiceFiscale: codiceFiscaleUpper,
-    prezzoTotale: totale,
-  });
-
-  setModalIsOpen(false);
-  setTimeout(() => {
-    const root = document.getElementById('root');
-    if (root) root.removeAttribute('aria-hidden');
-  }, 50);
-  setSchedaModalOpen(true);
-};
-
+  // La consegna e' salvata: aggiorna subito la tabella. La finestra del
+  // riepilogo resta aperta finche' non si chiude (PDF da rifare, ecc.).
+  const handleConsegnaSalvata = (campi) => {
+    const aggiornata = { ...consegnaDi, ...campi };
+    dispatch(updatePrenotazione(aggiornata));
+    setConsegnaDi(aggiornata);
+  };
 
   const groupPrenotazioniByDate = () => {
     const dateMap = {};
@@ -678,79 +724,16 @@ accessori: {
   }, [modalIsOpen]);
 
 
-  const handleSaveSchedaVeicolo = () => {
-    setFormData(prev => ({
-      ...prev,
-      schedaVeicolo: schedaVeicolo
-    }));
-    setSchedaModalOpen(false);
-    setRiepilogoOpen(true);
-  };
-
-  const handleConfermaPrenotazioneCompletata = async () => {
-    try {
-      const prenotazioniAggiornate = await readPrenotazioni();
-      dispatch(setPrenotazioni(prenotazioniAggiornate));
-      showFeedback(
-        editingIndex !== null
-          ? "Prenotazione modificata con successo"
-          : "Prenotazione aggiunta con successo",
-        "success"
-      );
-    } catch (error) {
-      console.error("Errore aggiornamento stato prenotazioni:", error);
-      showFeedback("Prenotazione confermata, ma non Ã¨ stato possibile aggiornare la vista.", "error");
-    }
-
-    setFormData({
-      cliente: '',
-      codiceFiscale: '',
-      patente: '',
-      veicolo: '',
-      targa: '',
-      dataInizio: '',
-      dataFine: '',
-      prezzoGiornaliero: '',
-      prezzoTotale: '',
-      emailCliente: '',
-    });
-
-    setSchedaVeicolo({
-      carburante: '',
-      kmIniziali: '',
-      danni: '',
-      accessori: {
-        cric: false,
-        triangolo: false,
-        giubbotto: false,
-        ruotaScorta: false,
-        cavoRicarica: false,
-        cateneNeve: false,
-        altro: ''
-      }
-    });
-
-    setEditingIndex(null);
-    setModalIsOpen(false);
-    setTimeout(() => {
-      const root = document.getElementById('root');
-      if (root) root.removeAttribute('aria-hidden');
-    }, 50);
-    setSchedaModalOpen(false);
-    setRiepilogoOpen(false);
-  };
-
+  // Elimina solo quel documento (prima si riscriveva tutta la collezione).
   const confermaEliminazione = async () => {
     const index = deleteIndex;
     if (index === null) return;
     setConfirmOpen(false);
-  
+    const prenotazioneEliminata = prenotazioni[index];
+
     try {
-      const nuovaLista = [...prenotazioni];
-      const [prenotazioneEliminata] = nuovaLista.splice(index, 1);
+      await eliminaPrenotazione(prenotazioneEliminata.id);
       dispatch(deletePrenotazione(prenotazioneEliminata.id));
-      await writePrenotazioni(nuovaLista);
-      dispatch(setPrenotazioni(nuovaLista));
       resetModal();
       showFeedback("Prenotazione eliminata con successo.", "success");
     } catch (error) {
@@ -760,233 +743,96 @@ accessori: {
       setDeleteIndex(null);
     }
   };
-  
 
-  const confermaPrenotazione = async () => {
-    const nuovaPrenotazione = {
-      ...formData,
-      schedaVeicolo: { ...schedaVeicolo },
-    };
-  
-    let prenotazioniAggiornate = [];
-  
-    setLoading(true);
-  
-    try {
-      if (editingIndex !== null) {
-        // Modifica esistente
-        const id = prenotazioni[editingIndex].id;
-        if (!id) throw new Error("ID mancante");
-        
-        const aggiornata = { ...nuovaPrenotazione, id,  status: prenotazioni[editingIndex].status || 'attiva'  };
-        prenotazioniAggiornate = prenotazioni.map((p, i) =>
-          i === editingIndex ? aggiornata : p
-        );
-  
-        dispatch(updatePrenotazione(aggiornata));
-        showFeedback("Prenotazione modificata con successo", "success");
-      } else {
-        // Nuova prenotazione
-        const nuovaConId = {
-          ...nuovaPrenotazione,
-          id: crypto.randomUUID(),
-          status: 'attiva',
-        };
-        
-        prenotazioniAggiornate = [...prenotazioni, nuovaConId];
-        dispatch(addPrenotazione(nuovaConId));
-        showFeedback("Prenotazione aggiunta con successo", "success");
-      }
-  
-      await writePrenotazioni(prenotazioniAggiornate);
-      setSelectedDate(prev => prev);
-
-    } catch (error) {
-      console.error("Errore nel salvataggio:", error);
-      showFeedback("Errore durante il salvataggio", "error");
-      return;
-    } finally {
-      setLoading(false);
-    }
-  
-  
-    // --- 🚀 Dopo il salvataggio:
-    setFormData({
-      cliente: '',
-      codiceFiscale: '',
-      patente: '',
-      veicolo: '',
-      targa: '',
-      dataInizio: '',
-      dataFine: '',
-      prezzoGiornaliero: '',
-      prezzoTotale: '',
-      emailCliente: '',
-    });
-  
-    setSchedaVeicolo({
-      carburante: '',
-      kmIniziali: '',
-      danni: '',
-   accessori: {
-  cric: false,
-  triangolo: false,
-  giubbotto: false,
-  ruotaScorta: false,
-  cavoRicarica: false,
-  cateneNeve: false,
-  altro: ''
-}
-    });
-  
-    setEditingIndex(null);
-    setModalIsOpen(false);
-    setTimeout(() => {
-      const root = document.getElementById('root');
-      if (root) root.removeAttribute('aria-hidden');
-    }, 50);
-    setSchedaModalOpen(false);
-    setRiepilogoOpen(false);
-  };
-const handleBackToForm = () => {
-  setSchedaModalOpen(false);
-  setModalIsOpen(true);
-
-};
-
-
-const segnaComeCompletata = async (index) => {
-  const prenotazione = prenotazioni[index];
-  const now = new Date().toISOString();
-  
-
-  const aggiornata = { 
-    ...prenotazione,
-     status: 'completata',
-    dataRientroEffettiva: now,
-  };
-
-  const nuovePrenotazioni = prenotazioni.map((p, i) =>
-    i === index ? aggiornata : p
-  );
-
-  dispatch(updatePrenotazione(aggiornata));
-  await writePrenotazioni(nuovePrenotazioni);
-  dispatch(setPrenotazioni(nuovePrenotazioni));
-  showFeedback("Prenotazione conclusa", "success");
-  
-
- // Forza il ricalcolo della disponibilità
- const nuovaDisponibilità = getAvailableVehiclesForDate(
-  prenotazione.dataInizio, // usa la data originale di inizio
-  formData?.targa,
-  true // forza il calcolo come nuova prenotazione
-);
-
-setAvailableVehiclesForBooking(nuovaDisponibilità);
-
-// Se stavi visualizzando la data originale, forza il refresh
-if (selectedDate === prenotazione.dataInizio) {
-  setSelectedDate(null);
-  setTimeout(() => setSelectedDate(prenotazione.dataInizio), 50);
-}
-};
-
+// Conclude un noleggio con l'esito della riconsegna.
+// - Le foto dei danni vanno su Storage (cartella danni/): prima finivano
+//   incorporate nei documenti di prenotazione e veicolo (limite di 1 MB).
+// - Il danno resta SOLO sulla prenotazione: la scheda del veicolo lo mostra in
+//   "Danni rilevati alle riconsegne" e da li' si segna riparato. Prima veniva
+//   copiato anche nei danni del veicolo (con la foto in un campo che la scheda
+//   non legge) e la Dashboard lo contava due volte.
+// - Si aggiornano solo la prenotazione e la voce nello storico del cliente,
+//   invece di riscrivere tutte le prenotazioni, tutti i clienti e la flotta.
 const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoDanni }) => {
   const now = new Date().toISOString();
   const prenotazione = prenotazioneDaConcludere;
+  if (!prenotazione) return;
 
-  const aggiornata = {
-    ...prenotazione,
-    status: 'completata',
-    dataRientroEffettiva: now,
-    descrizioneDanno,
-    daRiparare,
-    fotoDanni: fotoDanni || null,
-  };
+  try {
+    const foto = fotoDanni ? await Promise.all([].concat(fotoDanni).map(fotoIncorporataSuStorage)) : null;
+    const campi = {
+      status: 'completata',
+      dataRientroEffettiva: now,
+      descrizioneDanno: descrizioneDanno || '',
+      daRiparare: Boolean(daRiparare),
+      fotoDanni: foto && foto.length > 0 ? foto : null,
+    };
+    await aggiornaPrenotazione(prenotazione.id, campi, { statoAtteso: 'attiva' });
+    dispatch(updatePrenotazione({ ...prenotazione, ...campi }));
 
-  const nuovePrenotazioni = prenotazioni.map((p) =>
-    p.id === aggiornata.id ? aggiornata : p
-  );
-
-  dispatch(updatePrenotazione(aggiornata));
-  await writePrenotazioni(nuovePrenotazioni);
-  dispatch(setPrenotazioni(nuovePrenotazioni));
-
-  if (descrizioneDanno?.trim()) {
-    const clienti = await readClienti();
-    const idxCliente = clienti.findIndex(c =>
-      c.codiceFiscale === prenotazione.codiceFiscale ||
-      c.email === prenotazione.emailCliente
-    );
-
-    if (idxCliente !== -1) {
-      clienti[idxCliente].storicoDanni = clienti[idxCliente].storicoDanni || [];
-      clienti[idxCliente].storicoDanni.push({
-        data: now,
-        descrizioneDanno,
-        veicolo: prenotazione.veicolo,
-        targa: prenotazione.targa,
-        riferimentoPrenotazione: prenotazione.id,
-      });
-      await writeClienti(clienti);
-      dispatch(setClienti(clienti));
+    if (descrizioneDanno?.trim()) {
+      const clienteDelNoleggio = clienti.find((c) =>
+        (prenotazione.codiceFiscale && c.codiceFiscale === prenotazione.codiceFiscale) ||
+        (prenotazione.emailCliente && c.email === prenotazione.emailCliente)
+      );
+      if (clienteDelNoleggio?.id) {
+        const voce = {
+          data: now,
+          descrizioneDanno,
+          veicolo: prenotazione.veicolo || '',
+          targa: prenotazione.targa || '',
+          riferimentoPrenotazione: prenotazione.id,
+        };
+        try {
+          await aggiungiDannoCliente(clienteDelNoleggio.id, voce);
+          dispatch(setClienti(clienti.map((c) =>
+            c.id === clienteDelNoleggio.id ? { ...c, storicoDanni: [...(c.storicoDanni || []), voce] } : c)));
+        } catch (error) {
+          console.error("Errore storico danni cliente:", error);
+          showFeedback("Noleggio concluso, ma non sono riuscito ad aggiornare lo storico danni del cliente.", "error");
+        }
+      }
     }
 
-if (daRiparare && prenotazione.targa) {
-  const veicoli = await readVeicoli();
-  const index = veicoli.findIndex(v => v.targa === prenotazione.targa);
-
-  if (index !== -1) {
-    const nuovoDanno = {
-      descrizione: descrizioneDanno,
-      data: now,
-      daRiparare: true,
-      riparato: false,
-      foto: fotoDanni || [],
-      riferimentoPrenotazione: prenotazione.id,
-    };
-
-    veicoli[index].danni = veicoli[index].danni || [];
-    veicoli[index].danni.push(nuovoDanno);
-
-    await writeVeicoli(veicoli);
-    showFeedback("Danno salvato nel veicolo", "success");
+    showFeedback("Prenotazione conclusa con esito registrato.");
+    setConcludiModalOpen(false);
+    setPrenotazioneDaConcludere(null);
+  } catch (error) {
+    console.error("Errore conclusione prenotazione:", error);
+    showFeedback(messaggioErrorePrenotazione(error, "Errore durante la conclusione del noleggio."), "error");
   }
-}
- }
-  showFeedback("Prenotazione conclusa con esito registrato.");
-  setConcludiModalOpen(false);
-  setPrenotazioneDaConcludere(null);
 };
 
-const concludiPrenotazioniScadute = async () => {
-  const daConcludere = prenotazioniAttive.filter((p) => getGiorniAllaScadenza(p.dataFine) <= 0);
+// Conclude in blocco i noleggi finiti da ieri o prima (non quelli di oggi: il
+// veicolo potrebbe non essere ancora rientrato) e con un veicolo assegnato.
+// Chiede conferma e aggiorna le prenotazioni una per una.
+const concludiPrenotazioniScadute = () => {
+  const daConcludere = daConcludereInBlocco(prenotazioniAttive, giornoLocale());
 
   if (daConcludere.length === 0) {
-    showFeedback("Non ci sono prenotazioni da concludere oggi.", "error");
+    showFeedback("Non ci sono noleggi finiti da concludere.", "error");
     return;
   }
 
-  const now = new Date().toISOString();
-  const idsDaConcludere = new Set(daConcludere.map((p) => p.id));
-  const nuovePrenotazioni = prenotazioni.map((p) =>
-    idsDaConcludere.has(p.id)
-      ? {
-          ...p,
-          status: 'completata',
-          dataRientroEffettiva: now,
-        }
-      : p
-  );
+  setConfermaInBlocco(daConcludere);
+};
 
-  try {
-    dispatch(setPrenotazioni(nuovePrenotazioni));
-    await writePrenotazioni(nuovePrenotazioni);
-    showFeedback(`${daConcludere.length} prenotazioni concluse automaticamente.`, "success");
-  } catch (error) {
-    console.error("Errore conclusione multipla prenotazioni:", error);
-    showFeedback("Errore durante la conclusione multipla.", "error");
+const eseguiConclusioneInBlocco = async () => {
+  const daConcludere = confermaInBlocco || [];
+  setConfermaInBlocco(null);
+  const now = new Date().toISOString();
+  const esiti = await Promise.allSettled(
+    daConcludere.map(async (p) => {
+      const campi = { status: 'completata', dataRientroEffettiva: now };
+      await aggiornaPrenotazione(p.id, campi, { statoAtteso: 'attiva' });
+      dispatch(updatePrenotazione({ ...p, ...campi }));
+    })
+  );
+  const fallite = esiti.filter((e) => e.status === 'rejected').length;
+  if (fallite === 0) {
+    showFeedback(`${daConcludere.length} noleggi conclusi.`, "success");
+  } else {
+    showFeedback(`${daConcludere.length - fallite} noleggi conclusi, ${fallite} non riusciti: ricarica la pagina e riprova.`, "error");
   }
 };
 
@@ -1005,14 +851,19 @@ if(loading){
   );
 }
 
-const prenotazioniAttiveFiltrate = prenotazioniAttive.filter(p =>
-  p.cliente.toLowerCase().includes(search.toLowerCase()) ||
-  p.targa.toLowerCase().includes(search.toLowerCase()) ||
-  p.veicolo.toLowerCase().includes(search.toLowerCase())||
-  p.emailCliente.toLowerCase().includes(search.toLowerCase())
-);
+const oggi = giornoLocale();
+// Ricerca su piu' parole (es. "rossi panda"), come in Veicoli. Le prenotazioni
+// del sito possono non avere email o targa: niente crash sui campi vuoti.
+const paroleCercate = search.toLowerCase().split(/\s+/).filter(Boolean);
+const perRicerca = (p) => [p.cliente, p.targa, p.veicolo, p.emailCliente, p.categoria]
+  .filter(Boolean).join(' ').toLowerCase();
+const trovate = prenotazioniAttive.filter((p) => paroleCercate.every((parola) => perRicerca(p).includes(parola)));
+const contaFase = (chiave) => (chiave === 'tutte' ? trovate.length : trovate.filter((p) => faseLavoro(p, oggi) === chiave).length);
+const prenotazioniAttiveFiltrate = trovate
+  .filter((p) => filtroFase === 'tutte' || faseLavoro(p, oggi) === filtroFase)
+  .sort((a, b) => String(a.dataInizio).localeCompare(String(b.dataInizio)));
 const ricercaAttiva = search.trim();
-const prenotazioniDaConcludereOggi = prenotazioniAttive.filter((p) => getGiorniAllaScadenza(p.dataFine) <= 0);
+const prenotazioniDaConcludereOggi = daConcludereInBlocco(prenotazioniAttive, oggi);
 const numeroPagine = Math.ceil(prenotazioniAttiveFiltrate.length / righePerPagina);
 
 
@@ -1024,7 +875,12 @@ return (
         <span>{feedbackMessage}</span>
       </div>
     )}
-  <h1 className="title">Gestione Prenotazioni</h1>
+  <div className="bookings-testa">
+    <h1>Prenotazioni</h1>
+    <button type="button" className="bookings-nuova-btn" onClick={apriNuovaPrenotazione}>
+      <Plus size={18} aria-hidden="true" /> Nuova prenotazione
+    </button>
+  </div>
 
   <PrenotazioniDaAssegnare prenotazioni={prenotazioni} veicoli={availableVehicles} />
 
@@ -1123,6 +979,7 @@ return (
           holds={holds}
           clienti = {clienti}
           prenotazioni={prenotazioni}
+          salvando={salvandoPrenotazione}
        />
       </div>
     ) : (
@@ -1137,7 +994,7 @@ return (
                     <p><strong>Cliente:</strong> {prenotazione.cliente}</p>
                     <p><strong>Veicolo:</strong> {prenotazione.veicolo} ({prenotazione.targa})</p>
                     <p><strong>Periodo:</strong> {prenotazione.dataInizio} → {prenotazione.dataFine}</p>
-                    <p><strong>Prezzo:</strong> {prenotazione.prezzoTotale} €</p>
+                    <p><strong>Prezzo:</strong> {prezzoPrenotazione(prenotazione)} €</p>
                   </div>
                   <div className="booking-actions">
                     <button
@@ -1179,6 +1036,12 @@ return (
                       <Trash2 size={16} />
                       Elimina
                     </button>
+                  {puoConsegnare(prenotazione) && (
+                    <button className="btn btn-primary" onClick={() => avviaConsegna(prenotazione)}>
+                      <KeyRound size={16} /> Consegna
+                    </button>
+                  )}
+                  {puoConcludere(prenotazione) && (
                   <button
   className="btn btn-success"
   onClick={() => {
@@ -1190,6 +1053,7 @@ return (
   <CheckCircle size={16}/>
   Concludi
 </button>
+                  )}
                   </div>
                 </div>
               ))}
@@ -1268,16 +1132,19 @@ return (
   
   
     <div className="bookings-table-tools">
-      <div className="bookings-deadline-summary">
-        <span className="deadline-chip deadline-chip-urgent">
-          A 0 giorni: {prenotazioniDaConcludereOggi.length}
-        </span>
-        <span className="deadline-chip deadline-chip-soon">
-          In scadenza: {prenotazioniAttive.filter((p) => {
-            const giorni = getGiorniAllaScadenza(p.dataFine);
-            return giorni === 1 || giorni === 2;
-          }).length}
-        </span>
+      <div className="bookings-filtri" role="tablist" aria-label="Filtra per stato">
+        {FILTRI_FASE.map(({ chiave, etichetta }) => (
+          <button
+            key={chiave}
+            type="button"
+            role="tab"
+            aria-selected={filtroFase === chiave}
+            className={`bookings-filtro ${filtroFase === chiave ? 'bookings-filtro--attivo' : ''}`}
+            onClick={() => setFiltroFase(chiave)}
+          >
+            {etichetta} <span className="bookings-filtro-conto">{contaFase(chiave)}</span>
+          </button>
+        ))}
       </div>
       <button
         type="button"
@@ -1285,7 +1152,7 @@ return (
         onClick={concludiPrenotazioniScadute}
         disabled={prenotazioniDaConcludereOggi.length === 0}
       >
-        Concludi tutte a 0 giorni
+        Concludi i noleggi finiti
       </button>
     </div>
 
@@ -1300,7 +1167,8 @@ return (
             <th>Inizio</th>
             <th>Fine</th>
             <th>Prezzo (€)</th>
-            <th>Scadenza</th>
+            <th>Stato</th>
+            <th>Promemoria</th>
             <th>Azioni</th>            
           </tr>
         </thead>
@@ -1308,29 +1176,43 @@ return (
           
   {prenotazioniAttiveFiltrate.length === 0 ? (
     <tr>
-      <td colSpan="9" style={{ textAlign: 'center', fontStyle: 'italic', color: '#888' }}>
+      <td colSpan="10" style={{ textAlign: 'center', fontStyle: 'italic', color: '#888' }}>
         Nessuna prenotazione trovata.
       </td>
     </tr>
   ) : (
     prenotazioniAttiveFiltrate
       .slice((paginaPrenotazioni - 1) * righePerPagina, paginaPrenotazioni * righePerPagina)
-      .map((p, index) => (
-              <tr key={index} className={getClasseScadenza(p.dataFine)}>
+      .map((p) => {
+              const fase = faseLavoro(p, oggi);
+              const nota = promemoria(p, oggi);
+              const classeRiga = nota.livello ? `riga-scadenza-${nota.livello}` : '';
+              return (
+              <tr key={p.id} className={classeRiga}>
                 <td>{p.cliente}</td>
                 <td>{p.emailCliente}</td>
                 <td>{p.veicolo}</td>
                 <td>{p.targa}</td>
                 <td>{p.dataInizio}</td>
                 <td>{p.dataFine}</td>
-                <td>{p.prezzoTotale}</td>
+                <td>{prezzoPrenotazione(p) || '—'}</td>
                 <td>
-                  <span className={`deadline-badge ${getClasseScadenza(p.dataFine)}`}>
-                    {getTestoScadenza(p.dataFine)}
+                  <span className={`fase-badge fase-badge--${fase}`}>
+                    {daAssegnare(p) ? 'Veicolo da assegnare' : ETICHETTA_FASE[fase]}
                   </span>
                 </td>
+                <td>
+                  <span className={`deadline-badge ${classeRiga}`}>{nota.testo}</span>
+                </td>
                 <td className="table-actions-cell">
-                   <button className="info-btn" onClick={() => openInfoModal(p)}><Info size={18} /></button>
+                   <button className="info-btn" onClick={() => openInfoModal(p)} aria-label="Dettagli"><Info size={18} /></button>
+                   {puoConsegnare(p) && (
+                   <button className="table-consegna-btn" onClick={() => avviaConsegna(p)}>
+                     <KeyRound size={16} />
+                     Consegna
+                   </button>
+                   )}
+                   {puoConcludere(p) && (
                    <button
                      className="table-conclude-btn"
                      onClick={() => {
@@ -1343,9 +1225,11 @@ return (
                      <CheckCircle size={16} />
                      Concludi
                    </button>
+                   )}
                 </td>
               </tr>
-            ))
+              );
+            })
           )}
         </tbody>
       </table>
@@ -1395,9 +1279,8 @@ return (
       handleDelete(index);
       setInfoModalOpen(false);
     }}
+    onConsegna={avviaConsegna}
     onConcludi={(p) => {
-      const index = prenotazioni.findIndex(item => item.id === p.id);
-      
      setInfoModalOpen(false);          
     setModalIsOpen(false);            
     setPrenotazioneDaConcludere(p);   
@@ -1407,20 +1290,24 @@ return (
       />
     <SchedaVeicoloModal
     isOpen={schedaModalOpen}
-    onRequestClose={() => setSchedaModalOpen(false)}
+    onRequestClose={chiudiConsegna}
+    prenotazione={consegnaDi}
     schedaVeicolo={schedaVeicolo}
     setSchedaVeicolo={setSchedaVeicolo}
+    patente={patenteConsegna}
+    onPatenteChange={setPatenteConsegna}
     onSave={handleSaveSchedaVeicolo}
-    onBack={handleBackToForm}
   />
-  
-  <RiepilogoPrenotazioneModal
-    isOpen={riepilogoOpen}
-    onClose={handleRequestCancelBooking}
-    formData={formData}
-    schedaVeicolo={formData.schedaVeicolo}
-    onConferma={handleConfermaPrenotazioneCompletata}
-  />
+
+  {consegnaDi && (
+    <RiepilogoPrenotazioneModal
+      isOpen={riepilogoOpen}
+      onClose={chiudiConsegna}
+      formData={{ ...consegnaDi, patente: consegnaDi.patente || patenteConsegna.trim().toUpperCase() }}
+      schedaVeicolo={schedaVeicolo}
+      onConsegnaSalvata={handleConsegnaSalvata}
+    />
+  )}
   
   <ConfirmDialog
     open={confirmOpen}
@@ -1438,6 +1325,17 @@ return (
     inCorso={rimborsoInCorso}
     onClose={() => setDaRimborsare(null)}
     onConferma={confermaRimborso}
+  />
+
+  <ConfirmDialog
+    open={confermaInBlocco !== null}
+    onCancel={() => setConfermaInBlocco(null)}
+    onConfirm={eseguiConclusioneInBlocco}
+    title="Concludere i noleggi finiti?"
+    message={confermaInBlocco
+      ? `Concludo ${confermaInBlocco.length === 1 ? 'il noleggio finito' : `i ${confermaInBlocco.length} noleggi finiti`} da ieri o prima, senza danni registrati: ${confermaInBlocco.map((p) => `${p.cliente || 'cliente'} (${p.targa})`).join(', ')}. Per un noleggio con danni usa "Concludi" sulla sua riga.`
+      : ''}
+    confirmLabel="Concludi"
   />
 
   <ConfirmDialog
