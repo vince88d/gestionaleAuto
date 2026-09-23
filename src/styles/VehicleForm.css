@@ -1,0 +1,275 @@
+/* Form "Aggiungi / Modifica veicolo".
+   Tutte le regole partono da .Modal.vf-modal: devono battere quelle generiche
+   ".Modal form ..." di schedaModal.css (form in colonna, campi numerici piu'
+   alti degli altri) e ".Modal img" di StoricoNoleggiTable.css. */
+
+.Modal.vf-modal {
+  width: 92vw;
+  max-width: 900px;
+  max-height: 90vh;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.Modal.vf-modal .vf {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  color: #2c3e50;
+}
+
+.Modal.vf-modal .vf-testa {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e3e8ee;
+}
+
+.Modal.vf-modal .vf-titolo {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.Modal.vf-modal .vf-sottotitolo {
+  font-size: 14px;
+  color: #7f8c9a;
+  text-transform: capitalize;
+}
+
+.Modal.vf-modal .vf-chiudi {
+  display: flex;
+  padding: 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #7f8c9a;
+  cursor: pointer;
+}
+
+.Modal.vf-modal .vf-chiudi:hover { background: #f1f4f8; color: #2c3e50; }
+
+.Modal.vf-modal .vf-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+/* Parte che scorre */
+.Modal.vf-modal .vf-corpo {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 20px;
+  padding: 20px 24px;
+  background: #f4f6f8;
+}
+
+.Modal.vf-modal .vf-colonna-foto {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.Modal.vf-modal .vf-colonna-foto .vd-btn { justify-content: center; }
+.Modal.vf-modal .vf-colonna-foto .vd-link { align-self: center; }
+
+.Modal.vf-modal .vf-foto {
+  aspect-ratio: 4 / 3;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.Modal.vf-modal .vf-foto img {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 8px;
+  box-sizing: border-box;
+  object-fit: contain;
+  border-radius: 0;
+}
+
+.Modal.vf-modal .vf-foto-vuota {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #b0bcc8;
+  font-size: 13px;
+}
+
+.Modal.vf-modal .vf-sezioni {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.Modal.vf-modal .vf-sezione {
+  padding: 18px 20px;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.Modal.vf-modal .vf-griglia {
+  display: grid;
+  gap: 14px 16px;
+}
+
+.Modal.vf-modal .vf-griglia--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.Modal.vf-modal .vf-griglia--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* Campo: etichetta sopra, campo, errore o aiuto sotto */
+.Modal.vf-modal .vf-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: #2c3e50;
+}
+
+.Modal.vf-modal .vf-etichetta {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5d6d7e;
+}
+
+.Modal.vf-modal .vf-obbligatorio { color: #c0392b; }
+
+.Modal.vf-modal .vf-campo input,
+.Modal.vf-modal .vf-campo select,
+.Modal.vf-modal .vf-note {
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  padding: 0 11px;
+  box-sizing: border-box;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  color: #2c3e50;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.Modal.vf-modal .vf-note {
+  height: auto;
+  min-height: 80px;
+  padding: 10px 11px;
+  resize: vertical;
+}
+
+.Modal.vf-modal .vf-campo input:focus,
+.Modal.vf-modal .vf-campo select:focus,
+.Modal.vf-modal .vf-note:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.Modal.vf-modal .vf-targa {
+  font-family: Menlo, Consolas, monospace;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+/* Il testo di esempio non deve sembrare una targa gia' inserita. */
+.Modal.vf-modal .vf-targa::placeholder {
+  font-weight: 400;
+  color: #b0bcc8;
+}
+
+.Modal.vf-modal .vf-campo--errore input,
+.Modal.vf-modal .vf-campo--errore select {
+  border-color: #e74c3c;
+  background: #fffafa;
+}
+
+.Modal.vf-modal .vf-messaggio-errore {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c0392b;
+}
+
+.Modal.vf-modal .vf-aiuto {
+  font-size: 12px;
+  color: #95a3b1;
+}
+
+/* Barra in fondo sempre visibile */
+.Modal.vf-modal .vf-piede {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 24px;
+  border-top: 1px solid #e3e8ee;
+  background: #fff;
+}
+
+.Modal.vf-modal .vf-riepilogo-errori {
+  margin-right: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: #c0392b;
+}
+
+/* Finestra stretta: foto sopra, campi su una colonna */
+@media (max-width: 720px) {
+  .Modal.vf-modal .vf-corpo { grid-template-columns: 1fr; }
+  .Modal.vf-modal .vf-colonna-foto { max-width: 240px; }
+  .Modal.vf-modal .vf-griglia--2,
+  .Modal.vf-modal .vf-griglia--3 { grid-template-columns: 1fr; }
+}
+
+/* Pulsanti: ".Modal form button[type=button]" (schedaModal.css) li farebbe
+   verdi con un margine sopra, ".Modal button" ne cambia la dimensione del
+   testo. Qui tornano quelli della scheda veicolo. */
+.Modal.vf-modal .vd-btn {
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.Modal.vf-modal .vd-btn:hover:not(:disabled) { background: #f4f6f8; }
+
+.Modal.vf-modal .vd-btn--primario {
+  border-color: #3498db;
+  background: #3498db;
+  color: #fff;
+}
+
+.Modal.vf-modal .vd-btn--primario:hover:not(:disabled) { background: #2980b9; }
+
+.Modal.vf-modal .vd-link {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #c0392b;
+  font-size: 13px;
+  font-weight: 600;
+}

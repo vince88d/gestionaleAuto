@@ -1,5 +1,5 @@
 import { db } from '../components/firebase';
-import { collection, getDocs, doc, writeBatch, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, setDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { readTariffe } from './firestoreTariffe';
 import { applicaTariffe, perSalvataggio } from '../utils/tariffe';
 import { spostaFotoDanniSuStorage } from './storageFoto';
@@ -28,7 +28,11 @@ export async function readVeicoli() {
 // Prima di scrivere sposta su Storage le foto dei danni ancora incorporate nel
 // documento (limite Firestore di 1 MB per documento). Restituisce il veicolo
 // salvato, con gli indirizzi delle foto al posto dei dati incorporati.
-export async function salvaVeicolo(veicolo) {
+//
+// `targaPrecedente`: se la targa e' cambiata, le prenotazioni con la vecchia
+// targa passano alla nuova nella stessa scrittura del veicolo (le prenotazioni
+// sono legate al veicolo solo dalla targa: altrimenti si staccherebbero).
+export async function salvaVeicolo(veicolo, { targaPrecedente } = {}) {
   // Solo i campi che ci sono: un campo undefined fa rifiutare a Firestore
   // l'intero salvataggio.
   const conFoto = { ...veicolo };
@@ -36,6 +40,18 @@ export async function salvaVeicolo(veicolo) {
     if (Array.isArray(veicolo[campo])) conFoto[campo] = await spostaFotoDanniSuStorage(veicolo[campo]);
   }
   const { id, ...dati } = perSalvataggio(conFoto);
+
+  if (targaPrecedente && targaPrecedente !== dati.targa) {
+    const prenotazioni = await getDocs(
+      query(collection(db, 'prenotazioni'), where('targa', '==', targaPrecedente))
+    );
+    const batch = writeBatch(db);
+    batch.set(doc(db, VEICOLI_COLLECTION, id), dati);
+    prenotazioni.forEach((d) => batch.update(d.ref, { targa: dati.targa }));
+    await batch.commit();
+    return conFoto;
+  }
+
   await setDoc(doc(db, VEICOLI_COLLECTION, id), dati);
   return conFoto;
 }

@@ -85,6 +85,11 @@
   margin-top: 0;
 }
 
+/* ".Modal button" (altri CSS) porta il testo di tutti i pulsanti a 16px:
+   nella scheda restano quelli decisi qui sotto. */
+.Modal.vd-modal button { font-size: 14px; }
+.Modal.vd-modal .vd-link { font-size: 13px; }
+
 .vd {
   display: flex;
   flex-direction: column;

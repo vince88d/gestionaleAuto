@@ -1,11 +1,11 @@
-import { setDoc, deleteDoc, doc } from 'firebase/firestore';
+import { setDoc, deleteDoc, doc, getDocs, writeBatch, query, where, collection } from 'firebase/firestore';
 import { salvaVeicolo, eliminaVeicolo } from './firestoreVeicoli';
 import { spostaFotoDanniSuStorage } from './storageFoto';
 
 jest.mock('../components/firebase', () => ({ db: {} }));
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn(), getDocs: jest.fn(), writeBatch: jest.fn(),
-  doc: jest.fn(), setDoc: jest.fn(), deleteDoc: jest.fn(),
+  doc: jest.fn(), setDoc: jest.fn(), deleteDoc: jest.fn(), query: jest.fn(), where: jest.fn(),
 }));
 jest.mock('./firestoreTariffe', () => ({ readTariffe: jest.fn() }));
 jest.mock('./storageFoto', () => ({ spostaFotoDanniSuStorage: jest.fn() }));
@@ -42,6 +42,32 @@ describe('salvaVeicolo', () => {
     expect(salvato.danni[0].immagine).toBe('https://storage/danno.webp');
     expect(setDoc.mock.calls[0][1].danni[0].immagine).toBe('https://storage/danno.webp');
     expect(salvato.storicoRiparazioni[0].immagine).toBe('https://storage/vecchia.webp');
+  });
+});
+
+describe('salvaVeicolo con cambio di targa', () => {
+  test('veicolo e prenotazioni della vecchia targa in un\'unica scrittura', async () => {
+    const batch = { set: jest.fn(), update: jest.fn(), commit: jest.fn().mockResolvedValue() };
+    writeBatch.mockReturnValue(batch);
+    collection.mockReturnValue('prenotazioni');
+    where.mockReturnValue('targa==VECCHIA');
+    query.mockReturnValue('query');
+    getDocs.mockResolvedValue({ forEach: (fn) => [{ ref: 'prenotazioni/p1' }, { ref: 'prenotazioni/p2' }].forEach(fn) });
+
+    await salvaVeicolo({ id: 'v1', targa: 'NUOVA11', danni: [] }, { targaPrecedente: 'VECCHIA' });
+
+    expect(where).toHaveBeenCalledWith('targa', '==', 'VECCHIA');
+    expect(batch.set).toHaveBeenCalledWith('veicoli/v1', { targa: 'NUOVA11', danni: [] });
+    expect(batch.update).toHaveBeenCalledWith('prenotazioni/p1', { targa: 'NUOVA11' });
+    expect(batch.update).toHaveBeenCalledWith('prenotazioni/p2', { targa: 'NUOVA11' });
+    expect(batch.commit).toHaveBeenCalledTimes(1);
+    expect(setDoc).not.toHaveBeenCalled();
+  });
+
+  test('stessa targa: nessuna prenotazione toccata', async () => {
+    await salvaVeicolo({ id: 'v1', targa: 'UGUALE1' }, { targaPrecedente: 'UGUALE1' });
+    expect(getDocs).not.toHaveBeenCalled();
+    expect(setDoc).toHaveBeenCalledTimes(1);
   });
 });
 
