@@ -59,6 +59,7 @@
   color: #4c566a;
   line-height: 1.5;
   font-size: 0.95rem;
+  white-space: pre-line;
 }
 
 .confirm-dialog-actions {

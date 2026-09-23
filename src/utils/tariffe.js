@@ -66,6 +66,18 @@ export function suggerisciTariffe(veicoli) {
   return suggerite;
 }
 
+// Le categorie i cui prezzi cambiano tra quello che è salvato ora e quello che si
+// sta per scrivere: per mostrarle nella conferma prima di salvare (il prezzo è
+// live sul sito, quindi il gestore deve vedere cosa sta per cambiare).
+// `dopo` undefined vuol dire che la tariffa viene tolta (si torna al prezzo delle auto).
+export function differenzeTariffe(prezziGiorno, salvate) {
+  const chiavi = new Set([...Object.keys(prezziGiorno), ...Object.keys(salvate)]);
+  return [...chiavi]
+    .filter((categoria) => prezziGiorno[categoria] !== salvate[categoria])
+    .sort((a, b) => a.localeCompare(b, 'it'))
+    .map((categoria) => ({ categoria, prima: salvate[categoria], dopo: prezziGiorno[categoria] }));
+}
+
 // Da quello che il gestore ha scritto nei campi ai prezzi da salvare. I campi vuoti
 // tolgono la tariffa; un valore non valido (zero, negativo, testo) è un errore.
 export function tariffeDaCampi(campi) {

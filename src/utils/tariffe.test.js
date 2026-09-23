@@ -1,5 +1,6 @@
 import {
-  applicaTariffe, normalizzaTariffe, perSalvataggio, prezzoCategoria, suggerisciTariffe, tariffeDaCampi,
+  applicaTariffe, differenzeTariffe, normalizzaTariffe, perSalvataggio, prezzoCategoria, suggerisciTariffe,
+  tariffeDaCampi,
 } from './tariffe';
 
 describe('normalizzaTariffe', () => {
@@ -100,5 +101,21 @@ describe('tariffeDaCampi', () => {
       prezziGiorno: { Berlina: 50 },
       errori: ['City Car', 'SUV', 'Furgone'],
     });
+  });
+});
+
+describe('differenzeTariffe', () => {
+  it('nessuna differenza se sono uguali', () => {
+    expect(differenzeTariffe({ 'City Car': 25 }, { 'City Car': 25 })).toEqual([]);
+  });
+  it('segnala prezzo cambiato, nuovo e tolto, in ordine alfabetico', () => {
+    expect(differenzeTariffe(
+      { 'City Car': 28, Van: 60 },
+      { 'City Car': 25, SUV: 35 },
+    )).toEqual([
+      { categoria: 'City Car', prima: 25, dopo: 28 },
+      { categoria: 'SUV', prima: 35, dopo: undefined },
+      { categoria: 'Van', prima: undefined, dopo: 60 },
+    ]);
   });
 });

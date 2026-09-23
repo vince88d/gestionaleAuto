@@ -1,63 +1,192 @@
-.tariffe-page {
-  padding: 24px;
-  max-width: 760px;
+/* src/pages/Tariffe.css — stessa grafica di Clienti/Prenotazioni/Archivio,
+   con prefisso tar- per restare isolata dalle altre pagine. */
+
+.tar {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 8px 4px 32px;
+  color: #2c3e50;
 }
-.tariffe-page h1 {
-  margin: 0 0 8px;
+
+.tar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 6px;
 }
-.tariffe-intro {
-  margin: 0 0 20px;
+
+.main-content .tar-titolo { margin: 0; }
+.tar-sottotitolo { font-size: 14px; color: #7f8c9a; }
+
+.tar-intro {
+  margin: 4px 0 20px;
   color: #4b5563;
   line-height: 1.5;
+  max-width: 640px;
 }
-.tariffe-tabella {
+
+/* ---------- Tabella ---------- */
+.tar-elenco {
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+  overflow-x: auto;
+}
+
+.tar-tabella {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font-size: 14px;
 }
-.tariffe-tabella th,
-.tariffe-tabella td {
-  padding: 10px 14px;
+
+.tar-tabella th {
+  padding: 11px 14px;
+  border-bottom: 1px solid #e3e8ee;
+  background: #f8fafc;
+  color: #7f8c9a;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
   text-align: left;
-  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
 }
-.tariffe-tabella input {
-  width: 110px;
-  padding: 6px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 1rem;
+
+.tar-tabella td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eef1f5;
+  vertical-align: middle;
+  text-align: left;
 }
-.tariffe-ok {
-  color: #15803d;
-  font-weight: 600;
+
+.tar-tabella tbody tr:last-child td { border-bottom: none; }
+.tar-tabella tr.tar-riga--conflitto td { background: #fef2f2; }
+
+.tar-categoria { font-weight: 600; }
+
+.tar-nessun-veicolo {
+  color: #9ca3af;
+  font-style: italic;
 }
-.tariffe-manca {
-  color: #b45309;
-  font-weight: 600;
+
+.tar-input {
+  width: 120px;
+  padding: 8px 10px;
+  border: 1px solid #d5dde6;
+  border-radius: 7px;
+  font-size: 14px;
+  color: #2c3e50;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-.tariffe-salva {
-  margin-top: 16px;
-  padding: 10px 22px;
-  border: none;
+
+.tar-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.tar-etichetta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.tar-etichetta--ok { background: #eafaf1; color: #15803d; }
+.tar-etichetta--manca { background: #fef3e0; color: #b45309; }
+.tar-etichetta--conflitto { background: #fdecea; color: #c0392b; }
+
+/* ---------- Azioni ---------- */
+.tar-azioni {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.tar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border: 1px solid #d5dde6;
   border-radius: 8px;
-  background: #007bff;
-  color: #fff;
-  font-size: 1rem;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
-.tariffe-salva:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-}
-.tariffe-nota {
+.tar-btn:disabled { color: #9ca3af; cursor: not-allowed; }
+
+.tar-btn--primario { border-color: #3498db; background: #3498db; color: #fff; }
+.tar-btn--primario:hover:not(:disabled) { background: #2980b9; }
+.tar-btn--primario:disabled { border-color: #9ca3af; background: #9ca3af; color: #fff; }
+
+.tar-nota {
   margin-top: 12px;
   color: #6b7280;
-  font-size: 0.9rem;
+  font-size: 13px;
 }
-.tariffe-errore {
-  color: #b91c1c;
+
+.tar-errore { color: #b91c1c; }
+
+/* ---------- Tariffe orfane ---------- */
+.tar-orfane {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid #e3e8ee;
+}
+.tar-orfane-titolo { margin: 0 0 4px; font-size: 15px; }
+
+.tar-orfane-elenco {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tar-orfane-elenco li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #e3e8ee;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+}
+.tar-orfane-elenco li.tar-orfana--da-togliere {
+  background: #fef2f2;
+  border-color: #f5c6c0;
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+.tar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  color: #3498db;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+}
+.tar-orfana--da-togliere .tar-link { color: #6b7280; }
+
+@media (max-width: 700px) {
+  .tar-tabella th,
+  .tar-tabella td { padding: 9px 10px; }
+  .tar-input { width: 100px; }
 }
