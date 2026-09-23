@@ -571,10 +571,12 @@ accessori: {
     setRiepilogoOpen(true);
   };
 
-  const handleConsegnaCompletata = (campi) => {
-    dispatch(updatePrenotazione({ ...consegnaDi, ...campi }));
-    showFeedback(`Veicolo ${consegnaDi.targa} consegnato a ${consegnaDi.cliente || 'cliente'}.`);
-    chiudiConsegna();
+  // La consegna e' salvata: aggiorna subito la tabella. La finestra del
+  // riepilogo resta aperta finche' non si chiude (PDF da rifare, ecc.).
+  const handleConsegnaSalvata = (campi) => {
+    const aggiornata = { ...consegnaDi, ...campi };
+    dispatch(updatePrenotazione(aggiornata));
+    setConsegnaDi(aggiornata);
   };
 
   const groupPrenotazioniByDate = () => {
@@ -1303,7 +1305,7 @@ return (
       onClose={chiudiConsegna}
       formData={{ ...consegnaDi, patente: consegnaDi.patente || patenteConsegna.trim().toUpperCase() }}
       schedaVeicolo={schedaVeicolo}
-      onConferma={handleConsegnaCompletata}
+      onConsegnaSalvata={handleConsegnaSalvata}
     />
   )}
   

@@ -7,6 +7,8 @@ import html2canvas from 'html2canvas';
 import { isPagataOnline } from '../utils/pagamentoOnline';
 import { puoConcludere, puoConsegnare, eConsegnata } from '../utils/regolePrenotazione';
 import { prezzoPrenotazione } from '../utils/dashboard';
+import { salvaPdfConsegna } from '../utils/pdfConsegna';
+import { toast } from 'react-toastify';
 
 
 function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, onConsegna, soloLettura = false }) {
@@ -38,6 +40,18 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
     await renderToPDF(page2, true);
 
     pdf.save(`Prenotazione_${prenotazione?.cliente || 'cliente'}.pdf`);
+  };
+
+  // Lo stesso PDF della consegna, da riscaricare quando serve.
+  const scaricaPdfConsegna = async () => {
+    try {
+      const esito = await salvaPdfConsegna({ prenotazione });
+      if (esito.success) toast.success('PDF della consegna salvato.');
+      else if (!esito.cancelled) toast.error(esito.error || 'PDF non salvato.');
+    } catch (error) {
+      console.error('Errore PDF consegna:', error);
+      toast.error('PDF non salvato.');
+    }
   };
 
   if (!prenotazione) return null;
@@ -226,6 +240,9 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
         )}
         <div className="modal-footer no-print">
           <button className="btn btn-primary" onClick={handleDownloadPDF}>Scarica PDF</button>
+          {eConsegnata(prenotazione) && window.electronAPI?.salvaDocumentiPrenotazione && (
+            <button className="btn btn-secondary" onClick={scaricaPdfConsegna}>PDF della consegna</button>
+          )}
         </div>
       </div>
 

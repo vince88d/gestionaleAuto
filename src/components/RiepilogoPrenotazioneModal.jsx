@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import Modal from 'react-modal';
 import { toast } from 'react-toastify';
 import '../components/riepilogoModal.css';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { registraConsegna, messaggioErrorePrenotazione } from '../lib/firestorePrenotazioni';
 import { prezzoPrenotazione } from '../utils/dashboard';
+import { salvaPdfConsegna } from '../utils/pdfConsegna';
 
 const boxStyle = {
   border: '1px solid #ccc',
@@ -48,7 +48,7 @@ const printButtonStyle = {
 
 // Secondo passo della consegna: riepilogo, contratto, PDF ed email. "Conferma
 // consegna" salva la scheda sulla prenotazione (la prenotazione esiste gia').
-function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, onConferma }) {
+function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, onConsegnaSalvata }) {
   const prezzoTotale = prezzoPrenotazione(formData);
   const [ipPubblico, setIpPubblico] = useState(null);
   const [isSending, setIsSending] = useState(false);
@@ -57,6 +57,8 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
   const [includiContrattoPdf, setIncludiContrattoPdf] = useState(true);
   const [contrattoSelezionato, setContrattoSelezionato] = useState(null);
   const [nomeContratto, setNomeContratto] = useState('');
+  const [consegnaSalvata, setConsegnaSalvata] = useState(false);
+  const [pdfMancante, setPdfMancante] = useState(false);
 
   const datiScheda = schedaVeicolo || {
     carburante: '',
@@ -93,202 +95,93 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
     printWindow.close();
   };
 
-  async function generaRiepilogoPdf(prenotazione, scheda) {
-    const doc = await PDFDocument.create();
-    const page = doc.addPage([595, 842]);
-    const font = await doc.embedFont(StandardFonts.Helvetica);
-    const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  // Documenti dopo la consegna: PDF (e contratto) ed email. Si possono rifare
+  // quante volte serve: non toccano piu' la prenotazione.
+  // Restituisce true se il PDF richiesto e' stato salvato.
+  const preparaDocumenti = async (prenotazione) => {
+    const contrattoDaSalvare = includiContrattoPdf && contrattoSelezionato
+      ? Array.from(new Uint8Array(contrattoSelezionato))
+      : null;
+    let documentiSalvati = [];
+    let pdfOk = true;
 
-    let y = 800;
-    const lineSpacing = 18;
-    const indent = 50;
-
-    const drawTitle = (text) => {
-      page.drawText(text, {
-        x: indent,
-        y,
-        size: 20,
-        font: bold,
-        color: rgb(0.1, 0.2, 0.5),
+    if (scaricaPdf) {
+      const saveResult = await salvaPdfConsegna({
+        prenotazione,
+        scheda: datiScheda,
+        contrattoPdf: contrattoDaSalvare,
+        nomeContratto,
       });
-      y -= 30;
-    };
-
-    const drawSection = (title) => {
-      page.drawText(title, {
-        x: indent,
-        y,
-        size: 14,
-        font: bold,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      y -= 20;
-      page.drawLine({
-        start: { x: indent, y },
-        end: { x: 545, y },
-        thickness: 0.8,
-        color: rgb(0.8, 0.8, 0.8),
-      });
-      y -= 10;
-    };
-
-    const drawField = (label, value) => {
-      page.drawText(`${label}:`, {
-        x: indent,
-        y,
-        size: 12,
-        font: bold,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-      page.drawText(value || '-', {
-        x: indent + 130,
-        y,
-        size: 12,
-        font,
-        color: rgb(0, 0, 0),
-      });
-      y -= lineSpacing;
-    };
-
-    drawTitle('Riepilogo Prenotazione');
-    drawSection('Cliente');
-    drawField('Nome', prenotazione.cliente);
-    drawField('Codice Fiscale', prenotazione.codiceFiscale);
-    drawField('Patente', prenotazione.patente);
-    drawField('Email', prenotazione.emailCliente);
-
-    drawSection('Veicolo');
-    drawField('Modello', prenotazione.veicolo);
-    drawField('Targa', prenotazione.targa);
-    drawField('Periodo', `dal ${prenotazione.dataInizio} al ${prenotazione.dataFine}`);
-    drawField('Prezzo Totale', `${prezzoPrenotazione(prenotazione)} EUR`);
-
-    drawSection('Scheda Veicolo');
-    drawField('Carburante', scheda.carburante);
-    drawField('Km alla consegna', scheda.kmIniziali);
-    drawField('Danni', scheda.danni || 'Nessuno');
-
-    if (scheda.accessori && Object.keys(scheda.accessori).length) {
-      drawField('Accessori', '');
-      Object.entries(scheda.accessori)
-        .filter(([key]) => key !== 'altro')
-        .forEach(([key, value]) => {
-          page.drawText(`- ${key.charAt(0).toUpperCase() + key.slice(1)}: ${value ? 'SI' : 'NO'}`, {
-            x: indent + 20,
-            y,
-            size: 11,
-            font,
-            color: rgb(0.1, 0.1, 0.1),
-          });
-          y -= 14;
-        });
-
-      if (scheda.accessori.altro) {
-        page.drawText(`- ${scheda.accessori.altro}: SI`, {
-          x: indent + 20,
-          y,
-          size: 11,
-          font,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-        y -= 14;
+      if (saveResult.success) {
+        documentiSalvati = saveResult.paths || [];
+      } else {
+        pdfOk = false;
+        if (!saveResult.cancelled) {
+          toast.error(saveResult.error || 'Errore durante il salvataggio dei PDF');
+        }
       }
     }
 
-    y -= 30;
-    page.drawLine({
-      start: { x: indent, y },
-      end: { x: indent + 250, y },
-      thickness: 1,
-      color: rgb(0, 0, 0),
-    });
-    page.drawText('Firma Cliente', {
-      x: indent,
-      y: y - 15,
-      size: 12,
-      font,
-      color: rgb(0, 0, 0),
-    });
+    if (apriEmail) {
+      const allegatiText = documentiSalvati.length > 0
+        ? `\n\nDocumenti salvati:\n${documentiSalvati.join('\n')}\n\nAllega questi file prima di inviare l'email.`
+        : '\n\nSe vuoi allegare il riepilogo o il contratto, salvali prima dal gestionale.';
 
-    return doc.save();
-  }
+      const emailResult = await window.electronAPI.apriBozzaEmail({
+        to: prenotazione.emailCliente || '',
+        subject: `Riepilogo prenotazione veicolo - ${prenotazione.targa}`,
+        body:
+          `Gentile ${prenotazione.cliente},` +
+          `\n\nIn allegato trovi il riepilogo della tua prenotazione.` +
+          `${contrattoDaSalvare ? '\nSe necessario, allega anche il contratto personalizzato.' : ''}` +
+          `\n\nPeriodo: dal ${prenotazione.dataInizio} al ${prenotazione.dataFine}` +
+          `\nVeicolo: ${prenotazione.veicolo} (${prenotazione.targa})` +
+          `\nPrezzo totale: ${prezzoTotale} EUR` +
+          `\n\nGrazie.` +
+          allegatiText,
+      });
 
+      if (!emailResult.success) {
+        toast.error(emailResult.error || 'Impossibile aprire il client email');
+      }
+    }
+    return pdfOk;
+  };
+
+  // 1) salva la consegna (una volta sola), 2) PDF ed email.
+  // Se il PDF non viene salvato (es. "Annulla" nella finestra di salvataggio)
+  // la finestra resta aperta e dice chiaramente che la consegna e' salvata:
+  // il PDF si riprova con "Salva il PDF" o si scarica poi dai dettagli.
   const handleConferma = async () => {
     if (isSending) return;
     setIsSending(true);
     toast.dismiss();
 
+    const prenotazione = { ...formData, schedaVeicolo: datiScheda };
     try {
-      const riepilogoBuffer = await generaRiepilogoPdf(formData, datiScheda);
-      const prenotazione = {
-        ...formData,
-        schedaVeicolo: datiScheda,
-      };
-
-      let campiConsegna;
-      try {
-        campiConsegna = await registraConsegna({
-          prenotazione,
-          scheda: datiScheda,
-          patente: formData.patente,
-          ip: ipPubblico || 'Non disponibile',
-        });
-      } catch (error) {
-        console.error('Errore consegna:', error);
-        toast.error(messaggioErrorePrenotazione(error, 'Consegna non salvata, riprova.'));
-        return;
-      }
-
-      const riepilogoArray = Array.from(new Uint8Array(riepilogoBuffer));
-      const contrattoDaSalvare = includiContrattoPdf && contrattoSelezionato
-        ? Array.from(new Uint8Array(contrattoSelezionato))
-        : null;
-
-      let documentiSalvati = [];
-
-      if (scaricaPdf) {
-        const saveResult = await window.electronAPI.salvaDocumentiPrenotazione({
-          prenotazione,
-          riepilogoPdf: riepilogoArray,
-          contrattoPdf: contrattoDaSalvare,
-          nomeContratto,
-        });
-
-        if (saveResult.cancelled) {
-          toast.info('Salvataggio PDF annullato.');
-        } else if (!saveResult.success) {
-          toast.error(saveResult.error || 'Errore durante il salvataggio dei PDF');
-        } else {
-          documentiSalvati = saveResult.paths || [];
+      if (!consegnaSalvata) {
+        try {
+          const campi = await registraConsegna({
+            prenotazione,
+            scheda: datiScheda,
+            patente: formData.patente,
+            ip: ipPubblico || 'Non disponibile',
+          });
+          setConsegnaSalvata(true);
+          onConsegnaSalvata?.(campi);
+        } catch (error) {
+          console.error('Errore consegna:', error);
+          toast.error(messaggioErrorePrenotazione(error, 'Consegna non salvata, riprova.'));
+          return;
         }
       }
 
-      if (apriEmail) {
-        const allegatiText = documentiSalvati.length > 0
-          ? `\n\nDocumenti salvati:\n${documentiSalvati.join('\n')}\n\nAllega questi file prima di inviare l'email.`
-          : '\n\nSe vuoi allegare il riepilogo o il contratto, salvali prima dal gestionale.';
-
-        const emailResult = await window.electronAPI.apriBozzaEmail({
-          to: prenotazione.emailCliente || '',
-          subject: `Riepilogo prenotazione veicolo - ${prenotazione.targa}`,
-          body:
-            `Gentile ${prenotazione.cliente},` +
-            `\n\nIn allegato trovi il riepilogo della tua prenotazione.` +
-            `${contrattoDaSalvare ? '\nSe necessario, allega anche il contratto personalizzato.' : ''}` +
-            `\n\nPeriodo: dal ${prenotazione.dataInizio} al ${prenotazione.dataFine}` +
-            `\nVeicolo: ${prenotazione.veicolo} (${prenotazione.targa})` +
-            `\nPrezzo totale: ${prezzoTotale} EUR` +
-            `\n\nGrazie.` +
-            allegatiText,
-        });
-
-        if (!emailResult.success) {
-          toast.error(emailResult.error || 'Impossibile aprire il client email');
-        }
-      }
-
-      if (onConferma) {
-        await onConferma(campiConsegna);
+      const pdfOk = await preparaDocumenti(prenotazione);
+      if (pdfOk) {
+        toast.success(scaricaPdf ? 'Consegna salvata e PDF salvato.' : 'Consegna salvata.');
+        onClose();
+      } else {
+        setPdfMancante(true);
       }
     } catch (err) {
       console.error('Errore durante la conferma:', err);
@@ -318,6 +211,15 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
           <h2>Riepilogo consegna</h2>
           <button onClick={onClose} className="simple-btn">X</button>
         </div>
+
+        {consegnaSalvata && (
+          <div role="status" style={{ marginTop: '1rem', padding: '0.85rem 1rem', borderRadius: 10, background: '#dcfce7', color: '#14532d', border: '1px solid #86efac' }}>
+            <strong>✓ Consegna salvata.</strong>{' '}
+            {pdfMancante
+              ? 'Il PDF non è stato salvato: premi «Salva il PDF» per riprovare, oppure «Chiudi». Potrai scaricarlo anche dopo, dai dettagli della prenotazione.'
+              : 'Ora puoi salvare il PDF o chiudere.'}
+          </div>
+        )}
 
         <div className="riepilogo-contenuto" style={{ marginTop: '1rem' }}>
           <div className="section" style={boxStyle}>
@@ -437,7 +339,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem', marginBottom: '1rem' }}>
-            <button onClick={onClose} style={cancelButtonStyle}>Annulla</button>
+            <button onClick={onClose} style={cancelButtonStyle}>{consegnaSalvata ? 'Chiudi' : 'Annulla'}</button>
             <button
               onClick={handleConferma}
               disabled={isSending}
@@ -447,7 +349,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
                 cursor: isSending ? 'not-allowed' : 'pointer',
               }}
             >
-              {isSending ? 'Attendi...' : 'Conferma consegna'}
+              {isSending ? 'Attendi...' : consegnaSalvata ? 'Salva il PDF' : 'Conferma consegna'}
             </button>
             <button onClick={handlePrint} style={printButtonStyle}>Stampa</button>
           </div>
