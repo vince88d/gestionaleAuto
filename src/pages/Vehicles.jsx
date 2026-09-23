@@ -6,7 +6,7 @@ import Modal from 'react-modal';
 import VehicleDetailModal from '../components/VehicleDetailModal';
 import { setPrenotazioni } from '../store/prenotazioniSlice';
 import ConfirmDialog from '../components/ConfirmDialog';
-import {Car, Calendar, Trash2, Edit3, Clock, CheckCircle, PlusCircle, XCircle, UploadCloud} from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import VehicleCard from '../components/VeichleCard';
 import VehicleForm from '../components/VehicleForm';
 import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
@@ -424,6 +424,16 @@ const veicoliOrdinati = [...veicoli].sort((a, b) => {
 });
 
 
+// Ricerca tollerante ai campi mancanti (prima un veicolo senza marca o
+// modello mandava in errore la pagina con .toLowerCase() su undefined).
+const testoCercato = search.trim().toLowerCase();
+const veicoliFiltrati = testoCercato
+  ? veicoliOrdinati.filter((v) =>
+      [v.marca, v.modello, v.targa, v.categoria]
+        .some((campo) => (campo || '').toString().toLowerCase().includes(testoCercato))
+    )
+  : veicoliOrdinati;
+
 const getScadenzaColor = (dataStr) => {
   if (!dataStr) return 'grigio';
   const oggi = new Date();
@@ -505,41 +515,51 @@ const handleToggleRepairStatus = (index) => {
   return (
     
     <div className="vehicles-wrapper">
-      <input
-  type="text"
-  placeholder="Cerca per modello, targa, marca..."
-  value={search}
-  onChange={(e) => setSearch(e.target.value)}
-  className="vehicle-search"
-/>
+      {/* Barra in alto: titolo e conteggio a sinistra, ricerca e bottone a
+          destra. Layout flex normale (prima il bottone era position:absolute
+          senza coordinate orizzontali e si spostava col ridimensionamento). */}
+      <div className="veicoli-toolbar">
+        <div className="veicoli-intestazione">
+          <h1 className="veicoli-titolo">Veicoli</h1>
+          <span className="veicoli-conteggio">
+            {veicoli.length} {veicoli.length === 1 ? 'veicolo' : 'veicoli'} in flotta
+          </span>
+        </div>
+        <div className="veicoli-azioni">
+          <label className="veicoli-cerca">
+            <Search size={16} aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Cerca marca, modello, targa, categoria…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Cerca veicoli"
+            />
+          </label>
+          <button type="button" onClick={() => handleOpenModal()} className="veicoli-aggiungi">
+            <Plus size={18} aria-hidden="true" /> Aggiungi veicolo
+          </button>
+        </div>
+      </div>
 
-      <h1>Gestione Veicoli</h1>
-      <button onClick={() => handleOpenModal()} className="add-vehicle-btn">
-        <PlusCircle size={25} style={{ marginRight: '6px' }} /> Aggiungi Veicolo
-      </button>
-
-<div className="vehicle-list">
-  {veicoli.length === 0 ? (
-    <p>Nessun veicolo disponibile.</p>
-  ) : (
-    veicoliOrdinati
-      .filter((v) =>
-        v.modello.toLowerCase().includes(search.toLowerCase()) ||
-        v.marca.toLowerCase().includes(search.toLowerCase()) ||
-        v.targa.toLowerCase().includes(search.toLowerCase())
-      )
-      .map((veicolo) => (
-        <VehicleCard
-          key={veicolo.id}
-          veicolo={veicolo}
-          onClick={() => handleOpenDetailModal(veicolo)}
-          calcolaDisponibilitaConsecutiva={calcolaDisponibilitaConsecutiva}
-          isDisponibile={isDisponibile}
-          getScadenzaColor={getScadenzaColor}
-        />
-      ))
-  )}
-</div>
+      {veicoli.length === 0 ? (
+        <p className="veicoli-vuoto">Nessun veicolo in flotta. Aggiungi il primo con il bottone qui sopra.</p>
+      ) : veicoliFiltrati.length === 0 ? (
+        <p className="veicoli-vuoto">Nessun veicolo corrisponde a “{search}”.</p>
+      ) : (
+        <div className="vehicle-list">
+          {veicoliFiltrati.map((veicolo) => (
+            <VehicleCard
+              key={veicolo.id}
+              veicolo={veicolo}
+              onClick={() => handleOpenDetailModal(veicolo)}
+              calcolaDisponibilitaConsecutiva={calcolaDisponibilitaConsecutiva}
+              isDisponibile={isDisponibile}
+              getScadenzaColor={getScadenzaColor}
+            />
+          ))}
+        </div>
+      )}
 
 <VehicleDetailModal
   isOpen={detailModalOpen}
