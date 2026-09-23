@@ -13,6 +13,8 @@ import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
 import { readCategorie } from '../lib/firestoreCategorie';
 import { caricaFotoVeicolo } from '../lib/storageFoto';
 import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
+import { readHolds } from '../lib/firestoreHolds';
+import { disponibiliPerCategoria } from '../utils/disponibilitaCategoria';
 import './Vehicle.css';
 
 Modal.setAppElement('#root');
@@ -78,6 +80,7 @@ function Vehicles() {
   const manutenzioneRef = useRef(null);
    const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
    const [categorie, setCategorie] = useState([]);
+   const [holds, setHolds] = useState([]);
 
 
 
@@ -115,6 +118,13 @@ function Vehicles() {
 
   caricaPrenotazioni();
 }, [dispatch]);
+
+
+  useEffect(() => {
+    readHolds().then(setHolds).catch((error) => {
+      console.error('Errore caricamento hold del sito:', error);
+    });
+  }, []);
 
 
   const handleChange = (e) => {
@@ -291,11 +301,20 @@ const prenotazioniAttive = prenotazioni.filter(p => p.status !== 'completata' &&
 
 const isDisponibile = (veicolo) => {
   const oggi = new Date().toISOString().split('T')[0];
-  return !prenotazioniAttive.some(p =>
+  const occupatoPerTarga = prenotazioniAttive.some(p =>
     p.targa === veicolo.targa &&
     p.dataInizio <= oggi &&
     p.dataFine >= oggi
   );
+  if (occupatoPerTarga) return false;
+
+  // Nessuna prenotazione legata a QUESTA targa, ma la categoria potrebbe
+  // essere comunque satura oggi per un hold/prenotazione del sito non ancora
+  // assegnato a un veicolo specifico: in quel caso non sappiamo quale unità
+  // sarà presa, quindi mostriamo tutte le unità della categoria come occupate
+  // (conservativo, evita di promettere un veicolo che potrebbe non esserci).
+  if (!veicolo.categoria) return true;
+  return disponibiliPerCategoria(veicolo.categoria, oggi, oggi, veicoli, prenotazioniAttive, holds) > 0;
 };
 const handleDeleteManutenzione = (index) => {
   const aggiornato = {
