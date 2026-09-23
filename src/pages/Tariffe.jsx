@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
+import { Save, RotateCcw, AlertTriangle, Undo2 } from 'lucide-react';
 import { ascoltaVeicoli } from '../lib/firestoreVeicoli';
 import { ascoltaTariffe, writeTariffe } from '../lib/firestoreTariffe';
 import { suggerisciTariffe, tariffeDaCampi, differenzeTariffe } from '../utils/tariffe';
@@ -175,99 +176,111 @@ function Tariffe() {
       : base;
   }, [differenze, conflitti]);
 
-  if (errore) return <div className="tariffe-page"><p className="tariffe-errore">{errore}</p></div>;
-  if (!veicoliCaricati || !tariffeCaricate) return <div className="tariffe-page"><p>Caricamento…</p></div>;
+  if (errore) return <div className="tar"><p className="tar-errore">{errore}</p></div>;
+  if (!veicoliCaricati || !tariffeCaricate) return <div className="tar"><p className="tar-nota">Caricamento…</p></div>;
 
   return (
-    <div className="tariffe-page">
-      <h1>Tariffe per categoria</h1>
-      <p className="tariffe-intro">
+    <div className="tar">
+      <div className="tar-toolbar">
+        <div>
+          <h1 className="tar-titolo">Tariffe per categoria</h1>
+          <span className="tar-sottotitolo">
+            {righe.length} {righe.length === 1 ? 'categoria' : 'categorie'} · {Object.keys(salvate).length} {Object.keys(salvate).length === 1 ? 'tariffa salvata' : 'tariffe salvate'}
+          </span>
+        </div>
+      </div>
+      <p className="tar-intro">
         Il prezzo al giorno di ogni categoria. È quello che il cliente vede e paga sul sito, e il listino di
         partenza quando crei una prenotazione qui (puoi sempre cambiarlo nella singola prenotazione). Le
         prenotazioni già fatte non cambiano.
       </p>
 
       {righe.length === 0 ? (
-        <p>Non ci sono veicoli con una categoria: aggiungili dalla sezione Veicoli.</p>
+        <p className="tar-nota">Non ci sono veicoli con una categoria: aggiungili dalla sezione Veicoli.</p>
       ) : (
         <form onSubmit={apriConferma}>
-          <table className="tariffe-tabella">
-            <thead>
-              <tr>
-                <th>Categoria</th>
-                <th>Veicoli</th>
-                <th>Prezzo al giorno (€)</th>
-                <th>Stato</th>
-              </tr>
-            </thead>
-            <tbody>
-              {righe.map(({ categoria, numero }) => (
-                <tr key={categoria}>
-                  <td>{categoria}</td>
-                  <td>{numero}</td>
-                  <td>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      aria-label={`Prezzo al giorno ${categoria}`}
-                      value={campi[categoria] ?? ''}
-                      onChange={(e) => cambiaCampo(categoria, e.target.value)}
-                      placeholder="Es. 25"
-                    />
-                  </td>
-                  <td>
-                    {conflitti.includes(categoria) ? (
-                      <span className="tariffe-conflitto">Cambiata da un altro</span>
-                    ) : salvate[categoria] !== undefined ? (
-                      <span className="tariffe-ok">In uso</span>
-                    ) : (
-                      <span className="tariffe-manca">Da salvare</span>
-                    )}
-                  </td>
+          <div className="tar-elenco">
+            <table className="tar-tabella">
+              <thead>
+                <tr>
+                  <th>Categoria</th>
+                  <th>Veicoli</th>
+                  <th>Prezzo al giorno (€)</th>
+                  <th>Stato</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {righe.map(({ categoria, numero }) => (
+                  <tr key={categoria} className={conflitti.includes(categoria) ? 'tar-riga--conflitto' : ''}>
+                    <td className="tar-categoria">{categoria}</td>
+                    <td>{numero}</td>
+                    <td>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className="tar-input"
+                        aria-label={`Prezzo al giorno ${categoria}`}
+                        value={campi[categoria] ?? ''}
+                        onChange={(e) => cambiaCampo(categoria, e.target.value)}
+                        placeholder="Es. 25"
+                      />
+                    </td>
+                    <td>
+                      {conflitti.includes(categoria) ? (
+                        <span className="tar-etichetta tar-etichetta--conflitto">
+                          <AlertTriangle size={13} aria-hidden="true" /> Cambiata da un altro
+                        </span>
+                      ) : salvate[categoria] !== undefined ? (
+                        <span className="tar-etichetta tar-etichetta--ok">In uso</span>
+                      ) : (
+                        <span className="tar-etichetta tar-etichetta--manca">Da salvare</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-          <div className="tariffe-azioni">
-            <button type="submit" className="tariffe-salva" disabled={salvataggio || !modificato}>
-              {salvataggio ? 'Salvo…' : 'Salva tariffe'}
+          <div className="tar-azioni">
+            <button type="submit" className="tar-btn tar-btn--primario" disabled={salvataggio || !modificato}>
+              <Save size={16} aria-hidden="true" /> {salvataggio ? 'Salvo…' : 'Salva tariffe'}
             </button>
             {toccati.size > 0 && (
-              <button type="button" className="tariffe-annulla" onClick={annullaModifiche} disabled={salvataggio}>
-                Annulla modifiche
+              <button type="button" className="tar-btn" onClick={annullaModifiche} disabled={salvataggio}>
+                <RotateCcw size={16} aria-hidden="true" /> Annulla modifiche
               </button>
             )}
           </div>
 
           {Object.keys(salvate).length === 0 && (
-            <p className="tariffe-nota">
+            <p className="tar-nota">
               Non hai ancora salvato nessuna tariffa: i campi sono compilati con il prezzo più basso delle auto di
               ogni categoria. Controllali e premi Salva.
             </p>
           )}
 
           {orfane.length > 0 && (
-            <div className="tariffe-orfane">
-              <h2>Tariffe salvate senza veicoli</h2>
-              <p className="tariffe-nota">
+            <div className="tar-orfane">
+              <h2 className="tar-orfane-titolo">Tariffe salvate senza veicoli</h2>
+              <p className="tar-nota">
                 Queste categorie non hanno più veicoli (rinominate o eliminate), ma la tariffa è ancora salvata e
                 resta com'era finché non la togli.
               </p>
-              <ul>
+              <ul className="tar-orfane-elenco">
                 {orfane.map((categoria) => (
-                  <li key={categoria} className={daRimuovere.has(categoria) ? 'tariffe-orfana--da-togliere' : ''}>
+                  <li key={categoria} className={daRimuovere.has(categoria) ? 'tar-orfana--da-togliere' : ''}>
                     <span>{categoria}: {formattaPrezzo(salvate[categoria])}</span>
                     <button
                       type="button"
-                      className="tariffe-link"
+                      className="tar-link"
                       onClick={() => setDaRimuovere((prima) => {
                         const dopo = new Set(prima);
                         if (dopo.has(categoria)) dopo.delete(categoria); else dopo.add(categoria);
                         return dopo;
                       })}
                     >
-                      {daRimuovere.has(categoria) ? 'Annulla' : 'Rimuovi'}
+                      {daRimuovere.has(categoria) ? <><Undo2 size={13} aria-hidden="true" /> Annulla</> : 'Rimuovi'}
                     </button>
                   </li>
                 ))}
