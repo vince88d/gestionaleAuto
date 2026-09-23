@@ -1,47 +1,68 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import { readVeicoli } from '../lib/firestoreVeicoli';
+import { ascoltaVeicoli } from '../lib/firestoreVeicoli';
+import { ascoltaTariffe } from '../lib/firestoreTariffe';
 import {
-  readCategorie, writeCategorie, rinominaCategoriaOvunque, rimuoviTariffaCategoria,
+  ascoltaCategorie, writeCategorie, rinominaCategoriaOvunque, rimuoviTariffaCategoria,
 } from '../lib/firestoreCategorie';
 import { normalizzaElencoCategorie, puoiEliminareCategoria, contaVeicoliPerCategoria } from '../utils/categorie';
 import ConfirmDialog from '../components/ConfirmDialog';
 import './Categorie.css';
 
+const formattaPrezzo = (valore) => `${Number(valore).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
+const conta = (n, singolare, plurale) => `${n} ${n === 1 ? singolare : plurale}`;
+
 // Elenco delle categorie di veicoli: da qui si aggiungono, rinominano ed
 // eliminano. Il select del form veicolo (VehicleForm.jsx) usa questo stesso
 // elenco, letto da Firestore invece che cablato nel codice.
+// Categorie, veicoli e tariffe arrivano in tempo reale: rinominare o
+// eliminare una categoria tocca veicoli, prenotazioni e la tariffa
+// collegata, quindi la pagina deve vedere subito eventuali cambiamenti
+// fatti da un'altra postazione.
 function Categorie() {
-  const [caricamento, setCaricamento] = useState(true);
+  const prenotazioni = useSelector((state) => state.prenotazioni);
+  const [veicoliCaricati, setVeicoliCaricati] = useState(false);
+  const [categorieCaricate, setCategorieCaricate] = useState(false);
   const [errore, setErrore] = useState('');
   const [veicoli, setVeicoli] = useState([]);
   const [categorie, setCategorie] = useState([]);
+  const [tariffe, setTariffe] = useState({});
   const [nuova, setNuova] = useState('');
   const [rinominando, setRinominando] = useState(null); // { vecchia, valore } | null
+  const [richiestaRinomina, setRichiestaRinomina] = useState(null); // { vecchia, nuova } | null
   const [inCorso, setInCorso] = useState(false);
   const [daEliminare, setDaEliminare] = useState(null);
 
-  const carica = async () => {
-    setCaricamento(true);
-    setErrore('');
-    try {
-      const datiVeicoli = await readVeicoli();
-      const elenco = await readCategorie(datiVeicoli);
-      setVeicoli(datiVeicoli);
-      setCategorie(elenco);
-    } catch (err) {
-      console.error('Errore caricamento categorie:', err);
-      setErrore('Impossibile caricare le categorie. Controlla la connessione e riprova.');
-    } finally {
-      setCaricamento(false);
-    }
-  };
+  useEffect(() => ascoltaVeicoli(
+    (dati) => { setVeicoli(dati); setVeicoliCaricati(true); },
+    (err) => {
+      console.error('Errore lettura veicoli:', err);
+      setErrore('Impossibile leggere i veicoli. Controlla la connessione e riprova.');
+    },
+  ), []);
 
-  useEffect(() => {
-    carica();
-  }, []);
+  useEffect(() => ascoltaCategorie(
+    (dati) => { setCategorie(dati); setCategorieCaricate(true); },
+    (err) => {
+      console.error('Errore lettura categorie:', err);
+      setErrore('Impossibile leggere le categorie. Controlla la connessione e riprova.');
+    },
+  ), []);
+
+  useEffect(() => ascoltaTariffe(
+    (dati) => setTariffe(dati),
+    (err) => console.error('Errore lettura tariffe:', err),
+  ), []);
 
   const conteggio = useMemo(() => contaVeicoliPerCategoria(veicoli), [veicoli]);
+  const prenotazioniPerCategoria = useMemo(() => {
+    const mappa = new Map();
+    (prenotazioni || []).forEach((p) => {
+      if (p.categoria) mappa.set(p.categoria, (mappa.get(p.categoria) || 0) + 1);
+    });
+    return mappa;
+  }, [prenotazioni]);
 
   const aggiungi = async (e) => {
     e.preventDefault();
@@ -53,9 +74,11 @@ function Categorie() {
     }
     setInCorso(true);
     try {
+      // Riparte sempre dall'elenco più fresco (arriva in tempo reale): così,
+      // se un'altra postazione ha appena aggiunto una categoria, non la
+      // sovrascriviamo salvando la nostra sopra una copia vecchia.
       const aggiornate = normalizzaElencoCategorie([...categorie, pulita]);
       await writeCategorie(aggiornate);
-      setCategorie(aggiornate);
       setNuova('');
       toast.success('Categoria aggiunta.');
     } catch (err) {
@@ -66,7 +89,9 @@ function Categorie() {
     }
   };
 
-  const confermaRinomina = async () => {
+  // Prima chiede conferma mostrando quanti veicoli, prenotazioni ed
+  // eventualmente la tariffa vengono coinvolti, poi scrive davvero.
+  const chiediRinomina = () => {
     if (!rinominando) return;
     const { vecchia, valore } = rinominando;
     const nuovoNome = valore.trim();
@@ -78,12 +103,17 @@ function Categorie() {
       toast.error(`"${nuovoNome}" è già nell'elenco.`);
       return;
     }
+    setRichiestaRinomina({ vecchia, nuova: nuovoNome });
+  };
+
+  const confermaRinomina = async () => {
+    if (!richiestaRinomina) return;
+    const { vecchia, nuova: nuovoNome } = richiestaRinomina;
+    setRichiestaRinomina(null);
     setInCorso(true);
     try {
       const aggiornate = normalizzaElencoCategorie(categorie.map((c) => (c === vecchia ? nuovoNome : c)));
       await rinominaCategoriaOvunque(vecchia, nuovoNome, aggiornate);
-      setCategorie(aggiornate);
-      setVeicoli((prima) => prima.map((v) => (v.categoria === vecchia ? { ...v, categoria: nuovoNome } : v)));
       setRinominando(null);
       toast.success(`Categoria rinominata in "${nuovoNome}".`);
     } catch (err) {
@@ -95,24 +125,53 @@ function Categorie() {
   };
 
   const elimina = async (categoria) => {
+    setDaEliminare(null);
+    // Ricontrolla con i dati più freschi: tra l'apertura della conferma e il
+    // click potrebbe essere arrivato un veicolo di quella categoria.
+    if (!puoiEliminareCategoria(categoria, veicoli)) {
+      toast.error(`Non si può eliminare: ${conteggio.get(categoria) || 0} veicoli usano ancora "${categoria}".`);
+      return;
+    }
     setInCorso(true);
     try {
       const aggiornate = categorie.filter((c) => c !== categoria);
       await rimuoviTariffaCategoria(categoria);
       await writeCategorie(aggiornate);
-      setCategorie(aggiornate);
       toast.success('Categoria eliminata.');
     } catch (err) {
       console.error('Errore eliminazione categoria:', err);
       toast.error('Non sono riuscito a eliminare la categoria. Riprova.');
     } finally {
       setInCorso(false);
-      setDaEliminare(null);
     }
   };
 
-  if (caricamento) return <div className="categorie-page"><p>Caricamento…</p></div>;
+  const messaggioRinomina = useMemo(() => {
+    if (!richiestaRinomina) return '';
+    const { vecchia, nuova: nuovoNome } = richiestaRinomina;
+    const numVeicoli = conteggio.get(vecchia) || 0;
+    const numPrenotazioni = prenotazioniPerCategoria.get(vecchia) || 0;
+    const haTariffa = tariffe[vecchia] !== undefined;
+    if (numVeicoli === 0 && numPrenotazioni === 0 && !haTariffa) {
+      return `Nessun veicolo, prenotazione o tariffa collegati: rinomino solo "${vecchia}" in "${nuovoNome}" nell'elenco.`;
+    }
+    const parti = [];
+    if (numVeicoli > 0) parti.push(conta(numVeicoli, 'veicolo', 'veicoli'));
+    if (numPrenotazioni > 0) parti.push(conta(numPrenotazioni, 'prenotazione', 'prenotazioni'));
+    const base = parti.length > 0 ? `Aggiorna ${parti.join(' e ')} che usano "${vecchia}"` : `Rinomina "${vecchia}"`;
+    return `${base}${haTariffa ? ', e sposta la tariffa collegata' : ''} in "${nuovoNome}".`;
+  }, [richiestaRinomina, conteggio, prenotazioniPerCategoria, tariffe]);
+
+  const messaggioEliminazione = useMemo(() => {
+    if (!daEliminare) return '';
+    const haTariffa = tariffe[daEliminare] !== undefined;
+    return haTariffa
+      ? `Eliminare "${daEliminare}"? Nessun veicolo la usa, ma toglie anche la tariffa salvata (${formattaPrezzo(tariffe[daEliminare])} al giorno) collegata a questa categoria.`
+      : `Eliminare "${daEliminare}"? Nessun veicolo la usa, quindi non ci sono altri effetti.`;
+  }, [daEliminare, tariffe]);
+
   if (errore) return <div className="categorie-page"><p className="categorie-errore">{errore}</p></div>;
+  if (!veicoliCaricati || !categorieCaricate) return <div className="categorie-page"><p>Caricamento…</p></div>;
 
   return (
     <div className="categorie-page">
@@ -156,7 +215,7 @@ function Categorie() {
                   <td className="categorie-azioni">
                     {inRinomina ? (
                       <>
-                        <button type="button" onClick={confermaRinomina} disabled={inCorso}>Salva</button>
+                        <button type="button" onClick={chiediRinomina} disabled={inCorso}>Salva</button>
                         <button type="button" onClick={() => setRinominando(null)} disabled={inCorso}>Annulla</button>
                       </>
                     ) : (
@@ -200,9 +259,18 @@ function Categorie() {
       </form>
 
       <ConfirmDialog
+        open={richiestaRinomina !== null}
+        title="Rinominare la categoria?"
+        message={messaggioRinomina}
+        confirmLabel="Rinomina"
+        onCancel={() => setRichiestaRinomina(null)}
+        onConfirm={confermaRinomina}
+      />
+
+      <ConfirmDialog
         open={daEliminare !== null}
         title="Eliminare la categoria?"
-        message={daEliminare ? `Eliminare "${daEliminare}"? Nessun veicolo la usa, quindi non ci sono altri effetti.` : ''}
+        message={messaggioEliminazione}
         confirmLabel="Elimina"
         tone="danger"
         onCancel={() => setDaEliminare(null)}
