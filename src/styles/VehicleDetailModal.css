@@ -535,6 +535,13 @@
   overflow: hidden;
 }
 
+/* .Modal img (StoricoNoleggiTable.css) aggiunge un margine a tutte le
+   immagini delle finestre: qui no. */
+.Modal.vd-modal img,
+.Modal.vd-modal-foto img {
+  margin-top: 0;
+}
+
 .vd {
   display: flex;
   flex-direction: column;
@@ -717,20 +724,29 @@
 
 .vd-contatore--allerta { background: #fdecea; color: #c0392b; }
 
-/* Contenuto: l'unica parte che scorre */
+/* Contenuto: l'unica parte che scorre. Sfondo grigio chiaro con le
+   sezioni in riquadri bianchi, cosi' si distinguono tra loro. */
 .vd-contenuto {
   flex: 1;
   overflow-y: auto;
   padding: 20px 24px 28px;
+  background: #f4f6f8;
 }
 
-.vd-sezione { margin-top: 24px; }
+.vd-sezione {
+  margin-top: 16px;
+  padding: 18px 20px;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+}
+
 .vd-sezione:first-child,
 .vd-avviso + .vd-sezione { margin-top: 0; }
 
 .vd-titolo-sezione {
-  margin: 0 0 12px;
-  font-size: 13px;
+  margin: 0 0 14px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -742,25 +758,23 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .vd-barra-sezione .vd-titolo-sezione { margin: 0; }
 
 .vd-vuoto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   margin: 0;
-  padding: 16px;
+  padding: 20px 16px;
   border: 1px dashed #d5dde6;
   border-radius: 10px;
   color: #7f8c9a;
   font-size: 14px;
   text-align: center;
-}
-
-.vd-suggerimento {
-  margin: 0 0 12px;
-  font-size: 13px;
-  color: #5d6d7e;
 }
 
 /* Avviso danni in Panoramica */
@@ -769,7 +783,7 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   padding: 12px 16px;
   border: 1px solid #f5c6c0;
   border-radius: 10px;
@@ -783,24 +797,74 @@
 
 .vd-avviso-link { margin-left: auto; font-weight: 500; }
 
-/* Dati del veicolo */
+/* Dati del veicolo: tessere con icona */
 .vd-dati {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 14px 20px;
-  margin: 0;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
 }
 
-.vd-dati dt {
+.vd-dato {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f7f9fc;
+  border: 1px solid #eef1f5;
+}
+
+.vd-dato-icona {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #eaf3fc;
+  color: #1f6fb2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vd-dato-testi {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vd-dato-etichetta {
   font-size: 12px;
-  color: #95a3b1;
+  color: #7f8c9a;
 }
 
-.vd-dati dd {
-  margin: 2px 0 0;
+.vd-dato-valore {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
+  color: #2c3e50;
   text-transform: capitalize;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vd-dato-valore--vuoto {
+  font-weight: 500;
+  color: #b0bcc8;
+  text-transform: none;
+}
+
+.vd-dato--prezzo {
+  background: #f1faf4;
+  border-color: #d3f0dd;
+}
+
+.vd-dato--prezzo .vd-dato-icona {
+  background: #d9f2e2;
+  color: #1e7b3c;
+}
+
+.vd-dato--prezzo .prezzo-da-tariffa {
+  font-size: 12px;
 }
 
 /* Scadenze */
@@ -840,8 +904,121 @@
   white-space: pre-wrap;
 }
 
-/* Calendario e prossime prenotazioni */
-.vd-calendario { margin-bottom: 8px; }
+/* Calendario: FullCalendar ridisegnato nello stile della scheda. Le celle
+   si colorano con le classi messe da dayCellClassNames. */
+.vd-calendario {
+  --fc-border-color: transparent;
+  --fc-today-bg-color: transparent;
+  --fc-page-bg-color: #fff;
+  --fc-neutral-bg-color: transparent;
+  --fc-button-text-color: #2c3e50;
+  --fc-button-bg-color: #fff;
+  --fc-button-border-color: #d5dde6;
+  --fc-button-hover-bg-color: #f4f6f8;
+  --fc-button-hover-border-color: #c9d3de;
+  --fc-button-active-bg-color: #eaf3fc;
+  --fc-button-active-border-color: #3498db;
+}
+
+.vd-calendario .fc .fc-toolbar.fc-header-toolbar { margin-bottom: 12px; }
+
+.vd-calendario .fc .fc-toolbar-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2c3e50;
+  text-transform: capitalize;
+}
+
+.vd-calendario .fc .fc-button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: none !important;
+  text-transform: none;
+}
+
+.vd-calendario .fc .fc-button:disabled { opacity: 0.45; }
+.vd-calendario .fc .fc-button-group > .fc-button { border-radius: 8px; margin-left: 4px; }
+
+.vd-calendario .fc .fc-col-header-cell-cushion {
+  padding: 6px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #95a3b1;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.vd-calendario .fc .fc-daygrid-day-frame {
+  min-height: 52px;
+  margin: 3px;
+  border-radius: 10px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.vd-calendario .fc .fc-daygrid-day-top { flex-direction: row; }
+
+.vd-calendario .fc .fc-daygrid-day-number {
+  margin: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c3e50;
+  text-decoration: none;
+}
+
+.vd-calendario .fc .fc-day-other .fc-daygrid-day-frame { opacity: 0.35; }
+
+.vd-calendario .vd-giorno--libero .fc-daygrid-day-frame {
+  background: #eefaf2;
+  cursor: pointer;
+}
+
+.vd-calendario .vd-giorno--libero:hover .fc-daygrid-day-frame {
+  background: #dcf4e4;
+  box-shadow: inset 0 0 0 1px #9ddcb3;
+}
+
+.vd-calendario .vd-giorno--occupato .fc-daygrid-day-frame {
+  background: #fdecea;
+  cursor: not-allowed;
+}
+
+.vd-calendario .vd-giorno--occupato .fc-daygrid-day-number { color: #c0392b; }
+
+.vd-calendario .vd-giorno--passato .fc-daygrid-day-frame { background: #f7f9fc; }
+.vd-calendario .vd-giorno--passato .fc-daygrid-day-number { color: #b0bcc8; }
+
+.vd-calendario .fc .fc-day-today .fc-daygrid-day-number {
+  background: #3498db;
+  color: #fff;
+}
+
+.vd-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #5d6d7e;
+}
+
+.vd-legenda span { display: inline-flex; align-items: center; gap: 6px; }
+
+.vd-legenda-punto {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.vd-legenda-punto--libero { background: #dcf4e4; border: 1px solid #9ddcb3; }
+.vd-legenda-punto--occupato { background: #fdecea; border: 1px solid #f5c6c0; }
+.vd-legenda-punto--oggi { background: #3498db; border-radius: 999px; }
+
+.vd-legenda-nota { margin-left: auto; color: #95a3b1; }
 
 .vd-prenotazioni {
   margin: 0;
@@ -881,7 +1058,7 @@
 /* Danni */
 .vd-griglia-danni {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 12px;
 }
 
@@ -1031,7 +1208,9 @@
 }
 
 .vd-campo input {
-  padding: 9px 10px;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 10px;
   border: 1px solid #d5dde6;
   border-radius: 8px;
   font-size: 14px;
@@ -1059,22 +1238,12 @@
 }
 
 /* Manutenzioni */
-.vd-totale { font-size: 14px; color: #5d6d7e; }
-.vd-totale strong { color: #2c3e50; }
-
-.vd-form-manutenzione {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding: 14px;
-  border-radius: 10px;
-  background: #f7f9fc;
+.vd-nuova-manutenzione {
+  display: grid;
+  grid-template-columns: 170px 1fr 130px auto;
+  align-items: end;
+  gap: 12px;
 }
-
-.vd-campo--largo { flex: 1; min-width: 200px; }
-.vd-campo--stretto { width: 120px; }
 
 .vd-tabella {
   width: 100%;
@@ -1083,7 +1252,7 @@
 }
 
 .vd-tabella th {
-  padding: 8px 10px;
+  padding: 8px 12px;
   border-bottom: 1px solid #e3e8ee;
   font-size: 12px;
   font-weight: 600;
@@ -1092,11 +1261,24 @@
 }
 
 .vd-tabella td {
-  padding: 10px;
+  padding: 10px 12px;
   border-bottom: 1px solid #eef1f5;
 }
 
-.vd-num { text-align: right; white-space: nowrap; }
+.vd-tabella tbody tr:hover td { background: #f7f9fc; }
+.vd-tabella-data { white-space: nowrap; color: #5d6d7e; }
+
+.vd-tabella tfoot td {
+  border-bottom: none;
+  padding-top: 12px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+/* .vd-tabella .vd-num: deve battere .vd-tabella th (allineato a sinistra). */
+.vd-tabella .vd-num { text-align: right; white-space: nowrap; }
+
+.vd-btn--piccolo { padding: 5px 7px; }
 
 /* Foto del danno ingrandita */
 .Modal.vd-modal-foto {

@@ -4,7 +4,10 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import itLocale from "@fullcalendar/core/locales/it";
 import { useNavigate } from "react-router-dom";
-import { Car, CalendarPlus, Pencil, Trash2, X, Plus, ImageOff, AlertTriangle } from "lucide-react";
+import {
+  Car, CalendarPlus, Pencil, Trash2, X, Plus, ImageOff, AlertTriangle,
+  CalendarDays, Gauge, Palette, Fuel, Cog, DoorOpen, Euro, Wrench,
+} from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
 import "../styles/VehicleDetailModal.css";
 import { toast } from "react-toastify";
@@ -23,6 +26,11 @@ const SCHEDE = [
   { id: "manutenzioni", etichetta: "Manutenzioni", soloCompleta: true },
 ];
 
+// Data locale in formato YYYY-MM-DD. toISOString() userebbe l'ora UTC: in
+// Italia la mezzanotte del giorno diventerebbe le 22 del giorno prima.
+const giornoLocale = (data) =>
+  `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
+
 const CLASSI_MODALE = (base) => ({
   base,
   afterOpen: "Modal--after-open",
@@ -40,7 +48,7 @@ const DANNO_VUOTO = () => ({
   anteprima: "",
   descrizione: "",
   daRiparare: false,
-  data: new Date().toISOString().split("T")[0],
+  data: giornoLocale(new Date()),
 });
 
 const VehicleDetailModal = ({
@@ -157,36 +165,22 @@ const VehicleDetailModal = ({
     return disponibiliPerCategoria(veicolo.categoria, dateStr, dateStr, veicoli, prenotazioniValide, holds) === 0;
   };
 
-  const getEventiDisponibilita = (viewStart, viewEnd) => {
-    const giorni = [];
-    const giornoCorrente = new Date(viewStart);
-
-    while (giornoCorrente <= viewEnd) {
-      giorni.push(new Date(giornoCorrente));
-      giornoCorrente.setDate(giornoCorrente.getDate() + 1);
-    }
-
-    return giorni.map((giorno) => {
-      const giornoStr = giorno.toISOString().split("T")[0];
-      const isOccupato = isGiornoOccupato(giornoStr);
-
-      return {
-        start: giornoStr,
-        end: giornoStr,
-        allDay: true,
-        display: "background",
-        backgroundColor: isOccupato ? "#ef9a9a" : "#a5d6a7",
-        borderColor: isOccupato ? "#e57373" : "#81c784",
-        overlap: false,
-        extendedProps: {
-          occupato: isOccupato,
-        },
-      };
-    });
+  // Calendario: si colorano le celle del giorno (libero / occupato /
+  // passato) invece di sovrapporre blocchi colorati.
+  const classiGiorno = (info) => {
+    if (info.isOther) return [];
+    const giorno = giornoLocale(info.date);
+    if (giorno < giornoLocale(new Date())) return ["vd-giorno--passato"];
+    return [isGiornoOccupato(giorno) ? "vd-giorno--occupato" : "vd-giorno--libero"];
   };
 
   const apriPrenotazioneDaData = (dateStr) => {
     if (!dateStr) return;
+
+    if (dateStr < giornoLocale(new Date())) {
+      toast.info("Non si può prenotare un giorno già passato.");
+      return;
+    }
 
     if (isGiornoOccupato(dateStr)) {
       toast.info("Questo giorno non è prenotabile per il veicolo selezionato.");
@@ -207,9 +201,6 @@ const VehicleDetailModal = ({
     apriPrenotazioneDaData(info.dateStr);
   };
 
-  const handleCalendarEventClick = (info) => {
-    apriPrenotazioneDaData(info.event.startStr?.split("T")[0]);
-  };
 
   const nuovaPrenotazione = () => {
     navigate("/booking", {
@@ -227,7 +218,7 @@ const VehicleDetailModal = ({
     setDamageModalOpen(true);
   };
 
-  const oggi = new Date().toISOString().split("T")[0];
+  const oggi = giornoLocale(new Date());
   const nome = [veicolo.marca, veicolo.modello].filter(Boolean).join(" ") || "Veicolo senza nome";
   const liberoOggi = !isGiornoOccupato(oggi);
   const prezzoDaTariffa = "prezzoVeicolo" in veicolo && veicolo.categoria;
@@ -250,13 +241,22 @@ const VehicleDetailModal = ({
   const schede = SCHEDE.filter((s) => !modalLite || !s.soloCompleta);
 
   const datiVeicolo = [
-    ["Anno", veicolo.anno],
-    ["Km", veicolo.km ? Number(veicolo.km).toLocaleString("it-IT") : ""],
-    ["Colore", veicolo.colore],
-    ["Carburante", veicolo.carburante],
-    ["Cambio", veicolo.cambio],
-    ["Porte", veicolo.porte],
+    { etichetta: "Anno", valore: veicolo.anno, Icona: CalendarDays },
+    { etichetta: "Km", valore: veicolo.km ? Number(veicolo.km).toLocaleString("it-IT") : "", Icona: Gauge },
+    { etichetta: "Colore", valore: veicolo.colore, Icona: Palette },
+    { etichetta: "Carburante", valore: veicolo.carburante, Icona: Fuel },
+    { etichetta: "Cambio", valore: veicolo.cambio, Icona: Cog },
+    { etichetta: "Porte", valore: veicolo.porte, Icona: DoorOpen },
   ];
+
+  const euro = (valore) =>
+    `€ ${Number(valore || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const aggiungiManutenzione = (e) => {
+    if (e.key && e.key !== "Enter") return;
+    e.preventDefault?.();
+    onAddManutenzione();
+  };
 
   return (
     <>
@@ -349,23 +349,31 @@ const VehicleDetailModal = ({
 
                 <section className="vd-sezione">
                   <h3 className="vd-titolo-sezione">Dati del veicolo</h3>
-                  <dl className="vd-dati">
-                    {datiVeicolo.map(([etichetta, valore]) => (
-                      <div key={etichetta}>
-                        <dt>{etichetta}</dt>
-                        <dd>{valore || "—"}</dd>
+                  <div className="vd-dati">
+                    {datiVeicolo.map(({ etichetta, valore, Icona }) => (
+                      <div key={etichetta} className="vd-dato">
+                        <span className="vd-dato-icona" aria-hidden="true"><Icona size={18} /></span>
+                        <span className="vd-dato-testi">
+                          <span className="vd-dato-etichetta">{etichetta}</span>
+                          <span className={`vd-dato-valore ${valore ? "" : "vd-dato-valore--vuoto"}`}>
+                            {valore || "Non indicato"}
+                          </span>
+                        </span>
                       </div>
                     ))}
-                    <div>
-                      <dt>Prezzo al giorno</dt>
-                      <dd>
-                        {veicolo.prezzo ? `€ ${Number(veicolo.prezzo).toLocaleString("it-IT")}` : "—"}
+                    <div className="vd-dato vd-dato--prezzo">
+                      <span className="vd-dato-icona" aria-hidden="true"><Euro size={18} /></span>
+                      <span className="vd-dato-testi">
+                        <span className="vd-dato-etichetta">Prezzo al giorno</span>
+                        <span className="vd-dato-valore">
+                          {veicolo.prezzo ? `€ ${Number(veicolo.prezzo).toLocaleString("it-IT")}` : "Non indicato"}
+                        </span>
                         {prezzoDaTariffa && (
-                          <span className="prezzo-da-tariffa"> · tariffa {veicolo.categoria}</span>
+                          <span className="prezzo-da-tariffa">tariffa {veicolo.categoria}</span>
                         )}
-                      </dd>
+                      </span>
                     </div>
-                  </dl>
+                  </div>
                 </section>
 
                 <section className="vd-sezione">
@@ -395,37 +403,28 @@ const VehicleDetailModal = ({
 
             {scheda === "calendario" && (
               <>
-                <p className="vd-suggerimento">
-                  Verde = libero, rosso = occupato. Clicca un giorno verde per aprire una prenotazione per questo veicolo.
-                </p>
-                <div className="vd-calendario">
-                  <FullCalendar
-                    plugins={[dayGridPlugin]}
-                    initialView="dayGridMonth"
-                    headerToolbar={{
-                      left: "prev,next today",
-                      center: "title",
-                      right: "",
-                    }}
-                    locale={itLocale}
-                    buttonText={{ prev: "‹", next: "›", today: "Oggi" }}
-                    eventSources={[
-                      {
-                        events: (info, successCallback) => {
-                          const viewStart = new Date(info.startStr);
-                          const viewEnd = new Date(info.endStr);
-                          successCallback(getEventiDisponibilita(viewStart, viewEnd));
-                        },
-                      },
-                    ]}
-                    height="auto"
-                    dayMaxEventRows={false}
-                    selectable={true}
-                    fixedWeekCount={false}
-                    dateClick={handleCalendarDateClick}
-                    eventClick={handleCalendarEventClick}
-                  />
-                </div>
+                <section className="vd-sezione">
+                  <div className="vd-calendario">
+                    <FullCalendar
+                      plugins={[dayGridPlugin]}
+                      initialView="dayGridMonth"
+                      headerToolbar={{ left: "title", center: "", right: "today prev,next" }}
+                      locale={itLocale}
+                      buttonText={{ today: "Oggi" }}
+                      height="auto"
+                      fixedWeekCount={false}
+                      showNonCurrentDates={true}
+                      dayCellClassNames={classiGiorno}
+                      dateClick={handleCalendarDateClick}
+                    />
+                  </div>
+                  <div className="vd-legenda">
+                    <span><i className="vd-legenda-punto vd-legenda-punto--libero" /> Libero</span>
+                    <span><i className="vd-legenda-punto vd-legenda-punto--occupato" /> Occupato</span>
+                    <span><i className="vd-legenda-punto vd-legenda-punto--oggi" /> Oggi</span>
+                    <span className="vd-legenda-nota">Clicca un giorno libero per creare una prenotazione.</span>
+                  </div>
+                </section>
 
                 <section className="vd-sezione">
                   <h3 className="vd-titolo-sezione">Prossime prenotazioni</h3>
@@ -450,107 +449,109 @@ const VehicleDetailModal = ({
 
             {scheda === "danni" && !modalLite && (
               <>
-                <div className="vd-barra-sezione">
-                  <h3 className="vd-titolo-sezione">Danni sul veicolo</h3>
-                  {!formDannoAperto && (
-                    <button type="button" className="vd-btn" onClick={() => setFormDannoAperto(true)}>
-                      <Plus size={16} aria-hidden="true" /> Aggiungi danno
-                    </button>
-                  )}
-                </div>
+                <section className="vd-sezione">
+                  <div className="vd-barra-sezione">
+                    <h3 className="vd-titolo-sezione">Danni sul veicolo</h3>
+                    {!formDannoAperto && (
+                      <button type="button" className="vd-btn" onClick={() => setFormDannoAperto(true)}>
+                        <Plus size={16} aria-hidden="true" /> Aggiungi danno
+                      </button>
+                    )}
+                  </div>
 
-                {formDannoAperto && (
-                  <div className="vd-form-danno">
-                    <div className="vd-form-danno-foto">
-                      {nuovoDanno.anteprima ? (
-                        <>
-                          <img src={nuovoDanno.anteprima} alt="Anteprima del danno" />
-                          <button type="button" className="vd-link vd-link--pericolo" onClick={togliFotoDanno}>
-                            Togli foto
+                  {formDannoAperto && (
+                    <div className="vd-form-danno">
+                      <div className="vd-form-danno-foto">
+                        {nuovoDanno.anteprima ? (
+                          <>
+                            <img src={nuovoDanno.anteprima} alt="Anteprima del danno" />
+                            <button type="button" className="vd-link vd-link--pericolo" onClick={togliFotoDanno}>
+                              Togli foto
+                            </button>
+                          </>
+                        ) : (
+                          <button type="button" className="vd-scegli-foto" onClick={() => fileInputRef.current?.click()}>
+                            <Plus size={20} aria-hidden="true" />
+                            Scegli foto
                           </button>
-                        </>
-                      ) : (
-                        <button type="button" className="vd-scegli-foto" onClick={() => fileInputRef.current?.click()}>
-                          <Plus size={20} aria-hidden="true" />
-                          Scegli foto
-                        </button>
-                      )}
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        ref={fileInputRef}
-                        hidden
-                        onChange={(e) => scegliFotoDanno(e.target.files[0])}
-                      />
-                    </div>
-                    <div className="vd-form-danno-campi">
-                      <label className="vd-campo">
-                        <span>Descrizione</span>
+                        )}
                         <input
-                          type="text"
-                          placeholder="Es. graffio sul paraurti posteriore"
-                          value={nuovoDanno.descrizione}
-                          onChange={(e) => setNuovoDanno((prev) => ({ ...prev, descrizione: e.target.value }))}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          ref={fileInputRef}
+                          hidden
+                          onChange={(e) => scegliFotoDanno(e.target.files[0])}
                         />
-                      </label>
-                      <label className="vd-spunta">
-                        <input
-                          type="checkbox"
-                          checked={nuovoDanno.daRiparare}
-                          onChange={(e) => setNuovoDanno((prev) => ({ ...prev, daRiparare: e.target.checked }))}
-                        />
-                        Da riparare (altrimenti resta come danno preesistente)
-                      </label>
-                      <div className="vd-form-azioni">
-                        <button type="button" className="vd-btn" onClick={() => setFormDannoAperto(false)} disabled={salvandoDanno}>
-                          Annulla
-                        </button>
-                        <button
-                          type="button"
-                          className="vd-btn vd-btn--primario"
-                          onClick={salvaNuovoDanno}
-                          disabled={!nuovoDanno.file || !nuovoDanno.descrizione || salvandoDanno}
-                        >
-                          {salvandoDanno ? "Salvataggio…" : "Salva danno"}
-                        </button>
+                      </div>
+                      <div className="vd-form-danno-campi">
+                        <label className="vd-campo">
+                          <span>Descrizione</span>
+                          <input
+                            type="text"
+                            placeholder="Es. graffio sul paraurti posteriore"
+                            value={nuovoDanno.descrizione}
+                            onChange={(e) => setNuovoDanno((prev) => ({ ...prev, descrizione: e.target.value }))}
+                          />
+                        </label>
+                        <label className="vd-spunta">
+                          <input
+                            type="checkbox"
+                            checked={nuovoDanno.daRiparare}
+                            onChange={(e) => setNuovoDanno((prev) => ({ ...prev, daRiparare: e.target.checked }))}
+                          />
+                          Da riparare (altrimenti resta come danno preesistente)
+                        </label>
+                        <div className="vd-form-azioni">
+                          <button type="button" className="vd-btn" onClick={() => setFormDannoAperto(false)} disabled={salvandoDanno}>
+                            Annulla
+                          </button>
+                          <button
+                            type="button"
+                            className="vd-btn vd-btn--primario"
+                            onClick={salvaNuovoDanno}
+                            disabled={!nuovoDanno.file || !nuovoDanno.descrizione || salvandoDanno}
+                          >
+                            {salvandoDanno ? "Salvataggio…" : "Salva danno"}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {danni.length > 0 ? (
-                  <div className="vd-griglia-danni">
-                    {danni.map((danno, i) => (
-                      <article key={i} className="vd-danno">
-                        <button
-                          type="button"
-                          className="vd-danno-foto"
-                          onClick={() => apriFoto(danno.immagine)}
-                          aria-label="Ingrandisci la foto del danno"
-                        >
-                          {danno.immagine ? <img src={danno.immagine} alt="" /> : <ImageOff size={22} aria-hidden="true" />}
-                        </button>
-                        <div className="vd-danno-corpo">
-                          <span className={`vd-etichetta ${danno.daRiparare ? "vd-etichetta--allerta" : "vd-etichetta--neutra"}`}>
-                            {danno.daRiparare ? "Da riparare" : "Preesistente"}
-                          </span>
-                          <p className="vd-danno-desc">{danno.descrizione || "—"}</p>
-                          {danno.data && <span className="vd-danno-data">{formattaData(danno.data)}</span>}
-                          <div className="vd-danno-azioni">
-                            <button type="button" className="vd-link" onClick={() => onToggleRepairStatus(i)}>
-                              {danno.daRiparare ? "Segna come riparato" : "Segna da riparare"}
-                            </button>
-                            <button type="button" className="vd-link vd-link--pericolo" onClick={() => onDeleteDamage(i)}>
-                              Elimina
-                            </button>
+                  {danni.length > 0 ? (
+                    <div className="vd-griglia-danni">
+                      {danni.map((danno, i) => (
+                        <article key={i} className="vd-danno">
+                          <button
+                            type="button"
+                            className="vd-danno-foto"
+                            onClick={() => apriFoto(danno.immagine)}
+                            aria-label="Ingrandisci la foto del danno"
+                          >
+                            {danno.immagine ? <img src={danno.immagine} alt="" /> : <ImageOff size={22} aria-hidden="true" />}
+                          </button>
+                          <div className="vd-danno-corpo">
+                            <span className={`vd-etichetta ${danno.daRiparare ? "vd-etichetta--allerta" : "vd-etichetta--neutra"}`}>
+                              {danno.daRiparare ? "Da riparare" : "Preesistente"}
+                            </span>
+                            <p className="vd-danno-desc">{danno.descrizione || "—"}</p>
+                            {danno.data && <span className="vd-danno-data">{formattaData(danno.data)}</span>}
+                            <div className="vd-danno-azioni">
+                              <button type="button" className="vd-link" onClick={() => onToggleRepairStatus(i)}>
+                                {danno.daRiparare ? "Segna come riparato" : "Segna da riparare"}
+                              </button>
+                              <button type="button" className="vd-link vd-link--pericolo" onClick={() => onDeleteDamage(i)}>
+                                Elimina
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="vd-vuoto">Nessun danno registrato sul veicolo.</p>
-                )}
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="vd-vuoto">Nessun danno registrato sul veicolo.</p>
+                  )}
+                </section>
 
                 <section className="vd-sezione">
                   <h3 className="vd-titolo-sezione">Danni rilevati alle riconsegne</h3>
@@ -631,88 +632,92 @@ const VehicleDetailModal = ({
 
             {scheda === "manutenzioni" && !modalLite && (
               <>
-                <div className="vd-barra-sezione">
-                  <h3 className="vd-titolo-sezione">Manutenzioni</h3>
-                  {manutenzioni.length > 0 && (
-                    <span className="vd-totale">
-                      Totale <strong>€ {totaleManutenzioni.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-                    </span>
-                  )}
-                </div>
+                <section className="vd-sezione">
+                  <h3 className="vd-titolo-sezione">Nuova manutenzione</h3>
+                  {/* Un div e non un <form>: le regole generiche ".Modal form" di
+                      schedaModal.css metterebbero tutto in colonna. Invio aggiunge. */}
+                  <div className="vd-nuova-manutenzione" onKeyDown={aggiungiManutenzione}>
+                    <label className="vd-campo">
+                      <span>Data</span>
+                      <input
+                        type="date"
+                        value={nuovaManutenzione.data}
+                        onChange={(e) => setNuovaManutenzione((prev) => ({ ...prev, data: e.target.value }))}
+                      />
+                    </label>
+                    <label className="vd-campo">
+                      <span>Descrizione</span>
+                      <input
+                        type="text"
+                        placeholder="Es. tagliando, cambio gomme…"
+                        value={nuovaManutenzione.descrizione}
+                        onChange={(e) => setNuovaManutenzione((prev) => ({ ...prev, descrizione: e.target.value }))}
+                      />
+                    </label>
+                    <label className="vd-campo">
+                      <span>Costo (€)</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0,00"
+                        value={nuovaManutenzione.costo}
+                        onChange={(e) => setNuovaManutenzione((prev) => ({ ...prev, costo: e.target.value }))}
+                      />
+                    </label>
+                    <button type="button" className="vd-btn vd-btn--primario" onClick={aggiungiManutenzione}>
+                      <Plus size={16} aria-hidden="true" /> Aggiungi
+                    </button>
+                  </div>
+                </section>
 
-                <form
-                  className="vd-form-manutenzione"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    onAddManutenzione();
-                  }}
-                >
-                  <label className="vd-campo">
-                    <span>Data</span>
-                    <input
-                      type="date"
-                      value={nuovaManutenzione.data}
-                      onChange={(e) => setNuovaManutenzione((prev) => ({ ...prev, data: e.target.value }))}
-                    />
-                  </label>
-                  <label className="vd-campo vd-campo--largo">
-                    <span>Descrizione</span>
-                    <input
-                      type="text"
-                      placeholder="Es. tagliando, cambio gomme…"
-                      value={nuovaManutenzione.descrizione}
-                      onChange={(e) => setNuovaManutenzione((prev) => ({ ...prev, descrizione: e.target.value }))}
-                    />
-                  </label>
-                  <label className="vd-campo vd-campo--stretto">
-                    <span>Costo (€)</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={nuovaManutenzione.costo}
-                      onChange={(e) => setNuovaManutenzione((prev) => ({ ...prev, costo: e.target.value }))}
-                    />
-                  </label>
-                  <button type="submit" className="vd-btn vd-btn--primario">
-                    <Plus size={16} aria-hidden="true" /> Aggiungi
-                  </button>
-                </form>
-
-                {manutenzioni.length > 0 ? (
-                  <table className="vd-tabella">
-                    <thead>
-                      <tr>
-                        <th>Data</th>
-                        <th>Descrizione</th>
-                        <th className="vd-num">Costo</th>
-                        <th aria-label="Azioni" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {manutenzioni.map((m, i) => (
-                        <tr key={i}>
-                          <td>{formattaData(m.data)}</td>
-                          <td>{m.descrizione}</td>
-                          <td className="vd-num">
-                            € {parseFloat(m.costo || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                          <td className="vd-num">
-                            <button
-                              type="button"
-                              className="vd-link vd-link--pericolo"
-                              onClick={() => onDeleteManutenzione(i)}
-                            >
-                              Elimina
-                            </button>
-                          </td>
+                <section className="vd-sezione">
+                  <h3 className="vd-titolo-sezione">Storico manutenzioni</h3>
+                  {manutenzioni.length > 0 ? (
+                    <table className="vd-tabella">
+                      <thead>
+                        <tr>
+                          <th>Data</th>
+                          <th>Descrizione</th>
+                          <th className="vd-num">Costo</th>
+                          <th aria-label="Azioni" />
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className="vd-vuoto">Nessuna manutenzione registrata.</p>
-                )}
+                      </thead>
+                      <tbody>
+                        {manutenzioni.map((m, i) => (
+                          <tr key={i}>
+                            <td className="vd-tabella-data">{formattaData(m.data)}</td>
+                            <td>{m.descrizione}</td>
+                            <td className="vd-num">{euro(m.costo)}</td>
+                            <td className="vd-num">
+                              <button
+                                type="button"
+                                className="vd-btn vd-btn--icona vd-btn--pericolo vd-btn--piccolo"
+                                onClick={() => onDeleteManutenzione(i)}
+                                title="Elimina manutenzione"
+                                aria-label="Elimina manutenzione"
+                              >
+                                <Trash2 size={14} aria-hidden="true" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={2}>Totale ({manutenzioni.length})</td>
+                          <td className="vd-num">{euro(totaleManutenzioni)}</td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  ) : (
+                    <div className="vd-vuoto">
+                      <Wrench size={22} aria-hidden="true" />
+                      Nessuna manutenzione registrata.
+                    </div>
+                  )}
+                </section>
               </>
             )}
           </div>
