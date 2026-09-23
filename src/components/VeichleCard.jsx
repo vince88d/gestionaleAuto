@@ -2,10 +2,12 @@
 import React from 'react';
 import { Car, Clock } from 'lucide-react';
 
+// Etichette scritte per esteso (abbreviate quanto basta per stare nella
+// card): prima erano sigle A/B/R che non si capivano senza il tooltip.
 const SCADENZE = [
-  { chiave: 'assicurazione', sigla: 'A', nome: 'Assicurazione' },
-  { chiave: 'bollo', sigla: 'B', nome: 'Bollo' },
-  { chiave: 'revisione', sigla: 'R', nome: 'Revisione' },
+  { chiave: 'assicurazione', etichetta: 'Assic.', nome: 'Assicurazione' },
+  { chiave: 'bollo', etichetta: 'Bollo', nome: 'Bollo' },
+  { chiave: 'revisione', etichetta: 'Revis.', nome: 'Revisione' },
 ];
 
 function descriviScadenza(nome, data, colore) {
@@ -59,32 +61,31 @@ const VehicleCard = ({
           <div><dt>Colore</dt><dd>{veicolo.colore || '—'}</dd></div>
         </dl>
 
-        <div className="vcard-piede">
-          {/* "Libero per N giorni" solo se oggi e' libero: altrimenti
-              contraddirebbe il badge (che conta anche gli hold del sito). */}
+        {/* "Libero per N giorni" solo se oggi e' libero: altrimenti
+            contraddirebbe l'etichetta "Occupato oggi" (che conta anche gli
+            hold del sito). */}
+        {disponibile && (
           <span className="vcard-libero">
-            {disponibile && (
-              <>
-                <Clock size={14} aria-hidden="true" />
-                Libero per {giorniLiberi >= 30 ? '30+' : giorniLiberi} giorni
-              </>
-            )}
+            <Clock size={14} aria-hidden="true" />
+            Libero per {giorniLiberi >= 30 ? '30+' : giorniLiberi} giorni
           </span>
-          <span className="vcard-scadenze">
-            {SCADENZE.map(({ chiave, sigla, nome: nomeScadenza }) => {
-              const data = veicolo.scadenze?.[chiave];
-              const colore = getScadenzaColor(data);
-              return (
-                <span
-                  key={chiave}
-                  className={`vcard-scadenza vcard-scadenza--${colore}`}
-                  title={descriviScadenza(nomeScadenza, data, colore)}
-                >
-                  {sigla}
-                </span>
-              );
-            })}
-          </span>
+        )}
+
+        <div className="vcard-scadenze" aria-label="Scadenze">
+          {SCADENZE.map(({ chiave, etichetta, nome: nomeScadenza }) => {
+            const data = veicolo.scadenze?.[chiave];
+            const colore = getScadenzaColor(data);
+            return (
+              <span
+                key={chiave}
+                className={`vcard-scadenza vcard-scadenza--${colore}`}
+                title={descriviScadenza(nomeScadenza, data, colore)}
+              >
+                <span className="vcard-scadenza-punto" aria-hidden="true" />
+                {etichetta}
+              </span>
+            );
+          })}
         </div>
       </div>
     </article>

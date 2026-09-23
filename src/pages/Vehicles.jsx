@@ -424,14 +424,18 @@ const veicoliOrdinati = [...veicoli].sort((a, b) => {
 });
 
 
-// Ricerca tollerante ai campi mancanti (prima un veicolo senza marca o
-// modello mandava in errore la pagina con .toLowerCase() su undefined).
-const testoCercato = search.trim().toLowerCase();
-const veicoliFiltrati = testoCercato
-  ? veicoliOrdinati.filter((v) =>
-      [v.marca, v.modello, v.targa, v.categoria]
-        .some((campo) => (campo || '').toString().toLowerCase().includes(testoCercato))
-    )
+// Ricerca per parole: ogni parola scritta deve comparire in almeno uno tra
+// marca, modello, targa e categoria. Cosi' "citroen c3" trova la Citroen
+// C3 anche se marca e modello sono campi separati. Tollerante ai campi
+// mancanti (prima un veicolo senza marca mandava in errore la pagina).
+const paroleCercate = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+const veicoliFiltrati = paroleCercate.length
+  ? veicoliOrdinati.filter((v) => {
+      const testoVeicolo = [v.marca, v.modello, v.targa, v.categoria]
+        .map((campo) => (campo || '').toString().toLowerCase())
+        .join(' ');
+      return paroleCercate.every((parola) => testoVeicolo.includes(parola));
+    })
   : veicoliOrdinati;
 
 const getScadenzaColor = (dataStr) => {
