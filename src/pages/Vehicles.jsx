@@ -17,6 +17,7 @@ import { readHolds } from '../lib/firestoreHolds';
 import { disponibiliPerCategoria } from '../utils/disponibilitaCategoria';
 import { cambiaStatoRiparazione } from '../utils/danniVeicolo';
 import { coloreScadenza } from '../utils/scadenze';
+import { validaVeicolo, preparaVeicolo } from '../utils/validaVeicolo';
 import './Vehicle.css';
 
 Modal.setAppElement('#root');
@@ -69,6 +70,8 @@ function Vehicles() {
    const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
    const [categorie, setCategorie] = useState([]);
    const [holds, setHolds] = useState([]);
+   const [erroriForm, setErroriForm] = useState({});
+   const [salvandoForm, setSalvandoForm] = useState(false);
 
 
 
@@ -117,6 +120,12 @@ function Vehicles() {
       ...prev,
       [name]: value,
     }));
+    // L'errore di un campo sparisce appena lo si corregge.
+    setErroriForm((prev) => {
+      if (!prev[name]) return prev;
+      const { [name]: _tolto, ...resto } = prev;
+      return resto;
+    });
   };
 
   const handleOpenModal = (veicolo = null) => {
@@ -138,10 +147,14 @@ function Vehicles() {
     setModalOpen(true);
   };
 
-  const handleCloseModal = () => {
+  // Chiudendo il form di modifica (anche con Annulla) si torna alla scheda del
+  // veicolo da cui si era partiti.
+  const handleCloseModal = (veicoloDaRiaprire = editingVeicolo) => {
     setModalOpen(false);
     setEditingVeicolo(null);
     setFormData(emptyFormData);
+    setErroriForm({});
+    if (veicoloDaRiaprire) handleOpenDetailModal(veicoloDaRiaprire);
   };
   const handleOpenDetailModal = (veicolo) => {
     setSelectedVeicolo(veicolo);
@@ -159,23 +172,64 @@ function Vehicles() {
   // Salva solo il veicolo aggiunto o modificato (prima si riscriveva tutta la
   // flotta con la copia locale, cancellando i veicoli aggiunti nel frattempo da
   // un'altra postazione). Lo stato si aggiorna dopo che Firestore ha risposto.
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const salvaForm = async () => {
+    const dati = preparaVeicolo(formData);
+    const targaPrecedente = editingVeicolo?.targa;
+    setSalvandoForm(true);
     try {
       if (editingVeicolo) {
-        const salvato = await salvaVeicolo({ ...formData, id: editingVeicolo.id });
+        const salvato = await salvaVeicolo({ ...dati, id: editingVeicolo.id }, { targaPrecedente });
         dispatch(updateVeicolo(salvato));
+        if (targaPrecedente && targaPrecedente !== salvato.targa) {
+          dispatch(setPrenotazioni(prenotazioni.map((p) =>
+            p.targa === targaPrecedente ? { ...p, targa: salvato.targa } : p)));
+        }
         toast.success('Veicolo aggiornato!');
+        handleCloseModal(salvato);
       } else {
-        const salvato = await salvaVeicolo({ ...formData, id: crypto.randomUUID(), danni: [] });
+        const salvato = await salvaVeicolo({ ...dati, id: crypto.randomUUID(), danni: [] });
         dispatch(addVeicolo(salvato));
         toast.success('Veicolo aggiunto!');
+        handleCloseModal(null);
       }
-      handleCloseModal();
     } catch (error) {
       console.error('Errore salvataggio:', error);
       toast.error('Errore nel salvataggio.');
+    } finally {
+      setSalvandoForm(false);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (salvandoForm) return;
+
+    const errori = validaVeicolo(formData, veicoli, editingVeicolo?.id);
+    setErroriForm(errori);
+    if (Object.keys(errori).length > 0) {
+      toast.error('Controlla i campi segnati in rosso.');
+      return;
+    }
+
+    // Cambio di targa: le prenotazioni sono legate al veicolo solo dalla targa,
+    // quindi vengono spostate sulla nuova. Prima si chiede conferma.
+    const targaNuova = preparaVeicolo(formData).targa;
+    const targaVecchia = editingVeicolo?.targa;
+    const daSpostare = targaVecchia && targaVecchia !== targaNuova
+      ? prenotazioni.filter((p) => p.targa === targaVecchia).length
+      : 0;
+    if (daSpostare > 0) {
+      setConfirmDialog({
+        open: true,
+        message: `Cambi la targa da ${targaVecchia} a ${targaNuova}: ${daSpostare === 1 ? 'la sua prenotazione passa' : `le sue ${daSpostare} prenotazioni passano`} alla nuova targa. Continuare?`,
+        onConfirm: () => {
+          setConfirmDialog({ open: false, message: '', onConfirm: null });
+          salvaForm();
+        },
+      });
+      return;
+    }
+    salvaForm();
   };
 
 const handleDelete = async (id) => {
@@ -496,9 +550,9 @@ const handleToggleRepairStatus = (index) => {
       {/* Modal */}
       <Modal
         isOpen={modalOpen}
-        onRequestClose={handleCloseModal}
+        onRequestClose={() => handleCloseModal()}
         className={{
-          base: 'Modal',
+          base: 'Modal vf-modal',
           afterOpen: 'Modal--after-open',
           beforeClose: 'Modal--before-close',
         }}
@@ -513,11 +567,13 @@ const handleToggleRepairStatus = (index) => {
   formData={formData}
   onChange={handleChange}
   onSubmit={handleSubmit}
-  onClose={handleCloseModal}
+  onClose={() => handleCloseModal()}
   onImageSelect={handleImageSelect}
   isEditing={!!editingVeicolo}
   setFormData={setFormData}
   categorie={categorie}
+  errori={erroriForm}
+  salvando={salvandoForm}
 />
 
       </Modal>
