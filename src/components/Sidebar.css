@@ -37,7 +37,13 @@
   }
   
   .sidebar nav {
-    flex: 1;
+    /* flex-grow:0 (non flex:1): la nav resta alta quanto il suo contenuto e
+       lascia lo spazio libero al margin-top:auto di .user-section, che lo
+       usa per spingersi in fondo. flex-shrink:1 + overflow-y:auto restano
+       comunque attivi, quindi se il menu non ci sta la nav si accorcia e
+       scorre da sola, invece di far sparire lo spazio libero da dare al
+       margin-top:auto (mai sovrapposizione in nessuno dei due casi). */
+    flex: 0 1 auto;
     overflow-y: auto;
     overflow-x: hidden;
     /* Un filo di margine dallo scrollbar quando compare, per non far toccare
@@ -102,7 +108,10 @@
      l'alto. Ora è un blocco normale in fondo alla colonna flessibile della
      sidebar (nav sopra ha flex:1 e scorre da sola se serve). */
   flex-shrink: 0;
-  margin-top: 12px;
+  /* margin-top:auto invece di un valore fisso: su una finestra alta il
+     blocco si spinge in fondo (come prima), su una finestra bassa il
+     margine si azzera da solo e non sovrappone mai la nav. */
+  margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid #3d5166;
   display: flex;
