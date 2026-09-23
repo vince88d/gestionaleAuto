@@ -32,12 +32,12 @@ function BookingModal({ open, onClose, children, className = '' }) {
         <Dialog.Content
           className={`DialogContent ${className}`}
           onInteractOutside={(e) => {
-            if (e.target.closest?.('.AddClientOverlay, .AddClientModal')) {
+            if (e.target.closest?.('.AddClientOverlay, .AddClientModal, .pz-sopra')) {
               e.preventDefault();
             }
           }}
           onFocusOutside={(e) => {
-            if (e.target.closest?.('.AddClientOverlay, .AddClientModal')) {
+            if (e.target.closest?.('.AddClientOverlay, .AddClientModal, .pz-sopra')) {
               e.preventDefault();
             }
           }}

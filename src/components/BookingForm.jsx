@@ -2,14 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import Modal from 'react-modal';
-import { X } from 'lucide-react';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { confrontaConListino, devoApplicareListino, prezzoIniziale } from '../utils/prezzoListino';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import AutocompleteClienti from './AutocompleteClienti';
-import ClientForm from './ClientForm';
+import ClienteFormModal from './ClienteFormModal';
 import { addCliente } from '../store/clientiSlice';
 import { creaCliente, messaggioErroreCliente } from '../lib/firestoreClienti';
 import DatePicker from 'react-datepicker';
@@ -17,26 +15,10 @@ import { it } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
 import { giorniOccupati } from '../utils/regolePrenotazione';
 import SceltaVeicolo from './SceltaVeicolo';
-import { preparaCliente, validaCliente } from '../utils/validaCliente';
 import './BookingForm.css';
 import '../styles/Prenotazione.css';
 
 
-const emptyClientFormData = {
-  nome: '',
-  cognome: '',
-  email: '',
-  telefono: '',
-  indirizzo: '',
-  luogoNascita: '',
-  dataNascita: '',
-  tipoDocumento: '',
-  tipoDocumentoAltro: '',
-  documento: '',
-  codiceFiscale: '',
-  patente: '',
-  piva: '',
-};
 
 const schema = yup.object().shape({
   cliente: yup.string().required('Scrivi o cerca il cliente'),
@@ -74,35 +56,15 @@ function BookingForm({
   const dispatch = useDispatch();
   const [clienteSelezionato, setClienteSelezionato] = useState(null);
   const [showAddClient, setShowAddClient] = useState(false);
-  const [nuovoClienteData, setNuovoClienteData] = useState(emptyClientFormData);
 
-  const handleNuovoClienteChange = (e) => {
-    const { name, value } = e.target;
-    setNuovoClienteData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleNuovoClienteSubmit = async (e) => {
-    e.preventDefault();
-    // La finestra del nuovo cliente e' dentro questo form nell'albero React:
-    // senza fermarlo, il submit arriverebbe anche alla prenotazione e la salverebbe.
-    e.stopPropagation();
-
-    // Stessi controlli della pagina Clienti.
-    const nuovoCliente = preparaCliente(nuovoClienteData);
-    const errori = validaCliente(nuovoCliente, clienti);
-    if (Object.keys(errori).length > 0) {
-      toast.error(Object.values(errori)[0]);
-      return;
-    }
-
+  // Nuovo cliente dalla prenotazione: stesso form e stessi controlli della
+  // pagina Clienti. Salva solo quel cliente e lo seleziona.
+  const salvaNuovoCliente = async (nuovoCliente) => {
     try {
-      // Salva solo il nuovo cliente (prima si riscrivevano tutti i clienti).
       const salvato = await creaCliente(nuovoCliente);
       dispatch(addCliente(salvato));
-      toast.success('Cliente salvato con successo.');
-
+      toast.success(`Cliente ${salvato.nome} ${salvato.cognome} aggiunto.`);
       setClienteSelezionato(salvato);
-      setNuovoClienteData(emptyClientFormData);
       setShowAddClient(false);
     } catch (error) {
       console.error('Errore salvataggio cliente:', error);
@@ -249,7 +211,11 @@ function BookingForm({
                 clienti={clienti}
                 onSelect={(cliente) => setClienteSelezionato(cliente)}
                 onInputChange={(value) => setValue('cliente', value, { shouldValidate: true })}
-                initialValue={initialValues?.cliente || ''}
+                initialValue={
+                  clienteSelezionato
+                    ? `${clienteSelezionato.nome} ${clienteSelezionato.cognome}`.trim()
+                    : initialValues?.cliente || ''
+                }
               />
               <input type="hidden" {...register('cliente')} />
               {errore('cliente') || (
@@ -356,34 +322,13 @@ function BookingForm({
         </button>
       </footer>
 
-      <Modal
+      <ClienteFormModal
         isOpen={showAddClient}
-        onRequestClose={() => setShowAddClient(false)}
-        contentLabel="Aggiungi Cliente"
-        ariaHideApp={false}
-        className="AddClientModal"
-        overlayClassName="AddClientOverlay"
-        style={{ content: {}, overlay: {} }}
-      >
-        <div className="modal-header">
-          <h2>Aggiungi Cliente</h2>
-          <button type="button" className="btn-close" onClick={() => setShowAddClient(false)}>
-            <X size={22} />
-          </button>
-        </div>
-        <div
-          className="AddClientScrollArea"
-          onWheel={(e) => {
-            e.currentTarget.scrollTop += e.deltaY;
-          }}
-        >
-          <ClientForm
-            formData={nuovoClienteData}
-            onChange={handleNuovoClienteChange}
-            onSubmit={handleNuovoClienteSubmit}
-          />
-        </div>
-      </Modal>
+        clienti={clienti}
+        onClose={() => setShowAddClient(false)}
+        onSalva={salvaNuovoCliente}
+        sopra
+      />
     </form>
   );
 }
