@@ -11,7 +11,7 @@ import { toast } from 'react-toastify';
 import AutocompleteClienti from './AutocompleteClienti';
 import ClientForm from './ClientForm';
 import { addCliente } from '../store/clientiSlice';
-import { salvaCliente } from '../lib/firestoreClienti';
+import { creaCliente, messaggioErroreCliente } from '../lib/firestoreClienti';
 import DatePicker from 'react-datepicker';
 import { it } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -118,7 +118,7 @@ function BookingForm({
       };
 
       // Salva solo il nuovo cliente (prima si riscrivevano tutti i clienti).
-      const salvato = await salvaCliente(nuovoCliente);
+      const salvato = await creaCliente(nuovoCliente);
       dispatch(addCliente(salvato));
       toast.success('Cliente salvato con successo.');
 
@@ -127,7 +127,7 @@ function BookingForm({
       setShowAddClient(false);
     } catch (error) {
       console.error('Errore salvataggio cliente:', error);
-      toast.error('Errore durante il salvataggio del cliente');
+      toast.error(messaggioErroreCliente(error, 'Errore durante il salvataggio del cliente'));
     }
   };
 

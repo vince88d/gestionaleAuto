@@ -30,7 +30,7 @@ import {
 import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento';
 import { readVeicoli } from '../lib/firestoreVeicoli';
 import { useHolds } from '../lib/firestoreHolds';
-import { readClienti, aggiungiDannoCliente } from '../lib/firestoreClienti';
+import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
 import {
   controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, promemoria,
@@ -224,17 +224,7 @@ useEffect(() => {
   }
 }, [location.state]);
   
-  useEffect(() => {
-    const caricaClienti = async () => {
-      try {
-        const dati = await readClienti();
-        dispatch(setClienti(dati || []));
-      } catch (err) {
-        console.error("Errore caricamento clienti:", err);
-      }
-    };
-    caricaClienti();
-  }, [dispatch]);
+  // Clienti e prenotazioni arrivano in tempo reale da App.js.
   
 
   // Le prenotazioni arrivano in tempo reale da App.js (ascoltaPrenotazioni).
