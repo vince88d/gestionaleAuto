@@ -1,0 +1,53 @@
+import { setDoc, deleteDoc, doc } from 'firebase/firestore';
+import { salvaVeicolo, eliminaVeicolo } from './firestoreVeicoli';
+import { spostaFotoDanniSuStorage } from './storageFoto';
+
+jest.mock('../components/firebase', () => ({ db: {} }));
+jest.mock('firebase/firestore', () => ({
+  collection: jest.fn(), getDocs: jest.fn(), writeBatch: jest.fn(),
+  doc: jest.fn(), setDoc: jest.fn(), deleteDoc: jest.fn(),
+}));
+jest.mock('./firestoreTariffe', () => ({ readTariffe: jest.fn() }));
+jest.mock('./storageFoto', () => ({ spostaFotoDanniSuStorage: jest.fn() }));
+
+// Create React App azzera i mock prima di ogni test (resetMocks): le
+// implementazioni vanno rimesse qui.
+beforeEach(() => {
+  doc.mockImplementation((_db, collezione, id) => `${collezione}/${id}`);
+  setDoc.mockResolvedValue();
+  deleteDoc.mockResolvedValue();
+  spostaFotoDanniSuStorage.mockImplementation(async (danni) =>
+    danni.map((d) => (d.immagine?.startsWith('data:') ? { ...d, immagine: 'https://storage/danno.webp' } : d)));
+});
+
+describe('salvaVeicolo', () => {
+  test('scrive solo il documento di quel veicolo, senza id e senza la tariffa', async () => {
+    await salvaVeicolo({ id: 'v1', modello: 'C3', prezzo: 40, prezzoVeicolo: 30, danni: [] });
+    expect(doc).toHaveBeenCalledWith({}, 'veicoli', 'v1');
+    expect(setDoc).toHaveBeenCalledTimes(1);
+    const [riferimento, dati] = setDoc.mock.calls[0];
+    expect(riferimento).toBe('veicoli/v1');
+    expect(dati).toEqual({ modello: 'C3', prezzo: 30, danni: [] });
+    // Nessun campo undefined: Firestore rifiuterebbe tutto il salvataggio.
+    expect(Object.values(dati)).not.toContain(undefined);
+  });
+
+  test('sposta su Storage le foto dei danni incorporate e restituisce gli indirizzi', async () => {
+    const salvato = await salvaVeicolo({
+      id: 'v1',
+      danni: [{ descrizione: 'graffio', immagine: 'data:image/jpeg;base64,AAAA' }],
+      storicoRiparazioni: [{ descrizione: 'ok', immagine: 'https://storage/vecchia.webp' }],
+    });
+    expect(spostaFotoDanniSuStorage).toHaveBeenCalledTimes(2); // danni e storico
+    expect(salvato.danni[0].immagine).toBe('https://storage/danno.webp');
+    expect(setDoc.mock.calls[0][1].danni[0].immagine).toBe('https://storage/danno.webp');
+    expect(salvato.storicoRiparazioni[0].immagine).toBe('https://storage/vecchia.webp');
+  });
+});
+
+describe('eliminaVeicolo', () => {
+  test('cancella solo il documento di quel veicolo', async () => {
+    await eliminaVeicolo('v9');
+    expect(deleteDoc).toHaveBeenCalledWith('veicoli/v9');
+  });
+});

@@ -1,7 +1,8 @@
 import { db } from '../components/firebase';
-import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, setDoc, deleteDoc } from 'firebase/firestore';
 import { readTariffe } from './firestoreTariffe';
 import { applicaTariffe, perSalvataggio } from '../utils/tariffe';
+import { spostaFotoDanniSuStorage } from './storageFoto';
 
 const VEICOLI_COLLECTION = 'veicoli';
 
@@ -20,6 +21,32 @@ export async function readVeicoli() {
   }
 }
 
+// Salva UN veicolo (il suo documento e basta). Da preferire a writeVeicoli:
+// quella riscrive tutta la flotta con la copia locale e cancella i veicoli che
+// non vede, quindi con due postazioni aperte chi salva per ultimo cancella i
+// veicoli aggiunti dall'altra nel frattempo.
+// Prima di scrivere sposta su Storage le foto dei danni ancora incorporate nel
+// documento (limite Firestore di 1 MB per documento). Restituisce il veicolo
+// salvato, con gli indirizzi delle foto al posto dei dati incorporati.
+export async function salvaVeicolo(veicolo) {
+  // Solo i campi che ci sono: un campo undefined fa rifiutare a Firestore
+  // l'intero salvataggio.
+  const conFoto = { ...veicolo };
+  for (const campo of ['danni', 'storicoRiparazioni']) {
+    if (Array.isArray(veicolo[campo])) conFoto[campo] = await spostaFotoDanniSuStorage(veicolo[campo]);
+  }
+  const { id, ...dati } = perSalvataggio(conFoto);
+  await setDoc(doc(db, VEICOLI_COLLECTION, id), dati);
+  return conFoto;
+}
+
+export async function eliminaVeicolo(id) {
+  await deleteDoc(doc(db, VEICOLI_COLLECTION, id));
+}
+
+// Riscrive tutta la flotta: usata ancora da InfoModal e Booking (che rileggono
+// la flotta subito prima). Per i salvataggi dalla pagina Veicoli usare
+// salvaVeicolo / eliminaVeicolo.
 export async function writeVeicoli(nuovaLista) {
   const snapshot = await getDocs(collection(db, VEICOLI_COLLECTION));
   const idEsistenti = new Set(snapshot.docs.map((d) => d.id));

@@ -512,3 +512,10 @@
     flex-direction: column;
   }
 }
+
+/* "(tariffa Furgone)": il prezzo al giorno viene dalla categoria, non si
+   cambia dal veicolo ma dalla pagina Tariffe. */
+.prezzo-da-tariffa {
+  color: #7f8c9a;
+  font-size: 0.9em;
+}

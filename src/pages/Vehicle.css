@@ -783,6 +783,27 @@
   text-overflow: ellipsis;
 }
 
+.vcard-titolo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vcard-prezzo {
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.vcard-prezzo small {
+  font-size: 12px;
+  font-weight: 500;
+  color: #7f8c9a;
+}
+
 .vcard-meta {
   display: flex;
   flex-wrap: wrap;
@@ -837,13 +858,6 @@
   text-overflow: ellipsis;
 }
 
-.vcard-piede {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
 .vcard-libero {
   display: flex;
   align-items: center;
@@ -854,21 +868,27 @@
 
 .vcard-scadenze {
   display: flex;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-/* Scadenze: A = assicurazione, B = bollo, R = revisione (dettaglio al
-   passaggio del mouse). */
+/* Scadenze: pillola con pallino colorato ed etichetta leggibile; la data
+   compare al passaggio del mouse. */
 .vcard-scadenza {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: help;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vcard-scadenza-punto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .vcard-scadenza--verde { background: #e3f6ea; color: #1e7b3c; }

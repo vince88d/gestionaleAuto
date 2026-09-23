@@ -1,4 +1,4 @@
-import { controllaFile, dimensioniRidotte, eImmagineOnline, nomeFileVeicolo } from './immagineVeicolo';
+import { controllaFile, dimensioniRidotte, eImmagineOnline, nomeFileVeicolo, eFotoIncorporata } from './immagineVeicolo';
 
 const file = (type, size) => ({ type, size });
 
@@ -43,5 +43,17 @@ describe('eImmagineOnline', () => {
     expect(eImmagineOnline('file:///Volumes/x/images/1.jpeg')).toBe(false);
     expect(eImmagineOnline('')).toBe(false);
     expect(eImmagineOnline(undefined)).toBe(false);
+  });
+});
+
+describe('eFotoIncorporata', () => {
+  test('riconosce le foto salvate dentro il dato (base64)', () => {
+    expect(eFotoIncorporata('data:image/jpeg;base64,AAAA')).toBe(true);
+    expect(eFotoIncorporata('data:image/png;base64,AAAA')).toBe(true);
+  });
+  test('non tocca indirizzi web, testo o valori mancanti', () => {
+    expect(eFotoIncorporata('https://firebasestorage.googleapis.com/x.webp')).toBe(false);
+    expect(eFotoIncorporata('base64...')).toBe(false);
+    expect(eFotoIncorporata(undefined)).toBe(false);
   });
 });

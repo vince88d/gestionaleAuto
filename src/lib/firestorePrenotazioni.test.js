@@ -1,4 +1,5 @@
-import { isPrenotazioneVisibile, isPagataOnline } from './firestorePrenotazioni';
+import { doc, updateDoc } from 'firebase/firestore';
+import { isPrenotazioneVisibile, isPagataOnline, segnaDannoPrenotazioneRiparato } from './firestorePrenotazioni';
 
 // Niente connessione a Firebase nei test: qui servono solo le funzioni pure.
 jest.mock('../components/firebase', () => ({ db: {} }));
@@ -28,5 +29,15 @@ describe('isPagataOnline', () => {
     expect(isPagataOnline({ paymentIntentId: 'pi_1', status: 'richiesta-sito' })).toBe(false);
     expect(isPagataOnline({ status: 'attiva' })).toBe(false); // creata dal gestionale
     expect(isPagataOnline(undefined)).toBe(false);
+  });
+});
+
+describe('segnaDannoPrenotazioneRiparato', () => {
+  test('aggiorna su Firestore solo i campi della riparazione', async () => {
+    doc.mockImplementation((_db, collezione, id) => `${collezione}/${id}`);
+    updateDoc.mockResolvedValue();
+    const campi = await segnaDannoPrenotazioneRiparato('p1', '2026-09-23T10:00:00.000Z');
+    expect(updateDoc).toHaveBeenCalledWith('prenotazioni/p1', { daRiparare: false, riparatoIn: '2026-09-23T10:00:00.000Z' });
+    expect(campi).toEqual({ daRiparare: false, riparatoIn: '2026-09-23T10:00:00.000Z' });
   });
 });
