@@ -117,23 +117,42 @@
   }
 
   .sidebar nav ul li {
-    margin: 15px 0;
+    margin: 4px 0;
   }
-  
+
   .sidebar nav ul li a {
-    color: white;
+    color: #d5dde6;
     text-decoration: none;
-    font-size: 16px;
+    font-size: 15px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px;
-    border-radius: 4px;
-    transition: background 0.3s;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s;
   }
-  
+
+  .sidebar nav ul li a .nav-icona {
+    flex-shrink: 0;
+  }
+
   .sidebar nav ul li a:hover {
     background-color: #34495e;
+    color: white;
+  }
+
+  /* Voce della pagina aperta (classe messa da NavLink). */
+  .sidebar nav ul li a.active {
+    background-color: #3498db;
+    color: white;
+    font-weight: 600;
+  }
+
+  /* Barra ridotta: solo icone, centrate. */
+  .sidebar.collapsed nav ul li a {
+    justify-content: center;
+    padding: 10px 0;
   }
 
   /* Icona discreta a pannello (non una X, che fa pensare a "chiudi"):
@@ -191,6 +210,14 @@
   cursor: pointer;
   text-align: left;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.sidebar.collapsed .logout-btn {
+  justify-content: center;
 }
 
 .logout-btn:hover {

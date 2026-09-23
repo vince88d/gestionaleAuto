@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import {
+  PanelLeftClose, PanelLeftOpen, LayoutDashboard, Car, Users, CalendarDays,
+  Euro, Tags, Archive, Settings, LogOut,
+} from 'lucide-react';
 import { auth } from './firebase';
 import './Sidebar.css';
 
@@ -13,6 +16,19 @@ export const NOME_PRODOTTO = 'Gestionale Noleggio';
 // Evento lanciato da Impostazioni dopo il salvataggio, per aggiornare subito
 // il nome in sidebar senza ricaricare l'app.
 export const EVENTO_AZIENDA_AGGIORNATA = 'azienda-aggiornata';
+
+// Voci del menu: icone lucide uniformi al posto delle emoji (che avevano
+// dimensioni e colori diversi tra loro).
+const VOCI_MENU = [
+  { to: '/', etichetta: 'Dashboard', Icona: LayoutDashboard, end: true },
+  { to: '/vehicles', etichetta: 'Veicoli', Icona: Car },
+  { to: '/clients', etichetta: 'Clienti', Icona: Users },
+  { to: '/booking', etichetta: 'Prenotazioni', Icona: CalendarDays },
+  { to: '/tariffe', etichetta: 'Tariffe', Icona: Euro },
+  { to: '/categorie', etichetta: 'Categorie', Icona: Tags },
+  { to: '/archivio-prenotazione', etichetta: 'Archivio', Icona: Archive },
+  { to: '/impostazioni-azienda', etichetta: 'Impostazioni', Icona: Settings },
+];
 
 function iniziali(nome) {
   const parole = nome.trim().split(/\s+/).filter(Boolean);
@@ -65,20 +81,22 @@ function Sidebar({ collapsed, toggleSidebar }) {
       </div>
       <nav>
         <ul>
-          <li><Link to="/">🏠 {collapsed ? '' : 'Dashboard'}</Link></li>
-          <li><Link to="/vehicles">🚘 {collapsed ? '' : 'Veicoli'}</Link></li>
-          <li><Link to="/clients">👤 {collapsed ? '' : 'Clienti'}</Link></li>
-          <li><Link to="/booking">📅 {collapsed ? '' : 'Prenotazioni'}</Link></li>
-          <li><Link to="/tariffe">💶 {collapsed ? '' : 'Tariffe'}</Link></li>
-          <li><Link to="/categorie">🏷️ {collapsed ? '' : 'Categorie'}</Link></li>
-          <li><Link to="/archivio-prenotazione">📜{collapsed ? '' : 'archivio'}</Link></li>
-          <li><Link to="/impostazioni-azienda">⚙️ {collapsed ? '' : 'Impostazioni '}</Link></li>
-      </ul>
-     </nav>
+          {VOCI_MENU.map(({ to, etichetta, Icona, end }) => (
+            <li key={to}>
+              {/* NavLink aggiunge la classe "active" alla voce della pagina aperta */}
+              <NavLink to={to} end={end} title={collapsed ? etichetta : undefined}>
+                <Icona size={19} className="nav-icona" aria-hidden="true" />
+                {!collapsed && <span>{etichetta}</span>}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
       <div className="user-section">
         {!collapsed && <span className="user-email">{auth.currentUser?.email}</span>}
         <button className="logout-btn" onClick={() => signOut(auth)} title="Esci">
-          🚪 {collapsed ? '' : 'Esci'}
+          <LogOut size={17} aria-hidden="true" />
+          {!collapsed && <span>Esci</span>}
         </button>
       </div>
     </div>
