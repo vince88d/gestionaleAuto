@@ -1,4 +1,4 @@
-import { coloreScadenza, testoScadenza, formattaData } from './scadenze';
+import { coloreScadenza, testoScadenza, formattaData, giornoLocale } from './scadenze';
 
 const OGGI = new Date('2026-09-23T10:00:00');
 
@@ -29,5 +29,11 @@ describe('formattaData', () => {
   test('formato italiano, trattino se manca', () => {
     expect(formattaData('2027-03-12')).toBe('12/03/2027');
     expect(formattaData(undefined)).toBe('—');
+  });
+});
+
+describe('giornoLocale', () => {
+  test('usa la data locale, non quella UTC', () => {
+    expect(giornoLocale(new Date(2026, 8, 23, 0, 30))).toBe('2026-09-23');
   });
 });

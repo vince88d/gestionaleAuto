@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { setVeicoli, addVeicolo, updateVeicolo, deleteVeicolo } from '../store/veicoliSlice';
 import { toast } from 'react-toastify';
@@ -14,9 +15,9 @@ import { readCategorie } from '../lib/firestoreCategorie';
 import { caricaFotoVeicolo, caricaFotoDanno } from '../lib/storageFoto';
 import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
 import { readHolds } from '../lib/firestoreHolds';
-import { disponibiliPerCategoria } from '../utils/disponibilitaCategoria';
+import { veicoloLibero } from '../utils/disponibilitaCategoria';
 import { cambiaStatoRiparazione } from '../utils/danniVeicolo';
-import { coloreScadenza } from '../utils/scadenze';
+import { coloreScadenza, giornoLocale } from '../utils/scadenze';
 import { validaVeicolo, preparaVeicolo } from '../utils/validaVeicolo';
 import './Vehicle.css';
 
@@ -72,6 +73,9 @@ function Vehicles() {
    const [holds, setHolds] = useState([]);
    const [erroriForm, setErroriForm] = useState({});
    const [salvandoForm, setSalvandoForm] = useState(false);
+   const [schedaIniziale, setSchedaIniziale] = useState('panoramica');
+   const location = useLocation();
+   const navigate = useNavigate();
 
 
 
@@ -156,10 +160,22 @@ function Vehicles() {
     setErroriForm({});
     if (veicoloDaRiaprire) handleOpenDetailModal(veicoloDaRiaprire);
   };
-  const handleOpenDetailModal = (veicolo) => {
+  const handleOpenDetailModal = (veicolo, scheda = 'panoramica') => {
+    setSchedaIniziale(scheda);
     setSelectedVeicolo(veicolo);
     setDetailModalOpen(true);
   };
+
+  // Dalla Dashboard (danni, scadenze) si arriva qui con il veicolo da aprire e
+  // la scheda da mostrare. Si pulisce lo stato per non riaprirlo al ritorno.
+  useEffect(() => {
+    const { apriVeicoloId, scheda } = location.state || {};
+    if (!apriVeicoloId || veicoli.length === 0) return;
+    const veicolo = veicoli.find((v) => v.id === apriVeicoloId);
+    if (veicolo) handleOpenDetailModal(veicolo, scheda);
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, veicoli]);
 
   // Nella scheda ogni azione salva subito, quindi alla chiusura non c'e'
   // nulla da confermare.
@@ -292,22 +308,11 @@ const handleDeleteDamagePhoto = (index) => {
 
 const prenotazioniAttive = prenotazioni.filter(p => p.status !== 'completata' && isPrenotazioneVisibile(p));
 
+// Libero oggi: stessa regola della Dashboard (targa + categoria piena per
+// hold e prenotazioni del sito non ancora assegnate).
 const isDisponibile = (veicolo) => {
-  const oggi = new Date().toISOString().split('T')[0];
-  const occupatoPerTarga = prenotazioniAttive.some(p =>
-    p.targa === veicolo.targa &&
-    p.dataInizio <= oggi &&
-    p.dataFine >= oggi
-  );
-  if (occupatoPerTarga) return false;
-
-  // Nessuna prenotazione legata a QUESTA targa, ma la categoria potrebbe
-  // essere comunque satura oggi per un hold/prenotazione del sito non ancora
-  // assegnato a un veicolo specifico: in quel caso non sappiamo quale unità
-  // sarà presa, quindi mostriamo tutte le unità della categoria come occupate
-  // (conservativo, evita di promettere un veicolo che potrebbe non esserci).
-  if (!veicolo.categoria) return true;
-  return disponibiliPerCategoria(veicolo.categoria, oggi, oggi, veicoli, prenotazioniAttive, holds) > 0;
+  const oggi = giornoLocale();
+  return veicoloLibero(veicolo, oggi, oggi, veicoli, prenotazioniAttive, holds);
 };
 const handleDeleteManutenzione = (index) => {
   setConfirmDialog({
@@ -395,7 +400,7 @@ const calcolaDisponibilitaConsecutiva = (veicolo) => {
   for (let i = 0; i < 30; i++) {
     const giorno = new Date(oggi);
     giorno.setDate(oggi.getDate() + i);
-    const data = giorno.toISOString().split('T')[0];
+    const data = giornoLocale(giorno);
 
     const occupato = prenotazioniAttive.some(p =>
       p.targa === veicolo.targa &&
@@ -529,6 +534,7 @@ const handleToggleRepairStatus = (index) => {
   prenotazioni={prenotazioni}
   veicoli={veicoli}
   holds={holds}
+  schedaIniziale={schedaIniziale}
   onUpdate={handleUpdate}
   onEdit={handleEdit}
   onDelete={handleDelete}
