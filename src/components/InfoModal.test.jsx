@@ -41,3 +41,23 @@ test('con la scheda veicolo compilata mostra gli accessori', () => {
   render(<InfoModal isOpen prenotazione={conScheda} {...azioni} />);
   expect(screen.getAllByText('Accessori').length).toBeGreaterThan(0);
 });
+
+test('veicolo assegnato ma non consegnato: c\'e\' "Consegna", non "Concludi"', () => {
+  const onConsegna = jest.fn();
+  const assegnata = { ...prenotazioneDalSito, targa: 'AA111AA', veicolo: 'Fiat Panda' };
+  render(<InfoModal isOpen prenotazione={assegnata} {...azioni} onConsegna={onConsegna} />);
+  screen.getByText('Consegna', { selector: 'button' }).click();
+  expect(onConsegna).toHaveBeenCalledWith(assegnata);
+  expect(screen.queryByText('Concludi')).toBeNull();
+});
+
+test('dopo la consegna: "Concludi" e i km alla consegna', () => {
+  const consegnata = {
+    ...prenotazioneDalSito, targa: 'AA111AA', veicolo: 'Fiat Panda',
+    consegnataIl: '2026-10-10T09:00:00.000Z', schedaVeicolo: { kmIniziali: '45000', carburante: 'Pieno' },
+  };
+  render(<InfoModal isOpen prenotazione={consegnata} {...azioni} onConsegna={jest.fn()} />);
+  expect(screen.getByText('Concludi')).toBeTruthy();
+  expect(screen.queryByText('Consegna', { selector: 'button' })).toBeNull();
+  expect(screen.getByText('45000')).toBeTruthy();
+});

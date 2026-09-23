@@ -1,7 +1,7 @@
 import { doc, updateDoc, runTransaction, setDoc } from 'firebase/firestore';
 import {
   isPrenotazioneVisibile, isPagataOnline, segnaDannoPrenotazioneRiparato,
-  aggiornaPrenotazione, confermaPrenotazione, PrenotazioneCambiata,
+  aggiornaPrenotazione, salvaPrenotazione, registraConsegna, PrenotazioneCambiata,
 } from './firestorePrenotazioni';
 import { readClienti, aggiungiContrattoCliente } from './firestoreClienti';
 
@@ -79,38 +79,60 @@ describe('aggiornaPrenotazione', () => {
   });
 });
 
-describe('confermaPrenotazione (riepilogo)', () => {
+describe('salvaPrenotazione', () => {
   beforeEach(() => {
     doc.mockImplementation((_db, collezione, id) => `${collezione}/${id}`);
     setDoc.mockResolvedValue();
+  });
+
+  test('una prenotazione nuova si crea attiva, con il suo documento', async () => {
+    // In jsdom manca crypto.randomUUID (nell'app Electron c'e').
+    Object.defineProperty(global, 'crypto', { value: { randomUUID: () => 'nuovo-id' }, configurable: true });
+    const salvata = await salvaPrenotazione({ cliente: 'Mario Rossi', targa: 'AA111AA', prezzoTotale: 60, schedaVeicolo: { x: 1 } });
+    expect(setDoc.mock.calls[0][0]).toBe('prenotazioni/nuovo-id');
+    expect(setDoc.mock.calls[0][1]).toEqual(expect.objectContaining({ cliente: 'Mario Rossi', status: 'attiva' }));
+    expect(setDoc.mock.calls[0][1].schedaVeicolo).toBeUndefined(); // la scheda si compila alla consegna
+    expect(salvata.id).toBe('nuovo-id');
+    expect(runTransaction).not.toHaveBeenCalled();
+  });
+
+  test('una modifica aggiorna solo i campi della prenotazione', async () => {
+    const t = transazioneCon({ status: 'attiva' });
+    const originale = { id: 'p1', status: 'attiva', schedaVeicolo: { kmIniziali: '100' }, totale: 240 };
+    const salvata = await salvaPrenotazione({ ...originale, dataFine: '2026-10-05', schedaVeicolo: {} }, originale);
+    expect(t.update).toHaveBeenCalledWith('prenotazioni/p1', { dataFine: '2026-10-05' });
+    expect(salvata.schedaVeicolo).toEqual({ kmIniziali: '100' });
+  });
+
+  test('non salva una modifica su una prenotazione annullata nel frattempo', async () => {
+    const t = transazioneCon({ status: 'annullata' });
+    await expect(salvaPrenotazione({ dataFine: '2026-10-05' }, { id: 'p1', status: 'attiva' }))
+      .rejects.toThrow(/annullata nel frattempo/);
+    expect(t.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('registraConsegna', () => {
+  beforeEach(() => {
+    doc.mockImplementation((_db, collezione, id) => `${collezione}/${id}`);
     readClienti.mockResolvedValue([{ id: 'CF1', codiceFiscale: 'CF1' }]);
     aggiungiContrattoCliente.mockResolvedValue();
   });
 
-  test('una modifica su una prenotazione annullata nel frattempo non viene salvata', async () => {
-    const t = transazioneCon({ status: 'annullata' });
-    const esito = await confermaPrenotazione({ prenotazione: { id: 'p1', status: 'attiva', targa: 'AA111AA' } });
-    expect(esito.success).toBe(false);
-    expect(esito.message).toMatch(/annullata nel frattempo/);
-    expect(t.set).not.toHaveBeenCalled();
-  });
-
-  test('una modifica valida si salva e il contratto va solo sul suo cliente', async () => {
+  test('salva scheda, ora di consegna e patente; il contratto va solo sul suo cliente', async () => {
     const t = transazioneCon({ status: 'attiva' });
-    const esito = await confermaPrenotazione({ prenotazione: { id: 'p1', status: 'attiva', codiceFiscale: 'cf1', targa: 'AA111AA', nota: undefined } });
-    expect(esito.success).toBe(true);
-    expect(t.set.mock.calls[0][0]).toBe('prenotazioni/p1');
-    expect(Object.values(t.set.mock.calls[0][1])).not.toContain(undefined);
+    const scheda = { kmIniziali: '45000', carburante: 'Pieno' };
+    await registraConsegna({ prenotazione: { id: 'p1', codiceFiscale: 'cf1', targa: 'AA111AA' }, scheda, patente: ' ab123 ', ip: '1.2.3.4' });
+    const campi = t.update.mock.calls[0][1];
+    expect(campi).toEqual(expect.objectContaining({ schedaVeicolo: scheda, patente: 'AB123', ipConsegna: '1.2.3.4' }));
+    expect(campi.consegnataIl).toBeTruthy();
     expect(aggiungiContrattoCliente).toHaveBeenCalledWith('CF1', expect.objectContaining({ targa: 'AA111AA' }));
   });
 
-  test('una prenotazione nuova si crea con il suo documento', async () => {
-    // In jsdom manca crypto.randomUUID (nell'app Electron c'e').
-    Object.defineProperty(global, 'crypto', { value: { randomUUID: () => 'nuovo-id' }, configurable: true });
-    const esito = await confermaPrenotazione({ prenotazione: { targa: 'AA111AA', codiceFiscale: 'XX' } });
-    expect(esito.success).toBe(true);
-    expect(setDoc).toHaveBeenCalledTimes(1);
-    expect(setDoc.mock.calls[0][0]).toBe('prenotazioni/nuovo-id');
-    expect(runTransaction).not.toHaveBeenCalled();
+  test('non consegna una prenotazione annullata nel frattempo', async () => {
+    const t = transazioneCon({ status: 'annullata' });
+    await expect(registraConsegna({ prenotazione: { id: 'p1' }, scheda: {} })).rejects.toThrow(/annullata nel frattempo/);
+    expect(t.update).not.toHaveBeenCalled();
+    expect(aggiungiContrattoCliente).not.toHaveBeenCalled();
   });
 });

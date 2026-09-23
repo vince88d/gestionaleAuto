@@ -930,3 +930,130 @@ gap: 0.3rem;
     display: none;
   }
 }
+
+/* ---------- Testata, filtri per stato, consegna (passo 2) ---------- */
+.bookings-testa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.bookings-testa h1 {
+  margin: 0;
+}
+
+.bookings-nuova-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.bookings-nuova-btn:hover {
+  background: #1d4ed8;
+}
+
+.bookings-filtri {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.bookings-filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  background: #fff;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.bookings-filtro:hover {
+  background: #f1f5f9;
+}
+
+.bookings-filtro--attivo,
+.bookings-filtro--attivo:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.bookings-filtro-conto {
+  min-width: 1.4rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 0.75rem;
+  line-height: 1.4rem;
+  text-align: center;
+}
+
+.bookings-filtro--attivo .bookings-filtro-conto {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.fase-badge {
+  display: inline-block;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.fase-badge--da-consegnare {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.fase-badge--in-corso {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.fase-badge--da-concludere {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.table-consegna-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: none;
+  border-radius: 8px;
+  min-width: 136px;
+  padding: 0.45rem 0.8rem;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.table-consegna-btn:hover {
+  background: #bfdbfe;
+  transform: translateY(-1px);
+}

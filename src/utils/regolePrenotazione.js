@@ -22,6 +22,12 @@ export function controllaPrenotazione({ dati, originale = null, veicoli = [], pr
   const inizioCambiato = !originale || giorno(originale.dataInizio) !== inizio;
   if (inizioCambiato && inizio < oggi) return { errore: 'La data di inizio è già passata.' };
 
+  // Dopo la consegna il cliente ha in mano quel veicolo: km, carburante e
+  // contratto sono suoi. Cambiarlo qui lascerebbe una scheda sbagliata.
+  if (originale && eConsegnata(originale) && dati.targa !== originale.targa) {
+    return { errore: 'Il veicolo è già stato consegnato al cliente: non si può cambiare da qui.' };
+  }
+
   const veicolo = veicoli.find((v) => v.targa && v.targa === dati.targa);
   if (veicolo) {
     // Contano solo le prenotazioni che occupano davvero: non le annullate, non
@@ -45,8 +51,43 @@ export function controllaPrenotazione({ dati, originale = null, veicoli = [], pr
   return { prezzoTotale: giorni * (parseFloat(dati.prezzoGiornaliero) || 0) };
 }
 
-// Si puo' concludere solo un noleggio attivo con un veicolo assegnato.
-export const puoConcludere = (p) => p?.status === 'attiva' && Boolean(p.targa) && !daAssegnare(p);
+// Consegnata: il veicolo e' stato dato al cliente (scheda con km e carburante
+// compilata). Le prenotazioni fatte prima di separare prenotazione e consegna
+// hanno la scheda ma non `consegnataIl`: valgono come consegnate.
+export const eConsegnata = (p) => Boolean(p?.consegnataIl || p?.schedaVeicolo?.kmIniziali);
+
+const conVeicolo = (p) => p?.status === 'attiva' && Boolean(p.targa) && !daAssegnare(p);
+
+// Si consegna un noleggio attivo con il veicolo assegnato e non ancora dato.
+export const puoConsegnare = (p) => conVeicolo(p) && !eConsegnata(p);
+
+// Si conclude (riconsegna) solo un noleggio gia' consegnato.
+export const puoConcludere = (p) => conVeicolo(p) && eConsegnata(p);
+
+// A che punto e' una prenotazione attiva, per i filtri della pagina.
+export function faseLavoro(p, oggi) {
+  if (!eConsegnata(p)) return 'da-consegnare';
+  return giorno(p.dataFine) < oggi ? 'da-concludere' : 'in-corso';
+}
+
+// Cosa ricordare sulla riga: il ritiro se non e' ancora consegnata, il
+// rientro se il cliente ha il veicolo. `livello` colora la riga.
+export function promemoria(p, oggi) {
+  const consegnata = eConsegnata(p);
+  const data = giorno(consegnata ? p.dataFine : p.dataInizio);
+  if (!data || !oggi) return { testo: '—', livello: '' };
+  const giorni = Math.round((Date.parse(data) - Date.parse(oggi)) / 86400000);
+  const cosa = consegnata ? 'Rientro' : 'Ritiro';
+  if (giorni < 0) {
+    return {
+      testo: consegnata ? `Rientro scaduto da ${-giorni} gg` : `Ritiro passato da ${-giorni} gg`,
+      livello: 'urgente',
+    };
+  }
+  if (giorni === 0) return { testo: `${cosa} oggi`, livello: 'urgente' };
+  if (giorni === 1) return { testo: `${cosa} domani`, livello: 'domani' };
+  return { testo: `${cosa} tra ${giorni} gg`, livello: giorni === 2 ? 'prossima' : '' };
+}
 
 // "Concludi in blocco": solo i noleggi finiti da ieri o prima (quelli che
 // finiscono oggi il veicolo magari non e' ancora rientrato).

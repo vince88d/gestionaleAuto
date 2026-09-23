@@ -1,4 +1,7 @@
-import { controllaPrenotazione, puoConcludere, daConcludereInBlocco, senzaUndefined, pagataSulSito } from './regolePrenotazione';
+import {
+  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, senzaUndefined, pagataSulSito,
+  eConsegnata, faseLavoro, promemoria,
+} from './regolePrenotazione';
 
 jest.mock('../lib/firestorePrenotazioni', () => ({
   STATI_PRENOTAZIONE_NON_CONFERMATE: ['richiesta-sito', 'scaduta', 'pagamento-fallito'],
@@ -59,18 +62,54 @@ describe('controllaPrenotazione', () => {
   });
 });
 
-describe('concludere', () => {
+describe('consegnare e concludere', () => {
+  const CONSEGNATA = { consegnataIl: '2026-09-15T09:00:00.000Z' };
   const prenotazioni = [
-    { id: 'a', status: 'attiva', targa: 'AA111AA', dataFine: '2026-09-22' },
-    { id: 'b', status: 'attiva', targa: 'BB222BB', dataFine: '2026-09-23' },
+    { id: 'a', status: 'attiva', targa: 'AA111AA', dataFine: '2026-09-22', ...CONSEGNATA },
+    { id: 'b', status: 'attiva', targa: 'BB222BB', dataFine: '2026-09-23', ...CONSEGNATA },
     { id: 'c', status: 'attiva', targa: '', origine: 'sito', dataFine: '2026-09-20' },
-    { id: 'd', status: 'completata', targa: 'CC333CC', dataFine: '2026-09-10' },
+    { id: 'd', status: 'completata', targa: 'CC333CC', dataFine: '2026-09-10', ...CONSEGNATA },
+    { id: 'e', status: 'attiva', targa: 'CC333CC', dataFine: '2026-09-21' }, // mai consegnata
   ];
-  test('solo noleggi attivi con veicolo assegnato', () => {
-    expect(prenotazioni.map(puoConcludere)).toEqual([true, true, false, false]);
+  test('si conclude solo un noleggio attivo, con veicolo e gia\' consegnato', () => {
+    expect(prenotazioni.map(puoConcludere)).toEqual([true, true, false, false, false]);
   });
-  test('in blocco solo quelli finiti da ieri o prima', () => {
+  test('si consegna solo un noleggio attivo, con veicolo e non ancora consegnato', () => {
+    expect(prenotazioni.map(puoConsegnare)).toEqual([false, false, false, false, true]);
+  });
+  test('in blocco solo quelli consegnati e finiti da ieri o prima', () => {
     expect(daConcludereInBlocco(prenotazioni, OGGI).map((p) => p.id)).toEqual(['a']);
+  });
+  test('le prenotazioni fatte col vecchio flusso (scheda gia\' compilata) valgono come consegnate', () => {
+    expect(eConsegnata({ schedaVeicolo: { kmIniziali: '45000' } })).toBe(true);
+    expect(eConsegnata({ schedaVeicolo: {} })).toBe(false);
+    expect(eConsegnata({})).toBe(false);
+  });
+  test('fase di lavoro per i filtri', () => {
+    expect(prenotazioni.map((p) => faseLavoro(p, OGGI))).toEqual(
+      ['da-concludere', 'in-corso', 'da-consegnare', 'da-concludere', 'da-consegnare']);
+  });
+});
+
+describe('promemoria sulla riga', () => {
+  test('non consegnata: parla del ritiro', () => {
+    expect(promemoria({ dataInizio: '2026-09-23', dataFine: '2026-09-30' }, OGGI)).toEqual({ testo: 'Ritiro oggi', livello: 'urgente' });
+    expect(promemoria({ dataInizio: '2026-09-24' }, OGGI)).toEqual({ testo: 'Ritiro domani', livello: 'domani' });
+    expect(promemoria({ dataInizio: '2026-10-03' }, OGGI)).toEqual({ testo: 'Ritiro tra 10 gg', livello: '' });
+    expect(promemoria({ dataInizio: '2026-09-21' }, OGGI).testo).toBe('Ritiro passato da 2 gg');
+  });
+  test('consegnata: parla del rientro', () => {
+    const p = { consegnataIl: 'x', dataInizio: '2026-09-20' };
+    expect(promemoria({ ...p, dataFine: '2026-09-25' }, OGGI)).toEqual({ testo: 'Rientro tra 2 gg', livello: 'prossima' });
+    expect(promemoria({ ...p, dataFine: '2026-09-22' }, OGGI)).toEqual({ testo: 'Rientro scaduto da 1 gg', livello: 'urgente' });
+  });
+});
+
+describe('modificare una prenotazione gia\' consegnata', () => {
+  test('non si puo\' cambiare il veicolo', () => {
+    const originale = { id: 'p1', ...base, status: 'attiva', consegnataIl: 'x' };
+    const r = controllaPrenotazione({ dati: { ...originale, targa: 'BB222BB' }, originale, veicoli, prenotazioni: [originale], oggi: OGGI });
+    expect(r.errore).toMatch(/già stato consegnato/);
   });
 });
 

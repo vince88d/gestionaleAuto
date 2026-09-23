@@ -66,6 +66,7 @@ function BookingForm({
   holds = [],
   clienti = [],
   prenotazioni = [],
+  salvando = false,
 }) {
   const dispatch = useDispatch();
   const [clienteSelezionato, setClienteSelezionato] = useState(null);
@@ -409,7 +410,12 @@ function BookingForm({
         <input type="number" value={calcolaPrezzoTotale()} readOnly />
       </div>
 
-      <button type="submit" className="full-width">Avanti</button>
+      <button type="submit" className="full-width" disabled={salvando}>
+        {salvando ? 'Salvataggio…' : initialValues?.id ? 'Salva modifiche' : 'Salva prenotazione'}
+      </button>
+      <small className="availability-hint">
+        Km, carburante, accessori e contratto si compilano il giorno del ritiro, con «Consegna».
+      </small>
 
       <Modal
         isOpen={showAddClient}

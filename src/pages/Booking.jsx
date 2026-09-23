@@ -12,7 +12,7 @@ import {toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { setClienti } from '../store/clientiSlice';
-import { Search, Info, CheckCircle, AlertCircle, Edit3, Trash2 } from 'lucide-react';
+import { Search, Info, CheckCircle, AlertCircle, Edit3, Trash2, KeyRound, Plus } from 'lucide-react';
 import BookingModal from '../components/BookingModal';
 import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
@@ -23,15 +23,18 @@ import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { useLocation } from 'react-router-dom';
 import {
   readPrenotazioni, isPrenotazioneVisibile, isPagataOnline,
-  aggiornaPrenotazione, eliminaPrenotazione, messaggioErrorePrenotazione,
+  aggiornaPrenotazione, eliminaPrenotazione, messaggioErrorePrenotazione, salvaPrenotazione,
 } from '../lib/firestorePrenotazioni';
 import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento';
 import { readVeicoli } from '../lib/firestoreVeicoli';
 import { readHolds } from '../lib/firestoreHolds';
 import { readClienti, aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
-import { controllaPrenotazione, puoConcludere, daConcludereInBlocco } from '../utils/regolePrenotazione';
+import {
+  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, promemoria,
+} from '../utils/regolePrenotazione';
 import { prezzoPrenotazione } from '../utils/dashboard';
+import { daAssegnare } from '../utils/assegnazioneVeicolo';
 import { giornoLocale } from '../utils/scadenze';
 import{
   setPrenotazioni,
@@ -45,6 +48,30 @@ import{
 
 
 
+
+// Filtri della tabella: a che punto e' il lavoro su ogni prenotazione.
+const FILTRI_FASE = [
+  { chiave: 'tutte', etichetta: 'Tutte' },
+  { chiave: 'da-consegnare', etichetta: 'Da consegnare' },
+  { chiave: 'in-corso', etichetta: 'In corso' },
+  { chiave: 'da-concludere', etichetta: 'Finiti da concludere' },
+];
+
+const ETICHETTA_FASE = {
+  'da-consegnare': 'Da consegnare',
+  'in-corso': 'In corso',
+  'da-concludere': 'Da concludere',
+};
+
+const schedaVuota = () => ({
+  carburante: '',
+  kmIniziali: '',
+  danni: '',
+  accessori: {
+    cric: false, triangolo: false, giubbotto: false, ruotaScorta: false,
+    cavoRicarica: false, cateneNeve: false, altro: '',
+  },
+});
 
 function Bookings() {
   const prenotazioni = useSelector((state) => state.prenotazioni);
@@ -82,7 +109,11 @@ function Bookings() {
   const [confermaInBlocco, setConfermaInBlocco] = useState(null);
   const [paginaPrenotazioni, setPaginaPrenotazioni] = useState(1);
   const [paginaClienti, setPaginaClienti] = useState(1);
-  const [filtroAttivo, setFiltroAttivo] = useState('');
+  const [filtroFase, setFiltroFase] = useState('tutte');
+  const [salvandoPrenotazione, setSalvandoPrenotazione] = useState(false);
+  // Prenotazione che si sta consegnando (scheda veicolo -> riepilogo).
+  const [consegnaDi, setConsegnaDi] = useState(null);
+  const [patenteConsegna, setPatenteConsegna] = useState('');
   const location = useLocation();
   const righePerPagina = 10;
   const listaRef = useRef(null);
@@ -130,7 +161,7 @@ accessori: {
   
   useEffect(() => {
   setPaginaPrenotazioni(1);
-}, [search]);
+}, [search, filtroFase]);
 
 
   useEffect(() => {
@@ -359,8 +390,6 @@ accessori: {
   const hasDraftBooking = () => (
     isAddingNewBooking ||
     editingIndex !== null ||
-    schedaModalOpen ||
-    riepilogoOpen ||
     Boolean(
       formData.cliente ||
       formData.codiceFiscale ||
@@ -372,7 +401,7 @@ accessori: {
   );
 
   const handleRequestCancelBooking = () => {
-    if (!hasDraftBooking() && !schedaModalOpen && !riepilogoOpen) {
+    if (!hasDraftBooking()) {
       resetModal();
       return;
     }
@@ -405,37 +434,6 @@ accessori: {
     link.click();
     document.body.removeChild(link);
     showFeedback("Esportazione completata!");
-  };
-
-  const normalizzaData = (value) => {
-    if (!value) return null;
-    const data = new Date(value);
-    if (Number.isNaN(data.getTime())) return null;
-    data.setHours(0, 0, 0, 0);
-    return data;
-  };
-
-  const getGiorniAllaScadenza = (dataFine) => {
-    const fine = normalizzaData(dataFine);
-    const oggi = normalizzaData(new Date());
-    if (!fine || !oggi) return 0;
-    return Math.round((fine - oggi) / (1000 * 60 * 60 * 24));
-  };
-
-  const getClasseScadenza = (dataFine) => {
-    const giorni = getGiorniAllaScadenza(dataFine);
-    if (giorni <= 0) return 'riga-scadenza-urgente';
-    if (giorni === 1) return 'riga-scadenza-domani';
-    if (giorni <= 2) return 'riga-scadenza-prossima';
-    return '';
-  };
-
-  const getTestoScadenza = (dataFine) => {
-    const giorni = getGiorniAllaScadenza(dataFine);
-    if (giorni < 0) return `Scaduta da ${Math.abs(giorni)} gg`;
-    if (giorni === 0) return 'Scade oggi';
-    if (giorni === 1) return 'Scade domani';
-    return `${giorni} giorni`;
   };
 
   const calcGiorni = calcolaGiorniNoleggio;
@@ -494,43 +492,90 @@ accessori: {
   };
 
   
-  const handleBookingSubmit = (data) => {
-  const prenotazioneCorrente = editingIndex !== null ? prenotazioni[editingIndex] : null;
+  // Salva subito la prenotazione (nuova o modificata). Km, carburante,
+  // accessori e contratto si fanno dopo, il giorno del ritiro, con "Consegna".
+  const handleBookingSubmit = async (data) => {
+    if (salvandoPrenotazione) return;
+    const prenotazioneCorrente = editingIndex !== null ? prenotazioni[editingIndex] : null;
 
-  // Date, veicolo libero (stessa regola di Veicoli e Dashboard: le annullate e
-  // le richieste del sito non pagate non bloccano, la categoria piena si') e
-  // prezzo: quello pagato sul sito non si ricalcola.
-  const esito = controllaPrenotazione({
-    dati: data,
-    originale: prenotazioneCorrente,
-    veicoli: availableVehicles,
-    prenotazioni,
-    holds,
-    oggi: giornoLocale(),
-  });
-  if (esito.errore) {
-    showFeedback(esito.errore, "error");
-    return;
-  }
+    // Date, veicolo libero (stessa regola di Veicoli e Dashboard: le annullate e
+    // le richieste del sito non pagate non bloccano, la categoria piena si') e
+    // prezzo: quello pagato sul sito non si ricalcola.
+    const esito = controllaPrenotazione({
+      dati: data,
+      originale: prenotazioneCorrente,
+      veicoli: availableVehicles,
+      prenotazioni,
+      holds,
+      oggi: giornoLocale(),
+    });
+    if (esito.errore) {
+      showFeedback(esito.errore, "error");
+      return;
+    }
 
-  const codiceFiscaleUpper = data.codiceFiscale?.toUpperCase() || '';
+    setSalvandoPrenotazione(true);
+    try {
+      const salvata = await salvaPrenotazione(
+        {
+          ...data,
+          codiceFiscale: data.codiceFiscale?.toUpperCase() || '',
+          prezzoTotale: esito.prezzoTotale,
+        },
+        prenotazioneCorrente,
+      );
+      dispatch(prenotazioneCorrente ? updatePrenotazione(salvata) : addPrenotazione(salvata));
+      showFeedback(prenotazioneCorrente ? "Prenotazione modificata." : "Prenotazione salvata. Al ritiro usa «Consegna».");
+      setEditingIndex(null);
+      setIsAddingNewBooking(false);
+      resetModal();
+    } catch (error) {
+      console.error("Errore salvataggio prenotazione:", error);
+      showFeedback(messaggioErrorePrenotazione(error, "Prenotazione non salvata, riprova."), "error");
+    } finally {
+      setSalvandoPrenotazione(false);
+    }
+  };
 
-  setFormData({
-    ...data,
-    id: prenotazioneCorrente?.id,
-    status: prenotazioneCorrente?.status || 'attiva',
-    codiceFiscale: codiceFiscaleUpper,
-    prezzoTotale: esito.prezzoTotale,
-  });
+  const apriNuovaPrenotazione = () => {
+    setFormData({
+      cliente: '', codiceFiscale: '', patente: '', veicolo: '', targa: '',
+      dataInizio: '', dataFine: '', prezzoGiornaliero: '', prezzoTotale: '', emailCliente: '',
+    });
+    setSelectedDate(null);
+    setEditingIndex(null);
+    setIsAddingNewBooking(true);
+    setModalIsOpen(true);
+  };
 
-  setModalIsOpen(false);
-  setTimeout(() => {
-    const root = document.getElementById('root');
-    if (root) root.removeAttribute('aria-hidden');
-  }, 50);
-  setSchedaModalOpen(true);
-};
+  // --- Consegna: scheda del veicolo, poi riepilogo con contratto e PDF ---
+  const avviaConsegna = (prenotazione) => {
+    const veicolo = availableVehicles.find((v) => v.targa === prenotazione.targa);
+    setConsegnaDi(prenotazione);
+    setPatenteConsegna('');
+    // I km partono da quelli segnati sul veicolo: si correggono se diversi.
+    setSchedaVeicolo({ ...schedaVuota(), kmIniziali: veicolo?.km ?? '' });
+    setInfoModalOpen(false);
+    setModalIsOpen(false);
+    setSchedaModalOpen(true);
+  };
 
+  const chiudiConsegna = () => {
+    setSchedaModalOpen(false);
+    setRiepilogoOpen(false);
+    setConsegnaDi(null);
+  };
+
+  const handleSaveSchedaVeicolo = () => {
+    setSchedaModalOpen(false);
+    setRiepilogoOpen(true);
+  };
+
+  const handleConsegnaCompletata = (campi) => {
+    dispatch(updatePrenotazione({ ...consegnaDi, ...campi }));
+    showFeedback(`Veicolo ${consegnaDi.targa} consegnato a ${consegnaDi.cliente || 'cliente'}.`);
+    chiudiConsegna();
+  };
 
   const groupPrenotazioniByDate = () => {
     const dateMap = {};
@@ -677,68 +722,6 @@ accessori: {
   }, [modalIsOpen]);
 
 
-  const handleSaveSchedaVeicolo = () => {
-    setFormData(prev => ({
-      ...prev,
-      schedaVeicolo: schedaVeicolo
-    }));
-    setSchedaModalOpen(false);
-    setRiepilogoOpen(true);
-  };
-
-  const handleConfermaPrenotazioneCompletata = async () => {
-    try {
-      const prenotazioniAggiornate = await readPrenotazioni();
-      dispatch(setPrenotazioni(prenotazioniAggiornate));
-      showFeedback(
-        editingIndex !== null
-          ? "Prenotazione modificata con successo"
-          : "Prenotazione aggiunta con successo",
-        "success"
-      );
-    } catch (error) {
-      console.error("Errore aggiornamento stato prenotazioni:", error);
-      showFeedback("Prenotazione confermata, ma non Ã¨ stato possibile aggiornare la vista.", "error");
-    }
-
-    setFormData({
-      cliente: '',
-      codiceFiscale: '',
-      patente: '',
-      veicolo: '',
-      targa: '',
-      dataInizio: '',
-      dataFine: '',
-      prezzoGiornaliero: '',
-      prezzoTotale: '',
-      emailCliente: '',
-    });
-
-    setSchedaVeicolo({
-      carburante: '',
-      kmIniziali: '',
-      danni: '',
-      accessori: {
-        cric: false,
-        triangolo: false,
-        giubbotto: false,
-        ruotaScorta: false,
-        cavoRicarica: false,
-        cateneNeve: false,
-        altro: ''
-      }
-    });
-
-    setEditingIndex(null);
-    setModalIsOpen(false);
-    setTimeout(() => {
-      const root = document.getElementById('root');
-      if (root) root.removeAttribute('aria-hidden');
-    }, 50);
-    setSchedaModalOpen(false);
-    setRiepilogoOpen(false);
-  };
-
   // Elimina solo quel documento (prima si riscriveva tutta la collezione).
   const confermaEliminazione = async () => {
     const index = deleteIndex;
@@ -758,13 +741,6 @@ accessori: {
       setDeleteIndex(null);
     }
   };
-
-const handleBackToForm = () => {
-  setSchedaModalOpen(false);
-  setModalIsOpen(true);
-
-};
-
 
 // Conclude un noleggio con l'esito della riconsegna.
 // - Le foto dei danni vanno su Storage (cartella danni/): prima finivano
@@ -873,14 +849,19 @@ if(loading){
   );
 }
 
-const prenotazioniAttiveFiltrate = prenotazioniAttive.filter(p =>
-  p.cliente.toLowerCase().includes(search.toLowerCase()) ||
-  p.targa.toLowerCase().includes(search.toLowerCase()) ||
-  p.veicolo.toLowerCase().includes(search.toLowerCase())||
-  p.emailCliente.toLowerCase().includes(search.toLowerCase())
-);
+const oggi = giornoLocale();
+// Ricerca su piu' parole (es. "rossi panda"), come in Veicoli. Le prenotazioni
+// del sito possono non avere email o targa: niente crash sui campi vuoti.
+const paroleCercate = search.toLowerCase().split(/\s+/).filter(Boolean);
+const perRicerca = (p) => [p.cliente, p.targa, p.veicolo, p.emailCliente, p.categoria]
+  .filter(Boolean).join(' ').toLowerCase();
+const trovate = prenotazioniAttive.filter((p) => paroleCercate.every((parola) => perRicerca(p).includes(parola)));
+const contaFase = (chiave) => (chiave === 'tutte' ? trovate.length : trovate.filter((p) => faseLavoro(p, oggi) === chiave).length);
+const prenotazioniAttiveFiltrate = trovate
+  .filter((p) => filtroFase === 'tutte' || faseLavoro(p, oggi) === filtroFase)
+  .sort((a, b) => String(a.dataInizio).localeCompare(String(b.dataInizio)));
 const ricercaAttiva = search.trim();
-const prenotazioniDaConcludereOggi = daConcludereInBlocco(prenotazioniAttive, giornoLocale());
+const prenotazioniDaConcludereOggi = daConcludereInBlocco(prenotazioniAttive, oggi);
 const numeroPagine = Math.ceil(prenotazioniAttiveFiltrate.length / righePerPagina);
 
 
@@ -892,7 +873,12 @@ return (
         <span>{feedbackMessage}</span>
       </div>
     )}
-  <h1 className="title">Gestione Prenotazioni</h1>
+  <div className="bookings-testa">
+    <h1>Prenotazioni</h1>
+    <button type="button" className="bookings-nuova-btn" onClick={apriNuovaPrenotazione}>
+      <Plus size={18} aria-hidden="true" /> Nuova prenotazione
+    </button>
+  </div>
 
   <PrenotazioniDaAssegnare prenotazioni={prenotazioni} veicoli={availableVehicles} />
 
@@ -991,6 +977,7 @@ return (
           holds={holds}
           clienti = {clienti}
           prenotazioni={prenotazioni}
+          salvando={salvandoPrenotazione}
        />
       </div>
     ) : (
@@ -1047,6 +1034,11 @@ return (
                       <Trash2 size={16} />
                       Elimina
                     </button>
+                  {puoConsegnare(prenotazione) && (
+                    <button className="btn btn-primary" onClick={() => avviaConsegna(prenotazione)}>
+                      <KeyRound size={16} /> Consegna
+                    </button>
+                  )}
                   {puoConcludere(prenotazione) && (
                   <button
   className="btn btn-success"
@@ -1138,16 +1130,19 @@ return (
   
   
     <div className="bookings-table-tools">
-      <div className="bookings-deadline-summary">
-        <span className="deadline-chip deadline-chip-urgent">
-          Finiti da concludere: {prenotazioniDaConcludereOggi.length}
-        </span>
-        <span className="deadline-chip deadline-chip-soon">
-          In scadenza: {prenotazioniAttive.filter((p) => {
-            const giorni = getGiorniAllaScadenza(p.dataFine);
-            return giorni === 1 || giorni === 2;
-          }).length}
-        </span>
+      <div className="bookings-filtri" role="tablist" aria-label="Filtra per stato">
+        {FILTRI_FASE.map(({ chiave, etichetta }) => (
+          <button
+            key={chiave}
+            type="button"
+            role="tab"
+            aria-selected={filtroFase === chiave}
+            className={`bookings-filtro ${filtroFase === chiave ? 'bookings-filtro--attivo' : ''}`}
+            onClick={() => setFiltroFase(chiave)}
+          >
+            {etichetta} <span className="bookings-filtro-conto">{contaFase(chiave)}</span>
+          </button>
+        ))}
       </div>
       <button
         type="button"
@@ -1170,7 +1165,8 @@ return (
             <th>Inizio</th>
             <th>Fine</th>
             <th>Prezzo (€)</th>
-            <th>Scadenza</th>
+            <th>Stato</th>
+            <th>Promemoria</th>
             <th>Azioni</th>            
           </tr>
         </thead>
@@ -1178,15 +1174,19 @@ return (
           
   {prenotazioniAttiveFiltrate.length === 0 ? (
     <tr>
-      <td colSpan="9" style={{ textAlign: 'center', fontStyle: 'italic', color: '#888' }}>
+      <td colSpan="10" style={{ textAlign: 'center', fontStyle: 'italic', color: '#888' }}>
         Nessuna prenotazione trovata.
       </td>
     </tr>
   ) : (
     prenotazioniAttiveFiltrate
       .slice((paginaPrenotazioni - 1) * righePerPagina, paginaPrenotazioni * righePerPagina)
-      .map((p, index) => (
-              <tr key={index} className={getClasseScadenza(p.dataFine)}>
+      .map((p) => {
+              const fase = faseLavoro(p, oggi);
+              const nota = promemoria(p, oggi);
+              const classeRiga = nota.livello ? `riga-scadenza-${nota.livello}` : '';
+              return (
+              <tr key={p.id} className={classeRiga}>
                 <td>{p.cliente}</td>
                 <td>{p.emailCliente}</td>
                 <td>{p.veicolo}</td>
@@ -1195,12 +1195,21 @@ return (
                 <td>{p.dataFine}</td>
                 <td>{prezzoPrenotazione(p) || '—'}</td>
                 <td>
-                  <span className={`deadline-badge ${getClasseScadenza(p.dataFine)}`}>
-                    {getTestoScadenza(p.dataFine)}
+                  <span className={`fase-badge fase-badge--${fase}`}>
+                    {daAssegnare(p) ? 'Veicolo da assegnare' : ETICHETTA_FASE[fase]}
                   </span>
                 </td>
+                <td>
+                  <span className={`deadline-badge ${classeRiga}`}>{nota.testo}</span>
+                </td>
                 <td className="table-actions-cell">
-                   <button className="info-btn" onClick={() => openInfoModal(p)}><Info size={18} /></button>
+                   <button className="info-btn" onClick={() => openInfoModal(p)} aria-label="Dettagli"><Info size={18} /></button>
+                   {puoConsegnare(p) && (
+                   <button className="table-consegna-btn" onClick={() => avviaConsegna(p)}>
+                     <KeyRound size={16} />
+                     Consegna
+                   </button>
+                   )}
                    {puoConcludere(p) && (
                    <button
                      className="table-conclude-btn"
@@ -1217,7 +1226,8 @@ return (
                    )}
                 </td>
               </tr>
-            ))
+              );
+            })
           )}
         </tbody>
       </table>
@@ -1267,9 +1277,8 @@ return (
       handleDelete(index);
       setInfoModalOpen(false);
     }}
+    onConsegna={avviaConsegna}
     onConcludi={(p) => {
-      const index = prenotazioni.findIndex(item => item.id === p.id);
-      
      setInfoModalOpen(false);          
     setModalIsOpen(false);            
     setPrenotazioneDaConcludere(p);   
@@ -1279,20 +1288,24 @@ return (
       />
     <SchedaVeicoloModal
     isOpen={schedaModalOpen}
-    onRequestClose={() => setSchedaModalOpen(false)}
+    onRequestClose={chiudiConsegna}
+    prenotazione={consegnaDi}
     schedaVeicolo={schedaVeicolo}
     setSchedaVeicolo={setSchedaVeicolo}
+    patente={patenteConsegna}
+    onPatenteChange={setPatenteConsegna}
     onSave={handleSaveSchedaVeicolo}
-    onBack={handleBackToForm}
   />
-  
-  <RiepilogoPrenotazioneModal
-    isOpen={riepilogoOpen}
-    onClose={handleRequestCancelBooking}
-    formData={formData}
-    schedaVeicolo={formData.schedaVeicolo}
-    onConferma={handleConfermaPrenotazioneCompletata}
-  />
+
+  {consegnaDi && (
+    <RiepilogoPrenotazioneModal
+      isOpen={riepilogoOpen}
+      onClose={chiudiConsegna}
+      formData={{ ...consegnaDi, patente: consegnaDi.patente || patenteConsegna.trim().toUpperCase() }}
+      schedaVeicolo={schedaVeicolo}
+      onConferma={handleConsegnaCompletata}
+    />
+  )}
   
   <ConfirmDialog
     open={confirmOpen}

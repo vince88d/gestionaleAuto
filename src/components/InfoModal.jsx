@@ -1,14 +1,15 @@
 import React, { useRef } from 'react';
 import Modal from 'react-modal';
 import './InfoModal.css';
-import { Pencil, Trash2, CheckCircle } from 'lucide-react';
+import { Pencil, Trash2, CheckCircle, KeyRound } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { isPagataOnline } from '../utils/pagamentoOnline';
-import { puoConcludere } from '../utils/regolePrenotazione';
+import { puoConcludere, puoConsegnare, eConsegnata } from '../utils/regolePrenotazione';
+import { prezzoPrenotazione } from '../utils/dashboard';
 
 
-function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, soloLettura = false }) {
+function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, onConsegna, soloLettura = false }) {
   const printRef = useRef();
   
 
@@ -98,8 +99,28 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
   </div>
     <div className="info-item">
     <span className="info-label">Prezzo</span>
-    <span className="info-value">{prenotazione.prezzoTotale}</span>
+    <span className="info-value">{prezzoPrenotazione(prenotazione) || '—'} €</span>
   </div>
+  <div className="info-item">
+    <span className="info-label">Consegna</span>
+    <span className="info-value">
+      {prenotazione.consegnataIl
+        ? `Fatta il ${new Date(prenotazione.consegnataIl).toLocaleDateString('it-IT')}`
+        : eConsegnata(prenotazione) ? 'Fatta' : 'Non ancora'}
+    </span>
+  </div>
+  {eConsegnata(prenotazione) && (
+    <>
+      <div className="info-item">
+        <span className="info-label">Km alla consegna</span>
+        <span className="info-value">{prenotazione.schedaVeicolo?.kmIniziali || '—'}</span>
+      </div>
+      <div className="info-item">
+        <span className="info-label">Carburante</span>
+        <span className="info-value">{prenotazione.schedaVeicolo?.carburante || '—'}</span>
+      </div>
+    </>
+  )}
 </div>
 
 
@@ -195,6 +216,9 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
             <button className="btn btn-danger" onClick={() => onElimina(prenotazione)}>
               <Trash2 size={16} /> {isPagataOnline(prenotazione) ? 'Annulla e rimborsa' : 'Elimina'}
             </button>
+            {puoConsegnare(prenotazione) && onConsegna && (
+              <button className="btn btn-primary" onClick={() => onConsegna(prenotazione)}><KeyRound size={16} /> Consegna</button>
+            )}
             {puoConcludere(prenotazione) && (
               <button className="btn btn-success" onClick={() => onConcludi(prenotazione)}><CheckCircle size={16} /> Concludi</button>
             )}
@@ -244,7 +268,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
     </div>
     <div className="info-item">
       <span className="info-label">Prezzo</span>
-      <span className="info-value">{prenotazione.prezzoTotale} €</span>
+      <span className="info-value">{prezzoPrenotazione(prenotazione)} €</span>
     </div>
   </div>
 

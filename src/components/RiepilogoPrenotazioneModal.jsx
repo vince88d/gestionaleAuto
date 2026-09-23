@@ -3,9 +3,8 @@ import Modal from 'react-modal';
 import { toast } from 'react-toastify';
 import '../components/riepilogoModal.css';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { useDispatch } from 'react-redux';
-import { setPrenotazioni } from '../store/prenotazioniSlice';
-import { readPrenotazioni, confermaPrenotazione as confermaPrenotazioneFirestore } from '../lib/firestorePrenotazioni';
+import { registraConsegna, messaggioErrorePrenotazione } from '../lib/firestorePrenotazioni';
+import { prezzoPrenotazione } from '../utils/dashboard';
 
 const boxStyle = {
   border: '1px solid #ccc',
@@ -47,8 +46,10 @@ const printButtonStyle = {
   color: '#fff',
 };
 
+// Secondo passo della consegna: riepilogo, contratto, PDF ed email. "Conferma
+// consegna" salva la scheda sulla prenotazione (la prenotazione esiste gia').
 function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, onConferma }) {
-  const dispatch = useDispatch();
+  const prezzoTotale = prezzoPrenotazione(formData);
   const [ipPubblico, setIpPubblico] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [scaricaPdf, setScaricaPdf] = useState(true);
@@ -160,11 +161,11 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
     drawField('Modello', prenotazione.veicolo);
     drawField('Targa', prenotazione.targa);
     drawField('Periodo', `dal ${prenotazione.dataInizio} al ${prenotazione.dataFine}`);
-    drawField('Prezzo Totale', `${prenotazione.prezzoTotale} EUR`);
+    drawField('Prezzo Totale', `${prezzoPrenotazione(prenotazione)} EUR`);
 
     drawSection('Scheda Veicolo');
     drawField('Carburante', scheda.carburante);
-    drawField('Km Iniziali', scheda.kmIniziali);
+    drawField('Km alla consegna', scheda.kmIniziali);
     drawField('Danni', scheda.danni || 'Nessuno');
 
     if (scheda.accessori && Object.keys(scheda.accessori).length) {
@@ -224,13 +225,17 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
         schedaVeicolo: datiScheda,
       };
 
-      const result = await confermaPrenotazioneFirestore({
-        prenotazione,
-        ip: ipPubblico || 'Non disponibile',
-      });
-
-      if (!result.success) {
-        toast.error(result.message || 'Errore durante la conferma');
+      let campiConsegna;
+      try {
+        campiConsegna = await registraConsegna({
+          prenotazione,
+          scheda: datiScheda,
+          patente: formData.patente,
+          ip: ipPubblico || 'Non disponibile',
+        });
+      } catch (error) {
+        console.error('Errore consegna:', error);
+        toast.error(messaggioErrorePrenotazione(error, 'Consegna non salvata, riprova.'));
         return;
       }
 
@@ -272,7 +277,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
             `${contrattoDaSalvare ? '\nSe necessario, allega anche il contratto personalizzato.' : ''}` +
             `\n\nPeriodo: dal ${prenotazione.dataInizio} al ${prenotazione.dataFine}` +
             `\nVeicolo: ${prenotazione.veicolo} (${prenotazione.targa})` +
-            `\nPrezzo totale: ${prenotazione.prezzoTotale} EUR` +
+            `\nPrezzo totale: ${prezzoTotale} EUR` +
             `\n\nGrazie.` +
             allegatiText,
         });
@@ -282,12 +287,8 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
         }
       }
 
-      const prenotazioniAggiornate = await readPrenotazioni();
-      dispatch(setPrenotazioni(prenotazioniAggiornate));
-      toast.success('Prenotazione confermata.');
-
       if (onConferma) {
-        await onConferma(result.booking);
+        await onConferma(campiConsegna);
       }
     } catch (err) {
       console.error('Errore durante la conferma:', err);
@@ -314,7 +315,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
     >
       <div id="riepilogo-print">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>Riepilogo Prenotazione</h2>
+          <h2>Riepilogo consegna</h2>
           <button onClick={onClose} className="simple-btn">X</button>
         </div>
 
@@ -333,18 +334,21 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
             <p><strong>Targa:</strong> {formData.targa}</p>
             <p><strong>Dal:</strong> {formData.dataInizio}</p>
             <p><strong>Al:</strong> {formData.dataFine}</p>
-            <p><strong>Prezzo Totale:</strong> <span style={{ color: 'green', fontWeight: 'bold' }}>{formData.prezzoTotale} EUR</span></p>
+            <p><strong>Prezzo Totale:</strong> <span style={{ color: 'green', fontWeight: 'bold' }}>{prezzoTotale} EUR</span></p>
           </div>
 
           <div className="section" style={boxStyle}>
             <h3 style={titleStyle}>Scheda Veicolo</h3>
             <p><strong>Carburante:</strong> {datiScheda.carburante}</p>
-            <p><strong>Km Iniziali:</strong> {datiScheda.kmIniziali}</p>
+            <p><strong>Km alla consegna:</strong> {datiScheda.kmIniziali}</p>
             <p><strong>Accessori:</strong></p>
             <ul style={{ paddingLeft: '20px' }}>
-              {Object.entries(datiScheda.accessori).map(([key, value]) => (
-                <li key={key}>{value ? 'SI' : 'NO'} {key.charAt(0).toUpperCase() + key.slice(1)}</li>
-              ))}
+              {Object.entries(datiScheda.accessori || {})
+                .filter(([key]) => key !== 'altro')
+                .map(([key, value]) => (
+                  <li key={key}>{value ? 'SI' : 'NO'} {key.charAt(0).toUpperCase() + key.slice(1)}</li>
+                ))}
+              {datiScheda.accessori?.altro && <li>SI {datiScheda.accessori.altro}</li>}
             </ul>
             <p><strong>Danni:</strong> {datiScheda.danni || 'Nessuno'}</p>
           </div>
@@ -443,7 +447,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
                 cursor: isSending ? 'not-allowed' : 'pointer',
               }}
             >
-              {isSending ? 'Attendi...' : 'Conferma'}
+              {isSending ? 'Attendi...' : 'Conferma consegna'}
             </button>
             <button onClick={handlePrint} style={printButtonStyle}>Stampa</button>
           </div>
