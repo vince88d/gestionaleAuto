@@ -1,7 +1,7 @@
 .vehicles-wrapper {
   max-width: 1200px;
-  margin: 40px auto;
-  padding: 40px; /* Margine interno aumentato */
+  margin: 0 auto 40px;
+  padding: 32px;
   background: #f7f9fc;
   border-radius: 12px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
@@ -9,15 +9,6 @@
   color: #2c3e50;
   position: relative;
   
-}
-  
-.vehicles-wrapper h1 {
-  margin-top: 50px;
-  font-size: 36px; /* Font più grande */
-  font-weight: bold;
-  margin-bottom: 24px;
-  color: #2c3e50;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); /* Effetto ombra */
 }
   
   .vehicle-form {
@@ -39,25 +30,6 @@
     margin-bottom: 6px;
     color: #2c3e50;
     font-size: 14px;
-  }
-
-  .add-vehicle-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: absolute;
-    top: 20px;
-    background-color: #3498db;
-    border-radius: 5px;
-    padding: 8px 10px;
-    color: white;
-    border: none;
-    transition: background-color 0.3s ease, transform 0.2s;  
-  }
-  
-  .add-vehicle-btn:hover {
-    background-color: #2980b9;
-  transform: translateY(-2px); /* Effetto hover */
   }
 
   .vehicle-form input {
@@ -92,11 +64,6 @@
   .vehicle-form button:hover {
     background-color: #2a80b9;
   }
-  .vehicle-image {
-    width: 100%;
-    height: 160px;
-    object-fit: cover;
-  }
   
 .Modal {
   position: fixed;
@@ -116,24 +83,6 @@
   animation: fadeIn 0.3s forwards;
   box-sizing: border-box;
 }
-  .vehicle-search {
-    width: 100%;
-    max-width: 400px;
-    padding: 10px 14px;
-    margin: 1rem auto 2rem auto;
-    display: block;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    transition: border 0.2s ease, box-shadow 0.2s ease;
-  }
-  
-  .vehicle-search:focus {
-    border-color: #3498db;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
-  }
   
   .badge {
     display: block;
@@ -148,24 +97,10 @@
   margin-top: 5px;
   }
 
-  .badge.info {
-  background-color: #e0f7fa;
-  color: #00796b;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  margin-top: 5px;
-  display: inline-block;
-}
-
   
  .available {
   background-color: #28a745;
   color: white; /* verde scuro */
-}
-.unavailable {
-  background-color: #fdecea;
-  color: #c0392b; /* rosso scuro */
 }
   
 .Overlay {
@@ -221,20 +156,6 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
   z-index: 99999;
   animation: fadeIn 0.3s forwards;
-  box-sizing: border-box;
-}
-
-
-.vehicle-info-grid-card {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 12px;
-  margin: 12px 0;
-  width: 100%;
-  text-align: left;
-  font-size: 14px;
-  color: #555;
-  padding: 0 10px;
   box-sizing: border-box;
 }
 
@@ -326,46 +247,8 @@
 
 .vehicle-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
-}
-
-.vehicle-card {
- background: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: center; /* 🔹 CENTRA tutto */
-  justify-content: flex-start;
-  transition: transform 0.3s, box-shadow 0.3s;
-  cursor: pointer;
-  width: 100%;
-  padding: 16px;
-  box-sizing: border-box;
-  text-align: center; /* 🔹 CENTRA il testo */
-}
-
-
-.vehicle-card:hover {
-  transform: translateY(-5px) scale(1.02); /* Effetto hover */
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-}
-
-.vehicle-card h3 {
-  margin: 12px 0 4px;
-  font-size: 20px;
-  color: #34495e;
-  font-weight: bold;
-  text-align: center;
-}
-
-.vehicle-card p {
-   font-size: 14px;
-  color: #666;
-  margin: 4px 0;
-  text-align: center;
 }
 
 .vehicle-actions {
@@ -650,35 +533,6 @@
   margin: 10px;
 }
 
-.pallino {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin: 0 4px;
-  border: 1px solid #ccc;
-}
-
-.rosso {
-  background-color: #e74c3c;
-  border-color: #e74c3c;
-}
-
-.giallo {
-  background-color: #f1c40f;
-  border-color: #f1c40f;
-}
-
-.verde {
-  background-color: #2ecc71;
-  border-color: #2ecc71;
-}
-
-.grigio {
-  background-color: #bdc3c7;
-  border-color: #bdc3c7;
-}
-
 .form-header {
   display: flex;
   justify-content: space-between;
@@ -702,12 +556,6 @@
   transform: scale(1.1);
   color: #000;
 }
-.badge-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
 
 
 
@@ -716,9 +564,6 @@
 
 
 @media (max-width: 768px) {
-  .vehicle-card {
-    padding: 0; /* Elimina padding anche su mobile */
-  }
   .vehicle-form.two-columns {
     grid-template-columns: 1fr;
     gap: 15px;
@@ -726,9 +571,6 @@
   .vehicle-list {
     grid-template-columns: 1fr;
     gap: 15px;
-  }
-  .vehicle-card {
-    padding: 15px;
   }
   .vehicle-actions {
     padding: 10px; 
@@ -754,3 +596,282 @@
       transform: translate(-50%, -50%);
     }
   }
+
+/* ============================================================
+   Pagina Veicoli: barra in alto
+   ============================================================ */
+
+.veicoli-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap; /* su finestra stretta ricerca e bottone vanno a capo */
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.veicoli-intestazione {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Doppia classe per battere la regola h1 generica di Dashboard.css, che
+   oggi colpisce i titoli di tutte le pagine (banner blu). */
+.veicoli-toolbar .veicoli-titolo {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  text-align: left;
+  font-size: 26px;
+  font-weight: 700;
+  color: #2c3e50;
+  text-shadow: none;
+}
+
+.veicoli-conteggio {
+  font-size: 14px;
+  color: #7f8c9a;
+}
+
+.veicoli-azioni {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.veicoli-cerca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 300px;
+  max-width: 100%;
+  padding: 0 12px;
+  background: #fff;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  color: #7f8c9a;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.veicoli-cerca:focus-within {
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.veicoli-cerca input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  padding: 10px 0;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.veicoli-aggiungi {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+}
+
+.veicoli-aggiungi:hover {
+  background-color: #2980b9;
+}
+
+.veicoli-vuoto {
+  padding: 40px 20px;
+  text-align: center;
+  color: #7f8c9a;
+  background: #fff;
+  border: 1px dashed #d5dde6;
+  border-radius: 10px;
+}
+
+/* ============================================================
+   Card veicolo
+   ============================================================ */
+
+.vcard {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+}
+
+.vcard:hover,
+.vcard:focus-visible {
+  border-color: #3498db;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.vcard-foto {
+  position: relative;
+  height: 160px;
+  background: #f1f4f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vcard-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* le foto sono scontornate: non tagliarle */
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.vcard-foto-vuota {
+  color: #b8c4d0;
+}
+
+.vcard-stato {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vcard-stato--libero {
+  background: #e3f6ea;
+  color: #1e7b3c;
+}
+
+.vcard-stato--occupato {
+  background: #fdecea;
+  color: #c0392b;
+}
+
+.vcard-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+.vcard-nome {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #2c3e50;
+  text-transform: capitalize;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vcard-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vcard-targa {
+  padding: 2px 8px;
+  border: 1px solid #c9d3de;
+  border-radius: 4px;
+  font-family: Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #2c3e50;
+  text-transform: uppercase;
+}
+
+.vcard-categoria {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #eaf3fc;
+  color: #1f6fb2;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.vcard-dati {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 10px 0;
+  border-top: 1px solid #eef1f5;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.vcard-dati dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #95a3b1;
+}
+
+.vcard-dati dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: #2c3e50;
+  text-transform: capitalize;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vcard-piede {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vcard-libero {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: #5d6d7e;
+}
+
+.vcard-scadenze {
+  display: flex;
+  gap: 4px;
+}
+
+/* Scadenze: A = assicurazione, B = bollo, R = revisione (dettaglio al
+   passaggio del mouse). */
+.vcard-scadenza {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: help;
+}
+
+.vcard-scadenza--verde { background: #e3f6ea; color: #1e7b3c; }
+.vcard-scadenza--giallo { background: #fdf3d6; color: #9a6b00; }
+.vcard-scadenza--rosso { background: #fdecea; color: #c0392b; }
+.vcard-scadenza--grigio { background: #eef1f5; color: #95a3b1; }
