@@ -3,6 +3,7 @@ import './ImpostazioniAzienda.css';
 import { Download, Upload, KeyRound, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { EVENTO_AZIENDA_AGGIORNATA } from '../components/Sidebar';
 
 function ImpostazioniAzienda() {
   const [licenzaAttiva, setLicenzaAttiva] = useState(false);
@@ -73,6 +74,7 @@ function ImpostazioniAzienda() {
 
     setAzienda((prev) => ({ ...prev, password: '' }));
     setHasSavedPassword(Boolean(res.settings?.hasPassword));
+    window.dispatchEvent(new Event(EVENTO_AZIENDA_AGGIORNATA));
     toast.success('Dati aziendali salvati correttamente!');
   };
 

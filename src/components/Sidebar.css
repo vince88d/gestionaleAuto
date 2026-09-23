@@ -1,86 +1,193 @@
 .sidebar {
     width: 220px;
-    height: auto;    
+    height: 100vh;
     background-color: #2c3e50;
     color: white;
     padding: 20px 10px;
     position: fixed;
-    top:0;    
+    top: 0;
     left: 0;
     transition: width 0.3s ease;
-    overflow: hidden;
+    overflow-x: hidden;
     z-index: 800;
-    min-height: 100vh;
+    /* Colonna flessibile: la nav si prende lo spazio che avanza e scorre da
+       sola se il menu è più alto della finestra, così il blocco utente in
+       fondo resta sempre nel flusso normale, mai sovrapposto alla nav. */
+    display: flex;
+    flex-direction: column;
   }
-  
+
   .sidebar.collapsed {
     width: 70px;
   }
-  
+
   .top-section {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-shrink: 0;
+    padding: 0 4px 16px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #3d5166;
   }
-  
-  .logo {
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 30px;
-    text-align: left;
-    white-space: nowrap;
+
+  /* Intestazione in stile SaaS: iniziali dell'azienda cliente in un
+     quadratino + nome azienda, con il nome del prodotto in piccolo. */
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
   }
-  
-  .toggle-btn {
-    background: none;
-    border: none;
+
+  .brand-badge {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #3498db;
     color: white;
-    font-size: 18px;
-    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.5px;
   }
-  
+
+  .brand-testi {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.2;
+  }
+
+  .brand-nome {
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .brand-prodotto {
+    font-size: 11px;
+    color: #b8c4d0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Barra ridotta: iniziali sopra, tasto per riaprire sotto, centrati. */
+  .sidebar.collapsed .top-section {
+    flex-direction: column;
+    padding: 0 0 12px;
+  }
+
+  .sidebar nav {
+    /* flex-grow:0 (non flex:1): la nav resta alta quanto il suo contenuto e
+       lascia lo spazio libero al margin-top:auto di .user-section, che lo
+       usa per spingersi in fondo. flex-shrink:1 + overflow-y:auto restano
+       comunque attivi, quindi se il menu non ci sta la nav si accorcia e
+       scorre da sola, invece di far sparire lo spazio libero da dare al
+       margin-top:auto (mai sovrapposizione in nessuno dei due casi). */
+    flex: 0 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Un filo di margine dallo scrollbar quando compare, per non far toccare
+       il testo dei link al bordo della sidebar. */
+    padding-right: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: #56677a transparent;
+  }
+
+  .sidebar nav::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sidebar nav::-webkit-scrollbar-thumb {
+    background-color: #56677a;
+    border-radius: 3px;
+  }
+
   .sidebar nav ul {
     list-style: none;
     padding: 0;
   }
-  
+
   .sidebar nav ul li {
-    margin: 15px 0;
+    margin: 4px 0;
   }
-  
+
   .sidebar nav ul li a {
-    color: white;
+    color: #d5dde6;
     text-decoration: none;
-    font-size: 16px;
+    font-size: 15px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px;
-    border-radius: 4px;
-    transition: background 0.3s;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s;
   }
-  
+
+  .sidebar nav ul li a .nav-icona {
+    flex-shrink: 0;
+  }
+
   .sidebar nav ul li a:hover {
     background-color: #34495e;
+    color: white;
   }
+
+  /* Voce della pagina aperta (classe messa da NavLink). */
+  .sidebar nav ul li a.active {
+    background-color: #3498db;
+    color: white;
+    font-weight: 600;
+  }
+
+  /* Barra ridotta: solo icone, centrate. */
+  .sidebar.collapsed nav ul li a {
+    justify-content: center;
+    padding: 10px 0;
+  }
+
+  /* Icona discreta a pannello (non una X, che fa pensare a "chiudi"):
+     grigia, si evidenzia solo al passaggio del mouse. */
   .toggle-btn {
+    flex-shrink: 0;
     background: none;
     border: none;
-    font-size: 1.5rem;
+    color: #b8c4d0;
     cursor: pointer;
-    padding: 8px;
-    transition: transform 0.2s;
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
   }
-  
+
   .toggle-btn:hover {
-    transform: scale(1.1);
+    background-color: #34495e;
+    color: white;
   }
-  
+
 .user-section {
-  position: absolute;
-  bottom: 20px;
-  left: 10px;
-  right: 10px;
+  /* Prima era position:absolute + bottom:20px: con 8 voci di menu e una
+     finestra bassa, si sovrapponeva alla nav invece di spingerla verso
+     l'alto. Ora è un blocco normale in fondo alla colonna flessibile della
+     sidebar (nav sopra ha flex:1 e scorre da sola se serve). */
+  flex-shrink: 0;
+  /* margin-top:auto invece di un valore fisso: su una finestra alta il
+     blocco si spinge in fondo (come prima), su una finestra bassa il
+     margine si azzera da solo e non sovrappone mai la nav. */
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #3d5166;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -103,6 +210,14 @@
   cursor: pointer;
   text-align: left;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.sidebar.collapsed .logout-btn {
+  justify-content: center;
 }
 
 .logout-btn:hover {
