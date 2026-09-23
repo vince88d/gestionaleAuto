@@ -55,3 +55,18 @@ export function disponibiliPerCategoria(categoria, dataInizio, dataFine, veicoli
 
   return Math.max(0, flotta.length - occupati);
 }
+
+// Un veicolo e' libero nel periodo se non ha prenotazioni sulla sua targa che
+// si sovrappongono E la sua categoria non e' piena (hold e prenotazioni del
+// sito non ancora assegnate a un veicolo occupano un'unita' della categoria
+// senza dire quale). Stessa regola per l'etichetta delle card in Veicoli e per
+// la Dashboard. `prenotazioni` = solo quelle che occupano davvero (niente
+// annullate, non pagate o gia' concluse).
+export function veicoloLibero(veicolo, dataInizio, dataFine, veicoli, prenotazioni, holds) {
+  const occupatoPerTarga = (prenotazioni || []).some(
+    (p) => veicolo.targa && p.targa === veicolo.targa && siSovrappongono(dataInizio, dataFine, p.dataInizio, p.dataFine)
+  );
+  if (occupatoPerTarga) return false;
+  if (!veicolo.categoria) return true;
+  return disponibiliPerCategoria(veicolo.categoria, dataInizio, dataFine, veicoli, prenotazioni, holds) > 0;
+}

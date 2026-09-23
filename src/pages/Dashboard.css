@@ -286,3 +286,124 @@ font-size: 13px;
     margin-bottom: 20px;
   }
 }
+
+/* ============================================================
+   Contenuti nuovi (Passo 1): sottotitolo delle card, riquadri
+   "Oggi" e "Da fare". La grafica complessiva si rifa' nel Passo 2.
+   ============================================================ */
+
+.dashboard-page .card .sotto {
+  margin-top: -8px;
+  font-size: 13px;
+  color: #5d6d7e;
+}
+
+.dashboard-page .dash-colonne {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 20px;
+  padding: 0 20px 20px;
+}
+
+.dashboard-page .dash-box {
+  padding: 18px 20px;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.dashboard-page .dash-box-titolo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.dashboard-page .dash-gruppo + .dash-gruppo { margin-top: 16px; }
+
+.dashboard-page .dash-gruppo-titolo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #7f8c9a;
+}
+
+.dashboard-page .dash-contatore {
+  min-width: 18px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eef1f5;
+  color: #5d6d7e;
+  font-size: 11px;
+  text-align: center;
+}
+
+.dashboard-page .dash-contatore--allerta { background: #fdecea; color: #c0392b; }
+
+.dashboard-page .dash-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #eef1f5;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.dashboard-page .dash-lista li + li { border-top: 1px solid #eef1f5; }
+
+.dashboard-page .dash-riga {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  margin: 0;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 0;
+  background: #fff;
+  color: #2c3e50;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dashboard-page .dash-riga:hover { background: #f4f8fc; }
+
+.dashboard-page .dash-riga-principale { font-size: 14px; font-weight: 600; }
+.dashboard-page .dash-riga-secondaria { font-size: 13px; color: #7f8c9a; }
+.dashboard-page .dash-scaduta { color: #c0392b; font-weight: 600; }
+
+.dashboard-page .dash-vuoto,
+.dashboard-page .dash-tutto-ok {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed #d5dde6;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #7f8c9a;
+}
+
+.dashboard-page .dash-tutto-ok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-style: solid;
+  border-color: #d3f0dd;
+  background: #f1faf4;
+  color: #1e7b3c;
+}
+
+.dashboard-page .dash-avviso {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #c0392b;
+}

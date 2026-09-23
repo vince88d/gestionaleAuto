@@ -15,7 +15,7 @@ import { useDispatch } from "react-redux";
 import { updatePrenotazione } from "../store/prenotazioniSlice";
 import { isPrenotazioneVisibile, segnaDannoPrenotazioneRiparato } from "../lib/firestorePrenotazioni";
 import { disponibiliPerCategoria } from "../utils/disponibilitaCategoria";
-import { SCADENZE_VEICOLO, coloreScadenza, testoScadenza, formattaData } from "../utils/scadenze";
+import { SCADENZE_VEICOLO, coloreScadenza, testoScadenza, formattaData, giornoLocale } from "../utils/scadenze";
 
 // Schede della finestra. Danni e Manutenzioni solo nella versione completa
 // (dalla Dashboard la scheda si apre in sola consultazione, `modalLite`).
@@ -25,11 +25,6 @@ const SCHEDE = [
   { id: "danni", etichetta: "Danni", soloCompleta: true },
   { id: "manutenzioni", etichetta: "Manutenzioni", soloCompleta: true },
 ];
-
-// Data locale in formato YYYY-MM-DD. toISOString() userebbe l'ora UTC: in
-// Italia la mezzanotte del giorno diventerebbe le 22 del giorno prima.
-const giornoLocale = (data) =>
-  `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
 
 const CLASSI_MODALE = (base) => ({
   base,
@@ -73,6 +68,7 @@ const VehicleDetailModal = ({
   prenotazioni,
   veicoli = [],
   holds = [],
+  schedaIniziale = "panoramica",
 }) => {
   const navigate = useNavigate();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
@@ -83,11 +79,12 @@ const VehicleDetailModal = ({
   const fileInputRef = React.useRef();
   const dispatch = useDispatch();
 
-  // Ogni veicolo si apre sulla Panoramica, con il form del danno chiuso.
+  // Ogni veicolo si apre sulla scheda richiesta (di solito la Panoramica;
+  // dalla Dashboard anche Danni), con il form del danno chiuso.
   React.useEffect(() => {
-    setScheda("panoramica");
+    setScheda(schedaIniziale);
     setFormDannoAperto(false);
-  }, [veicolo?.id]);
+  }, [veicolo?.id, schedaIniziale]);
 
   // Prima cambiava solo lo stato a schermo e si perdeva riaprendo il
   // gestionale: ora scrive su Firestore e poi aggiorna lo stato.

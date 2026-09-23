@@ -36,6 +36,12 @@ export function testoScadenza(dataStr, oggi = new Date()) {
   return 'In regola';
 }
 
+// Data locale in formato YYYY-MM-DD. toISOString() userebbe l'ora UTC: in
+// Italia tra mezzanotte e le 2 darebbe il giorno prima.
+export function giornoLocale(data = new Date()) {
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+}
+
 // Data in formato italiano (12/03/2027); '—' se manca.
 export function formattaData(valore) {
   if (!valore) return '—';

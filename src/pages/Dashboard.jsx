@@ -1,488 +1,338 @@
 import './Dashboard.css';
-import { useSelector } from 'react-redux';
-import React, { useEffect,useRef,useState } from 'react';
-import { setVeicoli } from '../store/veicoliSlice';
-import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
-import { readVeicoli } from '../lib/firestoreVeicoli';
-import { readClienti } from '../lib/firestoreClienti';
-import { useDispatch } from 'react-redux';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'react-toastify';
-import { Car, Users, CalendarCheck, Euro,CalendarDays,Bell, LineChartIcon} from 'lucide-react';
+import {
+  Car, CalendarCheck, CalendarClock, Euro, CalendarDays, LineChartIcon,
+  LogIn, LogOut, ClipboardList, Wrench, Bell, CheckCircle2,
+} from 'lucide-react';
+import { setVeicoli } from '../store/veicoliSlice';
+import { setPrenotazioni } from '../store/prenotazioniSlice';
+import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
+import { readVeicoli } from '../lib/firestoreVeicoli';
+import { readHolds } from '../lib/firestoreHolds';
+import { riepilogoDashboard, serieUltimi12Mesi, veicoliLiberiNelPeriodo } from '../utils/dashboard';
+import { formattaData, giornoLocale } from '../utils/scadenze';
 import VehicleDetailModal from '../components/VehicleDetailModal';
 
+const euro = (valore) => `€ ${Number(valore || 0).toLocaleString('it-IT', { maximumFractionDigits: 2 })}`;
+const nomeVeicolo = (v) => [v?.marca, v?.modello].filter(Boolean).join(' ') || 'Veicolo';
 
+function testoGiorni(giorni) {
+  if (giorni < 0) return `scaduta da ${-giorni} ${giorni === -1 ? 'giorno' : 'giorni'}`;
+  if (giorni === 0) return 'scade oggi';
+  return `tra ${giorni} ${giorni === 1 ? 'giorno' : 'giorni'}`;
+}
 
 function Dashboard() {
-  
   const veicoli = useSelector((state) => state.veicoli);
-  const [scadenzeProssime, setScadenzeProssime] = useState([]);
+  const tuttePrenotazioni = useSelector((state) => state.prenotazioni);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  const [clienti, setClienti] = useState([]);
-  const [prenotazioni, setPrenotazioni] = useState([]);
-  const [incassoTotaleMese, setIncassoTotaleMese] = useState(0);
-  const [prenotazioniPerMese, setPrenotazioniPerMese] = useState([]);
-  const [incassiPerMese, setIncassiPerMese] = useState([]); 
+  const [holds, setHolds] = useState([]);
   const [dataInizioRicerca, setDataInizioRicerca] = useState('');
   const [dataFineRicerca, setDataFineRicerca] = useState('');
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedVeicolo, setSelectedVeicolo] = useState(null);
-  const [danniDaRiparare, setDanniDaRiparare] = useState([])
-  const [veicoliDaMostrare,setVeicoliDaMostrare] = useState([]);
-  const scadenzeRef = useRef(null);
 
-
-
-const handleApriModaleVeicolo = (veicolo) => {
-  setSelectedVeicolo(veicolo);
-  setDetailModalOpen(true);
-};
-
-const handleChiudiModaleVeicolo = () => {
-  setDetailModalOpen(false);
-  setSelectedVeicolo(null);
-};
-
-const getVeicoliDisponibili = (dataInizio, dataFine, listaPrenotazioni = prenotazioni) => {
-  if (!Array.isArray(veicoli) || veicoli.length === 0) return [];
-
-  if (!dataInizio || !dataFine) {
-    return veicoli;
-  }
-
-  const inizio = new Date(dataInizio);
-  const fine = new Date(dataFine);
-
-  if (Number.isNaN(inizio.getTime()) || Number.isNaN(fine.getTime())) {
-    return veicoli;
-  }
-
-  const veicoliOccupati = listaPrenotazioni
-    .filter((p) => {
-      if (p.status === 'completata') return false;
-
-      const start = new Date(p.dataInizio);
-      const end = p.dataRientroEffettiva
-        ? new Date(p.dataRientroEffettiva)
-        : new Date(p.dataFine);
-
-      return inizio <= end && fine >= start;
-    })
-    .map((p) => p.targa);
-
-  return veicoli.filter((v) => !veicoliOccupati.includes(v.targa));
-};
-
- useEffect(() => {
-  if (veicoli.length === 0) return;
-
-  if (!dataInizioRicerca && !dataFineRicerca) {
-    setVeicoliDaMostrare(veicoli);
-    return;
-  }
-
-  if (dataInizioRicerca && dataFineRicerca) {
-    setVeicoliDaMostrare(getVeicoliDisponibili(dataInizioRicerca, dataFineRicerca));
-  }
-}, [veicoli, prenotazioni, dataInizioRicerca, dataFineRicerca]);
-
-
-
+  // Stessi dati delle altre pagine (store condiviso): prima la Dashboard aveva
+  // una copia sua delle prenotazioni e poteva mostrare numeri vecchi.
   useEffect(() => {
-  const dati = Array.from({ length: 12 }, (_, i) => ({
-    mese: new Date(0, i).toLocaleString('it-IT', { month: 'short' }),
-    valore: 0
-  }));
-
-  prenotazioni.forEach(p => {
-    const d = new Date(p.dataInizio);
-    if (!isNaN(d)) {
-      const mese = d.getMonth();
-      dati[mese].valore += 1;
-    }
-  });
-
-  setPrenotazioniPerMese(dati);
-}, [prenotazioni]);
-
-  // Carica i dati iniziali della dashboard
-  useEffect(() => {
-  const caricaDatiDashboard = async () => {
-    try {
-      const clientiData = await readClienti();
-      const prenotazioniData = (await readPrenotazioni()).filter(isPrenotazioneVisibile);
-
-      const meseCorrente = new Date().getMonth(); // 0-11
-      const annoCorrente = new Date().getFullYear();
-
-      //const prenotazioniAttive = prenotazioniData.filter(p => p.status === 'attiva');
-      const incassoMese = prenotazioniData.reduce((tot, p) => {
-        const d = new Date(p.dataInizio);
-        if (d.getMonth() === meseCorrente && d.getFullYear() === annoCorrente) {
-          return tot + (parseFloat(p.prezzoTotale) || 0);
-        }
-        return tot;
-      }, 0);
-
-      setClienti(clientiData);
-      setPrenotazioni(prenotazioniData);
-      setIncassoTotaleMese(incassoMese);
-    } catch (err) {
-      console.error("Errore dashboard:", err);
-      toast.error("Errore nel caricamento dei dati della dashboard.");
-    }
-  };
-
-  caricaDatiDashboard();
-}, []);
-
-useEffect(() => {
-  const datiPrenotazioni = Array.from({ length: 12 }, (_, i) => ({
-    mese: new Date(0, i).toLocaleString('it-IT', { month: 'short' }),
-    valore: 0
-  }));
-
-  const datiIncassi = Array.from({ length: 12 }, (_, i) => ({
-    mese: new Date(0, i).toLocaleString('it-IT', { month: 'short' }),
-    valore: 0
-  }));
-
-  prenotazioni.forEach(p => {
-    const d = new Date(p.dataInizio);
-    if (!isNaN(d)) {
-      const mese = d.getMonth();
-      datiPrenotazioni[mese].valore += 1;
-      datiIncassi[mese].valore += parseFloat(p.prezzoTotale) || 0;
-    }
-  });
-
-  setPrenotazioniPerMese(datiPrenotazioni);
-  setIncassiPerMese(datiIncassi);
-}, [prenotazioni]);
-
-
-  useEffect(() => {
-    const oggi = new Date();
-    const entro30giorni = veicoli.flatMap(v => {
-      const check = (tipo, data) => {
-        if (!data) return null;
-        const d = new Date(data);
-        const diff = (d - oggi) / (1000 * 60 * 60 * 24);
-        if (diff <= 30) {
-          return {
-            veicolo: `${v.marca} ${v.modello}`,
-            targa: v.targa,
-            tipo,
-            data: data,
-            giorni: Math.floor(diff)
-          };
-        }
-        return null;
-      };
-
-      return [
-        check("Assicurazione", v.scadenze?.assicurazione),
-        check("Bollo", v.scadenze?.bollo),
-        check("Revisione", v.scadenze?.revisione)
-      ].filter(Boolean);
-    });
-
-    setScadenzeProssime(entro30giorni);
-  }, [veicoli]);
-
-  useEffect(() => {
-  const danni = [];
-
-  veicoli.forEach((v) => {
-    // Danni manuali ancora da riparare
-    v.danni?.forEach((d) => {
-      if (d.daRiparare === true) {
-        danni.push({
-          tipo: "Manuale",
-          veicolo: `${v.marca} ${v.modello}`,
-          targa: v.targa,
-          descrizione: d.descrizione,
-        });
-      }
-    });
-
-    // Danni da prenotazioni completate ancora da riparare
-    prenotazioni
-      .filter((p) => p.targa === v.targa && p.status === "completata" && p.daRiparare === true)
-      .forEach((p) => {
-        danni.push({
-          tipo: "Prenotazione",
-          veicolo: `${v.marca} ${v.modello}`,
-          targa: v.targa,
-          descrizione: p.descrizioneDanno,
-        });
-      });
-  });
-
-  setDanniDaRiparare(danni);
-}, [veicoli, prenotazioni]);
-
-  
-  useEffect(() => {
-    const caricaVeicoli = async () => {
+    const carica = async () => {
       try {
-        const dati = await readVeicoli();
-        dispatch(setVeicoli(dati));
-      } catch (error) {
-        console.error('Errore nel caricamento veicoli dalla Dashboard:', error);
+        const [datiVeicoli, datiPrenotazioni] = await Promise.all([readVeicoli(), readPrenotazioni()]);
+        dispatch(setVeicoli(datiVeicoli));
+        dispatch(setPrenotazioni(datiPrenotazioni));
+      } catch (err) {
+        console.error('Errore dashboard:', err);
+        toast.error('Errore nel caricamento dei dati della dashboard.');
       }
     };
-  
-    if (veicoli.length === 0) {
-      caricaVeicoli();
-    }
-  }, [veicoli.length, dispatch]);
+    carica();
+    readHolds().then(setHolds).catch((err) => console.error('Errore caricamento hold del sito:', err));
+  }, [dispatch]);
+
+  const oggi = giornoLocale();
+  // Niente annullate ne' richieste del sito non pagate o scadute.
+  const prenotazioni = useMemo(() => tuttePrenotazioni.filter(isPrenotazioneVisibile), [tuttePrenotazioni]);
+  const r = useMemo(
+    () => riepilogoDashboard({ veicoli, prenotazioni, holds, oggi }),
+    [veicoli, prenotazioni, holds, oggi]
+  );
+  const serie = useMemo(() => serieUltimi12Mesi(prenotazioni, oggi), [prenotazioni, oggi]);
+
+  // Ricerca disponibilita': senza date mostra i liberi di oggi.
+  const dateValide = dataInizioRicerca && dataFineRicerca && dataInizioRicerca <= dataFineRicerca;
+  const dateInvertite = dataInizioRicerca && dataFineRicerca && dataInizioRicerca > dataFineRicerca;
+  const veicoliDaMostrare = dateValide
+    ? veicoliLiberiNelPeriodo(veicoli, dataInizioRicerca, dataFineRicerca, prenotazioni, holds)
+    : r.liberiOggi;
+
+  const veicoloDellaPrenotazione = (p) => {
+    const v = veicoli.find((x) => x.targa && x.targa === p.targa);
+    if (v) return `${nomeVeicolo(v)} · ${v.targa}`;
+    return p.categoria ? `${p.categoria} (da assegnare)` : p.veicolo || '—';
+  };
+
+  const apriVeicolo = (veicolo, scheda = 'panoramica') =>
+    navigate('/vehicles', { state: { apriVeicoloId: veicolo.id, scheda } });
 
   const stats = [
+    { title: 'Flotta', value: r.flotta, sotto: `${r.liberiOggi.length} liberi oggi`, icon: <Car size={28} />, colorClass: 'blue' },
+    { title: 'Noleggi in corso', value: r.inCorso.length, sotto: 'oggi', icon: <CalendarCheck size={28} />, colorClass: 'green' },
+    { title: 'Prenotazioni in arrivo', value: r.inArrivo.length, sotto: 'da domani in poi', icon: <CalendarClock size={28} />, colorClass: 'yellow' },
     {
-      title: 'Veicoli Disponibili',
-      value: veicoli.length,
-      icon:  <Car size={32} />,
-      colorClass: 'blue'
+      title: 'Incasso del mese',
+      value: euro(r.incassoMese),
+      sotto: new Date().toLocaleString('it-IT', { month: 'long', year: 'numeric' }),
+      icon: <Euro size={28} />,
+      colorClass: 'purple',
     },
-    {
-      title: 'Clienti Registrati',
-      value: clienti.length,
-      icon:  <Users size={32} />,
-      colorClass: 'green'
-    },
-    {
-      title: 'Prenotazioni Attive',
-      value: prenotazioni.length,
-      icon: <CalendarCheck size={32} />,
-      colorClass: 'yellow'
-    },
-    {
-      title: 'Incasso Mese',
-      value:`€${incassoTotaleMese.toLocaleString('it-IT')}`,
-      icon: <Euro size={32} />,
-      colorClass: 'purple'
-    }
   ];
 
+  const daFare = r.daAssegnare.length + r.danniDaRiparare.length + r.scadenze.length;
 
-  const filtraVeicoliDisponibili = async () => {
-  if (!dataInizioRicerca || !dataFineRicerca) {
-    toast.warn("Seleziona entrambe le date per cercare.");
-    return;
-  }
-
-  const inizio = new Date(dataInizioRicerca);
-  const fine = new Date(dataFineRicerca);
-
-  if (inizio > fine) {
-    toast.error("La data di inizio non può essere dopo la data di fine.");
-    return;
-  }
-
-  try {
-    const tuttePrenotazioni = (await readPrenotazioni()).filter(isPrenotazioneVisibile);
-    const disponibili = getVeicoliDisponibili(dataInizioRicerca, dataFineRicerca, tuttePrenotazioni);
-    setVeicoliDaMostrare(disponibili);
-  } catch (err) {
-    console.error("Errore ricerca disponibilità:", err);
-    toast.error("Errore durante la ricerca dei veicoli disponibili.");
-  }
-};
-
-  
+  const ElencoOggi = ({ titolo, Icona, voci, vuoto }) => (
+    <div className="dash-gruppo">
+      <h3 className="dash-gruppo-titolo">
+        <Icona size={16} aria-hidden="true" /> {titolo}
+        <span className="dash-contatore">{voci.length}</span>
+      </h3>
+      {voci.length > 0 ? (
+        <ul className="dash-lista">
+          {voci.map((p) => (
+            <li key={p.id}>
+              <button type="button" className="dash-riga" onClick={() => navigate('/booking')}>
+                <span className="dash-riga-principale">{p.cliente || 'Cliente non indicato'}</span>
+                <span className="dash-riga-secondaria">{veicoloDellaPrenotazione(p)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="dash-vuoto">{vuoto}</p>
+      )}
+    </div>
+  );
 
   return (
     <div className="dashboard-page">
-      <h1>Dashboard Noleggio Auto</h1>
-
-      {scadenzeProssime.length > 0 && (
-        <button
-          type="button"
-          className="scadenze-reminder-top"
-          onClick={() => scadenzeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-        >
-          <Bell size={16} />
-          Hai {scadenzeProssime.length} scadenze in arrivo. Clicca per vederle.
-        </button>
-      )}
+      <h1>Dashboard</h1>
 
       <div className="grid">
-        {stats.map((stat, index) => (
-          <div
-            key={index}
-            className={`card ${stat.colorClass}`}
-          >
+        {stats.map((stat) => (
+          <div key={stat.title} className={`card ${stat.colorClass}`}>
             <div>
               <div className="title">{stat.title}</div>
               <div className="value">{stat.value}</div>
+              <div className="sotto">{stat.sotto}</div>
             </div>
             <div className="icon">{stat.icon}</div>
           </div>
         ))}
       </div>
 
-<div className="box-veicoli-dashboard">
- <h2><Car size={20} style={{ marginRight: '6px' }} /> Auto Disponibili</h2>
+      <div className="dash-colonne">
+        <section className="dash-box">
+          <h2 className="dash-box-titolo">
+            <CalendarDays size={18} aria-hidden="true" /> Oggi, {formattaData(oggi)}
+          </h2>
+          <ElencoOggi titolo="Ritiri" Icona={LogOut} voci={r.ritiriOggi} vuoto="Nessun ritiro oggi." />
+          <ElencoOggi titolo="Riconsegne" Icona={LogIn} voci={r.riconsegneOggi} vuoto="Nessuna riconsegna oggi." />
+        </section>
 
+        <section className="dash-box">
+          <h2 className="dash-box-titolo">
+            <ClipboardList size={18} aria-hidden="true" /> Da fare
+            {daFare > 0 && <span className="dash-contatore dash-contatore--allerta">{daFare}</span>}
+          </h2>
 
-  <div className="filtro-date">
-    <label className='campo-data'>
-    <CalendarDays size={16} style={{ marginRight: '6px' }} color='#007bff' />
-      Inizio:
-      <input type="date" value={dataInizioRicerca} onChange={(e) => setDataInizioRicerca(e.target.value)} />
-    </label>
-    <label className='campo-data'>
-      <CalendarDays size={16} style={{ marginRight: '6px' }} color='#007bff'/>
-     Fine:
-      <input type="date" value={dataFineRicerca} onChange={(e) => setDataFineRicerca(e.target.value)} />
-    </label>
-    <button onClick={filtraVeicoliDisponibili}>Cerca</button>
-  </div>
+          {daFare === 0 && (
+            <p className="dash-tutto-ok">
+              <CheckCircle2 size={18} aria-hidden="true" /> Tutto in ordine: niente da assegnare, riparare o rinnovare.
+            </p>
+          )}
 
-  <div className="scroll-veicoli">
-    {veicoliDaMostrare.length > 0 ? (
-      veicoliDaMostrare.map(v => (
-      <div
-        key={v.id}
-        className="card-veicolo-dashboard"
-        onClick={() => handleApriModaleVeicolo(v)}
+          {r.daAssegnare.length > 0 && (
+            <div className="dash-gruppo">
+              <h3 className="dash-gruppo-titolo">
+                <Car size={16} aria-hidden="true" /> Prenotazioni del sito da assegnare
+                <span className="dash-contatore dash-contatore--allerta">{r.daAssegnare.length}</span>
+              </h3>
+              <ul className="dash-lista">
+                {r.daAssegnare.map((p) => (
+                  <li key={p.id}>
+                    <button type="button" className="dash-riga" onClick={() => navigate('/booking')}>
+                      <span className="dash-riga-principale">
+                        {formattaData(p.dataInizio)} → {formattaData(p.dataFine)} · {p.categoria || '—'}
+                      </span>
+                      <span className="dash-riga-secondaria">{p.cliente || 'Cliente non indicato'}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        style={{ cursor: 'pointer' }}
-      >
-        {v.immagine && (
-          <img
-            src={v.immagine}
-            className="img-card-veicolo"
-            alt={`${v.marca} ${v.modello}`}
-          />
-        )}
-        <div className="info-card-veicolo">
-          <div className="titolo">{v.marca} {v.modello}</div>
-          <div className="targa">{v.targa}</div>
+          {r.danniDaRiparare.length > 0 && (
+            <div className="dash-gruppo">
+              <h3 className="dash-gruppo-titolo">
+                <Wrench size={16} aria-hidden="true" /> Danni da riparare
+                <span className="dash-contatore dash-contatore--allerta">{r.danniDaRiparare.length}</span>
+              </h3>
+              <ul className="dash-lista">
+                {r.danniDaRiparare.map((d, i) => (
+                  <li key={i}>
+                    <button type="button" className="dash-riga" onClick={() => apriVeicolo(d.veicolo, 'danni')}>
+                      <span className="dash-riga-principale">{d.descrizione || 'Danno senza descrizione'}</span>
+                      <span className="dash-riga-secondaria">
+                        {nomeVeicolo(d.veicolo)} · {d.veicolo.targa}
+                        {d.origine === 'riconsegna' ? ' · rilevato alla riconsegna' : ''}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {r.scadenze.length > 0 && (
+            <div className="dash-gruppo">
+              <h3 className="dash-gruppo-titolo">
+                <Bell size={16} aria-hidden="true" /> Scadenze entro 30 giorni
+                <span className="dash-contatore">{r.scadenze.length}</span>
+              </h3>
+              <ul className="dash-lista">
+                {r.scadenze.map((s) => (
+                  <li key={`${s.veicolo.id}-${s.nome}`}>
+                    <button type="button" className="dash-riga" onClick={() => apriVeicolo(s.veicolo)}>
+                      <span className="dash-riga-principale">
+                        {s.nome} · {nomeVeicolo(s.veicolo)}
+                      </span>
+                      <span className={`dash-riga-secondaria ${s.giorni < 0 ? 'dash-scaduta' : ''}`}>
+                        {formattaData(s.data)} · {testoGiorni(s.giorni)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div className="box-veicoli-dashboard">
+        <h2>
+          <Car size={20} style={{ marginRight: '6px' }} />
+          {dateValide ? 'Veicoli liberi nel periodo' : 'Veicoli liberi oggi'}
+        </h2>
+
+        <div className="filtro-date">
+          <label className="campo-data">
+            <CalendarDays size={16} style={{ marginRight: '6px' }} color="#007bff" />
+            Dal:
+            <input type="date" value={dataInizioRicerca} onChange={(e) => setDataInizioRicerca(e.target.value)} />
+          </label>
+          <label className="campo-data">
+            <CalendarDays size={16} style={{ marginRight: '6px' }} color="#007bff" />
+            Al:
+            <input type="date" value={dataFineRicerca} onChange={(e) => setDataFineRicerca(e.target.value)} />
+          </label>
+          {(dataInizioRicerca || dataFineRicerca) && (
+            <button
+              type="button"
+              onClick={() => {
+                setDataInizioRicerca('');
+                setDataFineRicerca('');
+              }}
+            >
+              Torna a oggi
+            </button>
+          )}
+        </div>
+        {dateInvertite && <p className="dash-avviso">La data di fine è prima di quella di inizio.</p>}
+
+        <div className="scroll-veicoli">
+          {veicoliDaMostrare.length > 0 ? (
+            veicoliDaMostrare.map((v) => (
+              <div
+                key={v.id}
+                className="card-veicolo-dashboard"
+                onClick={() => {
+                  setSelectedVeicolo(v);
+                  setDetailModalOpen(true);
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                {v.immagine && <img src={v.immagine} className="img-card-veicolo" alt={nomeVeicolo(v)} />}
+                <div className="info-card-veicolo">
+                  <div className="titolo">{nomeVeicolo(v)}</div>
+                  <div className="targa">{v.targa}</div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p>Nessun veicolo libero {dateValide ? 'nel periodo scelto' : 'oggi'}.</p>
+          )}
         </div>
       </div>
-    ))
-  ) :(
-   <p>Nessun veicolo disponibile per le date selezionate.</p>
-  )}
-  </div>
 
-
-</div>
-
-
-
-<div className="graph">
-  <div className="graph-card">
-    <h3><LineChartIcon size={19} color='#007bff' /> Prenotazioni per mese</h3>
-    <ResponsiveContainer width="100%" height={200}>
-      <LineChart data={prenotazioniPerMese}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="mese" />
-        <YAxis />
-        <Tooltip />
-        <Line type="monotone" dataKey="valore" stroke="#8884d8" />
-      </LineChart>
-    </ResponsiveContainer>
-  </div>
-
-  <div className="graph-card">
-    <h3><Euro size={16} color='#388e3c'/> Incasso per mese</h3>
-    <ResponsiveContainer width="100%" height={200}>
-      <LineChart data={incassiPerMese}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="mese" />
-        <YAxis />
-        <Tooltip />
-        <Line type="monotone" dataKey="valore" stroke="#28a745" />
-      </LineChart>
-    </ResponsiveContainer>
-  </div>
-</div>
-
-
-
-
-      {scadenzeProssime.length > 0 && (
-        <div className="scadenze-box" ref={scadenzeRef}>
-          <h2><Bell size={16} fill='gold'/> Scadenze in arrivo (entro 30 giorni)</h2>
-          <table className="scadenze-table">
-            <thead>
-              <tr>
-                <th>Tipo</th>
-                <th>Veicolo</th>
-                <th>Targa</th>
-                <th>Data</th>
-                <th>Tra (giorni)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {scadenzeProssime.map((s, i) => (
-                <tr key={i}>
-                  <td>{s.tipo}</td>
-                  <td>{s.veicolo}</td>
-                  <td>{s.targa}</td>
-                  <td>{s.data?.split('-').reverse().join('/')}</td>
-                  <td style={{color: s.giorni < 0 ? 'red' : 'inherit'}}>{s.giorni >= 0 ? s.giorni : 'Scaduto'} </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="graph">
+        <div className="graph-card">
+          <h3><LineChartIcon size={19} color="#007bff" /> Prenotazioni, ultimi 12 mesi</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={serie}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="mese" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Line type="monotone" dataKey="prenotazioni" name="Prenotazioni" stroke="#8884d8" />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
-      )}
-{/*
-      {danniDaRiparare.length > 0 && (
-  <div className="scadenze-box">
-    <h2>🛠️ Danni da Riparare</h2>
-    <table className="scadenze-table">
-      <thead>
-        <tr>
-          <th>Tipo</th>
-          <th>Veicolo</th>
-          <th>Targa</th>
-          <th>Descrizione</th>
-        </tr>
-      </thead>
-      <tbody>
-        {danniDaRiparare.map((d, i) => (
-          <tr key={i}>
-            <td>{d.tipo}</td>
-            <td>{d.veicolo}</td>
-            <td>{d.targa}</td>
-            <td>{d.descrizione || "—"}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-)}
-*/}
 
-  <VehicleDetailModal
-  isOpen={detailModalOpen}
-  onClose={handleChiudiModaleVeicolo}
-  veicolo={selectedVeicolo}
-  prenotazioni={prenotazioni}
-  onUpdate={() => {}} // opzionale
-  onEdit={() => {}}
-  onDelete={() => {}}
-  onAddDamage={() => {}}
-  onDeleteDamage={() => {}}
-  damageModalOpen={false}
-  setDamageModalOpen={() => {}}
-  selectedDamagePhoto={null}
-  setSelectedDamagePhoto={() => {}}
-  nuovaManutenzione={{ data: '', descrizione: '', costo: '' }}
-  setNuovaManutenzione={() => {}}
-  onAddManutenzione={() => {}}
-  modalLite = {true}
-/>
+        <div className="graph-card">
+          <h3><Euro size={16} color="#388e3c" /> Incasso, ultimi 12 mesi</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={serie}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="mese" />
+              <YAxis />
+              <Tooltip formatter={(valore) => euro(valore)} />
+              <Line type="monotone" dataKey="incasso" name="Incasso" stroke="#28a745" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
 
+      <VehicleDetailModal
+        isOpen={detailModalOpen}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setSelectedVeicolo(null);
+        }}
+        veicolo={selectedVeicolo}
+        prenotazioni={prenotazioni}
+        veicoli={veicoli}
+        holds={holds}
+        onUpdate={() => {}}
+        onEdit={() => {}}
+        onDelete={() => {}}
+        onAddDamage={() => {}}
+        onDeleteDamage={() => {}}
+        damageModalOpen={false}
+        setDamageModalOpen={() => {}}
+        selectedDamagePhoto={null}
+        setSelectedDamagePhoto={() => {}}
+        nuovaManutenzione={{ data: '', descrizione: '', costo: '' }}
+        setNuovaManutenzione={() => {}}
+        onAddManutenzione={() => {}}
+        modalLite
+      />
     </div>
-
-    
   );
 }
 
