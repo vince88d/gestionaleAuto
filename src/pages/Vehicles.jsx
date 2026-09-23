@@ -13,8 +13,8 @@ import VehicleForm from '../components/VehicleForm';
 import { readVeicoli, salvaVeicolo, eliminaVeicolo } from '../lib/firestoreVeicoli';
 import { readCategorie } from '../lib/firestoreCategorie';
 import { caricaFotoVeicolo, caricaFotoDanno } from '../lib/storageFoto';
-import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
-import { readHolds } from '../lib/firestoreHolds';
+import { isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
+import { useHolds } from '../lib/firestoreHolds';
 import { veicoloLibero } from '../utils/disponibilitaCategoria';
 import { cambiaStatoRiparazione } from '../utils/danniVeicolo';
 import { coloreScadenza, giornoLocale } from '../utils/scadenze';
@@ -70,7 +70,7 @@ function Vehicles() {
   
    const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null });
    const [categorie, setCategorie] = useState([]);
-   const [holds, setHolds] = useState([]);
+   const holds = useHolds();
    const [erroriForm, setErroriForm] = useState({});
    const [salvandoForm, setSalvandoForm] = useState(false);
    const [schedaIniziale, setSchedaIniziale] = useState('panoramica');
@@ -97,25 +97,7 @@ function Vehicles() {
   }, [dispatch]);
 
 
-  useEffect(() => {
-  const caricaPrenotazioni = async () => {
-    try {
-      const dati = await readPrenotazioni();
-      dispatch(setPrenotazioni(dati));
-    } catch (error) {
-      console.error('Errore caricamento prenotazioni:', error);
-    }
-  };
-
-  caricaPrenotazioni();
-}, [dispatch]);
-
-
-  useEffect(() => {
-    readHolds().then(setHolds).catch((error) => {
-      console.error('Errore caricamento hold del sito:', error);
-    });
-  }, []);
+  // Prenotazioni in tempo reale da App.js; hold del sito con useHolds.
 
 
   const handleChange = (e) => {

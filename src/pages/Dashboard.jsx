@@ -9,10 +9,9 @@ import {
   LogIn, LogOut, ClipboardList, Wrench, Bell, CheckCircle2, CalendarPlus,
 } from 'lucide-react';
 import { setVeicoli } from '../store/veicoliSlice';
-import { setPrenotazioni } from '../store/prenotazioniSlice';
-import { readPrenotazioni, isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
+import { isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
 import { readVeicoli } from '../lib/firestoreVeicoli';
-import { readHolds } from '../lib/firestoreHolds';
+import { useHolds } from '../lib/firestoreHolds';
 import { riepilogoDashboard, serieUltimi12Mesi, veicoliLiberiNelPeriodo } from '../utils/dashboard';
 import { formattaData, giornoLocale } from '../utils/scadenze';
 import VehicleDetailModal from '../components/VehicleDetailModal';
@@ -45,7 +44,7 @@ function Dashboard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [holds, setHolds] = useState([]);
+  const holds = useHolds();
   const [dataInizioRicerca, setDataInizioRicerca] = useState('');
   const [dataFineRicerca, setDataFineRicerca] = useState('');
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -67,21 +66,15 @@ function Dashboard() {
     return () => window.removeEventListener(EVENTO_AZIENDA_AGGIORNATA, leggi);
   }, []);
 
-  // Stessi dati delle altre pagine (store condiviso): prima la Dashboard aveva
-  // una copia sua delle prenotazioni e poteva mostrare numeri vecchi.
+  // Stessi dati delle altre pagine (store condiviso). Le prenotazioni
+  // arrivano in tempo reale da App.js, gli hold del sito da useHolds.
   useEffect(() => {
-    const carica = async () => {
-      try {
-        const [datiVeicoli, datiPrenotazioni] = await Promise.all([readVeicoli(), readPrenotazioni()]);
-        dispatch(setVeicoli(datiVeicoli));
-        dispatch(setPrenotazioni(datiPrenotazioni));
-      } catch (err) {
+    readVeicoli()
+      .then((datiVeicoli) => dispatch(setVeicoli(datiVeicoli)))
+      .catch((err) => {
         console.error('Errore dashboard:', err);
-        toast.error('Errore nel caricamento dei dati della dashboard.');
-      }
-    };
-    carica();
-    readHolds().then(setHolds).catch((err) => console.error('Errore caricamento hold del sito:', err));
+        toast.error('Errore nel caricamento dei veicoli.');
+      });
   }, [dispatch]);
 
   const oggi = giornoLocale();

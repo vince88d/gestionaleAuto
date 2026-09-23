@@ -24,12 +24,12 @@ import AnnullaConPenaleModal from '../components/AnnullaConPenaleModal';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { useLocation } from 'react-router-dom';
 import {
-  readPrenotazioni, isPrenotazioneVisibile, isPagataOnline,
+  isPrenotazioneVisibile, isPagataOnline,
   aggiornaPrenotazione, eliminaPrenotazione, messaggioErrorePrenotazione, salvaPrenotazione,
 } from '../lib/firestorePrenotazioni';
 import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento';
 import { readVeicoli } from '../lib/firestoreVeicoli';
-import { readHolds } from '../lib/firestoreHolds';
+import { useHolds } from '../lib/firestoreHolds';
 import { readClienti, aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
 import {
@@ -39,7 +39,6 @@ import { prezzoPrenotazione } from '../utils/dashboard';
 import { daAssegnare } from '../utils/assegnazioneVeicolo';
 import { giornoLocale, formattaData } from '../utils/scadenze';
 import{
-  setPrenotazioni,
   addPrenotazione,
   updatePrenotazione,
   deletePrenotazione,
@@ -110,9 +109,9 @@ function Bookings() {
   const [riepilogoOpen, setRiepilogoOpen] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState(null);
   const [feedbackType, setFeedbackType] = useState('success');
-  const [loading, setLoading] = useState(false);
   const [availableVehicles, setAvailableVehicles] = useState([]);
-  const [holds, setHolds] = useState([]);
+  // Hold del sito (cliente che sta pagando online), in tempo reale.
+  const holds = useHolds();
   const [availableVehiclesForBooking, setAvailableVehiclesForBooking] = useState([]);
   const [forceRenderKey, setForceRenderKey] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -238,22 +237,7 @@ useEffect(() => {
   }, [dispatch]);
   
 
-  useEffect(() => {
-    const caricaPrenotazioni = async () => {
-      setLoading(true);
-      try {
-        const dati = await readPrenotazioni();
-        console.log("dati caricati:", dati); // Debug
-        dispatch(setPrenotazioni(dati));
-      } catch (error) {
-        console.error("Errore lettura locale:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    caricaPrenotazioni();
-  }, [dispatch]);
+  // Le prenotazioni arrivano in tempo reale da App.js (ascoltaPrenotazioni).
   
   useEffect(() => {
     const caricaVeicoli = async () => {
@@ -278,22 +262,6 @@ useEffect(() => {
     caricaVeicoli();
   }, []);
 
-  // Hold del sito: servono a sapere se un'auto è momentaneamente bloccata da
-  // un cliente che sta pagando online, per non farla prenotare due volte.
-  useEffect(() => {
-    const caricaHolds = async () => {
-      try {
-        const datiHolds = await readHolds();
-        setHolds(datiHolds);
-      } catch (error) {
-        console.error("Errore lettura hold:", error);
-      }
-    };
-
-    caricaHolds();
-    const interval = setInterval(caricaHolds, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleRicerca = (e) => {
   e.preventDefault(); // evita il submit classico
@@ -785,18 +753,7 @@ const eseguiConclusioneInBlocco = async () => {
 
 
 
-if(loading){
-  return (
-    <div className="bookings-container">
-      <div className='spinner-container'>
-        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-        <div className="spinner" />
-        <p>Caricamento in corso...</p>
-      </div>
-    </div> 
-      </div>     
-  );
-}
+
 
 const oggi = giornoLocale();
 // Ricerca su piu' parole (es. "rossi panda"), come in Veicoli. Le prenotazioni

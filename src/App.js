@@ -14,6 +14,10 @@ import ImpostazioniAzienda from './pages/ImpostazioniAzienda';
 import Tariffe from './pages/Tariffe';
 import Categorie from './pages/Categorie';
 import ArchivioPrenotazione from './pages/ArchivioPrenotazioni';
+import { useDispatch } from 'react-redux';
+import { toast } from 'react-toastify';
+import { ascoltaPrenotazioni } from './lib/firestorePrenotazioni';
+import { setPrenotazioni } from './store/prenotazioniSlice';
 
 function AppContent() {
   const [collapsed, setCollapsed] = useState(false);
@@ -31,6 +35,18 @@ function AppContent() {
     };
     checkLicense();
   }, [navigate]);
+
+  // Prenotazioni sempre aggiornate in tutte le pagine: arrivano da sole
+  // quando cambiano (sito, altre postazioni), invece di rileggerle solo
+  // all'apertura di ogni pagina.
+  const dispatch = useDispatch();
+  useEffect(() => ascoltaPrenotazioni(
+    (dati) => dispatch(setPrenotazioni(dati)),
+    (error) => {
+      console.error('Errore aggiornamento prenotazioni:', error);
+      toast.error('Non riesco ad aggiornare le prenotazioni: controlla la connessione.');
+    },
+  ), [dispatch]);
 
   const toggleSidebar = () => setCollapsed(prev => !prev);
 

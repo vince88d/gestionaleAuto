@@ -119,3 +119,33 @@ describe('senzaUndefined', () => {
       .toEqual({ a: 1, c: { e: [1, {}] } });
   });
 });
+
+describe('scelta del veicolo nel form', () => {
+  // Con import dinamico per non toccare l'elenco in cima al file.
+  const { statoVeicoloNelPeriodo, giorniOccupati } = require('./regolePrenotazione');
+  const panda = veicoli[0];
+  const periodo = { inizio: '2026-10-01', fine: '2026-10-03', veicoli, holds: [] };
+
+  test('annullate, pagamenti falliti o scaduti e concluse non occupano il veicolo', () => {
+    const prenotazioni = ['annullata', 'scaduta', 'pagamento-fallito', 'richiesta-sito', 'completata'].map((status, i) => (
+      { id: `x${i}`, targa: 'AA111AA', status, dataInizio: '2026-10-01', dataFine: '2026-10-05' }));
+    expect(statoVeicoloNelPeriodo({ ...periodo, veicolo: panda, prenotazioni })).toBe('libero');
+    expect(giorniOccupati({ targa: 'AA111AA', prenotazioni })).toEqual([]);
+  });
+
+  test('una prenotazione attiva sulla targa la occupa; non se e\' quella in modifica', () => {
+    const prenotazioni = [{ id: 'p1', targa: 'AA111AA', status: 'attiva', dataInizio: '2026-10-02', dataFine: '2026-10-04' }];
+    expect(statoVeicoloNelPeriodo({ ...periodo, veicolo: panda, prenotazioni })).toBe('occupato');
+    expect(statoVeicoloNelPeriodo({ ...periodo, veicolo: panda, prenotazioni, idEscluso: 'p1' })).toBe('libero');
+    expect(giorniOccupati({ targa: 'AA111AA', prenotazioni })).toEqual(['2026-10-02', '2026-10-03', '2026-10-04']);
+  });
+
+  test('categoria piena per le prenotazioni del sito non ancora assegnate', () => {
+    const prenotazioni = [{ id: 's1', origine: 'sito', categoria: 'SUV', targa: '', status: 'attiva', dataInizio: '2026-10-01', dataFine: '2026-10-02' }];
+    expect(statoVeicoloNelPeriodo({ ...periodo, veicolo: veicoli[2], prenotazioni })).toBe('categoria-piena');
+  });
+
+  test('senza date non si sa', () => {
+    expect(statoVeicoloNelPeriodo({ ...periodo, inizio: '', veicolo: panda, prenotazioni: [] })).toBe('da-verificare');
+  });
+});

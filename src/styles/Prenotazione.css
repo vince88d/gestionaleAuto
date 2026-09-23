@@ -190,7 +190,7 @@
 
 .pz .pz-obbligatorio { color: #c0392b; }
 
-.pz .pz-campo input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.pz .pz-campo input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="search"]),
 .pz .pz-campo select,
 .pz .pz-campo textarea {
   width: 100%;
@@ -551,3 +551,164 @@
 
 /* Il bordo di focus solo quando si usa la tastiera. */
 .DialogContent.pz-dialog .DialogClose:focus:not(:focus-visible) { outline: none; }
+
+/* ---------- Scelta del veicolo (SceltaVeicolo.jsx) ---------- */
+.sv { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+.sv-categorie { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.pz .sv-categoria {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 11px;
+  border: 1px solid #d5dde6;
+  border-radius: 999px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pz .sv-categoria:hover { background: #f4f6f8; }
+.pz .sv-categoria--attiva,
+.pz .sv-categoria--attiva:hover { border-color: #3498db; background: #eaf4fc; color: #1f6fa8; }
+
+.sv-conto {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eafaf1;
+  color: #1e8449;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sv-categoria--piena .sv-conto { background: #fdecea; color: #c0392b; }
+
+.sv-barra { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.pz .sv-cerca {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 180px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  background: #fff;
+  color: #7f8c9a;
+}
+
+.pz .sv-cerca:focus-within { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2); }
+
+.pz .sv-cerca input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: none;
+  outline: none;
+  background: none;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.sv-lista {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 290px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.pz .sv-veicolo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #e3e8ee;
+  border-radius: 10px;
+  background: #fff;
+  color: #2c3e50;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.pz .sv-veicolo:hover:not(:disabled) { border-color: #b6d4ee; background: #f8fbfe; }
+.pz .sv-veicolo:disabled { cursor: not-allowed; opacity: 0.55; background: #f8fafc; }
+
+.pz .sv-veicolo--scelto,
+.pz .sv-veicolo--scelto:hover:not(:disabled) {
+  border-color: #3498db;
+  background: #eaf4fc;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
+}
+
+.sv-foto {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 40px;
+  border-radius: 6px;
+  background: #f4f6f8;
+  color: #b0bcc8;
+  overflow: hidden;
+}
+
+.pz .sv-foto img { width: 100%; height: 100%; margin: 0; object-fit: contain; }
+
+.sv-testo { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+
+.sv-nome {
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sv-dettagli { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #7f8c9a; }
+
+.sv-targa {
+  padding: 0 6px;
+  border: 1px solid #d5dde6;
+  border-radius: 4px;
+  background: #f8fafc;
+  font-family: Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #34495e;
+}
+
+.sv-destra { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex: 0 0 auto; }
+
+.sv-prezzo { font-size: 13px; font-weight: 700; color: #2c3e50; }
+.sv-prezzo small { font-weight: 500; color: #7f8c9a; }
+
+.sv-stato { font-size: 11px; font-weight: 700; }
+.sv-stato--libero { color: #1e8449; }
+.sv-stato--occupato { color: #c0392b; }
+.sv-stato--categoria-piena { color: #b45309; }
+
+.sv-vuoto {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 18px;
+  border: 1px dashed #d5dde6;
+  border-radius: 10px;
+  color: #7f8c9a;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .sv-lista { grid-template-columns: 1fr; }
+}

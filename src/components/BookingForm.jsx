@@ -15,7 +15,8 @@ import { salvaCliente } from '../lib/firestoreClienti';
 import DatePicker from 'react-datepicker';
 import { it } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
-import { disponibiliPerCategoria } from '../utils/disponibilitaCategoria';
+import { giorniOccupati } from '../utils/regolePrenotazione';
+import SceltaVeicolo from './SceltaVeicolo';
 import './BookingForm.css';
 import '../styles/Prenotazione.css';
 
@@ -72,7 +73,6 @@ function BookingForm({
 }) {
   const dispatch = useDispatch();
   const [clienteSelezionato, setClienteSelezionato] = useState(null);
-  const [disabledDates, setDisabledDates] = useState([]);
   const [showAddClient, setShowAddClient] = useState(false);
   const [nuovoClienteData, setNuovoClienteData] = useState(emptyClientFormData);
 
@@ -199,33 +199,6 @@ function BookingForm({
   }, [watchTarga, availableVehicles, setValue]);
 
   useEffect(() => {
-    if (!watchTarga || !prenotazioni?.length) {
-      setDisabledDates([]);
-      return;
-    }
-
-    const occupate = [];
-    prenotazioni.forEach((prenotazione) => {
-      if (
-        prenotazione.targa === watchTarga &&
-        prenotazione.status !== 'completata' &&
-        prenotazione.id !== bookingId
-      ) {
-        const start = new Date(prenotazione.dataInizio);
-        const end = prenotazione.dataRientroEffettiva
-          ? new Date(prenotazione.dataRientroEffettiva)
-          : new Date(prenotazione.dataFine);
-
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          occupate.push(new Date(d));
-        }
-      }
-    });
-
-    setDisabledDates(occupate);
-  }, [watchTarga, prenotazioni, bookingId]);
-
-  useEffect(() => {
     reset({ ...initialValues });
     targaAllineata.current = initialValues?.targa || '';
 
@@ -242,39 +215,11 @@ function BookingForm({
     }
   }, [initialValues, reset, availableVehicles, setValue]);
 
-  const hasVehicleConflict = (vehicleTarga) => {
-    if (!vehicleTarga || !dataInizio || !dataFine) return false;
-
-    const start = new Date(dataInizio);
-    const end = new Date(dataFine);
-
-    return prenotazioni.some((prenotazione) => {
-      if (prenotazione.id === bookingId) return false;
-      if (prenotazione.targa !== vehicleTarga) return false;
-      if (prenotazione.status === 'completata') return false;
-
-      const bookedStart = new Date(prenotazione.dataInizio);
-      const bookedEnd = prenotazione.dataRientroEffettiva
-        ? new Date(prenotazione.dataRientroEffettiva)
-        : new Date(prenotazione.dataFine);
-
-      return start <= bookedEnd && end >= bookedStart;
-    });
-  };
-
-  // Anche se questa targa specifica non ha conflitti diretti, la sua
-  // categoria potrebbe essere già "esaurita" da hold/prenotazioni del sito
-  // (che non sono legati a una targa precisa finché lo staff non la
-  // assegna): in tal caso nessun veicolo di quella categoria va dato,
-  // altrimenti si supera la flotta disponibile per quelle date.
-  const categoriaSatura = (vehicle) => {
-    if (!vehicle?.categoria || !dataInizio || !dataFine) return false;
-    return (
-      disponibiliPerCategoria(vehicle.categoria, dataInizio, dataFine, veicoli, prenotazioni, holds, {
-        escludiPrenotazioneId: bookingId,
-      }) <= 0
-    );
-  };
+  // Giorni gia' noleggiati per il veicolo scelto: non si possono scegliere nel
+  // calendario. Contano solo le prenotazioni attive (non le annullate o i
+  // pagamenti del sito falliti/scaduti, che prima bloccavano le date).
+  const disabledDates = giorniOccupati({ targa: watchTarga, prenotazioni, idEscluso: bookingId })
+    .map((g) => new Date(`${g}T12:00:00`));
 
   // Listino dell'auto scelta (dall'elenco completo, non dalla voce di ripiego che
   // usa il prezzo della prenotazione) e scarto rispetto al prezzo applicato.
@@ -380,37 +325,23 @@ function BookingForm({
               />
               {errore('dataFine')}
             </label>
-            <label className={`${classeCampo('targa')} pz-intera`}>
+            <div className={`${classeCampo('targa')} pz-intera`}>
               <span className="pz-etichetta">Veicolo <span className="pz-obbligatorio">*</span></span>
-              <select {...register('targa')} disabled={!availableVehicles || availableVehicles.length === 0}>
-                <option value="">Scegli un veicolo…</option>
-                {veicoliSelezionabili.map((vehicle) => {
-                  const isUnavailable = hasVehicleConflict(vehicle.targa);
-                  const categoriaEsaurita = !isUnavailable && categoriaSatura(vehicle);
-                  const nonSelezionabile = isUnavailable || categoriaEsaurita;
-                  return (
-                    <option
-                      key={vehicle.targa}
-                      value={vehicle.targa}
-                      disabled={nonSelezionabile && vehicle.targa !== initialValues?.targa}
-                    >
-                      {vehicle.modello} - {vehicle.targa}
-                      {dataInizio && dataFine
-                        ? isUnavailable
-                          ? ' · occupato nel periodo'
-                          : categoriaEsaurita
-                            ? ' · categoria piena (prenotazioni del sito)'
-                            : ' · libero'
-                        : ''}
-                    </option>
-                  );
-                })}
-              </select>
+              <SceltaVeicolo
+                veicoli={veicoliSelezionabili.map((v) => veicoli.find((x) => x.targa === v.targa) || v)}
+                targaScelta={watchTarga}
+                targaIniziale={initialValues?.targa}
+                onScegli={(v) => setValue('targa', v.targa, { shouldValidate: true, shouldDirty: true })}
+                inizio={dataInizio}
+                fine={dataFine}
+                prenotazioni={prenotazioni}
+                holds={holds}
+                idEscluso={bookingId}
+              />
+              <input type="hidden" {...register('targa')} />
               <input type="hidden" {...register('veicolo')} />
-              {errore('targa') || (
-                <p className="pz-aiuto">Scegli prima le date: accanto a ogni veicolo vedi se è libero.</p>
-              )}
-            </label>
+              {errore('targa')}
+            </div>
           </div>
         </section>
 

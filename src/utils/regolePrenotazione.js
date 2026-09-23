@@ -1,6 +1,6 @@
 // Regole della pagina Prenotazioni (funzioni pure, testate).
 import { calcolaGiorniNoleggio } from './giorniNoleggio';
-import { veicoloLibero } from './disponibilitaCategoria';
+import { veicoloLibero, disponibiliPerCategoria } from './disponibilitaCategoria';
 import { daAssegnare } from './assegnazioneVeicolo';
 import { prezzoPrenotazione } from './dashboard';
 
@@ -33,9 +33,7 @@ export function controllaPrenotazione({ dati, originale = null, veicoli = [], pr
     // Contano solo le prenotazioni che occupano davvero: non le annullate, non
     // le richieste del sito non pagate/scadute, non i noleggi conclusi, e non
     // quella che si sta modificando.
-    const occupanti = prenotazioni.filter(
-      (p) => !STATI_NON_OCCUPANTI.includes(p.status) && (!originale || p.id !== originale.id)
-    );
+    const occupanti = occupantiTranne(prenotazioni, originale?.id);
     if (!veicoloLibero(veicolo, inizio, fine, veicoli, occupanti, holds)) {
       const nome = [veicolo.marca, veicolo.modello].filter(Boolean).join(' ') || veicolo.targa;
       return {
@@ -49,6 +47,50 @@ export function controllaPrenotazione({ dati, originale = null, veicoli = [], pr
   }
   const giorni = calcolaGiorniNoleggio(inizio, fine);
   return { prezzoTotale: giorni * (parseFloat(dati.prezzoGiornaliero) || 0) };
+}
+
+// Prenotazioni che occupano davvero un veicolo (niente annullate, pagamenti
+// del sito falliti o scaduti, noleggi conclusi), tolta quella in modifica.
+export const occupantiTranne = (prenotazioni, idEscluso) =>
+  (prenotazioni || []).filter((p) => !STATI_NON_OCCUPANTI.includes(p.status) && (!idEscluso || p.id !== idEscluso));
+
+// Per la scelta del veicolo nel form: 'libero', 'occupato' (la sua targa ha
+// gia' un noleggio in quelle date) o 'categoria-piena' (hold e prenotazioni del
+// sito non ancora assegnate hanno preso tutti i posti della categoria).
+// Senza date non si sa: 'da-verificare'.
+export function statoVeicoloNelPeriodo({ veicolo, inizio, fine, veicoli, prenotazioni, holds, idEscluso }) {
+  const da = giorno(inizio);
+  const a = giorno(fine);
+  if (!da || !a || a < da) return 'da-verificare';
+  const occupanti = occupantiTranne(prenotazioni, idEscluso);
+  const occupatoPerTarga = occupanti.some(
+    (p) => veicolo.targa && p.targa === veicolo.targa && giorno(p.dataInizio) <= a && giorno(p.dataFine) >= da
+  );
+  if (occupatoPerTarga) return 'occupato';
+  if (veicolo.categoria && disponibiliPerCategoria(veicolo.categoria, da, a, veicoli, occupanti, holds) <= 0) {
+    return 'categoria-piena';
+  }
+  return 'libero';
+}
+
+// Giorni ('AAAA-MM-GG') in cui quel veicolo e' gia' noleggiato: nel
+// calendario del form non si possono scegliere.
+export function giorniOccupati({ targa, prenotazioni, idEscluso }) {
+  if (!targa) return [];
+  const giorni = [];
+  occupantiTranne(prenotazioni, idEscluso)
+    .filter((p) => p.targa === targa && p.dataInizio && p.dataFine)
+    .forEach((p) => {
+      const d = new Date(`${giorno(p.dataInizio)}T12:00:00`);
+      const fine = giorno(p.dataFine);
+      for (let i = 0; i < 400; i += 1) {
+        const g = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        if (g > fine) break;
+        giorni.push(g);
+        d.setDate(d.getDate() + 1);
+      }
+    });
+  return giorni;
 }
 
 // Consegnata: il veicolo e' stato dato al cliente (scheda con km e carburante
