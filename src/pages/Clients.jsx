@@ -8,8 +8,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { Edit2,Trash2,Info,PlusIcon, Search } from 'lucide-react';
 import ModalDettaglioCliente from '../components/ModalDettaglioCliente';
-import {setPrenotazioni} from '../store/prenotazioniSlice';
-import { readPrenotazioni } from '../lib/firestorePrenotazioni';
 import { readClienti, writeClienti } from '../lib/firestoreClienti';
 import ConfirmDialog from '../components/ConfirmDialog';
 
@@ -107,16 +105,7 @@ const handleRicerca = (e) => {
 
 
     useEffect(() => {
-    const caricaPrenotazioni = async () => {
-      try {
-        const dati = await readPrenotazioni();
-        dispatch(setPrenotazioni(dati || []));
-      } catch (err) {
-        console.error("Errore nel caricamento prenotazioni:", err);
-      }
-    };    
-
-    caricaPrenotazioni();
+    // Le prenotazioni arrivano in tempo reale da App.js.
     caricaClienti();
   }, [dispatch]);
 

@@ -30,7 +30,8 @@ function ModalEditClient({ show, onClose, onSave, clientData, setClientData }) {
       onRequestClose={onClose}
       contentLabel="Modifica Cliente"
       className={{
-        base: 'Modal',
+        // Usa ancora gli stili generici dei form di schedaModal.css.
+        base: 'Modal modal-form-classico',
         afterOpen: 'Modal--after-open',
         beforeClose: 'Modal--before-close'
       }}

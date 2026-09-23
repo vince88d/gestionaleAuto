@@ -1,5 +1,5 @@
 import { db } from '../components/firebase';
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, runTransaction, onSnapshot } from 'firebase/firestore';
 import { readClienti, aggiungiContrattoCliente } from './firestoreClienti';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { senzaUndefined } from '../utils/senzaUndefined';
@@ -32,6 +32,18 @@ export { isPagataOnline } from '../utils/pagamentoOnline';
 export async function readPrenotazioni() {
   const snapshot = await getDocs(collection(db, PRENOTAZIONI_COLLECTION));
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// Prenotazioni in tempo reale: `onDati` riceve l'elenco completo a ogni
+// cambiamento (anche una prenotazione appena pagata sul sito, un annullamento
+// dal link del cliente o una modifica da un'altra postazione).
+// Restituisce la funzione per smettere di ascoltare.
+export function ascoltaPrenotazioni(onDati, onErrore) {
+  return onSnapshot(
+    collection(db, PRENOTAZIONI_COLLECTION),
+    (snapshot) => onDati(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    onErrore,
+  );
 }
 
 // --- Salvataggi di UNA prenotazione -------------------------------------

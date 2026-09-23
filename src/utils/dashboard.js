@@ -24,7 +24,9 @@ function giorniDa(oggi, data) {
 }
 
 // Prenotazioni che occupano un veicolo (le concluse lo hanno gia' liberato).
-export const prenotazioniOccupanti = (prenotazioni) => (prenotazioni || []).filter((p) => p.status !== 'completata');
+// Occupano un veicolo solo le prenotazioni attive: non le concluse, le
+// annullate o i pagamenti del sito non andati a buon fine.
+export const prenotazioniOccupanti = (prenotazioni) => (prenotazioni || []).filter((p) => p.status === 'attiva');
 
 export function veicoliLiberiNelPeriodo(veicoli, dataInizio, dataFine, prenotazioni, holds) {
   const occupanti = prenotazioniOccupanti(prenotazioni);
