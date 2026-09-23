@@ -1,71 +1,21 @@
-import React, { useState, useRef,useEffect } from 'react';
+import React, { useRef } from 'react';
 import Modal from 'react-modal';
 import './InfoModal.css';
 import { Pencil, Trash2, CheckCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { readVeicoli, writeVeicoli } from '../lib/firestoreVeicoli';
 import { isPagataOnline } from '../utils/pagamentoOnline';
+import { puoConcludere } from '../utils/regolePrenotazione';
 
 
 function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, soloLettura = false }) {
   const printRef = useRef();
-  const [danniAttiviVeicolo, setDanniAttiviVeicolo] = useState([]);
+  
 
-
-  useEffect(() => {
-  const caricaDanniVeicolo = async () => {
-    if (!prenotazione?.targa || !isOpen) return;
-
-    try {
-      const veicoli = await readVeicoli();
-      const veicolo = veicoli.find(v => v.targa === prenotazione.targa);
-
-      if (veicolo?.danniAttivi) {
-        const attiviNonRiparati = veicolo.danniAttivi.filter(d => d.daRiparare && !d.riparato);
-        setDanniAttiviVeicolo(attiviNonRiparati);
-      } else {
-        setDanniAttiviVeicolo([]);
-      }
-    } catch (err) {
-      console.error("Errore caricamento danni veicolo:", err);
-      setDanniAttiviVeicolo([]);
-    }
-  };
-
-  caricaDanniVeicolo();
-}, [prenotazione, isOpen]);
-
-
-const marcaComeRiparato = async (riferimentoPrenotazione) => {
-  if (!prenotazione?.targa) return;
-
-  try {
-    const veicoli = await readVeicoli();
-    const index = veicoli.findIndex(v => v.targa === prenotazione.targa);
-    if (index === -1) return;
-
-    const veicolo = veicoli[index];
-
-    veicolo.danniAttivi = veicolo.danniAttivi.map(d => {
-      if (d.riferimentoPrenotazione === riferimentoPrenotazione) {
-        return {
-          ...d,
-          riparato: true,
-          dataRiparazione: new Date().toISOString()
-        };
-      }
-      return d;
-    });
-
-    await writeVeicoli(veicoli);
-
-    const nuoviAttivi = veicolo.danniAttivi.filter(d => d.daRiparare && !d.riparato);
-    setDanniAttiviVeicolo(nuoviAttivi);
-  } catch (error) {
-    console.error("Errore durante la marcatura del danno come riparato:", error);
-  }
-};
+  // Qui c'era una sezione "Danni attivi sul veicolo" che leggeva il campo
+  // `danniAttivi`, che nessuno scrive piu' (non mostrava mai nulla) e che per
+  // segnare un danno riparato riscriveva tutta la flotta. I danni rilevati
+  // alla riconsegna si vedono e si segnano riparati nella scheda del veicolo.
 
 
   const handleDownloadPDF = async () => {
@@ -238,29 +188,6 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
   </div>
 )}
 
-{danniAttiviVeicolo.length > 0 && (
-  <div style={{ marginTop: '20px' }}>
-    <h3>Danni Attivi sul Veicolo</h3>
-    <ul>
-      {danniAttiviVeicolo.map((danno, idx) => (
-        <li key={idx} style={{ marginBottom: '10px' }}>
-          <strong>{danno.descrizioneDanno}</strong><br />
-          <small>Data: {new Date(danno.data).toLocaleDateString()}</small><br />
-          <small>Rif. Prenotazione: {danno.riferimentoPrenotazione}</small><br />
-          <button
-            className="btn btn-success"
-            onClick={() => marcaComeRiparato(danno.riferimentoPrenotazione)}
-            style={{ marginTop: '5px' }}
-          >
-            Segna come Riparato
-          </button>
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
-
-
         {/* Pulsanti */}
         {!soloLettura && (
           <div className="modal-footer no-print">
@@ -268,7 +195,9 @@ const marcaComeRiparato = async (riferimentoPrenotazione) => {
             <button className="btn btn-danger" onClick={() => onElimina(prenotazione)}>
               <Trash2 size={16} /> {isPagataOnline(prenotazione) ? 'Annulla e rimborsa' : 'Elimina'}
             </button>
-            <button className="btn btn-success" onClick={() => onConcludi(prenotazione)}><CheckCircle size={16} /> Concludi</button>
+            {puoConcludere(prenotazione) && (
+              <button className="btn btn-success" onClick={() => onConcludi(prenotazione)}><CheckCircle size={16} /> Concludi</button>
+            )}
           </div>
         )}
         <div className="modal-footer no-print">

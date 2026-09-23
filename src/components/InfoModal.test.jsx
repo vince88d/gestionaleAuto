@@ -2,11 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import InfoModal from './InfoModal';
 
-// Il modale non deve leggere Firestore né generare PDF in questo test.
-jest.mock('../lib/firestoreVeicoli', () => ({
-  readVeicoli: jest.fn().mockResolvedValue([]),
-  writeVeicoli: jest.fn(),
-}));
+// Il modale non deve generare PDF in questo test.
 jest.mock('jspdf', () => jest.fn());
 jest.mock('html2canvas', () => jest.fn());
 

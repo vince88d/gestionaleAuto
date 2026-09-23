@@ -40,6 +40,15 @@ export async function caricaFotoDanno(file) {
   return caricaComeWebp(file, 'danni');
 }
 
+// Una foto arrivata come dato incorporato (data:image/...;base64, es. dalla
+// finestra "Concludi con danni") caricata nella cartella danni/: ne restituisce
+// l'indirizzo. Se non e' incorporata la lascia com'e'.
+export async function fotoIncorporataSuStorage(valore) {
+  if (!eFotoIncorporata(valore)) return valore;
+  const file = await (await fetch(valore)).blob();
+  return caricaComeWebp(file, 'danni');
+}
+
 // Le foto dei danni salvate prima erano incorporate nel documento del veicolo
 // (data:image/...;base64): le carica su Storage e mette l'indirizzo al loro
 // posto. Se una foto non si riesce a caricare resta com'era, cosi' non si perde.
