@@ -17,6 +17,7 @@ import { it } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
 import { disponibiliPerCategoria } from '../utils/disponibilitaCategoria';
 import './BookingForm.css';
+import '../styles/Prenotazione.css';
 
 const normalizzaCodiceFiscale = (value) => (value || '').trim().toUpperCase();
 
@@ -37,25 +38,25 @@ const emptyClientFormData = {
 };
 
 const schema = yup.object().shape({
-  cliente: yup.string().required('Il nome e cognome sono obbligatori'),
+  cliente: yup.string().required('Scrivi o cerca il cliente'),
   codiceFiscale: yup
     .string()
-    .matches(/^[A-Z0-9]{16}$/, 'Codice fiscale non valido')
-    .required('Il codice fiscale e obbligatorio'),
-  patente: yup.string().required('Il numero della patente e obbligatorio'),
-  veicolo: yup.string().required('Il modello del veicolo e obbligatorio'),
-  targa: yup.string().required('La targa e obbligatoria'),
-  dataInizio: yup.string().required('La data di inizio e obbligatoria'),
-  dataFine: yup.string().required('La data di fine e obbligatoria'),
+    .required('Il codice fiscale è obbligatorio')
+    .matches(/^[A-Z0-9]{16}$/i, 'Codice fiscale non valido: servono 16 lettere e numeri'),
+  patente: yup.string().required('Il numero della patente è obbligatorio'),
+  veicolo: yup.string().required('Scegli un veicolo'),
+  targa: yup.string().required('Scegli un veicolo'),
+  dataInizio: yup.string().required('Scegli il giorno del ritiro'),
+  dataFine: yup.string().required('Scegli il giorno della riconsegna'),
   prezzoGiornaliero: yup
     .number()
     .typeError('Inserisci un numero valido')
     .positive('Deve essere maggiore di zero')
-    .required('Il prezzo giornaliero e obbligatorio'),
+    .required('Il prezzo al giorno è obbligatorio'),
   emailCliente: yup
     .string()
     .email('Email non valida')
-    .required('Email cliente obbligatoria'),
+    .required('L’email è obbligatoria'),
 });
 
 function BookingForm({
@@ -67,6 +68,7 @@ function BookingForm({
   clienti = [],
   prenotazioni = [],
   salvando = false,
+  onAnnulla,
 }) {
   const dispatch = useDispatch();
   const [clienteSelezionato, setClienteSelezionato] = useState(null);
@@ -81,6 +83,9 @@ function BookingForm({
 
   const handleNuovoClienteSubmit = async (e) => {
     e.preventDefault();
+    // La finestra del nuovo cliente e' dentro questo form nell'albero React:
+    // senza fermarlo, il submit arriverebbe anche alla prenotazione e la salverebbe.
+    e.stopPropagation();
 
     const codiceFiscaleNormalizzato = normalizzaCodiceFiscale(nuovoClienteData.codiceFiscale);
     const patenteNormalizzata = (nuovoClienteData.patente || '').trim();
@@ -283,139 +288,163 @@ function BookingForm({
     return giorni * parseFloat(prezzoGiornaliero || 0);
   };
 
+  const giorni = dataInizio && dataFine ? calcolaGiorniNoleggio(dataInizio, dataFine) : 0;
+  const totale = calcolaPrezzoTotale();
+  const erroriPresenti = Object.keys(errors).length > 0;
+  const classeCampo = (nome) => `pz-campo ${errors[nome] ? 'pz-campo--errore' : ''}`;
+  const errore = (nome) => errors[nome] && <p className="pz-errore" role="alert">{errors[nome].message}</p>;
+  const scegliData = (campo) => (date) => {
+    if (!date) {
+      setValue(campo, '', { shouldValidate: true });
+      return;
+    }
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      .toISOString()
+      .split('T')[0];
+    setValue(campo, localDate, { shouldValidate: true });
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="booking-form">
-      <div className="form-group">
-        <label>Seleziona Cliente</label>
-        <AutocompleteClienti
-          clienti={clienti}
-          onSelect={(cliente) => setClienteSelezionato(cliente)}
-          onInputChange={(value) => setValue('cliente', value, { shouldValidate: true })}
-          initialValue={initialValues?.cliente || ''}
-        />
-        <button type="button" className="add-client-link" onClick={() => setShowAddClient(true)}>
-          + Aggiungi nuovo cliente
-        </button>
-        <input type="hidden" {...register('cliente')} />
-        <p className="error">{errors.cliente?.message}</p>
+    <form onSubmit={handleSubmit(onSubmit)} className="pz pz-form" noValidate>
+      <header className="pz-testa">
+        <div>
+          <h2 className="pz-titolo">{bookingId ? 'Modifica prenotazione' : 'Nuova prenotazione'}</h2>
+          <span className="pz-sottotitolo">
+            Km, carburante, accessori e contratto si compilano il giorno del ritiro, con «Consegna».
+          </span>
+        </div>
+      </header>
+
+      <div className="pz-corpo">
+        <section className="pz-sezione">
+          <h3 className="pz-titolo-sezione">Cliente</h3>
+          <div className="pz-griglia pz-griglia--2">
+            <div className={`${classeCampo('cliente')} pz-intera`}>
+              <span className="pz-etichetta">Nome e cognome <span className="pz-obbligatorio">*</span></span>
+              <AutocompleteClienti
+                clienti={clienti}
+                onSelect={(cliente) => setClienteSelezionato(cliente)}
+                onInputChange={(value) => setValue('cliente', value, { shouldValidate: true })}
+                initialValue={initialValues?.cliente || ''}
+              />
+              <input type="hidden" {...register('cliente')} />
+              {errore('cliente') || (
+                <button type="button" className="pz-link" onClick={() => setShowAddClient(true)}>
+                  + Nuovo cliente in anagrafica
+                </button>
+              )}
+            </div>
+            <label className={classeCampo('codiceFiscale')}>
+              <span className="pz-etichetta">Codice fiscale <span className="pz-obbligatorio">*</span></span>
+              <input {...register('codiceFiscale')} placeholder="Es. RSSMRA80A01H501U" style={{ textTransform: 'uppercase' }} />
+              {errore('codiceFiscale')}
+            </label>
+            <label className={classeCampo('patente')}>
+              <span className="pz-etichetta">Numero patente <span className="pz-obbligatorio">*</span></span>
+              <input {...register('patente')} placeholder="Es. AB1234567" />
+              {errore('patente')}
+            </label>
+            <label className={`${classeCampo('emailCliente')} pz-intera`}>
+              <span className="pz-etichetta">Email <span className="pz-obbligatorio">*</span></span>
+              <input type="email" {...register('emailCliente')} placeholder="nome@esempio.it" />
+              {errore('emailCliente')}
+            </label>
+          </div>
+        </section>
+
+        <section className="pz-sezione">
+          <h3 className="pz-titolo-sezione">Periodo e veicolo</h3>
+          <div className="pz-griglia pz-griglia--2">
+            <label className={classeCampo('dataInizio')}>
+              <span className="pz-etichetta">Ritiro <span className="pz-obbligatorio">*</span></span>
+              <DatePicker
+                locale={it}
+                selected={dataInizio ? new Date(dataInizio) : null}
+                onChange={scegliData('dataInizio')}
+                excludeDates={disabledDates}
+                dateFormat="dd/MM/yyyy"
+                placeholderText="gg/mm/aaaa"
+              />
+              {errore('dataInizio')}
+            </label>
+            <label className={classeCampo('dataFine')}>
+              <span className="pz-etichetta">Riconsegna <span className="pz-obbligatorio">*</span></span>
+              <DatePicker
+                locale={it}
+                selected={dataFine ? new Date(dataFine) : null}
+                onChange={scegliData('dataFine')}
+                excludeDates={disabledDates}
+                minDate={dataInizio ? new Date(dataInizio) : null}
+                dateFormat="dd/MM/yyyy"
+                placeholderText="gg/mm/aaaa"
+              />
+              {errore('dataFine')}
+            </label>
+            <label className={`${classeCampo('targa')} pz-intera`}>
+              <span className="pz-etichetta">Veicolo <span className="pz-obbligatorio">*</span></span>
+              <select {...register('targa')} disabled={!availableVehicles || availableVehicles.length === 0}>
+                <option value="">Scegli un veicolo…</option>
+                {veicoliSelezionabili.map((vehicle) => {
+                  const isUnavailable = hasVehicleConflict(vehicle.targa);
+                  const categoriaEsaurita = !isUnavailable && categoriaSatura(vehicle);
+                  const nonSelezionabile = isUnavailable || categoriaEsaurita;
+                  return (
+                    <option
+                      key={vehicle.targa}
+                      value={vehicle.targa}
+                      disabled={nonSelezionabile && vehicle.targa !== initialValues?.targa}
+                    >
+                      {vehicle.modello} - {vehicle.targa}
+                      {dataInizio && dataFine
+                        ? isUnavailable
+                          ? ' · occupato nel periodo'
+                          : categoriaEsaurita
+                            ? ' · categoria piena (prenotazioni del sito)'
+                            : ' · libero'
+                        : ''}
+                    </option>
+                  );
+                })}
+              </select>
+              <input type="hidden" {...register('veicolo')} />
+              {errore('targa') || (
+                <p className="pz-aiuto">Scegli prima le date: accanto a ogni veicolo vedi se è libero.</p>
+              )}
+            </label>
+          </div>
+        </section>
+
+        <section className="pz-sezione">
+          <h3 className="pz-titolo-sezione">Prezzo</h3>
+          <div className="pz-griglia pz-griglia--2">
+            <label className={classeCampo('prezzoGiornaliero')}>
+              <span className="pz-etichetta">Prezzo al giorno (€) <span className="pz-obbligatorio">*</span></span>
+              <input type="number" step="0.01" min="0" {...register('prezzoGiornaliero')} placeholder="Es. 30" />
+              {errore('prezzoGiornaliero') || (confrontoListino.stato !== 'nessuno' && (
+                <p className={`pz-aiuto listino-${confrontoListino.stato}`}>
+                  Listino: {euro(confrontoListino.listino)} al giorno
+                  {confrontoListino.stato === 'sopra' && ` · concordato +${euro(confrontoListino.differenza)}`}
+                  {confrontoListino.stato === 'sotto' && ` · concordato ${euro(confrontoListino.differenza)}`}
+                </p>
+              ))}
+            </label>
+            <label className="pz-campo">
+              <span className="pz-etichetta">Totale{giorni ? ` · ${giorni} ${giorni === 1 ? 'giorno' : 'giorni'}` : ''}</span>
+              <input readOnly value={totale === '' ? '' : euro(totale)} placeholder="—" />
+            </label>
+          </div>
+        </section>
       </div>
 
-      <div className="form-group">
-        <label>Codice Fiscale</label>
-        <input {...register('codiceFiscale')} placeholder="Es. RSSMRA80A01H501U" />
-        <p className="error">{errors.codiceFiscale?.message}</p>
-      </div>
-
-      <div className="form-group">
-        <label>Numero Patente</label>
-        <input {...register('patente')} placeholder="Es. AB1234567" />
-        <p className="error">{errors.patente?.message}</p>
-      </div>
-
-      <div className="form-group">
-        <label>Email Cliente</label>
-        <input type="email" {...register('emailCliente')} placeholder="email@email.com" />
-        <p className="error">{errors.emailCliente?.message}</p>
-      </div>
-
-      <div className="form-group">
-        <label>Data Inizio</label>
-        <DatePicker
-          locale={it}
-          selected={dataInizio ? new Date(dataInizio) : null}
-          onChange={(date) => {
-            const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-              .toISOString()
-              .split('T')[0];
-            setValue('dataInizio', localDate, { shouldValidate: true });
-          }}
-          excludeDates={disabledDates}
-          dateFormat="dd-MM-yyyy"
-          className="custom-datepicker"
-        />
-        <p className="error">{errors.dataInizio?.message}</p>
-      </div>
-
-      <div className="form-group">
-        <label>Data Fine</label>
-        <DatePicker
-          locale={it}
-          selected={dataFine ? new Date(dataFine) : null}
-          onChange={(date) => {
-            const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-              .toISOString()
-              .split('T')[0];
-            setValue('dataFine', localDate, { shouldValidate: true });
-          }}
-          excludeDates={disabledDates}
-          dateFormat="dd-MM-yyyy"
-          className="custom-datepicker"
-        />
-        <p className="error">{errors.dataFine?.message}</p>
-      </div>
-
-      <div className="form-group">
-        <label htmlFor="targa">Veicolo</label>
-        <select {...register('targa')} disabled={!availableVehicles || availableVehicles.length === 0}>
-          <option value="">Seleziona un veicolo</option>
-          {veicoliSelezionabili.map((vehicle) => {
-            const isUnavailable = hasVehicleConflict(vehicle.targa);
-            const categoriaEsaurita = !isUnavailable && categoriaSatura(vehicle);
-            const nonSelezionabile = isUnavailable || categoriaEsaurita;
-            return (
-              <option
-                key={vehicle.targa}
-                value={vehicle.targa}
-                disabled={nonSelezionabile && vehicle.targa !== initialValues?.targa}
-              >
-                {vehicle.modello} - {vehicle.targa}
-                {dataInizio && dataFine
-                  ? isUnavailable
-                    ? ' | occupato nel periodo'
-                    : categoriaEsaurita
-                      ? ' | categoria esaurita (hold sul sito)'
-                      : ' | disponibile'
-                  : ''}
-              </option>
-            );
-          })}
-        </select>
-        <small className="availability-hint">
-          Prima scegli il periodo, poi seleziona il veicolo disponibile.
-        </small>
-        <p className="error">{errors.targa?.message}</p>
-      </div>
-
-      <div className="form-group">
-        <label>Modello Veicolo</label>
-        <input {...register('veicolo')} placeholder="Fiat Panda" readOnly />
-        <p className="error">{errors.veicolo?.message}</p>
-      </div>
-
-      <div className="form-group">
-        <label>Prezzo Giornaliero (EUR)</label>
-        <input type="number" step="0.01" {...register('prezzoGiornaliero')} placeholder="Es. 30" />
-        {confrontoListino.stato !== 'nessuno' && (
-          <p className={`listino-info listino-${confrontoListino.stato}`}>
-            Listino: {euro(confrontoListino.listino)} al giorno
-            {confrontoListino.stato === 'sopra' && ` · prezzo concordato: +${euro(confrontoListino.differenza)} al giorno`}
-            {confrontoListino.stato === 'sotto' && ` · prezzo concordato: ${euro(confrontoListino.differenza)} al giorno`}
-          </p>
+      <footer className="pz-piede">
+        {erroriPresenti && <span className="pz-piede-nota pz-piede-nota--errore">Controlla i campi segnati in rosso.</span>}
+        {onAnnulla && (
+          <button type="button" className="vd-btn" onClick={onAnnulla} disabled={salvando}>Annulla</button>
         )}
-        <p className="error">{errors.prezzoGiornaliero?.message}</p>
-      </div>
-
-      <div className="form-group">
-        <label>Prezzo Totale (EUR)</label>
-        <input type="number" value={calcolaPrezzoTotale()} readOnly />
-      </div>
-
-      <button type="submit" className="full-width" disabled={salvando}>
-        {salvando ? 'Salvataggio…' : initialValues?.id ? 'Salva modifiche' : 'Salva prenotazione'}
-      </button>
-      <small className="availability-hint">
-        Km, carburante, accessori e contratto si compilano il giorno del ritiro, con «Consegna».
-      </small>
+        <button type="submit" className="vd-btn vd-btn--primario" disabled={salvando}>
+          {salvando ? 'Salvataggio…' : bookingId ? 'Salva modifiche' : 'Salva prenotazione'}
+        </button>
+      </footer>
 
       <Modal
         isOpen={showAddClient}

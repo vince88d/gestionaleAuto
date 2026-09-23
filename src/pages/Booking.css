@@ -84,18 +84,20 @@ box-sizing: border-box;
   to { opacity: 1; transform: scale(1); }
 }
 
-/* FullCalendar tweaks */
+/* FullCalendar: queste regole valevano per tutti i calendari; ora solo per
+   quello della scheda veicolo, che le usava. Il calendario di questa pagina
+   e' in .bk-calendario. */
 .fc {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
 }
 
-.fc .fc-view-harness {
+.vd-calendario .fc .fc-view-harness {
   min-height: 400px;
   max-height: 450px;
 }
 
-.fc-daygrid-event {
+.vd-calendario .fc-daygrid-event {
   max-width: 70%;
   margin: 2px;
 }
@@ -889,14 +891,15 @@ gap: 0.3rem;
 }
 
 @media  (max-height: 650px), (max-width: 1200px) {
-.Modal {
+/* Non per le finestre nuove (.pz-modal): hanno testata e barra fisse. */
+.Modal:not(.pz-modal) {
   max-width: 95% !important;
   max-height: 90vh !important;
   padding: 1rem;
   overflow-y: auto;
   box-sizing: border-box;
 }
-.Modal button {
+.Modal:not(.pz-modal) button {
   font-size: 1rem;
 }
 
@@ -991,8 +994,8 @@ gap: 0.3rem;
 
 .bookings-filtro--attivo,
 .bookings-filtro--attivo:hover {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #3498db;
+  border-color: #3498db;
   color: #fff;
 }
 
@@ -1056,4 +1059,382 @@ gap: 0.3rem;
 .table-consegna-btn:hover {
   background: #bfdbfe;
   transform: translateY(-1px);
+}
+
+/* ============================================================
+   Pagina Prenotazioni (passo 3): barra, elenco, calendario
+   ============================================================ */
+.bookings-container {
+  max-width: 1280px;
+  padding: 8px 4px 32px;
+  color: #2c3e50;
+  font-family: inherit;
+}
+
+.bk-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.main-content .bk-titolo { margin: 0; }
+
+.bk-conteggio { font-size: 14px; color: #7f8c9a; }
+
+.bk-azioni {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.bk-cerca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 280px;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 12px;
+  background: #fff;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  color: #7f8c9a;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.bk-cerca:focus-within {
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.bk-cerca input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  padding: 10px 0;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.bk-vista {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #d5dde6;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.bk-vista button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #5d6d7e;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bk-vista button:hover { color: #2c3e50; }
+.bk-vista .bk-vista--attiva,
+.bk-vista .bk-vista--attiva:hover { background: #eaf4fc; color: #1f6fa8; }
+
+.bk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.bk-btn:hover:not(:disabled) { background: #f4f6f8; }
+.bk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.bk-btn--primario { border-color: #3498db; background: #3498db; color: #fff; }
+.bk-btn--primario:hover:not(:disabled) { background: #2980b9; }
+
+.bk-btn--piccolo { padding: 6px 10px; font-size: 13px; }
+.bk-btn--icona { padding: 6px 8px; color: #7f8c9a; }
+
+.bk-btn--consegna { border-color: #bfdbfe; background: #eff6ff; color: #1e40af; }
+.bk-btn--consegna:hover:not(:disabled) { background: #dbeafe; }
+
+.bk-btn--concludi { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+.bk-btn--concludi:hover:not(:disabled) { background: #dcfce7; }
+
+/* Filtri per stato + "concludi i finiti" */
+.bk-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+/* ---------- Elenco ---------- */
+.bk-elenco {
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+  overflow-x: auto;
+}
+
+.bk-tabella {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.bk-tabella th {
+  padding: 11px 14px;
+  border-bottom: 1px solid #e3e8ee;
+  background: #f8fafc;
+  color: #7f8c9a;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.bk-tabella td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef1f5;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.bk-tabella tbody tr:last-child td { border-bottom: none; }
+
+.bk-riga { cursor: pointer; transition: background 0.15s; }
+.bk-riga:hover { background: #f8fafc; }
+
+.bk-principale { display: block; font-weight: 600; color: #2c3e50; white-space: nowrap; }
+.bk-secondario { display: block; margin-top: 2px; font-size: 12px; color: #7f8c9a; }
+
+.bk-targa {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 7px;
+  border: 1px solid #d5dde6;
+  border-radius: 5px;
+  background: #f8fafc;
+  font-family: Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #34495e;
+}
+
+.bk-tabella .bk-destra { text-align: right; }
+
+.bk-promemoria {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #5d6d7e;
+}
+
+.bk-promemoria--urgente { color: #c0392b; }
+.bk-promemoria--domani { color: #c2410c; }
+.bk-promemoria--prossima { color: #b45309; }
+
+.bk-azioni-riga {
+  white-space: nowrap;
+  text-align: right !important;
+  cursor: default;
+}
+
+.bk-azioni-riga .bk-btn + .bk-btn { margin-left: 6px; }
+
+.bk-vuoto {
+  padding: 32px 16px !important;
+  text-align: center !important;
+  color: #7f8c9a;
+}
+
+.bk-pagine {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px;
+  border-top: 1px solid #eef1f5;
+}
+
+.bk-pagine button {
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid #d5dde6;
+  border-radius: 7px;
+  background: #fff;
+  color: #2c3e50;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bk-pagine .bk-pagina--attiva { border-color: #3498db; background: #3498db; color: #fff; }
+
+/* ---------- Calendario ---------- */
+.bk-calendario {
+  padding: 16px 18px 14px;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.bk-calendario .fc { font-family: inherit; }
+.bk-calendario .fc .fc-toolbar.fc-header-toolbar { margin-bottom: 14px; }
+
+.bk-calendario .fc .fc-toolbar-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2c3e50;
+  text-transform: capitalize;
+}
+
+.bk-calendario .fc .fc-button {
+  padding: 6px 12px;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: capitalize;
+  box-shadow: none;
+}
+
+.bk-calendario .fc .fc-button:hover { background: #f4f6f8; }
+.bk-calendario .fc .fc-button:disabled { opacity: 0.45; }
+.bk-calendario .fc .fc-button:focus { box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2); }
+.bk-calendario .fc .fc-button-group > .fc-button { margin-left: 4px; border-radius: 8px; }
+
+.bk-calendario .fc-theme-standard td,
+.bk-calendario .fc-theme-standard th,
+.bk-calendario .fc-theme-standard .fc-scrollgrid { border-color: #eef1f5; }
+
+.bk-calendario .fc .fc-col-header-cell-cushion {
+  padding: 8px 4px;
+  color: #7f8c9a;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.bk-calendario .fc .fc-daygrid-day { cursor: pointer; transition: background 0.15s; }
+.bk-calendario .fc .fc-daygrid-day:hover { background: #f8fafc; }
+.bk-calendario .fc .fc-daygrid-day-frame { min-height: 96px; }
+
+.bk-calendario .fc .fc-daygrid-day-number {
+  padding: 6px 8px;
+  color: #5d6d7e;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bk-calendario .fc .fc-day-other .fc-daygrid-day-number { opacity: 0.4; }
+.bk-calendario .fc .fc-day-today { background: #f5faff; }
+
+.bk-calendario .fc .fc-day-today .fc-daygrid-day-number {
+  margin: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #3498db;
+  color: #fff;
+}
+
+.bk-calendario .fc .bk-evento {
+  margin: 1px 3px 2px;
+  padding: 2px 6px;
+  border: none;
+  border-left: 3px solid;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bk-evento-testo {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.bk-calendario .fc .fase--da-consegnare { background: #dbeafe; border-color: #3b82f6; color: #1e3a8a; }
+.bk-calendario .fc .fase--in-corso { background: #dcfce7; border-color: #22c55e; color: #14532d; }
+.bk-calendario .fc .fase--da-concludere { background: #fee2e2; border-color: #ef4444; color: #7f1d1d; }
+
+.bk-calendario .fc .fc-daygrid-more-link {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3498db;
+}
+
+.bk-legenda {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #5d6d7e;
+}
+
+.bk-legenda span { display: inline-flex; align-items: center; gap: 6px; }
+
+.bk-legenda-punto {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.bk-legenda-punto.fase--da-consegnare { background: #3b82f6; }
+.bk-legenda-punto.fase--in-corso { background: #22c55e; }
+.bk-legenda-punto.fase--da-concludere { background: #ef4444; }
+.bk-legenda .bk-legenda-nota { margin-left: auto; color: #95a3b1; }
+
+@media (max-width: 900px) {
+  .bk-cerca { width: 100%; }
+  .bk-azioni { width: 100%; }
+  .bk-legenda .bk-legenda-nota { margin-left: 0; }
+}
+
+/* FullCalendar scrive il testo degli eventi in bianco: qui prende il colore della fase. */
+.bk-calendario .fc .bk-evento .fc-event-main { color: inherit; }
+
+/* Finestra stretta: la tabella resta leggibile senza scorrere di lato. */
+@media (max-width: 1180px) {
+  .bk-tabella th,
+  .bk-tabella td { padding: 10px 10px; }
+  .bk-tabella .bk-principale { white-space: normal; }
+  .bk-tabella .bk-secondario { overflow-wrap: anywhere; }
+  .bk-btn-testo { display: none; }
+  .bk-azioni-riga .bk-btn--piccolo { padding: 6px 8px; }
 }

@@ -59,5 +59,5 @@ test('dopo la consegna: "Concludi" e i km alla consegna', () => {
   render(<InfoModal isOpen prenotazione={consegnata} {...azioni} onConsegna={jest.fn()} />);
   expect(screen.getByText('Concludi')).toBeTruthy();
   expect(screen.queryByText('Consegna', { selector: 'button' })).toBeNull();
-  expect(screen.getByText('45000')).toBeTruthy();
+  expect(screen.getByText('45.000')).toBeTruthy();
 });

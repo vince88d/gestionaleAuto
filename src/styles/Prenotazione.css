@@ -1,0 +1,553 @@
+/* Finestre di Prenotazioni: nuova/modifica prenotazione, prenotazioni del
+   giorno, consegna (scheda veicolo) e riepilogo. Stesso stile della scheda e
+   del form del veicolo (VehicleDetailModal.css, VehicleForm.css).
+   Tutto parte da .pz: la testata, il corpo che scorre e la barra in fondo
+   sempre visibile. Le finestre react-modal usano ".Modal.pz-modal", quelle
+   Radix (BookingModal) ".DialogContent.pz-dialog". */
+
+/* ---------- Contenitori ---------- */
+.Modal.pz-modal,
+.DialogContent.pz-dialog {
+  width: 92vw;
+  max-width: 760px;
+  max-height: 90vh;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  box-sizing: border-box;
+}
+
+.DialogContent.pz-dialog { max-width: 820px; }
+
+.pz {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.pz-testa {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid #e3e8ee;
+  background: #fff;
+}
+
+.pz .pz-titolo {
+  margin: 0;
+  padding: 0;
+  background: none;
+  font-size: 20px;
+  font-weight: 700;
+  color: #2c3e50;
+  text-align: left;
+}
+
+.pz-sottotitolo {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+  color: #7f8c9a;
+}
+
+.pz .pz-chiudi,
+.DialogContent.pz-dialog .DialogClose {
+  display: flex;
+  margin: 0;
+  padding: 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #7f8c9a;
+  cursor: pointer;
+}
+
+.pz .pz-chiudi:hover,
+.DialogContent.pz-dialog .DialogClose:hover { background: #f1f4f8; color: #2c3e50; }
+
+/* La X di Radix sta sopra la testata, allineata a quella delle altre finestre. */
+.DialogContent.pz-dialog .DialogClose {
+  top: 16px;
+  right: 18px;
+  z-index: 2;
+}
+
+.DialogContent.pz-dialog .pz-testa { padding-right: 60px; }
+
+/* Passi della consegna: 1 scheda, 2 riepilogo */
+.pz-passi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #95a3b1;
+}
+
+.pz-passo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pz-passo-numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e3e8ee;
+  color: #5d6d7e;
+  font-size: 11px;
+}
+
+.pz-passo--attivo { color: #2c3e50; }
+.pz-passo--attivo .pz-passo-numero { background: #3498db; color: #fff; }
+.pz-passo--fatto .pz-passo-numero { background: #2ecc71; color: #fff; }
+.pz-passi-linea { width: 24px; height: 1px; background: #d5dde6; }
+
+.pz-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  margin: 0;
+}
+
+/* Parte che scorre */
+.pz-corpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 24px;
+  background: #f4f6f8;
+}
+
+.pz-sezione {
+  padding: 16px 18px;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.pz .pz-titolo-sezione {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #7f8c9a;
+}
+
+.pz-barra-sezione {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pz-barra-sezione .pz-titolo-sezione { margin: 0; }
+
+.pz-griglia {
+  display: grid;
+  gap: 12px 16px;
+}
+
+.pz-griglia--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pz-griglia--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pz-intera { grid-column: 1 / -1; }
+
+/* ---------- Campi ---------- */
+.pz .pz-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: #2c3e50;
+}
+
+.pz .pz-etichetta {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5d6d7e;
+}
+
+.pz .pz-obbligatorio { color: #c0392b; }
+
+.pz .pz-campo input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.pz .pz-campo select,
+.pz .pz-campo textarea {
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  padding: 0 11px;
+  box-sizing: border-box;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  color: #2c3e50;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pz .pz-campo textarea {
+  height: auto;
+  min-height: 80px;
+  padding: 10px 11px;
+  resize: vertical;
+}
+
+.pz .pz-campo input[readonly] {
+  background: #f4f6f8;
+  color: #5d6d7e;
+}
+
+.pz .pz-campo input:focus,
+.pz .pz-campo select:focus,
+.pz .pz-campo textarea:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.pz .pz-campo--errore input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.pz .pz-campo--errore select {
+  border-color: #e74c3c;
+  background: #fffafa;
+}
+
+.pz .pz-errore {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c0392b;
+}
+
+.pz .pz-aiuto {
+  margin: 0;
+  font-size: 12px;
+  color: #95a3b1;
+}
+
+.pz .react-datepicker-wrapper,
+.pz .react-datepicker__input-container { display: block; width: 100%; }
+
+.pz .react-datepicker-popper { z-index: 10001; }
+
+.pz .autocomplete-container { position: relative; width: 100%; }
+
+/* Scelte a pulsante (livello carburante) */
+.pz-scelte {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pz .pz-scelta {
+  flex: 1;
+  min-width: 64px;
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.pz .pz-scelta:hover { background: #f4f6f8; }
+
+.pz .pz-scelta--attiva,
+.pz .pz-scelta--attiva:hover {
+  border-color: #3498db;
+  background: #eaf4fc;
+  color: #1f6fa8;
+}
+
+/* Accessori: caselle a griglia */
+.pz-spunte {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pz .pz-spunta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid #e3e8ee;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+  cursor: pointer;
+}
+
+.pz .pz-spunta:has(input:checked) {
+  border-color: #3498db;
+  background: #eaf4fc;
+}
+
+.pz .pz-spunta input { width: 16px; height: 16px; margin: 0; accent-color: #3498db; }
+
+/* Foto dei danni */
+.pz-foto {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.pz .pz-foto img {
+  width: 160px;
+  height: 110px;
+  margin: 0;
+  object-fit: cover;
+  border: 1px solid #e3e8ee;
+  border-radius: 8px;
+}
+
+/* ---------- Dati in sola lettura (riepilogo) ---------- */
+.pz-dati {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+}
+
+.pz-dati > div { min-width: 0; }
+
+.pz-dati dt {
+  font-size: 12px;
+  font-weight: 600;
+  color: #7f8c9a;
+}
+
+.pz-dati dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+  overflow-wrap: anywhere;
+}
+
+.pz-dati .pz-prezzo { color: #1e8449; font-size: 16px; }
+
+.pz-chip-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eafaf1;
+  color: #1e8449;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pz-chip--no {
+  background: #f1f4f8;
+  color: #95a3b1;
+  text-decoration: line-through;
+}
+
+.pz-avviso {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #86efac;
+  background: #dcfce7;
+  color: #14532d;
+  font-size: 14px;
+}
+
+.pz-avviso--info {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.pz .pz-opzione {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+  cursor: pointer;
+}
+
+.pz .pz-opzione:last-child { margin-bottom: 0; }
+.pz .pz-opzione input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: #3498db; }
+
+/* ---------- Barra in fondo ---------- */
+.pz-piede {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 24px;
+  border-top: 1px solid #e3e8ee;
+  background: #fff;
+}
+
+.pz-piede-nota {
+  margin-right: auto;
+  font-size: 12px;
+  color: #95a3b1;
+}
+
+.pz-piede-nota--errore { font-weight: 600; color: #c0392b; }
+
+/* Pulsanti: stessi della scheda veicolo, protetti dalle regole generiche
+   ".Modal button" e ".booking-form button". */
+.pz .vd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transform: none;
+}
+
+.pz .vd-btn:hover:not(:disabled) { background: #f4f6f8; transform: none; }
+.pz .vd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.pz .vd-btn--primario { border-color: #3498db; background: #3498db; color: #fff; }
+.pz .vd-btn--primario:hover:not(:disabled) { background: #2980b9; }
+
+.pz .vd-btn--successo { border-color: #27ae60; background: #27ae60; color: #fff; }
+.pz .vd-btn--successo:hover:not(:disabled) { background: #1e8449; }
+
+.pz .vd-btn--pericolo { color: #c0392b; }
+.pz .vd-btn--pericolo:hover:not(:disabled) { background: #fdecea; border-color: #f5c6c0; }
+
+.pz .vd-btn--piccolo { padding: 6px 10px; font-size: 13px; }
+
+.pz .pz-link {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #3498db;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pz .pz-link:hover { text-decoration: underline; }
+
+/* ---------- Prenotazioni del giorno ---------- */
+.pz-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pz-voce {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.pz-voce-testo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pz-voce-nome { font-size: 15px; font-weight: 700; }
+.pz-voce-dettaglio { font-size: 13px; color: #5d6d7e; }
+.pz-voce-azioni { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.pz-vuoto {
+  margin: 0;
+  padding: 24px 16px;
+  border: 1px dashed #d5dde6;
+  border-radius: 10px;
+  background: #fff;
+  color: #7f8c9a;
+  text-align: center;
+}
+
+/* ---------- Finestra stretta ---------- */
+@media (max-width: 720px) {
+  .pz-griglia--2,
+  .pz-griglia--3,
+  .pz-dati { grid-template-columns: 1fr 1fr; }
+  .pz-spunte { grid-template-columns: 1fr 1fr; }
+  .pz-corpo { padding: 14px 16px; }
+  .pz-testa, .pz-piede { padding-left: 16px; padding-right: 16px; }
+}
+
+@media (max-width: 480px) {
+  .pz-griglia--2,
+  .pz-griglia--3,
+  .pz-dati,
+  .pz-spunte { grid-template-columns: 1fr; }
+}
+
+/* react-modal mette il focus sulla finestra: niente bordo giallo intorno. */
+.Modal.pz-modal:focus,
+.DialogContent.pz-dialog:focus { outline: none; }
+
+/* Parte del riepilogo che si stampa: stesse spaziature del corpo. */
+.pz-corpo-stampa { display: flex; flex-direction: column; gap: 14px; }
+
+/* Titolo nascosto di Radix (per i lettori di schermo): non deve occupare spazio. */
+.DialogContent.pz-dialog > h2:not(.pz-titolo) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Il bordo di focus solo quando si usa la tastiera. */
+.DialogContent.pz-dialog .DialogClose:focus:not(:focus-visible) { outline: none; }

@@ -12,7 +12,9 @@ import {toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { setClienti } from '../store/clientiSlice';
-import { Search, Info, CheckCircle, AlertCircle, Edit3, Trash2, KeyRound, Plus } from 'lucide-react';
+import {
+  Search, Info, CheckCircle, AlertCircle, Edit3, Trash2, KeyRound, Plus, List, CalendarDays, Download,
+} from 'lucide-react';
 import BookingModal from '../components/BookingModal';
 import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
@@ -35,7 +37,7 @@ import {
 } from '../utils/regolePrenotazione';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { daAssegnare } from '../utils/assegnazioneVeicolo';
-import { giornoLocale } from '../utils/scadenze';
+import { giornoLocale, formattaData } from '../utils/scadenze';
 import{
   setPrenotazioni,
   addPrenotazione,
@@ -61,6 +63,22 @@ const ETICHETTA_FASE = {
   'da-consegnare': 'Da consegnare',
   'in-corso': 'In corso',
   'da-concludere': 'Da concludere',
+};
+
+// '2026-09-23' -> '2026-09-24'
+const giornoDopo = (giorno) => {
+  const d = new Date(`${giorno}T12:00:00`);
+  d.setDate(d.getDate() + 1);
+  return giornoLocale(d);
+};
+
+const VISTA_SALVATA = 'prenotazioni-vista';
+const leggiVista = () => {
+  try {
+    return localStorage.getItem(VISTA_SALVATA) === 'calendario' ? 'calendario' : 'elenco';
+  } catch {
+    return 'elenco';
+  }
 };
 
 const schedaVuota = () => ({
@@ -110,6 +128,12 @@ function Bookings() {
   const [paginaPrenotazioni, setPaginaPrenotazioni] = useState(1);
   const [paginaClienti, setPaginaClienti] = useState(1);
   const [filtroFase, setFiltroFase] = useState('tutte');
+  // Elenco o calendario: si ricorda l'ultima scelta su questo computer.
+  const [vista, setVista] = useState(leggiVista);
+  const cambiaVista = (nuova) => {
+    setVista(nuova);
+    try { localStorage.setItem(VISTA_SALVATA, nuova); } catch { /* niente */ }
+  };
   const [salvandoPrenotazione, setSalvandoPrenotazione] = useState(false);
   // Prenotazione che si sta consegnando (scheda veicolo -> riepilogo).
   const [consegnaDi, setConsegnaDi] = useState(null);
@@ -548,6 +572,26 @@ accessori: {
     setModalIsOpen(true);
   };
 
+  // Apre il form con una prenotazione esistente.
+  const apriModifica = (prenotazione) => {
+    setFormData({ ...prenotazione });
+    setEditingIndex(prenotazioni.findIndex((p) => p.id === prenotazione.id));
+    setIsAddingNewBooking(true);
+    setSelectedDate(prenotazione.dataInizio);
+    setInfoModalOpen(false);
+    setModalIsOpen(true);
+  };
+
+  // Dal riepilogo di un giorno: nuova prenotazione che parte quel giorno.
+  const nuovaPerGiorno = () => {
+    setFormData({
+      cliente: '', codiceFiscale: '', patente: '', veicolo: '', targa: '',
+      dataInizio: selectedDate, dataFine: selectedDate, prezzoGiornaliero: '', prezzoTotale: '', emailCliente: '',
+    });
+    setEditingIndex(null);
+    setIsAddingNewBooking(true);
+  };
+
   // --- Consegna: scheda del veicolo, poi riepilogo con contratto e PDF ---
   const avviaConsegna = (prenotazione) => {
     const veicolo = availableVehicles.find((v) => v.targa === prenotazione.targa);
@@ -579,30 +623,6 @@ accessori: {
     setConsegnaDi(aggiornata);
   };
 
-  const groupPrenotazioniByDate = () => {
-    const dateMap = {};
-    prenotazioniAttive.forEach((p) => {
-      const start = new Date(p.dataInizio);
-      const end = new Date(p.dataFine);
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
-        if (!dateMap[dateStr]) {
-          dateMap[dateStr] = { count: 0, bookings: [] };
-        }
-        dateMap[dateStr].count++;
-        dateMap[dateStr].bookings.push(p);
-      }
-    });
-    const events = Object.entries(dateMap).map(([date, data]) => ({
-      title: ` ${data.count}`,
-      date,
-      extendedProps: { bookings: data.bookings, count: data.count },
-      className: 'booking-dot-event',
-    }));
-    console.log("Eventi generati per il calendario:", events);
-    return events;
-  };
-
   const handleDateClick = (arg) => {
     const dateStr = arg.dateStr;
     setSelectedDate(dateStr);
@@ -623,10 +643,10 @@ accessori: {
   
     
   
+    // Confronto tra giorni 'AAAA-MM-GG' (con toISOString il giorno slittava
+    // indietro di uno in Italia).
     const prenotazioniDelGiorno = prenotazioniAttive.filter(
-      (p) =>
-        new Date(p.dataInizio).toISOString().split('T')[0] <= dateStr &&
-        new Date(p.dataFine).toISOString().split('T')[0] >= dateStr
+      (p) => String(p.dataInizio).slice(0, 10) <= dateStr && String(p.dataFine).slice(0, 10) >= dateStr
     );
     
     if (prenotazioniDelGiorno.length > 0) {
@@ -640,79 +660,6 @@ accessori: {
  
   };
 
-  const handleEventClick = (info) => {
-    const prenotazioniDelGiorno = (info.event.extendedProps.bookings || []).filter(
-     (p) => p.status !== 'completata'
-    );
-  
-    setSelectedDate(info.event.startStr);
-    setPrenotazioniGiorno(prenotazioniDelGiorno);
-    setIsAddingNewBooking(false);
-  
-    // Popola formData con i dettagli della prima prenotazione (o quella cliccata, se hai un modo per identificarla univocamente)
-    if (prenotazioniDelGiorno.length > 0) {
-     const primaPrenotazione = prenotazioniDelGiorno[0]; // Prendi la prima come esempio
-     const giorni = calcGiorni(primaPrenotazione.dataInizio, primaPrenotazione.dataFine);
-     setFormData({
-      id: primaPrenotazione.id,
-      cliente: primaPrenotazione.cliente,
-      codiceFiscale: primaPrenotazione.codiceFiscale,
-      patente: primaPrenotazione.patente,
-      veicolo: primaPrenotazione.veicolo,
-      targa: primaPrenotazione.targa,
-      dataInizio: primaPrenotazione.dataInizio,
-      dataFine: primaPrenotazione.dataFine,
-      prezzoGiornaliero: primaPrenotazione.prezzoGiornaliero,
-      prezzoTotale: giorni * parseFloat(primaPrenotazione.prezzoGiornaliero || 0),
-      emailCliente: primaPrenotazione.emailCliente,
-     });
-     setSchedaVeicolo(primaPrenotazione.schedaVeicolo || {
-      carburante: '',
-      kmIniziali: '',
-      danni: '',
-      accessori: {
-  cric: false,
-  triangolo: false,
-  giubbotto: false,
-  ruotaScorta: false,
-  cavoRicarica: false,
-  cateneNeve: false,
-  altro: ''
-}
-     });
-     setEditingIndex(prenotazioni.findIndex(p => p.id === primaPrenotazione.id)); // Imposta l'indice di modifica
-    } else {
-     // Se non ci sono prenotazioni per quel giorno, resetta il form per una nuova prenotazione
-     setFormData({
-      cliente: '',
-      codiceFiscale: '',
-      patente: '',
-      veicolo: '',
-      targa: '',
-      dataInizio: info.event.startStr,
-      dataFine: info.event.startStr,
-      prezzoGiornaliero: '',
-      prezzoTotale: '',
-      emailCliente: '',
-     });
-     setSchedaVeicolo({ carburante: '', kmIniziali: '', danni: '', accessori: {
-  cric: false,
-  triangolo: false,
-  giubbotto: false,
-  ruotaScorta: false,
-  cavoRicarica: false,
-  cateneNeve: false,
-  altro: ''
-} 
-});
-     setEditingIndex(null);
-     setIsAddingNewBooking(true); // Imposta a true se vuoi aggiungere una nuova da qui
-    }
-  
-    setModalIsOpen(true);
-   };
-
-   
   useEffect(() => {
     if (modalIsOpen) {
       // Timeout per garantire che il modal sia completamente renderizzato
@@ -864,6 +811,20 @@ const prenotazioniAttiveFiltrate = trovate
   .sort((a, b) => String(a.dataInizio).localeCompare(String(b.dataInizio)));
 const ricercaAttiva = search.trim();
 const prenotazioniDaConcludereOggi = daConcludereInBlocco(prenotazioniAttive, oggi);
+// Calendario: una barra per prenotazione, dal ritiro alla riconsegna (FullCalendar
+// vuole la fine esclusa: il giorno dopo), colorata secondo la fase.
+const eventiCalendario = trovate
+  .filter((p) => filtroFase === 'tutte' || faseLavoro(p, oggi) === filtroFase)
+  .filter((p) => p.dataInizio && p.dataFine)
+  .map((p) => ({
+    id: p.id,
+    title: `${p.cliente || 'Cliente'} · ${p.targa || p.categoria || ''}`,
+    start: String(p.dataInizio).slice(0, 10),
+    end: giornoDopo(String(p.dataFine).slice(0, 10)),
+    allDay: true,
+    classNames: ['bk-evento', `fase--${faseLavoro(p, oggi)}`],
+    extendedProps: { prenotazione: p },
+  }));
 const numeroPagine = Math.ceil(prenotazioniAttiveFiltrate.length / righePerPagina);
 
 
@@ -875,104 +836,204 @@ return (
         <span>{feedbackMessage}</span>
       </div>
     )}
-  <div className="bookings-testa">
-    <h1>Prenotazioni</h1>
-    <button type="button" className="bookings-nuova-btn" onClick={apriNuovaPrenotazione}>
-      <Plus size={18} aria-hidden="true" /> Nuova prenotazione
-    </button>
+  <div className="bk-toolbar">
+    <div>
+      <h1 className="bk-titolo">Prenotazioni</h1>
+      <span className="bk-conteggio">
+        {prenotazioniAttive.length} {prenotazioniAttive.length === 1 ? 'noleggio attivo' : 'noleggi attivi'}
+      </span>
+    </div>
+    <div className="bk-azioni">
+      <form onSubmit={handleRicerca} className="bk-cerca" role="search">
+        <Search size={16} aria-hidden="true" />
+        <input
+          ref={searchInputRef}
+          type="search"
+          placeholder="Cerca cliente, targa, veicolo…"
+          aria-label="Cerca prenotazioni"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </form>
+      <div className="bk-vista" role="tablist" aria-label="Vista">
+        <button type="button" role="tab" aria-selected={vista === 'elenco'}
+          className={vista === 'elenco' ? 'bk-vista--attiva' : ''} onClick={() => cambiaVista('elenco')}>
+          <List size={16} aria-hidden="true" /> Elenco
+        </button>
+        <button type="button" role="tab" aria-selected={vista === 'calendario'}
+          className={vista === 'calendario' ? 'bk-vista--attiva' : ''} onClick={() => cambiaVista('calendario')}>
+          <CalendarDays size={16} aria-hidden="true" /> Calendario
+        </button>
+      </div>
+      <button type="button" className="bk-btn" onClick={exportToCSV} title="Esporta le prenotazioni attive in un file CSV">
+        <Download size={16} aria-hidden="true" /> CSV
+      </button>
+      <button type="button" className="bk-btn bk-btn--primario" onClick={apriNuovaPrenotazione}>
+        <Plus size={16} aria-hidden="true" /> Nuova prenotazione
+      </button>
+    </div>
   </div>
 
   <PrenotazioniDaAssegnare prenotazioni={prenotazioni} veicoli={availableVehicles} />
 
-<form onSubmit={handleRicerca} className="bookings-search-form">
-  <Search
-    size={18}
-    style={{
-      position: 'absolute',
-      left: '10px',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      color: '#888',
-      pointerEvents: 'none',
-    }}
-  />
-  <input
-    ref={searchInputRef}
-    className="search-input-enhanced"
-    type="text"
-    placeholder="Cerca per cliente, targa o veicolo..."
-    value={search}
-    onChange={(e) => setSearch(e.target.value)}
-    style={{
-      flex: 1,
-      padding: '0.5rem 0.5rem 0.5rem 2rem',
-      fontSize: '1rem',
-      borderRadius: '6px',
-      border: '1px solid #ccc',
-    }}
-  />
-  <button
-    type="submit"
-    style={{
-      marginLeft: '0.5rem',
-      padding: '0.5rem 1rem',
-      fontSize: '1rem',
-      backgroundColor: '#2563eb',
-      color: '#fff',
-      border: 'none',
-      borderRadius: '6px',
-      cursor: 'pointer',
-    }}
-  >
-    Cerca
-  </button>
-</form>
-
-{ricercaAttiva && (
-  <div className="active-search-banner">
-    <span className="active-search-label">Ricerca attiva</span>
-    <span className="active-search-term">{ricercaAttiva}</span>
+  <div className="bk-barra">
+    <div className="bookings-filtri" role="tablist" aria-label="Filtra per stato">
+      {FILTRI_FASE.map(({ chiave, etichetta }) => (
+        <button
+          key={chiave}
+          type="button"
+          role="tab"
+          aria-selected={filtroFase === chiave}
+          className={`bookings-filtro ${filtroFase === chiave ? 'bookings-filtro--attivo' : ''}`}
+          onClick={() => setFiltroFase(chiave)}
+        >
+          {etichetta} <span className="bookings-filtro-conto">{contaFase(chiave)}</span>
+        </button>
+      ))}
+    </div>
     <button
       type="button"
-      className="active-search-count active-search-count-button"
-      onClick={() => listaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+      className="bk-btn"
+      onClick={concludiPrenotazioniScadute}
+      disabled={prenotazioniDaConcludereOggi.length === 0}
+      title="Conclude i noleggi consegnati e finiti da ieri o prima"
     >
-      {prenotazioniAttiveFiltrate.length} risultati
+      <CheckCircle size={16} aria-hidden="true" /> Concludi i noleggi finiti
     </button>
   </div>
-)}
 
-
-    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-    <button onClick={exportToCSV} className="export-btn">📁 Esporta CSV</button>
-  </div>
-    <h2 className="subtitle">Calendario Prenotazioni</h2>
-  
-    <div className="calendar-wrapper">
+  {vista === 'calendario' ? (
+    <div className="bk-calendario">
       <FullCalendar
         plugins={[dayGridPlugin, interactionPlugin]}
         locale={itLocale}
         initialView="dayGridMonth"
-        selectable={true}
+        height="auto"
+        dayMaxEvents={3}
+        moreLinkText={(n) => `+${n} altri`}
+        moreLinkClick={(info) => { handleDateClick({ dateStr: giornoLocale(info.date) }); return 'none'; }}
         dateClick={handleDateClick}
-        eventClick={handleEventClick}
-        events={groupPrenotazioniByDate()}
-        eventContent={(arg) => {
-          if (arg.event.extendedProps.bookings) {
-            return <div className="booking-dot">{arg.event.extendedProps.count}</div>;
-          }
-          return arg.event.title;
-        }}
-        buttonText={{ prev: '<', next: '>', today: 'Oggi', month: 'Mese', week: 'Settimana', day: 'Giorno' }}
+        eventClick={(info) => openInfoModal(info.event.extendedProps.prenotazione)}
+        events={eventiCalendario}
+        eventContent={(arg) => (
+          <span className="bk-evento-testo" title={arg.event.title}>{arg.event.title}</span>
+        )}
+        buttonText={{ today: 'Oggi' }}
       />
+      <div className="bk-legenda" aria-label="Legenda">
+        <span><i className="bk-legenda-punto fase--da-consegnare" /> Da consegnare</span>
+        <span><i className="bk-legenda-punto fase--in-corso" /> In corso</span>
+        <span><i className="bk-legenda-punto fase--da-concludere" /> Da concludere</span>
+        <span className="bk-legenda-nota">Clic su un giorno per vederne i noleggi o crearne uno, su un nome per i dettagli.</span>
+      </div>
     </div>
-  
-    <BookingModal key={forceRenderKey} open={modalIsOpen} onClose={handleRequestCancelBooking}>
+  ) : (
+    <div className="bk-elenco" ref={listaRef}>
+      <table className="bk-tabella">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Veicolo</th>
+            <th>Periodo</th>
+            <th className="bk-destra">Prezzo</th>
+            <th>Stato</th>
+            <th aria-label="Azioni" />
+          </tr>
+        </thead>
+        <tbody>
+          {prenotazioniAttiveFiltrate.length === 0 ? (
+            <tr>
+              <td colSpan="6" className="bk-vuoto">
+                {ricercaAttiva ? `Nessuna prenotazione trovata per “${ricercaAttiva}”.` : 'Nessuna prenotazione in questo elenco.'}
+              </td>
+            </tr>
+          ) : (
+            prenotazioniAttiveFiltrate
+              .slice((paginaPrenotazioni - 1) * righePerPagina, paginaPrenotazioni * righePerPagina)
+              .map((p) => {
+                const fase = faseLavoro(p, oggi);
+                const nota = promemoria(p, oggi);
+                const giorniNoleggio = calcGiorni(p.dataInizio, p.dataFine);
+                return (
+                  <tr key={p.id} onClick={() => openInfoModal(p)} className="bk-riga">
+                    <td>
+                      <span className="bk-principale">{p.cliente || '—'}</span>
+                      {p.emailCliente && <span className="bk-secondario">{p.emailCliente}</span>}
+                    </td>
+                    <td>
+                      <span className="bk-principale">{p.veicolo || p.categoria || '—'}</span>
+                      {p.targa && <span className="bk-targa">{p.targa}</span>}
+                    </td>
+                    <td>
+                      <span className="bk-principale">{formattaData(p.dataInizio)} → {formattaData(p.dataFine)}</span>
+                      {giorniNoleggio > 0 && (
+                        <span className="bk-secondario">{giorniNoleggio} {giorniNoleggio === 1 ? 'giorno' : 'giorni'}</span>
+                      )}
+                    </td>
+                    <td className="bk-destra">
+                      <span className="bk-principale">
+                        {prezzoPrenotazione(p) ? `€ ${Number(prezzoPrenotazione(p)).toLocaleString('it-IT')}` : '—'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`fase-badge fase-badge--${fase}`}>
+                        {daAssegnare(p) ? 'Veicolo da assegnare' : ETICHETTA_FASE[fase]}
+                      </span>
+                      <span className={`bk-promemoria bk-promemoria--${nota.livello || 'normale'}`}>{nota.testo}</span>
+                    </td>
+                    <td className="bk-azioni-riga" onClick={(e) => e.stopPropagation()}>
+                      {puoConsegnare(p) && (
+                        <button type="button" className="bk-btn bk-btn--piccolo bk-btn--consegna" onClick={() => avviaConsegna(p)} title="Consegna il veicolo">
+                          <KeyRound size={15} aria-hidden="true" /> <span className="bk-btn-testo">Consegna</span>
+                        </button>
+                      )}
+                      {puoConcludere(p) && (
+                        <button
+                          type="button"
+                          className="bk-btn bk-btn--piccolo bk-btn--concludi"
+                          title="Concludi il noleggio"
+                          onClick={() => {
+                            setInfoModalOpen(false);
+                            setModalIsOpen(false);
+                            setPrenotazioneDaConcludere(p);
+                            setConcludiModalOpen(true);
+                          }}
+                        >
+                          <CheckCircle size={15} aria-hidden="true" /> <span className="bk-btn-testo">Concludi</span>
+                        </button>
+                      )}
+                      <button type="button" className="bk-btn bk-btn--piccolo bk-btn--icona" onClick={() => openInfoModal(p)} aria-label="Dettagli" title="Dettagli">
+                        <Info size={16} aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+          )}
+        </tbody>
+      </table>
+      {numeroPagine > 1 && (
+        <div className="bk-pagine">
+          {[...Array(numeroPagine)].map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              className={paginaPrenotazioni === i + 1 ? 'bk-pagina--attiva' : ''}
+              onClick={() => setPaginaPrenotazioni(i + 1)}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )}
+
+    <BookingModal key={forceRenderKey} open={modalIsOpen} onClose={handleRequestCancelBooking} className="pz-dialog">
     {isAddingNewBooking ? (
-      <div>
-        <h2>{editingIndex !== null ? 'Modifica Prenotazione' : 'Aggiungi Prenotazione'}</h2>
         <BookingForm
           onSubmit={handleBookingSubmit}
+          onAnnulla={handleRequestCancelBooking}
           initialValues={formData}
           availableVehicles={availableVehiclesForBooking}
           veicoli={availableVehicles}
@@ -981,299 +1042,92 @@ return (
           prenotazioni={prenotazioni}
           salvando={salvandoPrenotazione}
        />
-      </div>
     ) : (
-      <div>
-        <h2>Prenotazioni del {selectedDate}</h2>
-        {prenotazioniGiorno.length > 0 ? (
+      <div className="pz">
+        <header className="pz-testa">
           <div>
-            <div className="booking-cards">
-              {prenotazioniGiorno.map((prenotazione, index) => (
-                <div key={index} className="booking-card">
-                  <div className="booking-info">
-                    <p><strong>Cliente:</strong> {prenotazione.cliente}</p>
-                    <p><strong>Veicolo:</strong> {prenotazione.veicolo} ({prenotazione.targa})</p>
-                    <p><strong>Periodo:</strong> {prenotazione.dataInizio} → {prenotazione.dataFine}</p>
-                    <p><strong>Prezzo:</strong> {prezzoPrenotazione(prenotazione)} €</p>
+            <h2 className="pz-titolo">Prenotazioni del {formattaData(selectedDate)}</h2>
+            <span className="pz-sottotitolo">
+              {prenotazioniGiorno.length === 0
+                ? 'Nessun noleggio in questo giorno.'
+                : `${prenotazioniGiorno.length} ${prenotazioniGiorno.length === 1 ? 'noleggio' : 'noleggi'} in corso o in partenza`}
+            </span>
+          </div>
+        </header>
+        <div className="pz-corpo">
+          {prenotazioniGiorno.length === 0 ? (
+            <p className="pz-vuoto">Nessuna prenotazione per questa data.</p>
+          ) : (
+            <div className="pz-lista">
+              {prenotazioniGiorno.map((prenotazione) => {
+                const fase = faseLavoro(prenotazione, oggi);
+                return (
+                  <div key={prenotazione.id} className="pz-voce">
+                    <div className="pz-voce-testo">
+                      <span className="pz-voce-nome">{prenotazione.cliente || 'Cliente'}</span>
+                      <span className="pz-voce-dettaglio">
+                        {prenotazione.veicolo || prenotazione.categoria}{prenotazione.targa ? ` · ${prenotazione.targa}` : ''}
+                        {' · '}{formattaData(prenotazione.dataInizio)} → {formattaData(prenotazione.dataFine)}
+                        {' · '}{prezzoPrenotazione(prenotazione) || '—'} €
+                      </span>
+                      <span>
+                        <span className={`fase-badge fase-badge--${fase}`}>
+                          {daAssegnare(prenotazione) ? 'Veicolo da assegnare' : ETICHETTA_FASE[fase]}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="pz-voce-azioni">
+                      {puoConsegnare(prenotazione) && (
+                        <button type="button" className="vd-btn vd-btn--primario vd-btn--piccolo" onClick={() => avviaConsegna(prenotazione)}>
+                          <KeyRound size={15} /> Consegna
+                        </button>
+                      )}
+                      {puoConcludere(prenotazione) && (
+                        <button
+                          type="button"
+                          className="vd-btn vd-btn--successo vd-btn--piccolo"
+                          onClick={() => {
+                            setModalIsOpen(false);
+                            setPrenotazioneDaConcludere(prenotazione);
+                            setConcludiModalOpen(true);
+                          }}
+                        >
+                          <CheckCircle size={15} /> Concludi
+                        </button>
+                      )}
+                      <button type="button" className="vd-btn vd-btn--piccolo" onClick={() => apriModifica(prenotazione)}>
+                        <Edit3 size={15} /> Modifica
+                      </button>
+                      <button
+                        type="button"
+                        className="vd-btn vd-btn--pericolo vd-btn--piccolo"
+                        onClick={() => handleDelete(prenotazioni.findIndex((p) => p.id === prenotazione.id))}
+                      >
+                        <Trash2 size={15} /> {isPagataOnline(prenotazione) ? 'Annulla e rimborsa' : 'Elimina'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="booking-actions">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => {
-                        const giorni = calcGiorni(prenotazione.dataInizio, prenotazione.dataFine);
-                        setFormData({
-                          ...prenotazione,
-                          prezzoTotale: giorni * parseFloat(prenotazione.prezzoGiornaliero || 0)
-                        });
-                        setSchedaVeicolo(prenotazione.schedaVeicolo || {
-                          carburante: '',
-                          kmIniziali: '',
-                          danni: '',
-                   accessori: {
-  cric: false,
-  triangolo: false,
-  giubbotto: false,
-  ruotaScorta: false,
-  cavoRicarica: false,
-  cateneNeve: false,
-  altro: ''
-}
-                        });
-                        const globalIndex = prenotazioni.findIndex(p => p === prenotazione);
-                        setEditingIndex(globalIndex);
-                        setIsAddingNewBooking(true);
-                        setSelectedDate(prenotazione.dataInizio);
-                        setModalIsOpen(true);
-                      }}
-                    >
-                      <Edit3 size={16} /> 
-                                       Modifica
-                    </button>
-                    <button
-                      className="btn btn-danger"
-                      onClick={() => handleDelete(prenotazioni.findIndex(p => p === prenotazione))}
-                    >
-                      <Trash2 size={16} />
-                      Elimina
-                    </button>
-                  {puoConsegnare(prenotazione) && (
-                    <button className="btn btn-primary" onClick={() => avviaConsegna(prenotazione)}>
-                      <KeyRound size={16} /> Consegna
-                    </button>
-                  )}
-                  {puoConcludere(prenotazione) && (
-                  <button
-  className="btn btn-success"
-  onClick={() => {
-    setModalIsOpen(false); // 🔴 chiudi BookingModal
-    setPrenotazioneDaConcludere(prenotazione); // ✅ setta prenotazione attuale
-    setConcludiModalOpen(true); // ✅ apri modale conclusione
-  }}
->
-  <CheckCircle size={16}/>
-  Concludi
-</button>
-                  )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            <button className='btn-newPrenotazione' onClick={() => {
-              setFormData({
-                cliente: '',
-                codiceFiscale: '',
-                patente: '',
-                veicolo: '',
-                targa: '',
-                dataInizio: selectedDate,
-                dataFine: selectedDate,
-                prezzoGiornaliero: '',
-                prezzoTotale: '',
-                emailCliente: '',
-              });
-              setSchedaVeicolo({
-                carburante: '',
-                kmIniziali: '',
-                danni: '',
-              accessori: {
-  cric: false,
-  triangolo: false,
-  giubbotto: false,
-  ruotaScorta: false,
-  cavoRicarica: false,
-  cateneNeve: false,
-  altro: ''
-},
-              });
-              setEditingIndex(null);
-              setIsAddingNewBooking(true);
-            }}>Nuova Prenotazione</button>
-  
-          </div>
-        ) : (
-          <div>
-            <p>Nessuna prenotazione per questa data.</p>
-            <button onClick={() => {
-              setFormData({
-                cliente: '',
-                codiceFiscale: '',
-                patente: '',
-                veicolo: '',
-                targa: '',
-                dataInizio: selectedDate,
-                dataFine: selectedDate,
-                prezzoGiornaliero: '',
-                prezzoTotale: '',
-                emailCliente: '',
-              });
-              setSchedaVeicolo({
-                carburante: '',
-                kmIniziali: '',
-                danni: '',
-                accessori: {
-  cric: false,
-  triangolo: false,
-  giubbotto: false,
-  ruotaScorta: false,
-  cavoRicarica: false,
-  cateneNeve: false,
-  altro: ''
-},
-              });
-              setEditingIndex(null);
-              setIsAddingNewBooking(true);
-            }}>Aggiungi</button>
-  
-          </div>
-        )}
+          )}
+        </div>
+        <footer className="pz-piede">
+          <button type="button" className="vd-btn" onClick={() => setModalIsOpen(false)}>Chiudi</button>
+          <button type="button" className="vd-btn vd-btn--primario" onClick={nuovaPerGiorno}>
+            <Plus size={16} /> Nuova prenotazione dal {formattaData(selectedDate)}
+          </button>
+        </footer>
       </div>
     )}
   </BookingModal>
-  
-  
-    <div className="bookings-table-tools">
-      <div className="bookings-filtri" role="tablist" aria-label="Filtra per stato">
-        {FILTRI_FASE.map(({ chiave, etichetta }) => (
-          <button
-            key={chiave}
-            type="button"
-            role="tab"
-            aria-selected={filtroFase === chiave}
-            className={`bookings-filtro ${filtroFase === chiave ? 'bookings-filtro--attivo' : ''}`}
-            onClick={() => setFiltroFase(chiave)}
-          >
-            {etichetta} <span className="bookings-filtro-conto">{contaFase(chiave)}</span>
-          </button>
-        ))}
-      </div>
-      <button
-        type="button"
-        className="bulk-complete-btn"
-        onClick={concludiPrenotazioniScadute}
-        disabled={prenotazioniDaConcludereOggi.length === 0}
-      >
-        Concludi i noleggi finiti
-      </button>
-    </div>
 
-    <div className={`table-responsive ${ricercaAttiva ? 'table-responsive-filtered' : ''}`} ref={listaRef}>
-      <table className="booking-table">
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>Email Cliente</th>
-            <th>Veicolo</th>
-            <th>Targa</th>
-            <th>Inizio</th>
-            <th>Fine</th>
-            <th>Prezzo (€)</th>
-            <th>Stato</th>
-            <th>Promemoria</th>
-            <th>Azioni</th>            
-          </tr>
-        </thead>
-        <tbody>
-          
-  {prenotazioniAttiveFiltrate.length === 0 ? (
-    <tr>
-      <td colSpan="10" style={{ textAlign: 'center', fontStyle: 'italic', color: '#888' }}>
-        Nessuna prenotazione trovata.
-      </td>
-    </tr>
-  ) : (
-    prenotazioniAttiveFiltrate
-      .slice((paginaPrenotazioni - 1) * righePerPagina, paginaPrenotazioni * righePerPagina)
-      .map((p) => {
-              const fase = faseLavoro(p, oggi);
-              const nota = promemoria(p, oggi);
-              const classeRiga = nota.livello ? `riga-scadenza-${nota.livello}` : '';
-              return (
-              <tr key={p.id} className={classeRiga}>
-                <td>{p.cliente}</td>
-                <td>{p.emailCliente}</td>
-                <td>{p.veicolo}</td>
-                <td>{p.targa}</td>
-                <td>{p.dataInizio}</td>
-                <td>{p.dataFine}</td>
-                <td>{prezzoPrenotazione(p) || '—'}</td>
-                <td>
-                  <span className={`fase-badge fase-badge--${fase}`}>
-                    {daAssegnare(p) ? 'Veicolo da assegnare' : ETICHETTA_FASE[fase]}
-                  </span>
-                </td>
-                <td>
-                  <span className={`deadline-badge ${classeRiga}`}>{nota.testo}</span>
-                </td>
-                <td className="table-actions-cell">
-                   <button className="info-btn" onClick={() => openInfoModal(p)} aria-label="Dettagli"><Info size={18} /></button>
-                   {puoConsegnare(p) && (
-                   <button className="table-consegna-btn" onClick={() => avviaConsegna(p)}>
-                     <KeyRound size={16} />
-                     Consegna
-                   </button>
-                   )}
-                   {puoConcludere(p) && (
-                   <button
-                     className="table-conclude-btn"
-                     onClick={() => {
-                       setInfoModalOpen(false);
-                       setModalIsOpen(false);
-                       setPrenotazioneDaConcludere(p);
-                       setConcludiModalOpen(true);
-                     }}
-                   >
-                     <CheckCircle size={16} />
-                     Concludi
-                   </button>
-                   )}
-                </td>
-              </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
-      <div className="pagination">
-  {[...Array(numeroPagine)].map((_, i) => (
-    <button
-      key={i}
-      className={paginaPrenotazioni === i + 1 ? 'active' : ''}
-      onClick={() => setPaginaPrenotazioni(i + 1)}
-    >
-      {i + 1}
-    </button>
-  ))}
-</div>
-    </div>
-  
     {/* Modal info dettagliato */}
    <InfoModal
     isOpen={infoModalOpen}
     onClose={closeInfoModal}
     prenotazione={dettagliPrenotazione}
-    onModifica={(p) => {
-      const index = prenotazioni.findIndex(item => item.id === p.id);
-      const giorni = calcGiorni(p.dataInizio, p.dataFine);
-      setFormData({ ...p, prezzoTotale: giorni * parseFloat(p.prezzoGiornaliero || 0) });
-      setSchedaVeicolo(p.schedaVeicolo || {
-        carburante: '',
-        kmIniziali: '',
-        danni: '',
-       accessori: {
-  cric: false,
-  triangolo: false,
-  giubbotto: false,
-  ruotaScorta: false,
-  cavoRicarica: false,
-  cateneNeve: false,
-  altro: ''
-},
-      });
-      setEditingIndex(index);
-      setIsAddingNewBooking(true);
-      setModalIsOpen(true);
-      setInfoModalOpen(false);
-    }}
+    onModifica={apriModifica}
     onElimina={(p) => {
       const index = prenotazioni.findIndex(item => item.id === p.id);
       handleDelete(index);

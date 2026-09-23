@@ -5,17 +5,22 @@ import { toast } from 'react-toastify';
 import { assegnaVeicolo } from '../lib/firestorePrenotazioni';
 import { updatePrenotazione } from '../store/prenotazioniSlice';
 import { daAssegnare, veicoliLiberiPerPrenotazione } from '../utils/assegnazioneVeicolo';
+import { formattaData } from '../utils/scadenze';
 import '../styles/ConcludiPrenotazioneModal.css'; // classi .modal, .overlay, .btn, .form-group
 
 const stili = {
   riquadro: {
-    background: '#fff8e1', border: '1px solid #f0c36d', borderRadius: 10,
-    padding: '1rem 1.25rem', margin: '1rem 0',
+    background: '#fff', border: '1px solid #f5d98b', borderLeft: '4px solid #f0b429', borderRadius: 12,
+    padding: '14px 18px', margin: '0 0 16px', color: '#2c3e50',
   },
-  titolo: { margin: '0 0 0.75rem', fontSize: '1.05rem', color: '#7a5a00' },
+  titolo: { margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: '#8a5a00' },
   riga: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
-    padding: '0.5rem 0', borderTop: '1px solid #f3dfa8', flexWrap: 'wrap',
+    padding: '8px 0', borderTop: '1px solid #f6ecd0', flexWrap: 'wrap', fontSize: 14,
+  },
+  bottone: {
+    display: 'inline-flex', alignItems: 'center', padding: '6px 12px', border: '1px solid #f0b429',
+    borderRadius: 8, background: '#fff8e1', color: '#8a5a00', fontSize: 13, fontWeight: 600, cursor: 'pointer',
   },
   campo: {
     width: '100%', boxSizing: 'border-box', padding: '0.6rem',
@@ -134,9 +139,9 @@ export default function PrenotazioniDaAssegnare({ prenotazioni, veicoli }) {
       {daFare.map((p) => (
         <div key={p.id} style={stili.riga}>
           <span>
-            <strong>{p.cliente}</strong> — {p.categoria}, {p.dataInizio} → {p.dataFine}
+            <strong>{p.cliente}</strong> · {p.categoria} · {formattaData(p.dataInizio)} → {formattaData(p.dataFine)}
           </span>
-          <button className="btn btn-primary" onClick={() => setSelezionata(p)}>
+          <button type="button" style={stili.bottone} onClick={() => setSelezionata(p)}>
             Assegna veicolo
           </button>
         </div>

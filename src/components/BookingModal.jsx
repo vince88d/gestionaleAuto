@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { X } from 'lucide-react';
 
-function BookingModal({ open, onClose, children }) {
+function BookingModal({ open, onClose, children, className = '' }) {
   const closeButtonRef = useRef(null);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ function BookingModal({ open, onClose, children }) {
             senza interferire con il modal annidato per il nuovo cliente. */}
         <div className="DialogOverlay" aria-hidden="true" />
         <Dialog.Content
-          className="DialogContent"
+          className={`DialogContent ${className}`}
           onInteractOutside={(e) => {
             if (e.target.closest?.('.AddClientOverlay, .AddClientModal')) {
               e.preventDefault();
