@@ -519,3 +519,600 @@
   color: #7f8c9a;
   font-size: 0.9em;
 }
+
+/* ============================================================
+   Scheda veicolo: intestazione fissa + schede
+   ============================================================ */
+
+/* Doppia classe: .Modal e' condivisa da tutte le finestre (400px di
+   larghezza massima); questa e' solo della scheda veicolo. */
+.Modal.vd-modal {
+  width: 92vw;
+  max-width: 980px;
+  height: 88vh;
+  max-height: 88vh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.vd {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: #2c3e50;
+}
+
+.vd-testa {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px 24px 16px;
+  flex-shrink: 0;
+}
+
+.vd-foto {
+  width: 88px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #f1f4f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b8c4d0;
+  overflow: hidden;
+}
+
+.vd-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.vd-titoli {
+  flex: 1;
+  min-width: 200px;
+}
+
+.vd-nome {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.vd-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.vd-targa {
+  padding: 2px 8px;
+  border: 1px solid #c9d3de;
+  border-radius: 4px;
+  font-family: Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.vd-categoria {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #eaf3fc;
+  color: #1f6fb2;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.vd-stato {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vd-stato--libero { background: #e3f6ea; color: #1e7b3c; }
+.vd-stato--occupato { background: #fdecea; color: #c0392b; }
+
+.vd-azioni {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.vd-btn:hover:not(:disabled) { background: #f4f6f8; }
+.vd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.vd-btn--primario {
+  background: #3498db;
+  border-color: #3498db;
+  color: #fff;
+}
+
+.vd-btn--primario:hover:not(:disabled) { background: #2980b9; }
+
+.vd-btn--icona { padding: 8px 10px; }
+
+.vd-btn--pericolo { color: #c0392b; }
+.vd-btn--pericolo:hover:not(:disabled) { background: #fdecea; border-color: #f5c6c0; }
+
+.vd-chiudi {
+  display: flex;
+  padding: 6px;
+  margin-left: 4px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #7f8c9a;
+  cursor: pointer;
+}
+
+.vd-chiudi:hover { background: #f1f4f8; color: #2c3e50; }
+
+/* Linguette delle schede */
+.vd-schede {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  border-bottom: 1px solid #e3e8ee;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.vd-scheda {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  margin-bottom: -1px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: #5d6d7e;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.vd-scheda:hover { color: #2c3e50; }
+
+.vd-scheda.attiva {
+  color: #3498db;
+  border-bottom-color: #3498db;
+}
+
+.vd-contatore {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #eef1f5;
+  color: #5d6d7e;
+  font-size: 11px;
+  text-align: center;
+}
+
+.vd-contatore--allerta { background: #fdecea; color: #c0392b; }
+
+/* Contenuto: l'unica parte che scorre */
+.vd-contenuto {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 28px;
+}
+
+.vd-sezione { margin-top: 24px; }
+.vd-sezione:first-child,
+.vd-avviso + .vd-sezione { margin-top: 0; }
+
+.vd-titolo-sezione {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #7f8c9a;
+}
+
+.vd-barra-sezione {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.vd-barra-sezione .vd-titolo-sezione { margin: 0; }
+
+.vd-vuoto {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed #d5dde6;
+  border-radius: 10px;
+  color: #7f8c9a;
+  font-size: 14px;
+  text-align: center;
+}
+
+.vd-suggerimento {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #5d6d7e;
+}
+
+/* Avviso danni in Panoramica */
+.vd-avviso {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border: 1px solid #f5c6c0;
+  border-radius: 10px;
+  background: #fdf3f2;
+  color: #c0392b;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vd-avviso-link { margin-left: auto; font-weight: 500; }
+
+/* Dati del veicolo */
+.vd-dati {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px 20px;
+  margin: 0;
+}
+
+.vd-dati dt {
+  font-size: 12px;
+  color: #95a3b1;
+}
+
+.vd-dati dd {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* Scadenze */
+.vd-scadenze {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vd-scadenza {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border-left: 4px solid;
+}
+
+.vd-scadenza-nome { font-size: 12px; color: #5d6d7e; }
+.vd-scadenza-data { font-size: 16px; font-weight: 700; color: #2c3e50; }
+.vd-scadenza-stato { font-size: 12px; font-weight: 600; }
+
+.vd-scadenza--verde { background: #f1faf4; border-color: #2ecc71; color: #1e7b3c; }
+.vd-scadenza--giallo { background: #fef9ec; border-color: #f1c40f; color: #9a6b00; }
+.vd-scadenza--rosso { background: #fdf3f2; border-color: #e74c3c; color: #c0392b; }
+.vd-scadenza--grigio { background: #f4f6f8; border-color: #c9d3de; color: #7f8c9a; }
+
+.vd-note {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f7f9fc;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+/* Calendario e prossime prenotazioni */
+.vd-calendario { margin-bottom: 8px; }
+
+.vd-prenotazioni {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #e3e8ee;
+  border-radius: 10px;
+}
+
+.vd-prenotazioni li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.vd-prenotazioni li + li { border-top: 1px solid #eef1f5; }
+.vd-periodo { font-weight: 600; white-space: nowrap; }
+.vd-cliente { color: #5d6d7e; flex: 1; }
+
+/* Etichette di stato piccole */
+.vd-etichetta {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.vd-etichetta--allerta { background: #fdecea; color: #c0392b; }
+.vd-etichetta--neutra { background: #eef1f5; color: #5d6d7e; }
+.vd-etichetta--ok { background: #e3f6ea; color: #1e7b3c; }
+.vd-etichetta--info { background: #eaf3fc; color: #1f6fb2; }
+
+/* Danni */
+.vd-griglia-danni {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.vd-danno {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid #e3e8ee;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.vd-danno-foto {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #f1f4f8;
+  color: #b8c4d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.vd-danno-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.vd-danno-altre {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+}
+
+.vd-danno-corpo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.vd-danno-desc {
+  margin: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.vd-danno-data {
+  font-size: 12px;
+  color: #7f8c9a;
+}
+
+.vd-danno-azioni {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.vd-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #1f6fb2;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vd-link:hover { text-decoration: underline; }
+.vd-link--pericolo { color: #c0392b; }
+
+/* Form nuovo danno */
+.vd-form-danno {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid #d5dde6;
+  border-radius: 10px;
+  background: #f7f9fc;
+}
+
+.vd-form-danno-foto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.vd-form-danno-foto img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.vd-scegli-foto {
+  width: 120px;
+  height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 2px dashed #c9d3de;
+  border-radius: 8px;
+  background: #fff;
+  color: #5d6d7e;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vd-scegli-foto:hover { border-color: #3498db; color: #3498db; }
+
+.vd-form-danno-campi {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vd-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5d6d7e;
+}
+
+.vd-campo input {
+  padding: 9px 10px;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #2c3e50;
+  background: #fff;
+}
+
+.vd-campo input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.vd-spunta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.vd-form-azioni {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Manutenzioni */
+.vd-totale { font-size: 14px; color: #5d6d7e; }
+.vd-totale strong { color: #2c3e50; }
+
+.vd-form-manutenzione {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #f7f9fc;
+}
+
+.vd-campo--largo { flex: 1; min-width: 200px; }
+.vd-campo--stretto { width: 120px; }
+
+.vd-tabella {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.vd-tabella th {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e3e8ee;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7f8c9a;
+  text-align: left;
+}
+
+.vd-tabella td {
+  padding: 10px;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.vd-num { text-align: right; white-space: nowrap; }
+
+/* Foto del danno ingrandita */
+.Modal.vd-modal-foto {
+  max-width: 900px;
+  width: 92vw;
+}
+
+.vd-foto-grande {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.vd-foto-grande img {
+  max-width: 100%;
+  max-height: 75vh;
+  border-radius: 10px;
+}

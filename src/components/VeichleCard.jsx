@@ -1,20 +1,10 @@
 // src/components/VehicleCard.jsx
 import React from 'react';
 import { Car, Clock } from 'lucide-react';
+import { SCADENZE_VEICOLO, formattaData, testoScadenza } from '../utils/scadenze';
 
-// Etichette scritte per esteso (abbreviate quanto basta per stare nella
-// card): prima erano sigle A/B/R che non si capivano senza il tooltip.
-const SCADENZE = [
-  { chiave: 'assicurazione', etichetta: 'Assic.', nome: 'Assicurazione' },
-  { chiave: 'bollo', etichetta: 'Bollo', nome: 'Bollo' },
-  { chiave: 'revisione', etichetta: 'Revis.', nome: 'Revisione' },
-];
-
-function descriviScadenza(nome, data, colore) {
-  if (!data) return `${nome}: data non inserita`;
-  const quando = new Date(data).toLocaleDateString('it-IT');
-  if (colore === 'rosso') return `${nome}: scaduta il ${quando}`;
-  return `${nome}: scade il ${quando}`;
+function descriviScadenza(nome, data) {
+  return `${nome}: ${data ? formattaData(data) : 'data non inserita'} (${testoScadenza(data).toLowerCase()})`;
 }
 
 const VehicleCard = ({
@@ -80,17 +70,17 @@ const VehicleCard = ({
         )}
 
         <div className="vcard-scadenze" aria-label="Scadenze">
-          {SCADENZE.map(({ chiave, etichetta, nome: nomeScadenza }) => {
+          {SCADENZE_VEICOLO.map(({ chiave, breve, nome: nomeScadenza }) => {
             const data = veicolo.scadenze?.[chiave];
             const colore = getScadenzaColor(data);
             return (
               <span
                 key={chiave}
                 className={`vcard-scadenza vcard-scadenza--${colore}`}
-                title={descriviScadenza(nomeScadenza, data, colore)}
+                title={descriviScadenza(nomeScadenza, data)}
               >
                 <span className="vcard-scadenza-punto" aria-hidden="true" />
-                {etichetta}
+                {breve}
               </span>
             );
           })}
