@@ -84,7 +84,7 @@ function Sidebar({ collapsed, toggleSidebar }) {
           {VOCI_MENU.map(({ to, etichetta, Icona, end }) => (
             <li key={to}>
               {/* NavLink aggiunge la classe "active" alla voce della pagina aperta */}
-              <NavLink to={to} end={end} title={collapsed ? etichetta : undefined}>
+              <NavLink to={to} end={end} draggable={false} title={collapsed ? etichetta : undefined}>
                 <Icona size={19} className="nav-icona" aria-hidden="true" />
                 {!collapsed && <span>{etichetta}</span>}
               </NavLink>
