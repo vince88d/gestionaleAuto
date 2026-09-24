@@ -53,8 +53,8 @@ test('elenca le categorie col numero di veicoli di ciascuna', async () => {
   render(<Categorie />);
 
   await screen.findByText('City Car');
-  expect(riga('City Car').textContent).toContain('2');
-  expect(riga('Berlina').textContent).toContain('0');
+  expect(riga('City Car').textContent).toContain('2 veicoli');
+  expect(riga('Berlina').textContent).toContain('Nessun veicolo');
 });
 
 test('aggiunge una categoria nuova, ma non un doppione', async () => {

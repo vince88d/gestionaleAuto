@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+import { Pencil, Trash2, Plus, Check, X } from 'lucide-react';
 import { ascoltaVeicoli } from '../lib/firestoreVeicoli';
 import { ascoltaTariffe } from '../lib/firestoreTariffe';
 import {
@@ -170,92 +171,111 @@ function Categorie() {
       : `Eliminare "${daEliminare}"? Nessun veicolo la usa, quindi non ci sono altri effetti.`;
   }, [daEliminare, tariffe]);
 
-  if (errore) return <div className="categorie-page"><p className="categorie-errore">{errore}</p></div>;
-  if (!veicoliCaricati || !categorieCaricate) return <div className="categorie-page"><p>Caricamento…</p></div>;
+  if (errore) return <div className="cat"><p className="cat-errore">{errore}</p></div>;
+  if (!veicoliCaricati || !categorieCaricate) return <div className="cat"><p className="cat-nota">Caricamento…</p></div>;
 
   return (
-    <div className="categorie-page">
-      <h1>Categorie</h1>
-      <p className="categorie-intro">
+    <div className="cat">
+      <div className="cat-toolbar">
+        <div>
+          <h1 className="cat-titolo">Categorie</h1>
+          <span className="cat-sottotitolo">{conta(categorie.length, 'categoria', 'categorie')}</span>
+        </div>
+      </div>
+      <p className="cat-intro">
         Le categorie disponibili quando aggiungi o modifichi un veicolo. Una categoria con veicoli non si può
         eliminare; rinominarla aggiorna automaticamente i veicoli, le prenotazioni e la tariffa collegati ad essa.
       </p>
 
       {categorie.length === 0 ? (
-        <p>Nessuna categoria ancora: aggiungine una qui sotto.</p>
+        <p className="cat-nota">Nessuna categoria ancora: aggiungine una qui sotto.</p>
       ) : (
-        <table className="categorie-tabella">
-          <thead>
-            <tr>
-              <th>Categoria</th>
-              <th>Veicoli</th>
-              <th>Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categorie.map((categoria) => {
-              const numero = conteggio.get(categoria) || 0;
-              const inRinomina = rinominando?.vecchia === categoria;
-              return (
-                <tr key={categoria}>
-                  <td>
-                    {inRinomina ? (
-                      <input
-                        type="text"
-                        aria-label={`Nuovo nome per ${categoria}`}
-                        value={rinominando.valore}
-                        onChange={(e) => setRinominando({ vecchia: categoria, valore: e.target.value })}
-                        autoFocus
-                      />
-                    ) : (
-                      categoria
-                    )}
-                  </td>
-                  <td>{numero}</td>
-                  <td className="categorie-azioni">
-                    {inRinomina ? (
-                      <>
-                        <button type="button" onClick={chiediRinomina} disabled={inCorso}>Salva</button>
-                        <button type="button" onClick={() => setRinominando(null)} disabled={inCorso}>Annulla</button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setRinominando({ vecchia: categoria, valore: categoria })}
-                          disabled={inCorso}
-                        >
-                          Rinomina
-                        </button>
-                        <button
-                          type="button"
-                          className="categorie-elimina"
-                          onClick={() => setDaEliminare(categoria)}
-                          disabled={inCorso || !puoiEliminareCategoria(categoria, veicoli)}
-                          title={numero > 0 ? `${numero} veicoli usano questa categoria` : undefined}
-                        >
-                          Elimina
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="cat-elenco">
+          <table className="cat-tabella">
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Veicoli</th>
+                <th aria-label="Azioni" />
+              </tr>
+            </thead>
+            <tbody>
+              {categorie.map((categoria) => {
+                const numero = conteggio.get(categoria) || 0;
+                const inRinomina = rinominando?.vecchia === categoria;
+                return (
+                  <tr key={categoria}>
+                    <td className="cat-nome">
+                      {inRinomina ? (
+                        <input
+                          type="text"
+                          className="cat-input"
+                          aria-label={`Nuovo nome per ${categoria}`}
+                          value={rinominando.valore}
+                          onChange={(e) => setRinominando({ vecchia: categoria, valore: e.target.value })}
+                          autoFocus
+                        />
+                      ) : (
+                        categoria
+                      )}
+                    </td>
+                    <td>{numero === 0 ? <span className="cat-vuoto-veicoli">Nessun veicolo</span> : conta(numero, 'veicolo', 'veicoli')}</td>
+                    <td className="cat-azioni-riga">
+                      {inRinomina ? (
+                        <>
+                          <button type="button" className="cat-icona" onClick={chiediRinomina} disabled={inCorso} title="Salva" aria-label="Salva">
+                            <Check size={16} aria-hidden="true" />
+                          </button>
+                          <button type="button" className="cat-icona" onClick={() => setRinominando(null)} disabled={inCorso} title="Annulla" aria-label="Annulla">
+                            <X size={16} aria-hidden="true" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="cat-icona"
+                            onClick={() => setRinominando({ vecchia: categoria, valore: categoria })}
+                            disabled={inCorso}
+                            title="Rinomina"
+                            aria-label="Rinomina"
+                          >
+                            <Pencil size={16} aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            className="cat-icona cat-icona--pericolo"
+                            onClick={() => setDaEliminare(categoria)}
+                            disabled={inCorso || !puoiEliminareCategoria(categoria, veicoli)}
+                            title={numero > 0 ? `${numero} veicoli usano questa categoria` : 'Elimina'}
+                            aria-label="Elimina"
+                          >
+                            <Trash2 size={16} aria-hidden="true" />
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      <form className="categorie-aggiungi" onSubmit={aggiungi}>
+      <form className="cat-aggiungi" onSubmit={aggiungi}>
         <input
           type="text"
+          className="cat-input"
           aria-label="Nuova categoria"
           placeholder="Es. Furgone Merci"
           value={nuova}
           onChange={(e) => setNuova(e.target.value)}
           disabled={inCorso}
         />
-        <button type="submit" disabled={inCorso || !nuova.trim()}>Aggiungi</button>
+        <button type="submit" className="cat-btn cat-btn--primario" disabled={inCorso || !nuova.trim()}>
+          <Plus size={16} aria-hidden="true" /> Aggiungi
+        </button>
       </form>
 
       <ConfirmDialog
