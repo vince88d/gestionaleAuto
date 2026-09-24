@@ -1,86 +1,144 @@
-.categorie-page {
-  padding: 24px;
+/* src/pages/Categorie.css — stessa grafica di Tariffe/Clienti/Prenotazioni,
+   con prefisso cat- per restare isolata dalle altre pagine. */
+
+.cat {
   max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 4px 32px;
+  color: #2c3e50;
 }
-.categorie-page h1 {
-  margin: 0 0 8px;
+
+.cat-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 6px;
 }
-.categorie-intro {
-  margin: 0 0 20px;
+
+.main-content .cat-titolo { margin: 0; }
+.cat-sottotitolo { font-size: 14px; color: #7f8c9a; }
+
+.cat-intro {
+  margin: 4px 0 20px;
   color: #4b5563;
   line-height: 1.5;
 }
-.categorie-tabella {
+
+/* ---------- Tabella ---------- */
+.cat-elenco {
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+  overflow-x: auto;
+}
+
+.cat-tabella {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font-size: 14px;
 }
-.categorie-tabella th,
-.categorie-tabella td {
-  padding: 10px 14px;
+
+.cat-tabella th {
+  padding: 11px 14px;
+  border-bottom: 1px solid #e3e8ee;
+  background: #f8fafc;
+  color: #7f8c9a;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
   text-align: left;
-  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
 }
-.categorie-tabella input {
-  padding: 6px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 1rem;
+
+.cat-tabella td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eef1f5;
+  vertical-align: middle;
+  text-align: left;
 }
-.categorie-azioni {
-  display: flex;
-  gap: 8px;
-}
-.categorie-azioni button {
-  padding: 6px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-.categorie-azioni button:disabled {
+
+.cat-tabella tbody tr:last-child td { border-bottom: none; }
+
+.cat-nome { font-weight: 600; }
+
+.cat-vuoto-veicoli {
   color: #9ca3af;
-  cursor: not-allowed;
-  border-color: #e5e7eb;
+  font-style: italic;
 }
-.categorie-elimina {
-  color: #b91c1c;
-  border-color: #fecaca !important;
+
+.cat-input {
+  padding: 8px 10px;
+  border: 1px solid #d5dde6;
+  border-radius: 7px;
+  font-size: 14px;
+  color: #2c3e50;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-.categorie-aggiungi {
+.cat-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.cat-azioni-riga {
+  white-space: nowrap;
+  text-align: right !important;
+}
+
+.cat-icona {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 4px;
+  border: 1px solid #e3e8ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #5d6d7e;
+  cursor: pointer;
+}
+.cat-icona:hover:not(:disabled) { background: #f4f6f8; color: #2c3e50; }
+.cat-icona:disabled { color: #c7ced6; cursor: not-allowed; }
+.cat-icona--pericolo:hover:not(:disabled) { background: #fdecea; border-color: #f5c6c0; color: #c0392b; }
+
+/* ---------- Aggiungi ---------- */
+.cat-aggiungi {
   margin-top: 20px;
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
-.categorie-aggiungi input {
-  flex: 1;
-  padding: 8px 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 1rem;
-}
-.categorie-aggiungi button {
-  padding: 8px 18px;
-  border: none;
+.cat-aggiungi .cat-input { flex: 1; max-width: 320px; }
+
+.cat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border: 1px solid #d5dde6;
   border-radius: 8px;
-  background: #007bff;
-  color: #fff;
-  font-size: 1rem;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
-.categorie-aggiungi button:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-}
-.categorie-nota {
+.cat-btn--primario { border-color: #3498db; background: #3498db; color: #fff; }
+.cat-btn--primario:hover:not(:disabled) { background: #2980b9; }
+.cat-btn--primario:disabled { border-color: #9ca3af; background: #9ca3af; color: #fff; cursor: not-allowed; }
+
+.cat-nota {
   margin-top: 4px;
   color: #6b7280;
-  font-size: 0.85rem;
+  font-size: 13px;
 }
-.categorie-errore {
-  color: #b91c1c;
+.cat-errore { color: #b91c1c; }
+
+@media (max-width: 700px) {
+  .cat-tabella th,
+  .cat-tabella td { padding: 9px 10px; }
 }
