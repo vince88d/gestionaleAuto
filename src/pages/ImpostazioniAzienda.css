@@ -321,3 +321,43 @@
 .rec-problema details { margin-top: 4px; }
 .rec-problema summary { cursor: pointer; font-size: 12.5px; }
 .rec-problema details ul { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; }
+
+.rec-progresso {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13.5px;
+  color: #2c3e50;
+}
+.rec-progresso small { color: #7f8c9a; }
+.rec-barra {
+  height: 8px;
+  border-radius: 999px;
+  background: #eef1f5;
+  overflow: hidden;
+}
+.rec-barra > div {
+  height: 100%;
+  background: #3498db;
+  transition: width 0.2s;
+}
+
+.rec-documenti {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e3e8ee;
+  border-radius: 10px;
+}
+.rec-documenti li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid #eef1f5;
+  font-size: 13.5px;
+}
+.rec-documenti li:last-child { border-bottom: none; }
+.rec-documenti small { color: #7f8c9a; }

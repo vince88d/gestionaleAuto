@@ -604,6 +604,16 @@ ipcMain.handle('recupero-copia-sicurezza', async (_, { cartella, extra = [] }) =
   }
 });
 
+// Apre nel browser un documento salvato su Firebase Storage (es. un
+// contratto recuperato). Solo indirizzi di Storage, nient'altro.
+ipcMain.handle('apri-documento-online', async (_, url) => {
+  if (typeof url !== 'string' || !url.startsWith('https://firebasestorage.googleapis.com/')) {
+    return { success: false, error: 'Indirizzo non valido' };
+  }
+  await shell.openExternal(url);
+  return { success: true };
+});
+
 // Salva su file il backup dei dati (preparato dall'app leggendo Firestore)
 // o un resoconto di testo (.txt).
 ipcMain.handle('salva-backup', async (_, { nomeFile, contenuto }) => {

@@ -5,7 +5,7 @@ import { controllaFile, dimensioniRidotte, nomeFileVeicolo, eFotoIncorporata } f
 // Ridimensiona la foto (lato massimo 1600 px), la converte in WebP (mantiene la
 // trasparenza dei PNG ritagliati) e la carica su Firebase Storage nella
 // cartella indicata. Restituisce l'indirizzo web da salvare nel veicolo.
-async function caricaComeWebp(file, cartella) {
+async function caricaComeWebp(file, cartella, nome = nomeFileVeicolo()) {
   const immagine = await createImageBitmap(file, { imageOrientation: 'from-image' });
   const { larghezza, altezza } = dimensioniRidotte(immagine.width, immagine.height);
   const canvas = document.createElement('canvas');
@@ -17,7 +17,7 @@ async function caricaComeWebp(file, cartella) {
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.85));
   if (!blob) throw new Error('Non riesco a preparare la foto. Prova con un altro file.');
 
-  const riferimento = ref(storage, `${cartella}/${nomeFileVeicolo()}`);
+  const riferimento = ref(storage, `${cartella}/${nome}`);
   await uploadBytes(riferimento, blob, {
     contentType: 'image/webp',
     cacheControl: 'public,max-age=31536000,immutable',
@@ -64,4 +64,18 @@ export async function spostaFotoDanniSuStorage(danni) {
       return danno;
     }
   }));
+}
+
+// Recupero dalla versione precedente: foto letta dal vecchio computer,
+// caricata con un nome FISSO (`nome`), cosi' se il recupero si ripete la foto
+// viene sovrascritta invece di essere caricata una seconda volta.
+export async function caricaFotoRecuperata(blob, cartella, nome) {
+  return caricaComeWebp(blob, cartella, nome);
+}
+
+// Contratto PDF recuperato (cartella contratti/, solo staff), nome fisso.
+export async function caricaPdfRecuperato(blob, nome) {
+  const riferimento = ref(storage, `contratti/${nome}`);
+  await uploadBytes(riferimento, blob, { contentType: 'application/pdf' });
+  return getDownloadURL(riferimento);
 }

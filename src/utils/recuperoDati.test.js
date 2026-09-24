@@ -1,6 +1,7 @@
 import {
   tipoRiferimento, nomeFileDaPercorso, raccogliRiferimenti, sostituisciRiferimenti,
   preparaVeicolo, preparaPrenotazione, collegaConfermeOtp, preparaClienti, analizzaRecupero, testoResoconto,
+  impronta, nomeStorageRecupero, idArchivioContratto, pianificaFile, applicaIndirizzi, testoEsitoRecupero,
 } from './recuperoDati';
 
 // Formato reale della versione precedente su Windows (slash mescolati).
@@ -123,9 +124,14 @@ describe('analizzaRecupero', () => {
     expect(r.conteggi.veicoli).toEqual({ totale: 2, nuovi: 1, giaPresenti: 1 });
     expect(r.conteggi.prenotazioni).toEqual({ totale: 2, nuovi: 2, giaPresenti: 0 });
     expect(r.conteggi.clienti).toEqual({ totale: 1, nuovi: 1, giaPresenti: 0 });
+    // La foto di v1 non si carica: v1 e' gia' su Firebase. Nessun altro file da caricare.
     expect(r.conteggi).toMatchObject({
-      clientiRicavati: 1, confermeOtpCollegate: 1, fileDaCaricare: 1, fileMancanti: 1, immaginiNonUsate: 1, contrattiArchivio: 1,
+      clientiRicavati: 1, confermeOtpCollegate: 1, fileDaCaricare: 0, fileMancanti: 1, immaginiNonUsate: 1, contrattiArchivio: 1,
     });
+    const tutto = analizzaRecupero(vecchi, {}, file);
+    expect(tutto.conteggi.fileDaCaricare).toBe(1);
+    const dopo = analizzaRecupero(vecchi, { archivio: ['recupero-contratto_1748349579063'] }, file);
+    expect(dopo.conteggi).toMatchObject({ contrattiArchivio: 0, contrattiGiaInArchivio: 1 });
     const messaggi = r.problemi.map((p) => p.messaggio).join('\n');
     expect(messaggi).toMatch(/Targhe presenti su piu/);
     expect(messaggi).toMatch(/targa gia' usata da un altro veicolo/);
@@ -145,5 +151,70 @@ describe('analizzaRecupero', () => {
   it('segnala i file che non si sono potuti leggere', () => {
     const r = analizzaRecupero({ erroriLettura: [{ file: 'veicoli.json', errore: 'JSON non valido' }] });
     expect(r.problemi[0]).toMatchObject({ gravita: 'grave' });
+  });
+});
+
+describe('piano del recupero', () => {
+  const FOTO_DANNO = 'file://C:\\x\\images\\danno.png';
+  const INCORPORATA = 'data:image/png;base64,QUJD';
+
+  it('nomi fissi, cosi\' ripetere il recupero non crea doppioni', () => {
+    expect(nomeStorageRecupero('1749035637679.jpg')).toBe('recupero-1749035637679.webp');
+    expect(nomeStorageRecupero('foto uno.PNG')).toBe('recupero-foto-uno.webp');
+    expect(nomeStorageRecupero('contratto_1.pdf', 'pdf')).toBe('recupero-contratto_1.pdf');
+    expect(idArchivioContratto('contratto_1748.pdf')).toBe('recupero-contratto_1748');
+    expect(impronta('abc')).toBe(impronta('abc'));
+    expect(impronta('abc')).not.toBe(impronta('abd'));
+  });
+
+  it('foto del veicolo in veicoli/, danni in danni/, una sola volta per file, mancanti esclusi', () => {
+    const piano = pianificaFile({
+      veicoli: [
+        { immagine: FOTO_WIN, danni: [{ immagine: FOTO_DANNO }, { immagine: INCORPORATA }] },
+        { immagine: FOTO_WIN },
+        { immagine: 'file://C:\\x\\images\\manca.jpg' },
+      ],
+      prenotazioni: [{ fotoDanni: [FOTO_DANNO], schedaVeicolo: { fotoDanni: 'blob:x' } }],
+    }, { immagini: ['1749035637679.jpg', 'danno.png'] });
+    expect(piano.map((p) => [p.nome || 'incorporata', p.destinazione, p.nomeStorage])).toEqual([
+      ['1749035637679.jpg', 'veicoli', 'recupero-1749035637679.webp'],
+      ['danno.png', 'danni', 'recupero-danno.webp'],
+      ['incorporata', 'danni', `recupero-incorporata-${impronta(INCORPORATA)}.webp`],
+    ]);
+  });
+
+  it('i contratti citati nei dati vanno in contratti/', () => {
+    const piano = pianificaFile(
+      { clienti: [{ contratti: [{ contratto: 'C:\\x\\pdf\\c1.pdf' }] }] },
+      { contratti: [{ nome: 'c1.pdf', cartella: 'pdf' }] },
+    );
+    expect(piano[0]).toMatchObject({ nome: 'c1.pdf', sottocartella: 'pdf', destinazione: 'contratti', nomeStorage: 'recupero-c1.pdf' });
+  });
+
+  it('mette gli indirizzi online, toglie le foto temporanee, segna il recupero', () => {
+    const documento = {
+      id: 'x', immagine: FOTO_WIN, altra: 'file://C:\\manca.jpg', scheda: { fotoDanni: 'blob:x' }, ricavatoDaPrenotazioni: true,
+    };
+    const pronto = applicaIndirizzi(documento, new Map([[FOTO_WIN, 'https://storage/f.webp']]), '2026-09-24T10:00:00.000Z');
+    expect(pronto).toEqual({
+      id: 'x',
+      immagine: 'https://storage/f.webp',
+      altra: 'file://C:\\manca.jpg',
+      scheda: { fotoDanni: '' },
+      recupero: { da: 'versione-precedente', il: '2026-09-24T10:00:00.000Z', ricavatoDaPrenotazioni: true },
+    });
+  });
+
+  it('resoconto finale con gli errori', () => {
+    const vuoto = { scritti: 0, giaPresenti: 0, errori: [] };
+    const testo = testoEsitoRecupero({
+      veicoli: { scritti: 4, giaPresenti: 0, errori: [] },
+      clienti: vuoto,
+      prenotazioni: { scritti: 4, giaPresenti: 1, errori: ['Prenotazioni p9: rete'] },
+      file: { caricati: 2, errori: [] },
+      archivio: { scritti: 8, giaPresenti: 0, errori: [] },
+    });
+    expect(testo).toMatch(/Veicoli: +scritti 4, gia' presenti 0, errori 0/);
+    expect(testo).toMatch(/- Prenotazioni p9: rete/);
   });
 });

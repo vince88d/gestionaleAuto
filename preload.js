@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   recuperoLeggi: (cartella) => ipcRenderer.invoke('recupero-leggi', cartella),
   recuperoLeggiFile: (dati) => ipcRenderer.invoke('recupero-leggi-file', dati),
   recuperoCopiaSicurezza: (dati) => ipcRenderer.invoke('recupero-copia-sicurezza', dati),
+  apriDocumentoOnline: (url) => ipcRenderer.invoke('apri-documento-online', url),
   concludiPrenotazione: (data) => ipcRenderer.invoke('concludi-prenotazione', data),
   salvaContrattoPDF: (filePath) => ipcRenderer.invoke('salva-contratto-pdf', filePath),
   selezionaPdfContratto: () => ipcRenderer.invoke('seleziona-pdf-contratto'),

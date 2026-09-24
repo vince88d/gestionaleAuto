@@ -284,6 +284,8 @@ export function analizzaRecupero({
   }
   const contrattiCollegati = new Set([...fileTrovati].filter((n) => (fileDisponibili.contratti || []).some((c) => c.nome === n)));
   const contrattiArchivio = (fileDisponibili.contratti || []).filter((c) => !contrattiCollegati.has(c.nome));
+  const giaInArchivio = new Set(esistenti.archivio || []);
+  const contrattiArchivioNuovi = contrattiArchivio.filter((c) => !giaInArchivio.has(idArchivioContratto(c.nome)));
 
   // Gia' presenti su Firebase: non si toccano.
   const idPrenotazioniEsistenti = new Set(esistenti.prenotazioni || []);
@@ -293,6 +295,12 @@ export function analizzaRecupero({
     return { totale: lista.length, nuovi: lista.length - gia, giaPresenti: gia };
   };
   const veicoliDaScrivere = veicoliPronti.filter((v) => !targheInConflitto.includes(v));
+  // Foto e file da caricare: solo quelli dei dati che non sono ancora su Firebase.
+  const fileNuovi = pianificaFile({
+    veicoli: veicoliDaScrivere.filter((v) => !idVeicoliEsistenti.has(v.id)),
+    prenotazioni: prenotazioniPronte.filter((p) => !idPrenotazioniEsistenti.has(p.id)),
+    clienti: clientiPronti.filter((cl) => !idClientiEsistenti.has(cl.id)),
+  }, fileDisponibili);
 
   return {
     dati: {
@@ -307,10 +315,11 @@ export function analizzaRecupero({
       clienti: conta(clientiPronti, idClientiEsistenti),
       clientiRicavati: clientiPronti.filter((c) => c.ricavatoDaPrenotazioni).length,
       confermeOtpCollegate: prenotazioniPronte.filter((p) => p.confermaOtp).length,
-      fileDaCaricare: fileTrovati.size + incorporate.length,
+      fileDaCaricare: fileNuovi.length,
       fileMancanti: fileMancanti.length,
       immaginiNonUsate: Math.max(0, immaginiDisponibili.size - [...fileTrovati].filter((n) => immaginiDisponibili.has(n)).length),
-      contrattiArchivio: contrattiArchivio.length,
+      contrattiArchivio: contrattiArchivioNuovi.length,
+      contrattiGiaInArchivio: contrattiArchivio.length - contrattiArchivioNuovi.length,
     },
     problemi,
   };
@@ -329,7 +338,7 @@ export function testoResoconto({ conteggi, problemi }, { cartella = '', data = n
     `Clienti:      ${c.clienti.totale} (nuovi ${c.clienti.nuovi}, gia' presenti ${c.clienti.giaPresenti}; ricavati dalle prenotazioni ${c.clientiRicavati})`,
     `Conferme OTP collegate alle prenotazioni: ${c.confermeOtpCollegate}`,
     `Foto e documenti da caricare online: ${c.fileDaCaricare} (mancanti ${c.fileMancanti})`,
-    `Contratti PDF per l'archivio: ${c.contrattiArchivio}`,
+    `Contratti PDF per l'archivio: ${c.contrattiArchivio} (gia' in archivio ${c.contrattiGiaInArchivio || 0})`,
     `Immagini non usate (restano solo nella copia di sicurezza): ${c.immaginiNonUsate}`,
     '',
     problemi.length ? 'DA CONTROLLARE:' : 'Nessun problema trovato.',
@@ -339,4 +348,105 @@ export function testoResoconto({ conteggi, problemi }, { cartella = '', data = n
     ]),
   ];
   return righe.filter((r) => r !== null).join('\n');
+}
+
+// ---------- Piano del recupero (Passo 2) ----------
+
+// Impronta breve e stabile di un testo (FNV-1a), per dare un nome fisso alle
+// foto incorporate nei dati.
+export function impronta(testo) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < testo.length; i += 1) {
+    h ^= testo.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
+
+const nomePulito = (nome) => String(nome).replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_-]+/g, '-').slice(0, 80);
+
+// Nome fisso su Storage per un file recuperato (ripetendo il recupero lo
+// stesso file finisce nello stesso posto, niente doppioni).
+export function nomeStorageRecupero(nomeFile, estensione = 'webp') {
+  return `recupero-${nomePulito(nomeFile)}.${estensione}`;
+}
+
+// Id fisso del documento d'archivio di un contratto recuperato.
+export function idArchivioContratto(nomeFile) {
+  return `recupero-${nomePulito(nomeFile)}`;
+}
+
+// Elenco dei file da caricare per i dati che verranno scritti: uno per ogni
+// riferimento diverso. La foto principale di un veicolo va in veicoli/ (la
+// mostra anche il sito), i PDF in contratti/, le altre foto in danni/ (solo
+// staff). I file che non ci sono nella cartella non si caricano.
+export function pianificaFile({ veicoli = [], prenotazioni = [], clienti = [] }, fileDisponibili = {}) {
+  const immagini = new Set(fileDisponibili.immagini || []);
+  const contratti = new Map((fileDisponibili.contratti || []).map((c) => [c.nome, c]));
+  const piano = new Map();
+
+  const aggiungi = (valore, tipo, fotoVeicolo) => {
+    if (tipo === 'file') {
+      const { nome } = nomeFileDaPercorso(valore);
+      const pdf = /\.pdf$/i.test(nome);
+      let sottocartella = null;
+      if (pdf && contratti.has(nome)) sottocartella = contratti.get(nome).cartella;
+      else if (!pdf && immagini.has(nome)) sottocartella = 'images';
+      if (sottocartella === null) return; // mancante: resta il vecchio percorso (segnalato nell'analisi)
+      const destinazione = pdf ? 'contratti' : (fotoVeicolo ? 'veicoli' : 'danni');
+      const esistente = piano.get(valore);
+      if (esistente && esistente.destinazione === 'veicoli') return;
+      piano.set(valore, {
+        valore, tipo, nome, sottocartella, destinazione,
+        nomeStorage: nomeStorageRecupero(nome, pdf ? 'pdf' : 'webp'),
+      });
+    } else if (tipo === 'incorporata' && !piano.has(valore)) {
+      piano.set(valore, {
+        valore, tipo, destinazione: fotoVeicolo ? 'veicoli' : 'danni', nomeStorage: `recupero-incorporata-${impronta(valore)}.webp`,
+      });
+    }
+  };
+
+  veicoli.forEach((v) => raccogliRiferimenti(v).forEach((r) => aggiungi(r.valore, r.tipo, r.campo === 'immagine')));
+  [...prenotazioni, ...clienti].forEach((d) => raccogliRiferimenti(d).forEach((r) => aggiungi(r.valore, r.tipo, false)));
+  return [...piano.values()];
+}
+
+// Dati pronti da scrivere: i riferimenti caricati diventano indirizzi web,
+// le foto temporanee (blob:, irrecuperabili) vengono tolte, i file mancanti
+// restano col vecchio percorso. Ogni documento riceve il segno del recupero.
+export function applicaIndirizzi(documento, indirizzi, recuperatoIl) {
+  const aggiornato = sostituisciRiferimenti(documento, (valore, tipo) => {
+    if (indirizzi.has(valore)) return indirizzi.get(valore);
+    if (tipo === 'temporanea') return '';
+    return undefined;
+  });
+  const { ricavatoDaPrenotazioni, ...resto } = aggiornato;
+  return {
+    ...resto,
+    recupero: {
+      da: SEGNO_RECUPERO,
+      il: recuperatoIl,
+      ...(ricavatoDaPrenotazioni ? { ricavatoDaPrenotazioni: true } : {}),
+    },
+  };
+}
+
+// Resoconto finale del recupero, da salvare in un file di testo.
+export function testoEsitoRecupero(esito, { data = new Date() } = {}) {
+  const riga = (nome, e) => `${nome.padEnd(13)} scritti ${e.scritti}, gia' presenti ${e.giaPresenti}, errori ${e.errori.length}`;
+  const errori = [...esito.veicoli.errori, ...esito.clienti.errori, ...esito.prenotazioni.errori, ...esito.file.errori];
+  return [
+    'ESITO RECUPERO DATI DALLA VERSIONE PRECEDENTE',
+    `Data: ${data.toLocaleString('it-IT')}`,
+    '',
+    riga('Veicoli:', esito.veicoli),
+    riga('Clienti:', esito.clienti),
+    riga('Prenotazioni:', esito.prenotazioni),
+    `Foto e contratti caricati: ${esito.file.caricati} (errori ${esito.file.errori.length})`,
+    `Contratti nell'archivio documenti: ${esito.archivio.scritti} (gia' presenti ${esito.archivio.giaPresenti})`,
+    '',
+    errori.length ? 'ERRORI:' : 'Nessun errore.',
+    ...errori.map((e) => `- ${e}`),
+  ].join('\n');
 }
