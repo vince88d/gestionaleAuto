@@ -1,17 +1,11 @@
 const { app, BrowserWindow, ipcMain, dialog, session, shell } = require('electron');
 const path = require('path');
-const nodemailer = require('nodemailer');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const crypto = require('crypto');
-const keytar = require('keytar');
-const archiver = require('archiver');
-const unzipper = require('unzipper');
 const { PDFDocument } = require('pdf-lib');
 require('update-electron-app');
 
-const SMTP_PASSWORD_SERVICE = 'gestionaleAuto.smtp';
-const SMTP_PASSWORD_ACCOUNT = 'default';
 const LICENSE_SALT = 'gestionaleAuto-license-v1';
 const LICENSE_SECRET = '9f9f2525f0d8f1308e5ea44cf3b9c85184767f0dbfda8cf2a5545e4ecf3a18bb';
 const LEGACY_LICENSE_HASH = crypto
@@ -102,107 +96,11 @@ function readCompanySettings() {
   };
 }
 
-async function getCompanySettingsForRenderer() {
-  const settings = readCompanySettings();
-  const password = await keytar.getPassword(SMTP_PASSWORD_SERVICE, SMTP_PASSWORD_ACCOUNT);
-
-  return {
-    ...settings,
-    hasPassword: Boolean(password),
-  };
-}
-
-async function getCompanyEmailConfig() {
-  const settings = readCompanySettings();
-  const password = await keytar.getPassword(SMTP_PASSWORD_SERVICE, SMTP_PASSWORD_ACCOUNT);
-
-  if (!settings.email || !password) {
-    return null;
-  }
-
-  return {
-    ...settings,
-    password,
-  };
-}
-
-function formatEmailError(error) {
-  const rawMessage = error?.message || 'Errore invio email';
-
-  if (
-    rawMessage.includes('Application-specific password required') ||
-    rawMessage.includes('InvalidSecondFactor')
-  ) {
-    return 'Accesso Gmail non riuscito: devi usare una App Password di Google nelle impostazioni azienda, non la password normale dell\'account.';
-  }
-
-  if (rawMessage.includes('Invalid login')) {
-    return 'Accesso SMTP non riuscito. Verifica email aziendale e password SMTP nelle impostazioni.';
-  }
-
-  return rawMessage;
-}
-
 function sanitizeFileName(value = '') {
   return String(value)
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
     .replace(/\s+/g, '_')
     .trim() || 'documento';
-}
-
-async function inviaEmailPrenotazione({ bookingData, allegatoPath }) {
-  const companyData = await getCompanyEmailConfig();
-  if (!companyData) {
-    return {
-      success: false,
-      message: 'Configurazione email aziendale incompleta. Controlla email e password SMTP nelle impostazioni.',
-    };
-  }
-
-  const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    auth: {
-      user: companyData.email.trim(),
-      pass: companyData.password.trim(),
-    },
-  });
-
-  const emailBody = `
-    <h2>Riepilogo Prenotazione</h2>
-    <p>Gentile Cliente ${bookingData.cliente},</p>
-    <p>Grazie per aver prenotato con noi. Di seguito trovi il riepilogo della tua prenotazione:</p>
-    <ul>
-      <li><strong>Veicolo:</strong> ${bookingData.veicolo} (${bookingData.targa})</li>
-      <li><strong>Periodo:</strong> dal ${bookingData.dataInizio} al ${bookingData.dataFine}</li>
-      <li><strong>Prezzo Totale:</strong> ${bookingData.prezzoTotale} €</li>
-    </ul>
-    <p>In allegato trovi il riepilogo della prenotazione${Array.isArray(allegatoPath) && allegatoPath.length > 1 ? ' e il contratto da firmare' : ''}.</p>
-    <p>Per qualsiasi domanda, contattaci.</p>
-    <p>Grazie,<br>${companyData.nome || 'La Tua Azienda'}</p>
-  `;
-
-  const attachments = Array.isArray(allegatoPath)
-    ? allegatoPath.map((attachmentPath) => ({ path: attachmentPath }))
-    : (allegatoPath ? [{ path: allegatoPath }] : []);
-
-  const mailOptions = {
-    from: `"${companyData.nome || 'Noleggio'}" <${companyData.email}>`,
-    to: bookingData.emailCliente,
-    subject: `Riepilogo Prenotazione Veicolo - ${bookingData.targa}`,
-    html: emailBody,
-    attachments,
-  };
-
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email inviata:', info.messageId);
-    return { success: true };
-  } catch (error) {
-    console.error('Errore invio email:', error);
-    return { success: false, message: formatEmailError(error) };
-  }
 }
 
 function verificaTrial() {
@@ -343,31 +241,10 @@ app.whenReady().then(() => {
     return { success: true };
   });
 
-  ipcMain.handle('get-company-settings', async () => getCompanySettingsForRenderer());
-
-  ipcMain.handle('save-company-settings', async (_, data) => {
-    try {
-      const sanitized = {
-        nome: (data?.nome || '').trim(),
-        email: (data?.email || '').trim(),
-        telefono: (data?.telefono || '').trim(),
-        indirizzo: (data?.indirizzo || '').trim(),
-      };
-
-      writeJsonFile(companySettingsPath, sanitized);
-
-      if (typeof data?.password === 'string') {
-        const password = data.password.trim();
-        if (password) {
-          await keytar.setPassword(SMTP_PASSWORD_SERVICE, SMTP_PASSWORD_ACCOUNT, password);
-        }
-      }
-
-      return { success: true, settings: await getCompanySettingsForRenderer() };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  });
+  // Solo lettura: i dati dell'azienda ora stanno su Firestore
+  // (impostazioni/azienda). Questo file sul computer serve soltanto per
+  // copiarli la prima volta da chi usava la versione precedente.
+  ipcMain.handle('get-company-settings', async () => readCompanySettings());
 
   cleanTempFiles().catch(console.error);
   createWindow();
@@ -525,59 +402,23 @@ ipcMain.handle('genera-contratto-completo', async (_, { riepilogoBuffer }) => {
   }
 });
 
-ipcMain.handle('esporta-backup', async () => {
+// Salva su file il backup dei dati (preparato dall'app leggendo Firestore).
+ipcMain.handle('salva-backup', async (_, { nomeFile, contenuto }) => {
   try {
     const { canceled, filePath } = await dialog.showSaveDialog({
-      title: 'Esporta Backup',
-      defaultPath: `backup-noleggio-${Date.now()}.zip`,
-      filters: [{ name: 'Backup ZIP', extensions: ['zip'] }],
+      title: 'Salva il backup dei dati',
+      defaultPath: nomeFile || 'backup-gestionale.json',
+      filters: [{ name: 'Backup (JSON)', extensions: ['json'] }],
     });
 
     if (canceled || !filePath) {
-      return { success: false, message: 'Backup annullato' };
+      return { success: false, annullato: true };
     }
 
-    const output = fs.createWriteStream(filePath);
-    const archive = archiver('zip', { zlib: { level: 9 } });
-
-    return await new Promise((resolve, reject) => {
-      archive.pipe(output);
-
-      fs.readdirSync(userDataDir).forEach((file) => {
-        const fullPath = path.join(userDataDir, file);
-        if (file !== 'backup') archive.file(fullPath, { name: file });
-      });
-
-      output.on('close', () => resolve({ success: true, path: filePath }));
-      archive.on('error', (error) => reject({ success: false, error: error.message }));
-      archive.finalize();
-    });
+    await fsPromises.writeFile(filePath, contenuto, 'utf-8');
+    return { success: true, path: filePath };
   } catch (error) {
     return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('importa-backup', async () => {
-  try {
-    const { canceled, filePaths } = await dialog.showOpenDialog({
-      title: 'Seleziona il file di backup',
-      filters: [{ name: 'Backup ZIP', extensions: ['zip'] }],
-      properties: ['openFile'],
-    });
-
-    if (canceled || !filePaths.length) {
-      return { success: false, message: "Operazione annullata dall'utente." };
-    }
-
-    const backupPath = filePaths[0];
-    await fs.createReadStream(backupPath)
-      .pipe(unzipper.Extract({ path: userDataDir }))
-      .promise();
-
-    return { success: true, path: backupPath };
-  } catch (error) {
-    console.error("Errore durante l'importazione del backup:", error);
-    return { success: false, message: error.message };
   }
 });
 

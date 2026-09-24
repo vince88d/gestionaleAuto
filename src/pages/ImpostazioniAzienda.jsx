@@ -1,81 +1,129 @@
 import React, { useState, useEffect } from 'react';
 import './ImpostazioniAzienda.css';
-import { Download, Upload, KeyRound, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Download, KeyRound, Clock } from 'lucide-react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { EVENTO_AZIENDA_AGGIORNATA } from '../components/Sidebar';
+import { useAzienda, salvaAzienda } from '../lib/firestoreAzienda';
+import { leggiDatiPerBackup } from '../lib/backupDati';
+import {
+  AZIENDA_VUOTA, validaAzienda, aziendeUguali, normalizzaAzienda, campiCambiati,
+} from '../utils/azienda';
+import { nomeFileBackup, riepilogoBackup } from '../utils/backup';
+
+const CAMPI = [
+  { nome: 'nome', etichetta: 'Nome azienda', obbligatorio: true },
+  { nome: 'partitaIva', etichetta: 'Partita IVA / Codice fiscale' },
+  { nome: 'email', etichetta: 'Email', tipo: 'email' },
+  { nome: 'pec', etichetta: 'PEC', tipo: 'email' },
+  { nome: 'telefono', etichetta: 'Telefono', tipo: 'tel' },
+  { nome: 'indirizzo', etichetta: 'Indirizzo' },
+];
+const ETICHETTE = Object.fromEntries(CAMPI.map((c) => [c.nome, c.etichetta]));
 
 function ImpostazioniAzienda() {
+  const { dati: datiSalvati, caricato, errore: erroreLettura } = useAzienda();
+
+  // `base` = i dati da cui e' partita la modifica. Se quelli salvati cambiano
+  // (un'altra postazione) mentre si sta scrivendo, e' un conflitto: non si
+  // salva sopra in silenzio.
+  const [form, setForm] = useState(AZIENDA_VUOTA);
+  const [base, setBase] = useState(AZIENDA_VUOTA);
+  const [errori, setErrori] = useState({});
+  const [salvando, setSalvando] = useState(false);
+
+  const modificato = !aziendeUguali(form, base);
+  // Conflitto solo sui campi che si stanno modificando e che un'altra
+  // postazione ha cambiato nel frattempo. Durante il salvataggio arriva la
+  // nostra stessa modifica: non e' un conflitto.
+  const campiInConflitto = salvando ? [] : campiCambiati(base, datiSalvati).filter((c) => campiCambiati(base, form).includes(c));
+  const conflitto = campiInConflitto.length > 0;
+
+  // Quando cambiano i dati salvati: i campi che non si stanno modificando
+  // prendono subito il valore nuovo (anche a meta' modifica), quelli in
+  // modifica restano come li si sta scrivendo.
+  useEffect(() => {
+    setForm((formAttuale) => {
+      const toccati = campiCambiati(base, formAttuale);
+      const unito = { ...datiSalvati };
+      toccati.forEach((c) => { unito[c] = formAttuale[c]; });
+      return unito;
+    });
+    setBase((baseAttuale) => {
+      const nuova = { ...datiSalvati };
+      campiCambiati(baseAttuale, form).forEach((c) => { nuova[c] = baseAttuale[c]; });
+      return nuova;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datiSalvati]);
+
   const [licenzaAttiva, setLicenzaAttiva] = useState(false);
   const [codiceLicenza, setCodiceLicenza] = useState('');
-  const [backupStatus, setBackupStatus] = useState('');
-  const [hasSavedPassword, setHasSavedPassword] = useState(false);
-  const [azienda, setAzienda] = useState({
-    nome: '',
-    email: '',
-    password: '',
-    telefono: '',
-    indirizzo: '',
-  });
+  const [preparandoBackup, setPreparandoBackup] = useState(false);
 
   useEffect(() => {
-    const caricaImpostazioni = async () => {
-      try {
-        const [settings, license] = await Promise.all([
-          window.electronAPI.getCompanySettings(),
-          window.electronAPI.getLicenseStatus(),
-        ]);
-
-        setAzienda({
-          nome: settings?.nome || '',
-          email: settings?.email || '',
-          password: '',
-          telefono: settings?.telefono || '',
-          indirizzo: settings?.indirizzo || '',
-        });
-        setHasSavedPassword(Boolean(settings?.hasPassword));
-        setLicenzaAttiva(license?.status === 'licensed');
-      } catch (error) {
-        setLicenzaAttiva(false);
-      }
-    };
-
-    caricaImpostazioni();
+    window.electronAPI.getLicenseStatus()
+      .then((license) => setLicenzaAttiva(license?.status === 'licensed'))
+      .catch(() => setLicenzaAttiva(false));
   }, []);
 
-  const esportaBackup = async () => {
-    const res = await window.electronAPI.esportaBackup();
-    if (res.success) {
-      toast.success(`Backup esportato in: ${res.path}`);
-    } else {
-      toast.error(`Errore: ${res.message || res.error}`);
-    }
-  };
-
-  const importaBackup = async () => {
-    const res = await window.electronAPI.importaBackup();
-    if (res.success) {
-      toast.success(<div>Backup importato da:<br />{res.path}<br />Riavvia l'app.</div>);
-    } else {
-      toast.error(`Errore importazione backup: ${res.message}`);
-    }
-  };
-
   const handleChange = (e) => {
-    setAzienda((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrori((prev) => ({ ...prev, [name]: undefined }));
   };
+
+  const annullaModifiche = () => {
+    setForm(datiSalvati);
+    setBase(datiSalvati);
+    setErrori({});
+  };
+
+  // Conflitto: nei campi contesi vincono le proprie modifiche.
+  const tieniLeMie = () => setBase((prec) => {
+    const nuova = { ...prec };
+    campiInConflitto.forEach((c) => { nuova[c] = datiSalvati[c]; });
+    return nuova;
+  });
 
   const salvaDati = async () => {
-    const res = await window.electronAPI.saveCompanySettings(azienda);
-    if (!res.success) {
-      toast.error(`Errore salvataggio impostazioni: ${res.error}`);
-      return;
-    }
+    const trovati = validaAzienda(form);
+    setErrori(trovati);
+    if (Object.keys(trovati).length > 0) return;
 
-    setAzienda((prev) => ({ ...prev, password: '' }));
-    setHasSavedPassword(Boolean(res.settings?.hasPassword));
-    window.dispatchEvent(new Event(EVENTO_AZIENDA_AGGIORNATA));
-    toast.success('Dati aziendali salvati correttamente!');
+    setSalvando(true);
+    try {
+      await salvaAzienda(form);
+      const salvati = normalizzaAzienda(form);
+      setForm(salvati);
+      setBase(salvati);
+      toast.success('Dati aziendali salvati.');
+    } catch (error) {
+      console.error('Errore salvataggio dati azienda:', error);
+      toast.error('Non riesco a salvare i dati: controlla la connessione e riprova.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const scaricaBackup = async () => {
+    setPreparandoBackup(true);
+    try {
+      const backup = await leggiDatiPerBackup();
+      const res = await window.electronAPI.salvaBackup({
+        nomeFile: nomeFileBackup(),
+        contenuto: JSON.stringify(backup, null, 2),
+      });
+      if (res.success) {
+        toast.success(<div>Backup salvato ({riepilogoBackup(backup)}) in:<br />{res.path}</div>);
+      } else if (!res.annullato) {
+        toast.error(`Errore salvataggio backup: ${res.error}`);
+      }
+    } catch (error) {
+      console.error('Errore backup:', error);
+      toast.error('Non riesco a leggere i dati per il backup: controlla la connessione e riprova.');
+    } finally {
+      setPreparandoBackup(false);
+    }
   };
 
   const attivaLicenza = async () => {
@@ -85,7 +133,8 @@ function ImpostazioniAzienda() {
       return;
     }
 
-    const res = await window.electronAPI.activateLicense(codice, azienda.nome);
+    // Nome gia' salvato, non quello eventualmente in modifica nel form.
+    const res = await window.electronAPI.activateLicense(codice, datiSalvati.nome);
     if (res.success) {
       toast.success("Licenza attivata! Riavvia l'app per applicare le modifiche.");
       setLicenzaAttiva(true);
@@ -98,26 +147,40 @@ function ImpostazioniAzienda() {
   return (
     <div className="impostazioni-container">
       <h2>Impostazioni Azienda</h2>
-      <input name="nome" value={azienda.nome} onChange={handleChange} placeholder="Nome azienda" />
-      <input name="email" value={azienda.email} onChange={handleChange} placeholder="Email azienda" />
-      <input
-        type="password"
-        name="password"
-        value={azienda.password}
-        onChange={handleChange}
-        placeholder="Password email (o app password)"
-      />
-      {hasSavedPassword && (
+      {erroreLettura && (
         <small className="settings-hint settings-hint-warning">
-          Password SMTP già salvata nel sistema. Lascia il campo vuoto per non cambiarla.
+          Non riesco a leggere i dati dell&apos;azienda: controlla la connessione.
         </small>
       )}
-      <small className="settings-hint settings-hint-info">
-        Per Gmail usa una App Password, non la password normale dell&apos;account.
-      </small>
-      <input name="telefono" value={azienda.telefono} onChange={handleChange} placeholder="Telefono azienda" />
-      <input name="indirizzo" value={azienda.indirizzo} onChange={handleChange} placeholder="Indirizzo azienda" />
-      <button onClick={salvaDati}>Salva Impostazioni</button>
+      {conflitto && (
+        <div className="settings-hint settings-hint-warning">
+          Mentre li modificavi, un&apos;altra postazione ha cambiato anche:{' '}
+          {campiInConflitto.map((c) => `${ETICHETTE[c]} (ora "${datiSalvati[c] || 'vuoto'}")`).join(', ')}.
+          <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+            <button type="button" onClick={annullaModifiche}>Carica i dati nuovi</button>
+            <button type="button" onClick={tieniLeMie}>Tieni le mie modifiche</button>
+          </div>
+        </div>
+      )}
+      {CAMPI.map(({ nome, etichetta, tipo, obbligatorio }) => (
+        <label key={nome}>
+          {etichetta}{obbligatorio ? ' *' : ''}
+          <input
+            name={nome}
+            type={tipo || 'text'}
+            value={form[nome]}
+            onChange={handleChange}
+            disabled={!caricato}
+          />
+          {errori[nome] && <small className="settings-hint settings-hint-warning">{errori[nome]}</small>}
+        </label>
+      ))}
+      <button onClick={salvaDati} disabled={!modificato || conflitto || salvando}>
+        {salvando ? 'Salvataggio…' : 'Salva'}
+      </button>
+      {modificato && (
+        <button type="button" onClick={annullaModifiche} disabled={salvando}>Annulla modifiche</button>
+      )}
 
       <hr />
 
@@ -148,30 +211,13 @@ function ImpostazioniAzienda() {
 
       <hr />
       <h3>Backup dei dati</h3>
-      <p>Puoi esportare i dati dell'applicazione per conservarli e ripristinarli in caso di problemi.</p>
-
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-        <button onClick={esportaBackup} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Download size={18} /> Esporta Backup
-        </button>
-        <button onClick={importaBackup} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Upload size={18} /> Importa Backup
-        </button>
-      </div>
-
-      {backupStatus && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            color: backupStatus.tipo === 'successo' ? 'green' : 'red',
-          }}
-        >
-          {backupStatus.tipo === 'successo' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
-          <span>{backupStatus.messaggio}</span>
-        </div>
-      )}
+      <p>
+        Scarica in un file una copia di veicoli, prenotazioni, clienti, categorie, tariffe e dati
+        dell&apos;azienda. Le foto restano online: nel file ci sono i loro collegamenti.
+      </p>
+      <button onClick={scaricaBackup} disabled={preparandoBackup} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <Download size={18} /> {preparandoBackup ? 'Preparazione…' : 'Scarica backup'}
+      </button>
     </div>
   );
 }
