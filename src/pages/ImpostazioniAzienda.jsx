@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './ImpostazioniAzienda.css';
-import { Download, KeyRound, Clock } from 'lucide-react';
+import {
+  Download, KeyRound, Clock, CheckCircle, AlertTriangle, Building2, Save, DatabaseBackup,
+} from 'lucide-react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAzienda, salvaAzienda } from '../lib/firestoreAzienda';
@@ -11,12 +13,12 @@ import {
 import { nomeFileBackup, riepilogoBackup } from '../utils/backup';
 
 const CAMPI = [
-  { nome: 'nome', etichetta: 'Nome azienda', obbligatorio: true },
+  { nome: 'nome', etichetta: 'Nome azienda', obbligatorio: true, largo: true },
   { nome: 'partitaIva', etichetta: 'Partita IVA / Codice fiscale' },
+  { nome: 'telefono', etichetta: 'Telefono', tipo: 'tel' },
   { nome: 'email', etichetta: 'Email', tipo: 'email' },
   { nome: 'pec', etichetta: 'PEC', tipo: 'email' },
-  { nome: 'telefono', etichetta: 'Telefono', tipo: 'tel' },
-  { nome: 'indirizzo', etichetta: 'Indirizzo' },
+  { nome: 'indirizzo', etichetta: 'Indirizzo', largo: true },
 ];
 const ETICHETTE = Object.fromEntries(CAMPI.map((c) => [c.nome, c.etichetta]));
 
@@ -145,79 +147,123 @@ function ImpostazioniAzienda() {
   };
 
   return (
-    <div className="impostazioni-container">
-      <h2>Impostazioni Azienda</h2>
-      {erroreLettura && (
-        <small className="settings-hint settings-hint-warning">
-          Non riesco a leggere i dati dell&apos;azienda: controlla la connessione.
-        </small>
-      )}
-      {conflitto && (
-        <div className="settings-hint settings-hint-warning">
-          Mentre li modificavi, un&apos;altra postazione ha cambiato anche:{' '}
-          {campiInConflitto.map((c) => `${ETICHETTE[c]} (ora "${datiSalvati[c] || 'vuoto'}")`).join(', ')}.
-          <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-            <button type="button" onClick={annullaModifiche}>Carica i dati nuovi</button>
-            <button type="button" onClick={tieniLeMie}>Tieni le mie modifiche</button>
+    <div className="imp">
+      <div className="imp-toolbar">
+        <h1 className="imp-titolo">Impostazioni</h1>
+      </div>
+      <p className="imp-intro">Dati dell&apos;azienda, licenza e copia di sicurezza dei dati.</p>
+
+      <section className="imp-sezione">
+        <header className="imp-sezione-testa">
+          <span className="imp-sezione-icona" aria-hidden="true"><Building2 size={18} /></span>
+          <div>
+            <h2>Dati dell&apos;azienda</h2>
+            <p>Uguali su tutte le postazioni. Il nome compare in alto nel menu e nella Dashboard.</p>
           </div>
-        </div>
-      )}
-      {CAMPI.map(({ nome, etichetta, tipo, obbligatorio }) => (
-        <label key={nome}>
-          {etichetta}{obbligatorio ? ' *' : ''}
-          <input
-            name={nome}
-            type={tipo || 'text'}
-            value={form[nome]}
-            onChange={handleChange}
-            disabled={!caricato}
-          />
-          {errori[nome] && <small className="settings-hint settings-hint-warning">{errori[nome]}</small>}
-        </label>
-      ))}
-      <button onClick={salvaDati} disabled={!modificato || conflitto || salvando}>
-        {salvando ? 'Salvataggio…' : 'Salva'}
-      </button>
-      {modificato && (
-        <button type="button" onClick={annullaModifiche} disabled={salvando}>Annulla modifiche</button>
-      )}
+        </header>
 
-      <hr />
-
-      <h3>Licenza</h3>
-      <p style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        {licenzaAttiva ? (
-          <>
-            <KeyRound size={18} color="green" /> <span>Licenza Attiva</span>
-          </>
-        ) : (
-          <>
-            <Clock size={18} color="orange" /> <span>Versione di Prova</span>
-          </>
+        {erroreLettura && (
+          <div className="imp-avviso imp-avviso--errore" role="alert">
+            <AlertTriangle size={16} aria-hidden="true" />
+            <span>Non riesco a leggere i dati dell&apos;azienda: controlla la connessione.</span>
+          </div>
         )}
-      </p>
-      {!licenzaAttiva && (
-        <>
-          <input
-            value={codiceLicenza}
-            onChange={(e) => setCodiceLicenza(e.target.value)}
-            placeholder="Inserisci codice licenza"
-          />
-          <button onClick={attivaLicenza} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <KeyRound size={18} /> Attiva Licenza
-          </button>
-        </>
-      )}
+        {conflitto && (
+          <div className="imp-avviso" role="alert">
+            <AlertTriangle size={16} aria-hidden="true" />
+            <div>
+              <span>
+                Mentre li modificavi, un&apos;altra postazione ha cambiato anche:{' '}
+                {campiInConflitto.map((c) => `${ETICHETTE[c]} (ora "${datiSalvati[c] || 'vuoto'}")`).join(', ')}.
+              </span>
+              <div className="imp-avviso-azioni">
+                <button type="button" className="imp-btn" onClick={annullaModifiche}>Carica i dati nuovi</button>
+                <button type="button" className="imp-btn" onClick={tieniLeMie}>Tieni le mie modifiche</button>
+              </div>
+            </div>
+          </div>
+        )}
 
-      <hr />
-      <h3>Backup dei dati</h3>
-      <p>
-        Scarica in un file una copia di veicoli, prenotazioni, clienti, categorie, tariffe e dati
-        dell&apos;azienda. Le foto restano online: nel file ci sono i loro collegamenti.
-      </p>
-      <button onClick={scaricaBackup} disabled={preparandoBackup} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <Download size={18} /> {preparandoBackup ? 'Preparazione…' : 'Scarica backup'}
-      </button>
+        <div className="imp-griglia">
+          {CAMPI.map(({ nome, etichetta, tipo, obbligatorio, largo }) => (
+            <label key={nome} className={`imp-campo${largo ? ' imp-campo--largo' : ''}`}>
+              <span className="imp-etichetta">{etichetta}{obbligatorio && <span className="imp-obbligatorio"> *</span>}</span>
+              <input
+                name={nome}
+                type={tipo || 'text'}
+                className={`imp-input${errori[nome] ? ' imp-input--errore' : ''}`}
+                value={form[nome]}
+                onChange={handleChange}
+                disabled={!caricato}
+                aria-invalid={Boolean(errori[nome])}
+              />
+              {errori[nome] && <span className="imp-errore">{errori[nome]}</span>}
+            </label>
+          ))}
+        </div>
+
+        <div className="imp-piede">
+          {modificato && (
+            <button type="button" className="imp-btn" onClick={annullaModifiche} disabled={salvando}>
+              Annulla modifiche
+            </button>
+          )}
+          <button
+            type="button"
+            className="imp-btn imp-btn--primario"
+            onClick={salvaDati}
+            disabled={!modificato || conflitto || salvando}
+          >
+            <Save size={16} aria-hidden="true" /> {salvando ? 'Salvataggio…' : 'Salva'}
+          </button>
+        </div>
+      </section>
+
+      <section className="imp-sezione">
+        <header className="imp-sezione-testa">
+          <span className="imp-sezione-icona" aria-hidden="true"><KeyRound size={18} /></span>
+          <div>
+            <h2>Licenza</h2>
+            <p>Licenza di questo computer.</p>
+          </div>
+          <span className={`imp-stato ${licenzaAttiva ? 'imp-stato--ok' : 'imp-stato--prova'}`}>
+            {licenzaAttiva ? <CheckCircle size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
+            {licenzaAttiva ? 'Attiva' : 'Versione di prova'}
+          </span>
+        </header>
+        {!licenzaAttiva && (
+          <div className="imp-riga">
+            <input
+              className="imp-input"
+              value={codiceLicenza}
+              onChange={(e) => setCodiceLicenza(e.target.value)}
+              placeholder="Codice licenza"
+              aria-label="Codice licenza"
+            />
+            <button type="button" className="imp-btn imp-btn--primario" onClick={attivaLicenza}>
+              <KeyRound size={16} aria-hidden="true" /> Attiva
+            </button>
+          </div>
+        )}
+      </section>
+
+      <section className="imp-sezione">
+        <header className="imp-sezione-testa">
+          <span className="imp-sezione-icona" aria-hidden="true"><DatabaseBackup size={18} /></span>
+          <div>
+            <h2>Backup dei dati</h2>
+            <p>
+              Scarica in un file una copia di veicoli, prenotazioni, clienti, categorie, tariffe e dati
+              dell&apos;azienda. Le foto restano online: nel file ci sono i loro collegamenti.
+            </p>
+          </div>
+        </header>
+        <div className="imp-piede imp-piede--sinistra">
+          <button type="button" className="imp-btn imp-btn--primario" onClick={scaricaBackup} disabled={preparandoBackup}>
+            <Download size={16} aria-hidden="true" /> {preparandoBackup ? 'Preparazione…' : 'Scarica backup'}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
