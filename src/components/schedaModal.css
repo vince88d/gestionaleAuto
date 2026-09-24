@@ -45,9 +45,14 @@
 }
 
 /* --------- Animazioni Fade --------- */
+/* pointer-events:none quando non è aperto (anche durante il fade-out):
+   altrimenti per i 300ms della chiusura resta sopra tutta l'app un overlay
+   invisibile ma ancora a schermo intero, che blocca i click sotto (anche
+   sulla sidebar) senza che si veda nulla. */
 .Modal,
 .Overlay {
   opacity: 0;
+  pointer-events: none;
   transition: opacity 300ms ease, transform 300ms ease;
 }
 
@@ -55,6 +60,7 @@
 .Modal--after-open,
 .Overlay--after-open {
   opacity: 1;
+  pointer-events: auto;
   transform: scale(1);
 }
 
@@ -62,6 +68,7 @@
 .Modal--before-close,
 .Overlay--before-close {
   opacity: 0;
+  pointer-events: none;
   transform: scale(0.95);
 }
 
