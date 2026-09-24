@@ -95,9 +95,6 @@
     flex: 0 1 auto;
     overflow-y: auto;
     overflow-x: hidden;
-    /* Un filo di margine dallo scrollbar quando compare, per non far toccare
-       il testo dei link al bordo della sidebar. */
-    padding-right: 2px;
     scrollbar-width: thin;
     scrollbar-color: #56677a transparent;
   }
@@ -116,21 +113,52 @@
     padding: 0;
   }
 
+  /* Le voci non hanno spazi tra loro ne' ai lati: prima c'erano 4px tra una
+     voce e l'altra e 10px ai bordi della sidebar in cui il cursore tornava
+     freccia e il click andava a vuoto. Ora il link copre tutta la riga, da
+     bordo a bordo (nav allargata di quanto e' il padding della sidebar), e il
+     riquadro colorato e' solo disegnato (::before) un po' piu' dentro. */
+  .sidebar nav {
+    margin: 0 -10px;
+  }
+
+  .sidebar nav ul {
+    margin: 0;
+  }
+
   .sidebar nav ul li {
-    margin: 4px 0;
+    margin: 0;
   }
 
   .sidebar nav ul li a {
+    position: relative;
+    /* Contesto proprio, cosi' lo sfondo ::before (z-index -1) resta dentro
+       il link invece di finire dietro la sidebar. */
+    isolation: isolate;
     color: #d5dde6;
     text-decoration: none;
     font-size: 15px;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 12px;
-    border-radius: 8px;
+    padding: 12px 22px;
     white-space: nowrap;
-    transition: background 0.2s, color 0.2s;
+    cursor: pointer;
+    user-select: none;
+    /* Se il mouse si sposta di poco mentre si tiene premuto, il browser
+       iniziava a "trascinare" il link e il click si perdeva. */
+    -webkit-user-drag: none;
+    transition: color 0.2s;
+  }
+
+  .sidebar nav ul li a::before {
+    content: '';
+    position: absolute;
+    inset: 2px 10px;
+    border-radius: 8px;
+    background-color: transparent;
+    z-index: -1;
+    transition: background-color 0.2s;
   }
 
   .sidebar nav ul li a .nav-icona {
@@ -138,21 +166,27 @@
   }
 
   .sidebar nav ul li a:hover {
-    background-color: #34495e;
     color: white;
+  }
+
+  .sidebar nav ul li a:hover::before {
+    background-color: #34495e;
   }
 
   /* Voce della pagina aperta (classe messa da NavLink). */
   .sidebar nav ul li a.active {
-    background-color: #3498db;
     color: white;
     font-weight: 600;
+  }
+
+  .sidebar nav ul li a.active::before {
+    background-color: #3498db;
   }
 
   /* Barra ridotta: solo icone, centrate. */
   .sidebar.collapsed nav ul li a {
     justify-content: center;
-    padding: 10px 0;
+    padding: 12px 0;
   }
 
   /* Icona discreta a pannello (non una X, che fa pensare a "chiudi"):
