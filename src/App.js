@@ -11,6 +11,7 @@ import Vehicles from './pages/Vehicles';
 import Clients from './pages/Clients';
 import Booking from './pages/Booking';
 import ImpostazioniAzienda from './pages/ImpostazioniAzienda';
+import RecuperoDati from './pages/RecuperoDati';
 import Tariffe from './pages/Tariffe';
 import Categorie from './pages/Categorie';
 import ArchivioPrenotazione from './pages/ArchivioPrenotazioni';
@@ -82,6 +83,7 @@ function AppContent() {
           <Route path="/tariffe" element={<Tariffe />} />
           <Route path="/categorie" element={<Categorie />} />
           <Route path="/impostazioni-azienda" element={<ImpostazioniAzienda />} />
+          <Route path="/recupero-dati" element={<RecuperoDati />} />
           <Route path="/archivio-prenotazione" element={<ArchivioPrenotazione />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

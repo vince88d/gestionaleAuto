@@ -43,6 +43,17 @@ export async function copiaAziendaDalComputer(datiLocali) {
 // dai dati del computer (una volta per avvio; la transazione evita doppioni).
 let copiaTentata = false;
 
+// Le versioni piu' vecchie salvavano i dati dell'azienda nella memoria interna
+// del programma (localStorage 'datiAzienda', con anche la password dell'email:
+// normalizzaAzienda la scarta).
+function datiAziendaMemoriaInterna() {
+  try {
+    return JSON.parse(window.localStorage.getItem('datiAzienda')) || {};
+  } catch {
+    return {};
+  }
+}
+
 export function useAzienda() {
   const [stato, setStato] = useState({ dati: AZIENDA_VUOTA, caricato: false, errore: null });
 
@@ -52,7 +63,7 @@ export function useAzienda() {
       if (esiste || copiaTentata) return;
       copiaTentata = true;
       Promise.resolve(window.electronAPI?.getCompanySettings?.())
-        .then((locali) => copiaAziendaDalComputer(locali || {}))
+        .then((locali) => copiaAziendaDalComputer(aziendaVuota(locali) ? datiAziendaMemoriaInterna() : locali))
         .catch((err) => console.error('Errore copia dati azienda dal computer:', err));
     },
     (errore) => {

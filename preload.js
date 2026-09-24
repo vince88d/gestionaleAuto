@@ -31,6 +31,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLicenseStatus: () => ipcRenderer.invoke('get-license-status'),
   getCompanySettings: () => ipcRenderer.invoke('get-company-settings'),
   salvaBackup: (dati) => ipcRenderer.invoke('salva-backup', dati),
+
+  // Recupero dati dalla versione precedente (solo lettura della vecchia cartella).
+  recuperoTrovaCartella: () => ipcRenderer.invoke('recupero-trova-cartella'),
+  recuperoScegliCartella: () => ipcRenderer.invoke('recupero-scegli-cartella'),
+  recuperoLeggi: (cartella) => ipcRenderer.invoke('recupero-leggi', cartella),
+  recuperoLeggiFile: (dati) => ipcRenderer.invoke('recupero-leggi-file', dati),
+  recuperoCopiaSicurezza: (dati) => ipcRenderer.invoke('recupero-copia-sicurezza', dati),
   concludiPrenotazione: (data) => ipcRenderer.invoke('concludi-prenotazione', data),
   salvaContrattoPDF: (filePath) => ipcRenderer.invoke('salva-contratto-pdf', filePath),
   selezionaPdfContratto: () => ipcRenderer.invoke('seleziona-pdf-contratto'),
