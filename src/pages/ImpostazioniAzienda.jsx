@@ -1,81 +1,131 @@
 import React, { useState, useEffect } from 'react';
 import './ImpostazioniAzienda.css';
-import { Download, Upload, KeyRound, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import {
+  Download, KeyRound, Clock, CheckCircle, AlertTriangle, Building2, Save, DatabaseBackup,
+} from 'lucide-react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { EVENTO_AZIENDA_AGGIORNATA } from '../components/Sidebar';
+import { useAzienda, salvaAzienda } from '../lib/firestoreAzienda';
+import { leggiDatiPerBackup } from '../lib/backupDati';
+import {
+  AZIENDA_VUOTA, validaAzienda, aziendeUguali, normalizzaAzienda, campiCambiati,
+} from '../utils/azienda';
+import { nomeFileBackup, riepilogoBackup } from '../utils/backup';
+
+const CAMPI = [
+  { nome: 'nome', etichetta: 'Nome azienda', obbligatorio: true, largo: true },
+  { nome: 'partitaIva', etichetta: 'Partita IVA / Codice fiscale' },
+  { nome: 'telefono', etichetta: 'Telefono', tipo: 'tel' },
+  { nome: 'email', etichetta: 'Email', tipo: 'email' },
+  { nome: 'pec', etichetta: 'PEC', tipo: 'email' },
+  { nome: 'indirizzo', etichetta: 'Indirizzo', largo: true },
+];
+const ETICHETTE = Object.fromEntries(CAMPI.map((c) => [c.nome, c.etichetta]));
 
 function ImpostazioniAzienda() {
+  const { dati: datiSalvati, caricato, errore: erroreLettura } = useAzienda();
+
+  // `base` = i dati da cui e' partita la modifica. Se quelli salvati cambiano
+  // (un'altra postazione) mentre si sta scrivendo, e' un conflitto: non si
+  // salva sopra in silenzio.
+  const [form, setForm] = useState(AZIENDA_VUOTA);
+  const [base, setBase] = useState(AZIENDA_VUOTA);
+  const [errori, setErrori] = useState({});
+  const [salvando, setSalvando] = useState(false);
+
+  const modificato = !aziendeUguali(form, base);
+  // Conflitto solo sui campi che si stanno modificando e che un'altra
+  // postazione ha cambiato nel frattempo. Durante il salvataggio arriva la
+  // nostra stessa modifica: non e' un conflitto.
+  const campiInConflitto = salvando ? [] : campiCambiati(base, datiSalvati).filter((c) => campiCambiati(base, form).includes(c));
+  const conflitto = campiInConflitto.length > 0;
+
+  // Quando cambiano i dati salvati: i campi che non si stanno modificando
+  // prendono subito il valore nuovo (anche a meta' modifica), quelli in
+  // modifica restano come li si sta scrivendo.
+  useEffect(() => {
+    setForm((formAttuale) => {
+      const toccati = campiCambiati(base, formAttuale);
+      const unito = { ...datiSalvati };
+      toccati.forEach((c) => { unito[c] = formAttuale[c]; });
+      return unito;
+    });
+    setBase((baseAttuale) => {
+      const nuova = { ...datiSalvati };
+      campiCambiati(baseAttuale, form).forEach((c) => { nuova[c] = baseAttuale[c]; });
+      return nuova;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datiSalvati]);
+
   const [licenzaAttiva, setLicenzaAttiva] = useState(false);
   const [codiceLicenza, setCodiceLicenza] = useState('');
-  const [backupStatus, setBackupStatus] = useState('');
-  const [hasSavedPassword, setHasSavedPassword] = useState(false);
-  const [azienda, setAzienda] = useState({
-    nome: '',
-    email: '',
-    password: '',
-    telefono: '',
-    indirizzo: '',
-  });
+  const [preparandoBackup, setPreparandoBackup] = useState(false);
 
   useEffect(() => {
-    const caricaImpostazioni = async () => {
-      try {
-        const [settings, license] = await Promise.all([
-          window.electronAPI.getCompanySettings(),
-          window.electronAPI.getLicenseStatus(),
-        ]);
-
-        setAzienda({
-          nome: settings?.nome || '',
-          email: settings?.email || '',
-          password: '',
-          telefono: settings?.telefono || '',
-          indirizzo: settings?.indirizzo || '',
-        });
-        setHasSavedPassword(Boolean(settings?.hasPassword));
-        setLicenzaAttiva(license?.status === 'licensed');
-      } catch (error) {
-        setLicenzaAttiva(false);
-      }
-    };
-
-    caricaImpostazioni();
+    window.electronAPI.getLicenseStatus()
+      .then((license) => setLicenzaAttiva(license?.status === 'licensed'))
+      .catch(() => setLicenzaAttiva(false));
   }, []);
 
-  const esportaBackup = async () => {
-    const res = await window.electronAPI.esportaBackup();
-    if (res.success) {
-      toast.success(`Backup esportato in: ${res.path}`);
-    } else {
-      toast.error(`Errore: ${res.message || res.error}`);
-    }
-  };
-
-  const importaBackup = async () => {
-    const res = await window.electronAPI.importaBackup();
-    if (res.success) {
-      toast.success(<div>Backup importato da:<br />{res.path}<br />Riavvia l'app.</div>);
-    } else {
-      toast.error(`Errore importazione backup: ${res.message}`);
-    }
-  };
-
   const handleChange = (e) => {
-    setAzienda((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrori((prev) => ({ ...prev, [name]: undefined }));
   };
+
+  const annullaModifiche = () => {
+    setForm(datiSalvati);
+    setBase(datiSalvati);
+    setErrori({});
+  };
+
+  // Conflitto: nei campi contesi vincono le proprie modifiche.
+  const tieniLeMie = () => setBase((prec) => {
+    const nuova = { ...prec };
+    campiInConflitto.forEach((c) => { nuova[c] = datiSalvati[c]; });
+    return nuova;
+  });
 
   const salvaDati = async () => {
-    const res = await window.electronAPI.saveCompanySettings(azienda);
-    if (!res.success) {
-      toast.error(`Errore salvataggio impostazioni: ${res.error}`);
-      return;
-    }
+    const trovati = validaAzienda(form);
+    setErrori(trovati);
+    if (Object.keys(trovati).length > 0) return;
 
-    setAzienda((prev) => ({ ...prev, password: '' }));
-    setHasSavedPassword(Boolean(res.settings?.hasPassword));
-    window.dispatchEvent(new Event(EVENTO_AZIENDA_AGGIORNATA));
-    toast.success('Dati aziendali salvati correttamente!');
+    setSalvando(true);
+    try {
+      await salvaAzienda(form);
+      const salvati = normalizzaAzienda(form);
+      setForm(salvati);
+      setBase(salvati);
+      toast.success('Dati aziendali salvati.');
+    } catch (error) {
+      console.error('Errore salvataggio dati azienda:', error);
+      toast.error('Non riesco a salvare i dati: controlla la connessione e riprova.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const scaricaBackup = async () => {
+    setPreparandoBackup(true);
+    try {
+      const backup = await leggiDatiPerBackup();
+      const res = await window.electronAPI.salvaBackup({
+        nomeFile: nomeFileBackup(),
+        contenuto: JSON.stringify(backup, null, 2),
+      });
+      if (res.success) {
+        toast.success(<div>Backup salvato ({riepilogoBackup(backup)}) in:<br />{res.path}</div>);
+      } else if (!res.annullato) {
+        toast.error(`Errore salvataggio backup: ${res.error}`);
+      }
+    } catch (error) {
+      console.error('Errore backup:', error);
+      toast.error('Non riesco a leggere i dati per il backup: controlla la connessione e riprova.');
+    } finally {
+      setPreparandoBackup(false);
+    }
   };
 
   const attivaLicenza = async () => {
@@ -85,7 +135,8 @@ function ImpostazioniAzienda() {
       return;
     }
 
-    const res = await window.electronAPI.activateLicense(codice, azienda.nome);
+    // Nome gia' salvato, non quello eventualmente in modifica nel form.
+    const res = await window.electronAPI.activateLicense(codice, datiSalvati.nome);
     if (res.success) {
       toast.success("Licenza attivata! Riavvia l'app per applicare le modifiche.");
       setLicenzaAttiva(true);
@@ -96,82 +147,123 @@ function ImpostazioniAzienda() {
   };
 
   return (
-    <div className="impostazioni-container">
-      <h2>Impostazioni Azienda</h2>
-      <input name="nome" value={azienda.nome} onChange={handleChange} placeholder="Nome azienda" />
-      <input name="email" value={azienda.email} onChange={handleChange} placeholder="Email azienda" />
-      <input
-        type="password"
-        name="password"
-        value={azienda.password}
-        onChange={handleChange}
-        placeholder="Password email (o app password)"
-      />
-      {hasSavedPassword && (
-        <small className="settings-hint settings-hint-warning">
-          Password SMTP già salvata nel sistema. Lascia il campo vuoto per non cambiarla.
-        </small>
-      )}
-      <small className="settings-hint settings-hint-info">
-        Per Gmail usa una App Password, non la password normale dell&apos;account.
-      </small>
-      <input name="telefono" value={azienda.telefono} onChange={handleChange} placeholder="Telefono azienda" />
-      <input name="indirizzo" value={azienda.indirizzo} onChange={handleChange} placeholder="Indirizzo azienda" />
-      <button onClick={salvaDati}>Salva Impostazioni</button>
-
-      <hr />
-
-      <h3>Licenza</h3>
-      <p style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        {licenzaAttiva ? (
-          <>
-            <KeyRound size={18} color="green" /> <span>Licenza Attiva</span>
-          </>
-        ) : (
-          <>
-            <Clock size={18} color="orange" /> <span>Versione di Prova</span>
-          </>
-        )}
-      </p>
-      {!licenzaAttiva && (
-        <>
-          <input
-            value={codiceLicenza}
-            onChange={(e) => setCodiceLicenza(e.target.value)}
-            placeholder="Inserisci codice licenza"
-          />
-          <button onClick={attivaLicenza} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <KeyRound size={18} /> Attiva Licenza
-          </button>
-        </>
-      )}
-
-      <hr />
-      <h3>Backup dei dati</h3>
-      <p>Puoi esportare i dati dell'applicazione per conservarli e ripristinarli in caso di problemi.</p>
-
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-        <button onClick={esportaBackup} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Download size={18} /> Esporta Backup
-        </button>
-        <button onClick={importaBackup} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Upload size={18} /> Importa Backup
-        </button>
+    <div className="imp">
+      <div className="imp-toolbar">
+        <h1 className="imp-titolo">Impostazioni</h1>
       </div>
+      <p className="imp-intro">Dati dell&apos;azienda, licenza e copia di sicurezza dei dati.</p>
 
-      {backupStatus && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            color: backupStatus.tipo === 'successo' ? 'green' : 'red',
-          }}
-        >
-          {backupStatus.tipo === 'successo' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
-          <span>{backupStatus.messaggio}</span>
+      <section className="imp-sezione">
+        <header className="imp-sezione-testa">
+          <span className="imp-sezione-icona" aria-hidden="true"><Building2 size={18} /></span>
+          <div>
+            <h2>Dati dell&apos;azienda</h2>
+            <p>Uguali su tutte le postazioni. Il nome compare in alto nel menu e nella Dashboard.</p>
+          </div>
+        </header>
+
+        {erroreLettura && (
+          <div className="imp-avviso imp-avviso--errore" role="alert">
+            <AlertTriangle size={16} aria-hidden="true" />
+            <span>Non riesco a leggere i dati dell&apos;azienda: controlla la connessione.</span>
+          </div>
+        )}
+        {conflitto && (
+          <div className="imp-avviso" role="alert">
+            <AlertTriangle size={16} aria-hidden="true" />
+            <div>
+              <span>
+                Mentre li modificavi, un&apos;altra postazione ha cambiato anche:{' '}
+                {campiInConflitto.map((c) => `${ETICHETTE[c]} (ora "${datiSalvati[c] || 'vuoto'}")`).join(', ')}.
+              </span>
+              <div className="imp-avviso-azioni">
+                <button type="button" className="imp-btn" onClick={annullaModifiche}>Carica i dati nuovi</button>
+                <button type="button" className="imp-btn" onClick={tieniLeMie}>Tieni le mie modifiche</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="imp-griglia">
+          {CAMPI.map(({ nome, etichetta, tipo, obbligatorio, largo }) => (
+            <label key={nome} className={`imp-campo${largo ? ' imp-campo--largo' : ''}`}>
+              <span className="imp-etichetta">{etichetta}{obbligatorio && <span className="imp-obbligatorio"> *</span>}</span>
+              <input
+                name={nome}
+                type={tipo || 'text'}
+                className={`imp-input${errori[nome] ? ' imp-input--errore' : ''}`}
+                value={form[nome]}
+                onChange={handleChange}
+                disabled={!caricato}
+                aria-invalid={Boolean(errori[nome])}
+              />
+              {errori[nome] && <span className="imp-errore">{errori[nome]}</span>}
+            </label>
+          ))}
         </div>
-      )}
+
+        <div className="imp-piede">
+          {modificato && (
+            <button type="button" className="imp-btn" onClick={annullaModifiche} disabled={salvando}>
+              Annulla modifiche
+            </button>
+          )}
+          <button
+            type="button"
+            className="imp-btn imp-btn--primario"
+            onClick={salvaDati}
+            disabled={!modificato || conflitto || salvando}
+          >
+            <Save size={16} aria-hidden="true" /> {salvando ? 'Salvataggio…' : 'Salva'}
+          </button>
+        </div>
+      </section>
+
+      <section className="imp-sezione">
+        <header className="imp-sezione-testa">
+          <span className="imp-sezione-icona" aria-hidden="true"><KeyRound size={18} /></span>
+          <div>
+            <h2>Licenza</h2>
+            <p>Licenza di questo computer.</p>
+          </div>
+          <span className={`imp-stato ${licenzaAttiva ? 'imp-stato--ok' : 'imp-stato--prova'}`}>
+            {licenzaAttiva ? <CheckCircle size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
+            {licenzaAttiva ? 'Attiva' : 'Versione di prova'}
+          </span>
+        </header>
+        {!licenzaAttiva && (
+          <div className="imp-riga">
+            <input
+              className="imp-input"
+              value={codiceLicenza}
+              onChange={(e) => setCodiceLicenza(e.target.value)}
+              placeholder="Codice licenza"
+              aria-label="Codice licenza"
+            />
+            <button type="button" className="imp-btn imp-btn--primario" onClick={attivaLicenza}>
+              <KeyRound size={16} aria-hidden="true" /> Attiva
+            </button>
+          </div>
+        )}
+      </section>
+
+      <section className="imp-sezione">
+        <header className="imp-sezione-testa">
+          <span className="imp-sezione-icona" aria-hidden="true"><DatabaseBackup size={18} /></span>
+          <div>
+            <h2>Backup dei dati</h2>
+            <p>
+              Scarica in un file una copia di veicoli, prenotazioni, clienti, categorie, tariffe e dati
+              dell&apos;azienda. Le foto restano online: nel file ci sono i loro collegamenti.
+            </p>
+          </div>
+        </header>
+        <div className="imp-piede imp-piede--sinistra">
+          <button type="button" className="imp-btn imp-btn--primario" onClick={scaricaBackup} disabled={preparandoBackup}>
+            <Download size={16} aria-hidden="true" /> {preparandoBackup ? 'Preparazione…' : 'Scarica backup'}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
