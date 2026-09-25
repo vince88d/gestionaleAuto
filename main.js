@@ -4,6 +4,7 @@ const fs = require('fs');
 const fsPromises = require('fs').promises;
 const crypto = require('crypto');
 const { PDFDocument } = require('pdf-lib');
+const archiver = require('archiver');
 require('update-electron-app');
 
 const LICENSE_SALT = 'gestionaleAuto-license-v1';
@@ -402,13 +403,227 @@ ipcMain.handle('genera-contratto-completo', async (_, { riepilogoBuffer }) => {
   }
 });
 
-// Salva su file il backup dei dati (preparato dall'app leggendo Firestore).
+// ---------- Recupero dati dalla versione precedente ----------
+// La versione precedente salvava tutto nella cartella dati del programma
+// (userData, la stessa di questa versione): veicoli.json, prenotazioni.json,
+// clienti.json, foto in images/, contratti PDF, conferme OTP. Qui si legge
+// soltanto: la cartella non viene mai modificata.
+
+// Cartelle e file tecnici di Chromium/Electron: niente dati del gestionale,
+// alcuni bloccati mentre il programma e' aperto, e Local Storage contiene
+// anche la vecchia password dell'email in chiaro. Non vanno nella copia.
+const RECUPERO_ESCLUSI = new Set([
+  'Cache', 'Code Cache', 'GPUCache', 'DawnCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'ShaderCache',
+  'GrShaderCache', 'Crashpad', 'blob_storage', 'IndexedDB', 'Local Storage', 'Session Storage',
+  'Shared Dictionary', 'SharedStorage', 'SharedStorage-wal', 'WebStorage', 'Network', 'Service Worker',
+  'databases', 'DIPS', 'DIPS-wal', 'Local State', 'Preferences', 'Cookies', 'Cookies-journal',
+  'Network Persistent State', 'TransportSecurity', 'Trust Tokens', 'Trust Tokens-journal',
+  'VideoDecodeStats', 'Dictionaries', 'shared_proto_db', 'Partitions', 'SingletonLock',
+  'SingletonCookie', 'SingletonSocket', 'lockfile', 'declarative_performance_observer.db',
+  'declarative_performance_observer.db-journal',
+]);
+
+const ESTENSIONI_IMMAGINI = /\.(jpe?g|png|webp|gif|bmp)$/i;
+
+// File nascosti di sistema (._foto.jpg e .DS_Store creati dal Mac sulle
+// chiavette, Thumbs.db di Windows): non sono dati del gestionale.
+const eFileDiSistema = (nome) => nome.startsWith('.') || /^(thumbs\.db|desktop\.ini)$/i.test(nome);
+
+function elencaFileRecupero(cartella, relativa = '') {
+  const risultato = [];
+  for (const voce of fs.readdirSync(path.join(cartella, relativa), { withFileTypes: true })) {
+    if ((!relativa && RECUPERO_ESCLUSI.has(voce.name)) || eFileDiSistema(voce.name)) continue;
+    const rel = relativa ? path.join(relativa, voce.name) : voce.name;
+    if (voce.isDirectory()) risultato.push(...elencaFileRecupero(cartella, rel));
+    else if (voce.isFile()) risultato.push(rel);
+  }
+  return risultato;
+}
+
+function leggiJsonRecupero(cartella, nome, errori) {
+  const file = path.join(cartella, nome);
+  if (!fs.existsSync(file)) return { presente: false, dati: [] };
+  try {
+    const dati = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    return { presente: true, dati };
+  } catch (error) {
+    errori.push({ file: nome, errore: error.message });
+    return { presente: true, dati: [] };
+  }
+}
+
+// Contratti PDF: nella cartella pdf/ e, in alcune versioni, sciolti nella
+// cartella principale (contratto_<data>.pdf).
+function contrattiRecupero(cartella) {
+  const contratti = [];
+  for (const sotto of ['', 'pdf']) {
+    const dir = path.join(cartella, sotto);
+    if (!fs.existsSync(dir)) continue;
+    for (const nome of fs.readdirSync(dir)) {
+      if (!/\.pdf$/i.test(nome) || /^contratto_completo\.pdf$/i.test(nome) || eFileDiSistema(nome)) continue;
+      const stat = fs.statSync(path.join(dir, nome));
+      if (!stat.isFile()) continue;
+      contratti.push({ nome, cartella: sotto, dimensione: stat.size, modificatoIl: stat.mtime.toISOString() });
+    }
+  }
+  return contratti;
+}
+
+function descriviCartellaRecupero(cartella) {
+  const esiste = Boolean(cartella) && fs.existsSync(cartella);
+  const file = ['veicoli.json', 'prenotazioni.json', 'clienti.json'];
+  const trovati = esiste ? file.filter((f) => fs.existsSync(path.join(cartella, f))) : [];
+  return {
+    cartella,
+    esiste,
+    haDati: trovati.length > 0,
+    fileDati: trovati,
+    immagini: esiste && fs.existsSync(path.join(cartella, 'images'))
+      ? fs.readdirSync(path.join(cartella, 'images')).filter((n) => ESTENSIONI_IMMAGINI.test(n) && !eFileDiSistema(n)).length : 0,
+    contratti: esiste ? contrattiRecupero(cartella).length : 0,
+    eQuestoComputer: path.resolve(cartella || '') === path.resolve(app.getPath('userData')),
+  };
+}
+
+// Cartella di questo computer (quella della versione precedente, se c'era).
+ipcMain.handle('recupero-trova-cartella', async () => descriviCartellaRecupero(app.getPath('userData')));
+
+// Un'altra cartella: una copia portata da un altro computer (prova generale).
+ipcMain.handle('recupero-scegli-cartella', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Scegli la cartella della versione precedente (react-electron)',
+    properties: ['openDirectory'],
+  });
+  if (canceled || !filePaths.length) return null;
+  return descriviCartellaRecupero(filePaths[0]);
+});
+
+ipcMain.handle('recupero-leggi', async (_, cartella) => {
+  try {
+    const errori = [];
+    const veicoli = leggiJsonRecupero(cartella, 'veicoli.json', errori);
+    const prenotazioni = leggiJsonRecupero(cartella, 'prenotazioni.json', errori);
+    const clienti = leggiJsonRecupero(cartella, 'clienti.json', errori);
+    const azienda = leggiJsonRecupero(cartella, 'company-settings.json', errori);
+
+    const cartellaOtp = path.join(cartella, 'otpConfirmations');
+    const conferme = [];
+    if (fs.existsSync(cartellaOtp)) {
+      for (const nome of fs.readdirSync(cartellaOtp).filter((n) => n.endsWith('.json'))) {
+        try {
+          conferme.push(JSON.parse(fs.readFileSync(path.join(cartellaOtp, nome), 'utf-8')));
+        } catch (error) {
+          errori.push({ file: `otpConfirmations/${nome}`, errore: error.message });
+        }
+      }
+    }
+
+    const cartellaImmagini = path.join(cartella, 'images');
+    const lista = (valore) => (Array.isArray(valore) ? valore : []);
+    ['veicoli', 'prenotazioni', 'clienti'].forEach((nome, i) => {
+      const letto = [veicoli, prenotazioni, clienti][i];
+      if (letto.presente && !Array.isArray(letto.dati)) errori.push({ file: `${nome}.json`, errore: 'non contiene un elenco' });
+    });
+
+    return {
+      success: true,
+      veicoli: lista(veicoli.dati),
+      prenotazioni: lista(prenotazioni.dati),
+      clienti: lista(clienti.dati),
+      azienda: azienda.dati && !Array.isArray(azienda.dati) ? azienda.dati : {},
+      conferme,
+      erroriLettura: errori,
+      immagini: fs.existsSync(cartellaImmagini)
+        ? fs.readdirSync(cartellaImmagini).filter((n) => ESTENSIONI_IMMAGINI.test(n) && !eFileDiSistema(n)) : [],
+      contratti: contrattiRecupero(cartella),
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Contenuto di una foto (images/) o di un contratto (cartella principale o
+// pdf/), per caricarlo online. Solo il nome del file: niente percorsi, cosi'
+// non si puo' uscire da quelle cartelle.
+ipcMain.handle('recupero-leggi-file', async (_, { cartella, sottocartella, nome }) => {
+  try {
+    if (!['images', 'pdf', ''].includes(sottocartella) || path.basename(nome) !== nome) {
+      return { success: false, error: 'Percorso non valido' };
+    }
+    const dati = await fsPromises.readFile(path.join(cartella, sottocartella, nome));
+    return { success: true, dati };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Copia di sicurezza COMPLETA della cartella (a differenza del vecchio
+// "Esporta Backup", che metteva nello ZIP le cartelle images/ e pdf/ vuote).
+// `extra`: file aggiunti dall'app (es. i dati che la vecchia versione teneva
+// nella memoria interna del programma). Un file che non si riesce a leggere
+// viene saltato e segnalato, invece di far fallire tutta la copia.
+ipcMain.handle('recupero-copia-sicurezza', async (_, { cartella, extra = [] }) => {
+  try {
+    const oggi = new Date();
+    const due = (n) => String(n).padStart(2, '0');
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: 'Salva la copia di sicurezza della versione precedente',
+      defaultPath: `copia-versione-precedente-${oggi.getFullYear()}-${due(oggi.getMonth() + 1)}-${due(oggi.getDate())}.zip`,
+      filters: [{ name: 'Archivio ZIP', extensions: ['zip'] }],
+    });
+    if (canceled || !filePath) return { success: false, annullato: true };
+    if (path.resolve(filePath).startsWith(path.resolve(cartella) + path.sep)) {
+      return { success: false, error: 'Salva la copia fuori dalla cartella che stai copiando.' };
+    }
+
+    const saltati = [];
+    const daCopiare = elencaFileRecupero(cartella).filter((rel) => {
+      try {
+        fs.closeSync(fs.openSync(path.join(cartella, rel), 'r'));
+        return true;
+      } catch (error) {
+        saltati.push(`${rel} (${error.code || error.message})`);
+        return false;
+      }
+    });
+
+    const output = fs.createWriteStream(filePath);
+    const archivio = archiver('zip', { zlib: { level: 6 } });
+    await new Promise((resolve, reject) => {
+      output.on('close', resolve);
+      archivio.on('error', reject);
+      archivio.pipe(output);
+      daCopiare.forEach((rel) => archivio.file(path.join(cartella, rel), { name: rel.split(path.sep).join('/') }));
+      extra.forEach(({ nome, contenuto }) => archivio.append(contenuto, { name: nome }));
+      archivio.finalize();
+    });
+
+    return { success: true, path: filePath, file: daCopiare.length + extra.length, byte: archivio.pointer(), saltati };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Apre nel browser un documento salvato su Firebase Storage (es. un
+// contratto recuperato). Solo indirizzi di Storage, nient'altro.
+ipcMain.handle('apri-documento-online', async (_, url) => {
+  if (typeof url !== 'string' || !url.startsWith('https://firebasestorage.googleapis.com/')) {
+    return { success: false, error: 'Indirizzo non valido' };
+  }
+  await shell.openExternal(url);
+  return { success: true };
+});
+
+// Salva su file il backup dei dati (preparato dall'app leggendo Firestore)
+// o un resoconto di testo (.txt).
 ipcMain.handle('salva-backup', async (_, { nomeFile, contenuto }) => {
   try {
     const { canceled, filePath } = await dialog.showSaveDialog({
-      title: 'Salva il backup dei dati',
+      title: 'Salva il file',
       defaultPath: nomeFile || 'backup-gestionale.json',
-      filters: [{ name: 'Backup (JSON)', extensions: ['json'] }],
+      filters: /\.txt$/i.test(nomeFile || '')
+        ? [{ name: 'Testo', extensions: ['txt'] }]
+        : [{ name: 'Backup (JSON)', extensions: ['json'] }],
     });
 
     if (canceled || !filePath) {

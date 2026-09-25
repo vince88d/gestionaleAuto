@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import './ImpostazioniAzienda.css';
 import {
-  Download, KeyRound, Clock, CheckCircle, AlertTriangle, Building2, Save, DatabaseBackup,
+  Download, KeyRound, Clock, CheckCircle, AlertTriangle, Building2, Save, DatabaseBackup, History,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAzienda, salvaAzienda } from '../lib/firestoreAzienda';
@@ -23,6 +24,7 @@ const CAMPI = [
 const ETICHETTE = Object.fromEntries(CAMPI.map((c) => [c.nome, c.etichetta]));
 
 function ImpostazioniAzienda() {
+  const navigate = useNavigate();
   const { dati: datiSalvati, caricato, errore: erroreLettura } = useAzienda();
 
   // `base` = i dati da cui e' partita la modifica. Se quelli salvati cambiano
@@ -261,6 +263,24 @@ function ImpostazioniAzienda() {
         <div className="imp-piede imp-piede--sinistra">
           <button type="button" className="imp-btn imp-btn--primario" onClick={scaricaBackup} disabled={preparandoBackup}>
             <Download size={16} aria-hidden="true" /> {preparandoBackup ? 'Preparazione…' : 'Scarica backup'}
+          </button>
+        </div>
+      </section>
+
+      <section className="imp-sezione">
+        <header className="imp-sezione-testa">
+          <span className="imp-sezione-icona" aria-hidden="true"><History size={18} /></span>
+          <div>
+            <h2>Dati della versione precedente</h2>
+            <p>
+              Recupera veicoli, prenotazioni, clienti, foto e contratti salvati sul computer dalla versione
+              precedente del gestionale.
+            </p>
+          </div>
+        </header>
+        <div className="imp-piede imp-piede--sinistra">
+          <button type="button" className="imp-btn" onClick={() => navigate('/recupero-dati')}>
+            <History size={16} aria-hidden="true" /> Apri il recupero dati
           </button>
         </div>
       </section>
