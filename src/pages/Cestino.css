@@ -1,0 +1,110 @@
+/* src/pages/Cestino.css — stessa grafica delle altre pagine (Categorie,
+   Archivio...), con prefisso cst- per restare isolata dalle altre pagine. */
+
+.cst {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 8px 4px 32px;
+  color: #2c3e50;
+}
+
+.cst-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.main-content .cst-titolo { margin: 0; }
+.cst-sottotitolo {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #7f8c9a;
+  max-width: 640px;
+  line-height: 1.5;
+}
+
+.cst-errore {
+  background: #fdecea;
+  color: #b91c1c;
+  border: 1px solid #f5c2c7;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.cst-sezione { margin-bottom: 28px; }
+
+.cst-sezione-titolo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0 0 10px;
+}
+
+.cst-conteggio { font-weight: 500; color: #7f8c9a; }
+
+.cst-vuoto {
+  color: #9aa5b1;
+  font-size: 14px;
+  background: #f8fafc;
+  border: 1px dashed #e3e8ee;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 0;
+}
+
+.cst-elenco {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.cst-riga {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eef1f4;
+}
+.cst-riga:last-child { border-bottom: none; }
+
+.cst-nome { font-weight: 600; font-size: 14px; }
+.cst-meta { font-size: 12.5px; color: #7f8c9a; margin-top: 2px; }
+
+.cst-scadenza { color: #9aa5b1; }
+.cst-scadenza--vicina { color: #b45309; font-weight: 600; }
+
+.cst-azioni { display: flex; gap: 8px; flex-shrink: 0; }
+
+.cst-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #d7dde3;
+  background: #fff;
+  color: #2c3e50;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cst-btn:hover { background: #f4f6f8; }
+
+.cst-btn--pericolo {
+  border-color: #f5c2c7;
+  color: #b91c1c;
+}
+.cst-btn--pericolo:hover { background: #fdecea; }
