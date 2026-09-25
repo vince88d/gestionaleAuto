@@ -1,11 +1,17 @@
-import { db } from '../components/firebase';
+import { db, auth } from '../components/firebase';
 import {
-  collection, getDocs, doc, writeBatch, updateDoc, deleteDoc, arrayUnion, onSnapshot, runTransaction,
+  collection, getDocs, doc, writeBatch, updateDoc, deleteDoc, deleteField, serverTimestamp,
+  arrayUnion, onSnapshot, runTransaction, query, where,
 } from 'firebase/firestore';
 import { senzaUndefined } from '../utils/senzaUndefined';
 
 const CLIENTI_COLLECTION = 'clienti';
 const PRENOTAZIONI_COLLECTION = 'prenotazioni';
+
+// Un cliente "eliminato" (soft delete, vedi eliminaCliente) resta nel
+// database ma va nascosto da ogni lista/ricerca normale: si vede solo nel
+// Cestino.
+const nonEliminato = (c) => !c.eliminato;
 
 // I clienti non hanno mai avuto un campo "id" nel gestionale: venivano
 // distinti dal codice fiscale. Usiamo quello (normalizzato) come id del
@@ -34,7 +40,7 @@ const soloCampiForm = (cliente) =>
 
 export async function readClienti() {
   const snapshot = await getDocs(collection(db, CLIENTI_COLLECTION));
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() })).filter(nonEliminato);
 }
 
 // Clienti in tempo reale (come le prenotazioni): nuovi clienti o modifiche da
@@ -42,6 +48,15 @@ export async function readClienti() {
 export function ascoltaClienti(onDati, onErrore) {
   return onSnapshot(
     collection(db, CLIENTI_COLLECTION),
+    (snapshot) => onDati(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })).filter(nonEliminato)),
+    onErrore,
+  );
+}
+
+// Solo i clienti nel Cestino (eliminato: true), per la pagina Eliminati.
+export function ascoltaClientiEliminati(onDati, onErrore) {
+  return onSnapshot(
+    query(collection(db, CLIENTI_COLLECTION), where('eliminato', '==', true)),
     (snapshot) => onDati(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))),
     onErrore,
   );
@@ -97,7 +112,30 @@ export async function aggiornaCampiCliente(id, campi) {
   await updateDoc(doc(db, CLIENTI_COLLECTION, id), senzaUndefined(campi));
 }
 
+// Non cancella il cliente: lo nasconde (va nel Cestino). Recuperabile con
+// ripristinaCliente entro 6 mesi, poi la pulizia automatica lo cancella per
+// davvero (vedi Cloud Function pulisciEliminatiScaduti). Storico danni e
+// contratti restano intatti nel documento.
 export async function eliminaCliente(id) {
+  await updateDoc(doc(db, CLIENTI_COLLECTION, id), {
+    eliminato: true,
+    eliminatoDa: auth.currentUser?.email || '',
+    eliminatoIl: serverTimestamp(),
+  });
+}
+
+// Toglie il cliente dal Cestino: torna visibile come prima.
+export async function ripristinaCliente(id) {
+  await updateDoc(doc(db, CLIENTI_COLLECTION, id), {
+    eliminato: deleteField(),
+    eliminatoDa: deleteField(),
+    eliminatoIl: deleteField(),
+  });
+}
+
+// Cancellazione vera, senza ritorno: solo dal Cestino, scelta esplicita dello
+// staff (o dalla pulizia automatica dopo 6 mesi).
+export async function eliminaClienteDefinitivo(id) {
   await deleteDoc(doc(db, CLIENTI_COLLECTION, id));
 }
 

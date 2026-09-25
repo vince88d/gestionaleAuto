@@ -1,5 +1,8 @@
-import { db } from '../components/firebase';
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, runTransaction, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '../components/firebase';
+import {
+  collection, getDocs, doc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp,
+  runTransaction, onSnapshot, query, where,
+} from 'firebase/firestore';
 import {
   readClienti, aggiungiContrattoCliente, creaCliente, aggiornaCampiCliente, normalizzaCodiceFiscale,
 } from './firestoreClienti';
@@ -23,8 +26,11 @@ export const STATI_PRENOTAZIONE_NON_CONFERMATE = ['richiesta-sito', 'scaduta', '
 
 // Le prenotazioni annullate (con l'eventuale rimborso già fatto) restano in
 // Firestore come storico, ma non compaiono nelle liste di lavoro dello staff.
+// Lo stesso vale per quelle eliminate (soft delete, vedi eliminaPrenotazione):
+// restano nel database ma si vedono solo nel Cestino.
 export function isPrenotazioneVisibile(prenotazione) {
   return (
+    !prenotazione?.eliminato &&
     prenotazione?.status !== 'annullata' &&
     !STATI_PRENOTAZIONE_NON_CONFERMATE.includes(prenotazione?.status)
   );
@@ -87,8 +93,41 @@ export async function aggiornaPrenotazione(id, campi, { statoAtteso } = {}) {
   return campi;
 }
 
+// Non cancella la prenotazione: la nasconde (va nel Cestino), sia che venga
+// eliminata dalla tabella attiva (Booking.jsx) sia dall'Archivio. Recuperabile
+// con ripristinaPrenotazione entro 6 mesi, poi la pulizia automatica la
+// cancella per davvero (vedi Cloud Function pulisciEliminatiScaduti).
 export async function eliminaPrenotazione(id) {
+  await updateDoc(doc(db, PRENOTAZIONI_COLLECTION, id), {
+    eliminato: true,
+    eliminatoDa: auth.currentUser?.email || '',
+    eliminatoIl: serverTimestamp(),
+  });
+}
+
+// Toglie la prenotazione dal Cestino: torna visibile come prima (nello stato
+// in cui era, attiva o annullata/completata che fosse).
+export async function ripristinaPrenotazione(id) {
+  await updateDoc(doc(db, PRENOTAZIONI_COLLECTION, id), {
+    eliminato: deleteField(),
+    eliminatoDa: deleteField(),
+    eliminatoIl: deleteField(),
+  });
+}
+
+// Cancellazione vera, senza ritorno: solo dal Cestino, scelta esplicita dello
+// staff (o dalla pulizia automatica dopo 6 mesi).
+export async function eliminaPrenotazioneDefinitivo(id) {
   await deleteDoc(doc(db, PRENOTAZIONI_COLLECTION, id));
+}
+
+// Solo le prenotazioni nel Cestino (eliminato: true), per la pagina Eliminati.
+export function ascoltaPrenotazioniEliminate(onDati, onErrore) {
+  return onSnapshot(
+    query(collection(db, PRENOTAZIONI_COLLECTION), where('eliminato', '==', true)),
+    (snapshot) => onDati(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    onErrore,
+  );
 }
 
 // Messaggio da mostrare allo staff per un errore di salvataggio.

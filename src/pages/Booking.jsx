@@ -1121,7 +1121,7 @@ return (
     open={confirmOpen}
     onCancel={() => setConfirmOpen(false)}
     onConfirm={confermaEliminazione}
-    message="Sei sicuro di voler eliminare questa prenotazione?"
+    message="Sposto questa prenotazione nel Cestino: sparisce dalla tabella, resta recuperabile per 6 mesi poi viene cancellata per sempre."
     title="Elimina Prenotazione"
     confirmLabel="Elimina"
     tone="danger"

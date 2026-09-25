@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import {
   PanelLeftClose, PanelLeftOpen, LayoutDashboard, Car, Users, CalendarDays,
-  Euro, Tags, Archive, Settings, LogOut,
+  Euro, Tags, Archive, Trash2, Settings, LogOut,
 } from 'lucide-react';
 import { auth } from './firebase';
 import { useAzienda } from '../lib/firestoreAzienda';
@@ -24,6 +24,7 @@ const VOCI_MENU = [
   { to: '/tariffe', etichetta: 'Tariffe', Icona: Euro },
   { to: '/categorie', etichetta: 'Categorie', Icona: Tags },
   { to: '/archivio-prenotazione', etichetta: 'Archivio', Icona: Archive },
+  { to: '/cestino', etichetta: 'Cestino', Icona: Trash2 },
   { to: '/impostazioni-azienda', etichetta: 'Impostazioni', Icona: Settings },
 ];
 

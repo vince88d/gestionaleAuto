@@ -14,6 +14,7 @@ import ImpostazioniAzienda from './pages/ImpostazioniAzienda';
 import Tariffe from './pages/Tariffe';
 import Categorie from './pages/Categorie';
 import ArchivioPrenotazione from './pages/ArchivioPrenotazioni';
+import Cestino from './pages/Cestino';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import { ascoltaPrenotazioni } from './lib/firestorePrenotazioni';
@@ -83,6 +84,7 @@ function AppContent() {
           <Route path="/categorie" element={<Categorie />} />
           <Route path="/impostazioni-azienda" element={<ImpostazioniAzienda />} />
           <Route path="/archivio-prenotazione" element={<ArchivioPrenotazione />} />
+          <Route path="/cestino" element={<Cestino />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
