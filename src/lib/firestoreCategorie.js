@@ -1,4 +1,4 @@
-import { db } from '../components/firebase';
+import { db, auth } from '../components/firebase';
 import {
   doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, writeBatch, onSnapshot,
 } from 'firebase/firestore';
@@ -44,6 +44,7 @@ export async function writeCategorie(elenco) {
   await setDoc(doc(db, ...CATEGORIE_DOC), {
     elenco: normalizzaElencoCategorie(elenco),
     aggiornatoIl: serverTimestamp(),
+    aggiornatoDa: auth.currentUser?.email || '',
   });
   return true;
 }
@@ -56,10 +57,12 @@ export async function writeCategorie(elenco) {
 // client (solo le Cloud Functions), rischio trascurabile: scadono da soli
 // entro 30 minuti.
 export async function rinominaCategoriaOvunque(vecchia, nuova, elencoAggiornato) {
+  const chi = auth.currentUser?.email || '';
   const batch = writeBatch(db);
   batch.set(doc(db, ...CATEGORIE_DOC), {
     elenco: normalizzaElencoCategorie(elencoAggiornato),
     aggiornatoIl: serverTimestamp(),
+    aggiornatoDa: chi,
   });
 
   const [veicoliSnap, prenotazioniSnap, tariffeSnap] = await Promise.all([
@@ -76,7 +79,7 @@ export async function rinominaCategoriaOvunque(vecchia, nuova, elencoAggiornato)
     const aggiornate = { ...prezziGiorno };
     aggiornate[nuova] = aggiornate[vecchia];
     delete aggiornate[vecchia];
-    batch.set(doc(db, 'impostazioni', 'tariffe'), { prezziGiorno: aggiornate, aggiornatoIl: serverTimestamp() });
+    batch.set(doc(db, 'impostazioni', 'tariffe'), { prezziGiorno: aggiornate, aggiornatoIl: serverTimestamp(), aggiornatoDa: chi });
   }
 
   await batch.commit();
@@ -90,6 +93,10 @@ export async function rimuoviTariffaCategoria(categoria) {
   if (!prezziGiorno || !Object.prototype.hasOwnProperty.call(prezziGiorno, categoria)) return false;
   const aggiornate = { ...prezziGiorno };
   delete aggiornate[categoria];
-  await setDoc(doc(db, 'impostazioni', 'tariffe'), { prezziGiorno: aggiornate, aggiornatoIl: serverTimestamp() });
+  await setDoc(doc(db, 'impostazioni', 'tariffe'), {
+    prezziGiorno: aggiornate,
+    aggiornatoIl: serverTimestamp(),
+    aggiornatoDa: auth.currentUser?.email || '',
+  });
   return true;
 }

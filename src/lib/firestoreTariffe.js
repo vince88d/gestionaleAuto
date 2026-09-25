@@ -1,4 +1,4 @@
-import { db } from '../components/firebase';
+import { db, auth } from '../components/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { normalizzaTariffe } from '../utils/tariffe';
 
@@ -23,7 +23,13 @@ export function ascoltaTariffe(onDati, onErrore) {
 }
 
 // Sostituisce tutte le tariffe: una categoria assente dall'elenco non ha più tariffa.
+// Cambia i prezzi che il cliente paga: audit trail (chi e quando) come per
+// ogni azione delicata.
 export async function writeTariffe(prezziGiorno) {
-  await setDoc(doc(db, ...TARIFFE_DOC), { prezziGiorno, aggiornatoIl: serverTimestamp() });
+  await setDoc(doc(db, ...TARIFFE_DOC), {
+    prezziGiorno,
+    aggiornatoIl: serverTimestamp(),
+    aggiornatoDa: auth.currentUser?.email || '',
+  });
   return true;
 }
