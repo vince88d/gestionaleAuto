@@ -269,7 +269,7 @@ function Clients() {
         title="Eliminare il cliente?"
         message={daEliminare ? (() => {
           const n = prenotazioniDelCliente(daEliminare.codiceFiscale, prenotazioni).length;
-          return `Eliminare "${daEliminare.nome} ${daEliminare.cognome}" dai Clienti? ${n > 0 ? `Le sue ${n} prenotazioni restano, ma non saranno più collegate a una scheda cliente.` : 'Non ha prenotazioni.'}`;
+          return `Sposto "${daEliminare.nome} ${daEliminare.cognome}" nel Cestino: sparisce dai Clienti, resta recuperabile per 6 mesi poi viene cancellato per sempre. ${n > 0 ? `Le sue ${n} prenotazioni restano.` : 'Non ha prenotazioni.'}`;
         })() : ''}
         confirmLabel="Elimina"
         tone="danger"

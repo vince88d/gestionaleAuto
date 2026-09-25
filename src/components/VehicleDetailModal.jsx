@@ -743,7 +743,7 @@ const VehicleDetailModal = ({
           setConfirmDeleteOpen(false);
           onClose();
         }}
-        message={`Eliminare ${nome}${veicolo.targa ? ` (${veicolo.targa})` : ""}? Verranno persi anche danni e manutenzioni registrati.`}
+        message={`Sposto ${nome}${veicolo.targa ? ` (${veicolo.targa})` : ""} nel Cestino: sparisce dalla flotta, ma resta recuperabile per 6 mesi con danni e manutenzioni intatti, poi viene cancellato per sempre.`}
         title="Elimina veicolo"
         confirmLabel="Elimina"
         tone="danger"

@@ -1,11 +1,14 @@
-import { setDoc, deleteDoc, doc, getDocs, writeBatch, query, where, collection } from 'firebase/firestore';
-import { salvaVeicolo, eliminaVeicolo } from './firestoreVeicoli';
+import {
+  setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, doc, getDocs, writeBatch, query, where, collection,
+} from 'firebase/firestore';
+import { salvaVeicolo, eliminaVeicolo, ripristinaVeicolo } from './firestoreVeicoli';
 import { spostaFotoDanniSuStorage } from './storageFoto';
 
-jest.mock('../components/firebase', () => ({ db: {} }));
+jest.mock('../components/firebase', () => ({ db: {}, auth: { currentUser: { email: 'staff@test.it' } } }));
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn(), getDocs: jest.fn(), writeBatch: jest.fn(),
-  doc: jest.fn(), setDoc: jest.fn(), deleteDoc: jest.fn(), query: jest.fn(), where: jest.fn(),
+  doc: jest.fn(), setDoc: jest.fn(), updateDoc: jest.fn(), deleteDoc: jest.fn(), deleteField: jest.fn(),
+  serverTimestamp: jest.fn(), query: jest.fn(), where: jest.fn(),
 }));
 jest.mock('./firestoreTariffe', () => ({ readTariffe: jest.fn() }));
 jest.mock('./storageFoto', () => ({ spostaFotoDanniSuStorage: jest.fn() }));
@@ -15,7 +18,10 @@ jest.mock('./storageFoto', () => ({ spostaFotoDanniSuStorage: jest.fn() }));
 beforeEach(() => {
   doc.mockImplementation((_db, collezione, id) => `${collezione}/${id}`);
   setDoc.mockResolvedValue();
+  updateDoc.mockResolvedValue();
   deleteDoc.mockResolvedValue();
+  deleteField.mockReturnValue('DELETE_FIELD');
+  serverTimestamp.mockReturnValue('SERVER_TIMESTAMP');
   spostaFotoDanniSuStorage.mockImplementation(async (danni) =>
     danni.map((d) => (d.immagine?.startsWith('data:') ? { ...d, immagine: 'https://storage/danno.webp' } : d)));
 });
@@ -72,8 +78,24 @@ describe('salvaVeicolo con cambio di targa', () => {
 });
 
 describe('eliminaVeicolo', () => {
-  test('cancella solo il documento di quel veicolo', async () => {
+  test('non cancella il documento: lo marca eliminato (soft delete)', async () => {
     await eliminaVeicolo('v9');
-    expect(deleteDoc).toHaveBeenCalledWith('veicoli/v9');
+    expect(deleteDoc).not.toHaveBeenCalled();
+    expect(updateDoc).toHaveBeenCalledWith('veicoli/v9', {
+      eliminato: true,
+      eliminatoDa: 'staff@test.it',
+      eliminatoIl: 'SERVER_TIMESTAMP',
+    });
+  });
+});
+
+describe('ripristinaVeicolo', () => {
+  test('toglie i campi di eliminazione', async () => {
+    await ripristinaVeicolo('v9');
+    expect(updateDoc).toHaveBeenCalledWith('veicoli/v9', {
+      eliminato: 'DELETE_FIELD',
+      eliminatoDa: 'DELETE_FIELD',
+      eliminatoIl: 'DELETE_FIELD',
+    });
   });
 });

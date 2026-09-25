@@ -55,8 +55,10 @@ function ArchivioPrenotazioni() {
   const [daRipristinare, setDaRipristinare] = useState(null);
   const [daEliminare, setDaEliminare] = useState(null);
 
-  const concluse = useMemo(() => prenotazioni.filter((p) => p.status === 'completata'), [prenotazioni]);
-  const annullate = useMemo(() => prenotazioni.filter(eAnnullamento), [prenotazioni]);
+  // Le eliminate (soft delete) escono dall'Archivio: si vedono solo nel Cestino.
+  const visibili = useMemo(() => prenotazioni.filter((p) => !p.eliminato), [prenotazioni]);
+  const concluse = useMemo(() => visibili.filter((p) => p.status === 'completata'), [visibili]);
+  const annullate = useMemo(() => visibili.filter(eAnnullamento), [visibili]);
   const anni = useMemo(() => {
     const presenti = anniDisponibili([...concluse, ...annullate]);
     const corrente = String(new Date().getFullYear());
@@ -323,7 +325,7 @@ function ArchivioPrenotazioni() {
         onConfirm={elimina}
         title="Eliminare il noleggio?"
         message={daEliminare
-          ? `Elimino per sempre il noleggio di ${daEliminare.cliente || 'cliente'} (${daEliminare.targa || '—'}, ${periodo(daEliminare)}, ${euro(importiArchivio(daEliminare).totale)}). Sparisce anche dagli incassi della Dashboard e dallo storico del cliente.`
+          ? `Sposto nel Cestino il noleggio di ${daEliminare.cliente || 'cliente'} (${daEliminare.targa || '—'}, ${periodo(daEliminare)}, ${euro(importiArchivio(daEliminare).totale)}). Sparisce dagli incassi della Dashboard e dallo storico del cliente; resta recuperabile dal Cestino per 6 mesi, poi viene cancellato per sempre.`
           : ''}
         confirmLabel="Elimina"
         tone="danger"
