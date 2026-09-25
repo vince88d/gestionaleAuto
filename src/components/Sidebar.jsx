@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import {
@@ -6,16 +6,13 @@ import {
   Euro, Tags, Archive, Settings, LogOut,
 } from 'lucide-react';
 import { auth } from './firebase';
+import { useAzienda } from '../lib/firestoreAzienda';
 import './Sidebar.css';
 
 // Nome del prodotto, mostrato in piccolo sotto il nome dell'azienda cliente.
 // Il gestionale e' pensato per piu' aziende (SaaS): in testa c'e' sempre
 // l'azienda che lo usa, presa da Impostazioni.
 export const NOME_PRODOTTO = 'Gestionale Noleggio';
-
-// Evento lanciato da Impostazioni dopo il salvataggio, per aggiornare subito
-// il nome in sidebar senza ricaricare l'app.
-export const EVENTO_AZIENDA_AGGIORNATA = 'azienda-aggiornata';
 
 // Voci del menu: icone lucide uniformi al posto delle emoji (che avevano
 // dimensioni e colori diversi tra loro).
@@ -38,21 +35,9 @@ function iniziali(nome) {
 }
 
 function Sidebar({ collapsed, toggleSidebar }) {
-  const [nomeAzienda, setNomeAzienda] = useState('');
-
-  useEffect(() => {
-    const carica = async () => {
-      try {
-        const settings = await window.electronAPI?.getCompanySettings();
-        setNomeAzienda(settings?.nome?.trim() || '');
-      } catch (err) {
-        console.error('Errore lettura nome azienda:', err);
-      }
-    };
-    carica();
-    window.addEventListener(EVENTO_AZIENDA_AGGIORNATA, carica);
-    return () => window.removeEventListener(EVENTO_AZIENDA_AGGIORNATA, carica);
-  }, []);
+  // Nome da Impostazioni, in tempo reale (anche se lo cambia un'altra postazione).
+  const { dati: azienda } = useAzienda();
+  const nomeAzienda = azienda.nome;
 
   const titolo = nomeAzienda || 'La tua azienda';
   const IconaToggle = collapsed ? PanelLeftOpen : PanelLeftClose;

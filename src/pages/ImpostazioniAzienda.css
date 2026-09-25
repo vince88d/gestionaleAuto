@@ -1,56 +1,213 @@
-.impostazioni-container {
-    max-width: 500px;
-    margin: 2rem auto;
-    padding: 1.5rem;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    display: flex;
-    flex-direction: column;
-  }
-  
-.impostazioni-container input {
-    margin-bottom: 1rem;
-    padding: 0.5rem;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-  }
+/* src/pages/ImpostazioniAzienda.css — stessa grafica di Categorie/Tariffe,
+   con prefisso imp- per restare isolata dalle altre pagine (prima c'era una
+   regola .btn globale che cambiava anche i bottoni di altre finestre). */
 
-  .settings-hint {
-    display: block;
-    margin-top: -0.55rem;
-    margin-bottom: 0.85rem;
-    padding: 0.45rem 0.65rem;
-    border-radius: 6px;
-    font-size: 0.78rem;
-    line-height: 1.35;
-  }
+.imp {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 4px 32px;
+  color: #2c3e50;
+}
 
-  .settings-hint-warning {
-    background: #fff4db;
-    color: #8a5a00;
-    border: 1px solid #f2d28b;
-  }
+.imp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 6px;
+}
 
-  .settings-hint-info {
-    background: #eef6ff;
-    color: #315f8f;
-    border: 1px solid #c9def7;
-  }
-  
-  .impostazioni-container button {
-    padding: 0.6rem;
-    background-color: #007bff;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  
-  .impostazioni-container button:hover {
-    background-color: #0056b3;
-  }
+.main-content .imp-titolo { margin: 0; }
 
-  .btn{
-    margin-bottom: 10px;
-  }
+.imp-intro {
+  margin: 4px 0 20px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+/* ---------- Sezioni ---------- */
+.imp-sezione {
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.imp-sezione-testa {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.imp-sezione-testa > div { flex: 1; min-width: 0; }
+
+.imp-sezione-testa h2 {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.imp-sezione-testa p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.imp-sezione-icona {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #eaf4fc;
+  color: #3498db;
+}
+
+/* ---------- Campi ---------- */
+.imp-griglia {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+}
+
+.imp-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.imp-campo--largo { grid-column: 1 / -1; }
+
+.imp-etichetta {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.imp-obbligatorio { color: #c0392b; }
+
+.imp-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid #d5dde6;
+  border-radius: 7px;
+  font-size: 14px;
+  color: #2c3e50;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.imp-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.imp-input:disabled { background: #f4f6f8; color: #9ca3af; }
+
+.imp-input--errore { border-color: #e74c3c; }
+.imp-input--errore:focus { box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.18); }
+
+.imp-errore {
+  color: #b91c1c;
+  font-size: 12.5px;
+}
+
+.imp-riga {
+  display: flex;
+  gap: 10px;
+}
+
+.imp-riga .imp-input { max-width: 320px; }
+
+/* ---------- Bottoni ---------- */
+.imp-piede {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.imp-piede--sinistra { justify-content: flex-start; margin-top: 0; }
+
+.imp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.imp-btn:hover:not(:disabled) { background: #f4f6f8; }
+.imp-btn:disabled { color: #9ca3af; cursor: not-allowed; }
+
+.imp-btn--primario { border-color: #3498db; background: #3498db; color: #fff; }
+.imp-btn--primario:hover:not(:disabled) { background: #2980b9; }
+.imp-btn--primario:disabled { border-color: #9ca3af; background: #9ca3af; color: #fff; }
+
+/* ---------- Stato licenza ---------- */
+.imp-stato {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.imp-stato--ok { background: #e8f6ee; color: #1e7e46; }
+.imp-stato--prova { background: #fff4db; color: #8a5a00; }
+
+/* ---------- Avvisi ---------- */
+.imp-avviso {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding: 11px 13px;
+  border: 1px solid #f2d28b;
+  border-radius: 9px;
+  background: #fff8e6;
+  color: #7a5200;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.imp-avviso > svg { flex-shrink: 0; margin-top: 2px; }
+
+.imp-avviso--errore {
+  border-color: #f5c6c0;
+  background: #fdecea;
+  color: #a93226;
+}
+
+.imp-avviso-azioni {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+@media (max-width: 700px) {
+  .imp-griglia { grid-template-columns: 1fr; }
+  .imp-riga { flex-direction: column; }
+  .imp-riga .imp-input { max-width: none; }
+}

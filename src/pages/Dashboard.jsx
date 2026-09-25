@@ -15,7 +15,7 @@ import { useHolds } from '../lib/firestoreHolds';
 import { riepilogoDashboard, serieUltimi12Mesi, veicoliLiberiNelPeriodo } from '../utils/dashboard';
 import { formattaData, giornoLocale } from '../utils/scadenze';
 import VehicleDetailModal from '../components/VehicleDetailModal';
-import { EVENTO_AZIENDA_AGGIORNATA } from '../components/Sidebar';
+import { useAzienda } from '../lib/firestoreAzienda';
 
 const euro = (valore) => `€ ${Number(valore || 0).toLocaleString('it-IT', { maximumFractionDigits: 2 })}`;
 const nomeVeicolo = (v) => [v?.marca, v?.modello].filter(Boolean).join(' ') || 'Veicolo';
@@ -49,22 +49,8 @@ function Dashboard() {
   const [dataFineRicerca, setDataFineRicerca] = useState('');
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedVeicolo, setSelectedVeicolo] = useState(null);
-  const [nomeAzienda, setNomeAzienda] = useState('');
-
   // Nome dell'azienda cliente (Impostazioni), come in testa alla sidebar.
-  useEffect(() => {
-    const leggi = async () => {
-      try {
-        const settings = await window.electronAPI?.getCompanySettings();
-        setNomeAzienda(settings?.nome?.trim() || '');
-      } catch (err) {
-        console.error('Errore lettura nome azienda:', err);
-      }
-    };
-    leggi();
-    window.addEventListener(EVENTO_AZIENDA_AGGIORNATA, leggi);
-    return () => window.removeEventListener(EVENTO_AZIENDA_AGGIORNATA, leggi);
-  }, []);
+  const nomeAzienda = useAzienda().dati.nome;
 
   // Stessi dati delle altre pagine (store condiviso). Le prenotazioni
   // arrivano in tempo reale da App.js, gli hold del sito da useHolds.
