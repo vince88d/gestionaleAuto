@@ -149,3 +149,32 @@ describe('scelta del veicolo nel form', () => {
     expect(statoVeicoloNelPeriodo({ ...periodo, inizio: '', veicolo: panda, prenotazioni: [] })).toBe('da-verificare');
   });
 });
+
+describe('veicolo sospeso', () => {
+  const { statoVeicoloNelPeriodo } = require('./regolePrenotazione');
+  const veicoliSospeso = [{ ...veicoli[0], sospeso: true }, veicoli[1], veicoli[2]];
+
+  test('non si sceglie per una prenotazione nuova', () => {
+    const r = controllaPrenotazione({ dati: base, veicoli: veicoliSospeso, prenotazioni: [], oggi: OGGI });
+    expect(r.errore).toMatch(/sospeso dal noleggio/);
+  });
+
+  test('non si puo cambiare una prenotazione esistente verso un veicolo sospeso', () => {
+    const originale = { id: 'p1', ...base, targa: 'BB222BB', status: 'attiva' };
+    const r = controllaPrenotazione({ dati: base, originale, veicoli: veicoliSospeso, prenotazioni: [originale], oggi: OGGI });
+    expect(r.errore).toMatch(/sospeso dal noleggio/);
+  });
+
+  test('una prenotazione che ha gia la targa sospesa si puo ancora correggere', () => {
+    const originale = { id: 'p1', ...base, status: 'attiva' };
+    const dati = { ...base, dataFine: '2026-10-04' };
+    const r = controllaPrenotazione({ dati, originale, veicoli: veicoliSospeso, prenotazioni: [originale], oggi: OGGI });
+    expect(r).toEqual({ prezzoTotale: 90 });
+  });
+
+  test('nel form il veicolo sospeso risulta sospeso', () => {
+    const periodo = { inizio: '2026-10-01', fine: '2026-10-03', veicoli: veicoliSospeso, holds: [], prenotazioni: [] };
+    expect(statoVeicoloNelPeriodo({ ...periodo, veicolo: veicoliSospeso[0] })).toBe('sospeso');
+    expect(statoVeicoloNelPeriodo({ ...periodo, inizio: '', veicolo: veicoliSospeso[0] })).toBe('sospeso');
+  });
+});

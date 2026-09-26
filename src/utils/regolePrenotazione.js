@@ -29,7 +29,16 @@ export function controllaPrenotazione({ dati, originale = null, veicoli = [], pr
   }
 
   const veicolo = veicoli.find((v) => v.targa && v.targa === dati.targa);
-  if (veicolo) {
+  // Un veicolo sospeso non si puo' scegliere per un noleggio. Una prenotazione
+  // che ce l'ha gia' si puo' ancora correggere (date, note) finche' non viene
+  // riassegnata: e' il gestore a decidere con che mezzo onorarla.
+  const targaInvariata = Boolean(originale) && originale.targa === dati.targa;
+  if (veicolo?.sospeso && !targaInvariata) {
+    const nome = [veicolo.marca, veicolo.modello].filter(Boolean).join(' ') || veicolo.targa;
+    return { errore: `${nome} (${veicolo.targa}) è sospeso dal noleggio: scegli un altro veicolo.` };
+  }
+
+  if (veicolo && !(veicolo.sospeso && targaInvariata)) {
     // Contano solo le prenotazioni che occupano davvero: non le annullate, non
     // le richieste del sito non pagate/scadute, non i noleggi conclusi, e non
     // quella che si sta modificando.
@@ -55,12 +64,13 @@ export const occupantiTranne = (prenotazioni, idEscluso) =>
   (prenotazioni || []).filter((p) => !STATI_NON_OCCUPANTI.includes(p.status) && (!idEscluso || p.id !== idEscluso));
 
 // Per la scelta del veicolo nel form: 'libero', 'occupato' (la sua targa ha
-// gia' un noleggio in quelle date) o 'categoria-piena' (hold e prenotazioni del
+// gia' un noleggio in quelle date), 'sospeso' (fermo dal gestore) o 'categoria-piena' (hold e prenotazioni del
 // sito non ancora assegnate hanno preso tutti i posti della categoria).
 // Senza date non si sa: 'da-verificare'.
 export function statoVeicoloNelPeriodo({ veicolo, inizio, fine, veicoli, prenotazioni, holds, idEscluso }) {
   const da = giorno(inizio);
   const a = giorno(fine);
+  if (veicolo.sospeso) return 'sospeso';
   if (!da || !a || a < da) return 'da-verificare';
   const occupanti = occupantiTranne(prenotazioni, idEscluso);
   const occupatoPerTarga = occupanti.some(

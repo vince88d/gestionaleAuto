@@ -1,7 +1,7 @@
 import {
   setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, doc, getDocs, writeBatch, query, where, collection,
 } from 'firebase/firestore';
-import { salvaVeicolo, eliminaVeicolo, ripristinaVeicolo } from './firestoreVeicoli';
+import { salvaVeicolo, eliminaVeicolo, ripristinaVeicolo, sospendiVeicolo, riattivaVeicolo } from './firestoreVeicoli';
 import { spostaFotoDanniSuStorage } from './storageFoto';
 
 jest.mock('../components/firebase', () => ({ db: {}, auth: { currentUser: { email: 'staff@test.it' } } }));
@@ -96,6 +96,28 @@ describe('ripristinaVeicolo', () => {
       eliminato: 'DELETE_FIELD',
       eliminatoDa: 'DELETE_FIELD',
       eliminatoIl: 'DELETE_FIELD',
+    });
+  });
+});
+
+describe('sospendiVeicolo / riattivaVeicolo', () => {
+  test('sospendere aggiorna solo i campi della sospensione, con il motivo', async () => {
+    await sospendiVeicolo('v1', '  incidente  ');
+    expect(updateDoc).toHaveBeenCalledWith('veicoli/v1', {
+      sospeso: true, sospesoDa: 'staff@test.it', sospesoIl: 'SERVER_TIMESTAMP', sospesoMotivo: 'incidente',
+    });
+    expect(setDoc).not.toHaveBeenCalled();
+  });
+
+  test('senza motivo non scrive il campo', async () => {
+    await sospendiVeicolo('v1');
+    expect(updateDoc.mock.calls[0][1]).not.toHaveProperty('sospesoMotivo');
+  });
+
+  test('riattivare toglie tutti i campi della sospensione', async () => {
+    await riattivaVeicolo('v1');
+    expect(updateDoc).toHaveBeenCalledWith('veicoli/v1', {
+      sospeso: 'DELETE_FIELD', sospesoMotivo: 'DELETE_FIELD', sospesoDa: 'DELETE_FIELD', sospesoIl: 'DELETE_FIELD',
     });
   });
 });

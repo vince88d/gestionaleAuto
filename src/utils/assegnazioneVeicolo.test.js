@@ -74,3 +74,11 @@ describe('veicoliLiberiPerPrenotazione', () => {
     expect(liberi([occupa('AA111AA'), occupa('BB222BB')])).toEqual([]);
   });
 });
+
+describe('veicoli sospesi', () => {
+  test('non si propongono per assegnare una prenotazione del sito', () => {
+    const conSospeso = veicoli.map((v) => (v.id === 'v1' ? { ...v, sospeso: true } : v));
+    const liberi = veicoliLiberiPerPrenotazione(richiesta, conSospeso, []);
+    expect(liberi.map((v) => v.targa)).toEqual(['BB222BB']);
+  });
+});

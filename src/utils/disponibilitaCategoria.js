@@ -31,7 +31,10 @@ function risolviCategoria(doc, veicoliPerTarga) {
 export function disponibiliPerCategoria(categoria, dataInizio, dataFine, veicoli, prenotazioni, holds, { escludiPrenotazioneId } = {}) {
   if (!categoria || !dataInizio || !dataFine) return Infinity;
 
-  const flotta = (veicoli || []).filter((v) => v.categoria === categoria);
+  // Un veicolo sospeso (fermo per riparazione o altro) non fa parte della flotta
+  // noleggiabile, ma le prenotazioni gia' prese sulla sua targa restano
+  // conteggiate qui sotto: e' il gestore a doverle onorare con un altro mezzo.
+  const flotta = (veicoli || []).filter((v) => v.categoria === categoria && !v.sospeso);
   const veicoliPerTarga = new Map((veicoli || []).filter((v) => v.targa).map((v) => [v.targa, v]));
 
   let occupati = 0;
@@ -63,10 +66,74 @@ export function disponibiliPerCategoria(categoria, dataInizio, dataFine, veicoli
 // la Dashboard. `prenotazioni` = solo quelle che occupano davvero (niente
 // annullate, non pagate o gia' concluse).
 export function veicoloLibero(veicolo, dataInizio, dataFine, veicoli, prenotazioni, holds) {
+  if (veicolo.sospeso) return false;
   const occupatoPerTarga = (prenotazioni || []).some(
     (p) => veicolo.targa && p.targa === veicolo.targa && siSovrappongono(dataInizio, dataFine, p.dataInizio, p.dataFine)
   );
   if (occupatoPerTarga) return false;
   if (!veicolo.categoria) return true;
   return disponibiliPerCategoria(veicolo.categoria, dataInizio, dataFine, veicoli, prenotazioni, holds) > 0;
+}
+
+const ISO = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const prossimoGiorno = (iso) => {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + 1);
+  return ISO(d);
+};
+const giornoDi = (valore) => (valore ? String(valore).slice(0, 10) : '');
+
+// Giorni (da `oggi` in poi) in cui una categoria ha piu' prenotazioni/hold che
+// veicoli noleggiabili: succede quando si sospende un'auto che ha gia' impegni.
+// Non blocca e non cambia nulla: serve a far vedere al gestore dove deve
+// intervenire (auto superiore, altro noleggiatore...). Restituisce intervalli
+// consecutivi { da, a, occupati, disponibili } (`occupati` = il massimo nel
+// tratto). `prenotazioni` = solo quelle che occupano davvero.
+export function sovraprenotazioniCategoria(categoria, veicoli, prenotazioni, holds, oggi) {
+  const flotta = (veicoli || []).filter((v) => v.categoria === categoria && !v.sospeso).length;
+  const veicoliPerTarga = new Map((veicoli || []).filter((v) => v.targa).map((v) => [v.targa, v]));
+  const ora = Date.now();
+
+  const impegni = [];
+  (prenotazioni || []).forEach((p) => {
+    if (p.status !== 'attiva' || !p.dataInizio || !p.dataFine) return;
+    if (risolviCategoria(p, veicoliPerTarga) !== categoria) return;
+    impegni.push([giornoDi(p.dataInizio), giornoDi(p.dataRientroEffettiva || p.dataFine)]);
+  });
+  (holds || []).forEach((h) => {
+    if (!h.dataInizio || !h.dataFine || h.categoria !== categoria) return;
+    const scadeMs = scadeIlInMillis(h.scadeIl);
+    if (!scadeMs || scadeMs <= ora) return;
+    impegni.push([giornoDi(h.dataInizio), giornoDi(h.dataFine)]);
+  });
+
+  const futuri = impegni.filter(([, fine]) => fine >= oggi);
+  if (futuri.length === 0) return [];
+  const ultimo = futuri.reduce((max, [, fine]) => (fine > max ? fine : max), oggi);
+
+  const intervalli = [];
+  for (let g = oggi; g <= ultimo; g = prossimoGiorno(g)) {
+    const occupati = futuri.filter(([inizio, fine]) => inizio <= g && fine >= g).length;
+    if (occupati <= flotta) continue;
+    const precedente = intervalli[intervalli.length - 1];
+    if (precedente && prossimoGiorno(precedente.a) === g) {
+      precedente.a = g;
+      precedente.occupati = Math.max(precedente.occupati, occupati);
+    } else {
+      intervalli.push({ da: g, a: g, occupati, disponibili: flotta });
+    }
+  }
+  return intervalli;
+}
+
+// Prenotazioni ancora da onorare che hanno la targa di un veicolo sospeso:
+// vanno riassegnate a un altro mezzo. Le concluse, le annullate e quelle gia'
+// finite non contano.
+export function prenotazioniSuVeicoloSospeso(veicoli, prenotazioni, oggi) {
+  const sospese = new Set((veicoli || []).filter((v) => v.sospeso && v.targa).map((v) => v.targa));
+  if (sospese.size === 0) return [];
+  return (prenotazioni || []).filter(
+    (p) => p.status === 'attiva' && p.targa && sospese.has(p.targa) && giornoDi(p.dataRientroEffettiva || p.dataFine) >= oggi
+  );
 }

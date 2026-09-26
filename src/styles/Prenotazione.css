@@ -698,6 +698,7 @@
 .sv-stato--libero { color: #1e8449; }
 .sv-stato--occupato { color: #c0392b; }
 .sv-stato--categoria-piena { color: #b45309; }
+.sv-stato--sospeso { color: #7f8c9a; }
 
 .sv-vuoto {
   grid-column: 1 / -1;
