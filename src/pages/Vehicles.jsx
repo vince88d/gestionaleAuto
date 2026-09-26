@@ -10,7 +10,8 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { Plus, Search } from 'lucide-react';
 import VehicleCard from '../components/VeichleCard';
 import VehicleForm from '../components/VehicleForm';
-import { readVeicoli, salvaVeicolo, eliminaVeicolo } from '../lib/firestoreVeicoli';
+import SospendiVeicoloModal from '../components/SospendiVeicoloModal';
+import { readVeicoli, salvaVeicolo, eliminaVeicolo, sospendiVeicolo, riattivaVeicolo } from '../lib/firestoreVeicoli';
 import { readCategorie } from '../lib/firestoreCategorie';
 import { caricaFotoVeicolo, caricaFotoDanno } from '../lib/storageFoto';
 import { isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
@@ -333,6 +334,35 @@ const handleAddManutenzione = async () => {
 };
 
 
+const [sospendiAperto, setSospendiAperto] = useState(false);
+
+const handleSospendi = async (motivo) => {
+  try {
+    const campi = await sospendiVeicolo(selectedVeicolo.id, motivo);
+    const aggiornato = { ...selectedVeicolo, ...campi };
+    dispatch(updateVeicolo(aggiornato));
+    setSelectedVeicolo(aggiornato);
+    setSospendiAperto(false);
+    toast.success('Veicolo sospeso dal noleggio.');
+  } catch (error) {
+    console.error('Errore sospensione veicolo:', error);
+    toast.error('Non sono riuscito a sospendere il veicolo. Riprova.');
+  }
+};
+
+const handleRiattiva = async () => {
+  try {
+    await riattivaVeicolo(selectedVeicolo.id);
+    const { sospeso, sospesoMotivo, sospesoDa, sospesoIl, ...resto } = selectedVeicolo;
+    dispatch(updateVeicolo(resto));
+    setSelectedVeicolo(resto);
+    toast.success('Veicolo di nuovo disponibile al noleggio.');
+  } catch (error) {
+    console.error('Errore riattivazione veicolo:', error);
+    toast.error('Non sono riuscito a riattivare il veicolo. Riprova.');
+  }
+};
+
 const handleEdit = () => {
   handleCloseDetailModal();
   handleOpenModal(selectedVeicolo);
@@ -399,8 +429,9 @@ const calcolaDisponibilitaConsecutiva = (veicolo) => {
 
 // Applica l’ordinamento ai veicoli
 const veicoliOrdinati = [...veicoli].sort((a, b) => {
-  const giorniA = calcolaDisponibilitaConsecutiva(a);
-  const giorniB = calcolaDisponibilitaConsecutiva(b);
+  // I sospesi in fondo all'elenco.
+  const giorniA = a.sospeso ? -1 : calcolaDisponibilitaConsecutiva(a);
+  const giorniB = b.sospeso ? -1 : calcolaDisponibilitaConsecutiva(b);
   return giorniB - giorniA; // ordine decrescente
 });
 
@@ -531,6 +562,19 @@ const handleToggleRepairStatus = (index) => {
   onAddManutenzione={handleAddManutenzione}
   onDeleteManutenzione={handleDeleteManutenzione}
   onToggleRepairStatus={handleToggleRepairStatus}
+  onSospendi={() => setSospendiAperto(true)}
+  onRiattiva={handleRiattiva}
+/>
+
+<SospendiVeicoloModal
+  isOpen={sospendiAperto}
+  veicolo={selectedVeicolo}
+  veicoli={veicoli}
+  prenotazioni={prenotazioni}
+  holds={holds}
+  oggi={giornoLocale()}
+  onCancel={() => setSospendiAperto(false)}
+  onConfirm={handleSospendi}
 />
 
 

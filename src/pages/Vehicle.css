@@ -455,6 +455,13 @@
   color: #c0392b;
 }
 
+.vcard-stato--sospeso {
+  background: #fff4e0;
+  color: #b45309;
+}
+
+.vcard--sospeso .vcard-foto img { filter: grayscale(0.8); opacity: 0.75; }
+
 .vcard-corpo {
   display: flex;
   flex-direction: column;

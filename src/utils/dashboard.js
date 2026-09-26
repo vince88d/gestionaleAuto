@@ -3,7 +3,7 @@
 // pagate) e il giorno di oggi come 'YYYY-MM-DD'.
 import { daAssegnare } from './assegnazioneVeicolo';
 import { SCADENZE_VEICOLO } from './scadenze';
-import { veicoloLibero } from './disponibilitaCategoria';
+import { veicoloLibero, prenotazioniSuVeicoloSospeso } from './disponibilitaCategoria';
 
 const giorno = (valore) => (valore ? String(valore).slice(0, 10) : '');
 
@@ -71,6 +71,8 @@ export function riepilogoDashboard({ veicoli = [], prenotazioni = [], holds = []
     incassoMese: prenotazioni
       .filter((p) => conta(p) && giorno(p.dataInizio).slice(0, 7) === mese)
       .reduce((totale, p) => totale + prezzoPrenotazione(p), 0),
+    suVeicoloSospeso: prenotazioniSuVeicoloSospeso(veicoli, prenotazioni, oggi)
+      .sort((a, b) => giorno(a.dataInizio).localeCompare(giorno(b.dataInizio))),
     daAssegnare: prenotazioni.filter(daAssegnare).sort((a, b) => giorno(a.dataInizio).localeCompare(giorno(b.dataInizio))),
     danniDaRiparare,
     scadenze,

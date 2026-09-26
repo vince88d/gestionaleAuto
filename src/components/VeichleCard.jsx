@@ -20,7 +20,7 @@ const VehicleCard = ({
 
   return (
     <article
-      className="vcard"
+      className={`vcard ${veicolo.sospeso ? 'vcard--sospeso' : ''}`}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === 'Enter') onClick(); }}
       tabIndex={0}
@@ -33,9 +33,13 @@ const VehicleCard = ({
         ) : (
           <Car size={48} className="vcard-foto-vuota" aria-hidden="true" />
         )}
-        <span className={`vcard-stato ${disponibile ? 'vcard-stato--libero' : 'vcard-stato--occupato'}`}>
-          {disponibile ? 'Disponibile oggi' : 'Occupato oggi'}
-        </span>
+        {veicolo.sospeso ? (
+          <span className="vcard-stato vcard-stato--sospeso">Sospeso dal noleggio</span>
+        ) : (
+          <span className={`vcard-stato ${disponibile ? 'vcard-stato--libero' : 'vcard-stato--occupato'}`}>
+            {disponibile ? 'Disponibile oggi' : 'Occupato oggi'}
+          </span>
+        )}
       </div>
 
       <div className="vcard-corpo">

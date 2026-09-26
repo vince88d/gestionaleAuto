@@ -6,7 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { toast } from 'react-toastify';
 import {
   Car, CalendarCheck, CalendarClock, Euro, CalendarDays, BarChart3,
-  LogIn, LogOut, ClipboardList, Wrench, Bell, CheckCircle2, CalendarPlus,
+  LogIn, LogOut, ClipboardList, Wrench, Bell, CheckCircle2, CalendarPlus, PauseCircle,
 } from 'lucide-react';
 import { setVeicoli } from '../store/veicoliSlice';
 import { isPrenotazioneVisibile } from '../lib/firestorePrenotazioni';
@@ -101,7 +101,7 @@ function Dashboard() {
     },
   ];
 
-  const daFare = r.daAssegnare.length + r.danniDaRiparare.length + r.scadenze.length;
+  const daFare = r.daAssegnare.length + r.suVeicoloSospeso.length + r.danniDaRiparare.length + r.scadenze.length;
 
   const ElencoOggi = ({ titolo, Icona, voci, vuoto }) => (
     <div className="dash-gruppo">
@@ -192,6 +192,27 @@ function Dashboard() {
                         {formattaData(p.dataInizio)} → {formattaData(p.dataFine)} · {p.categoria || '—'}
                       </span>
                       <span className="dash-riga-secondaria">{p.cliente || 'Cliente non indicato'}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {r.suVeicoloSospeso.length > 0 && (
+            <div className="dash-gruppo">
+              <h3 className="dash-gruppo-titolo">
+                <PauseCircle size={16} aria-hidden="true" /> Prenotazioni su auto sospese da riassegnare
+                <span className="dash-contatore dash-contatore--allerta">{r.suVeicoloSospeso.length}</span>
+              </h3>
+              <ul className="dash-lista">
+                {r.suVeicoloSospeso.map((p) => (
+                  <li key={p.id}>
+                    <button type="button" className="dash-riga" onClick={() => navigate('/booking')}>
+                      <span className="dash-riga-principale">
+                        {formattaData(p.dataInizio)} → {formattaData(p.dataFine)} · {p.cliente || 'Cliente non indicato'}
+                      </span>
+                      <span className="dash-riga-secondaria">{p.veicolo || p.categoria || '—'} · {p.targa}</span>
                     </button>
                   </li>
                 ))}

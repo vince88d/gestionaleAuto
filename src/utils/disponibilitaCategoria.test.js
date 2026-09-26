@@ -74,6 +74,7 @@ describe('prenotazioniSuVeicoloSospeso', () => {
       prenotazione('p2', '2026-10-10', '2026-10-12', { targa: 'AA111AA' }),
       prenotazione('p3', '2026-08-01', '2026-08-03', { targa: 'BB222BB' }),
       prenotazione('p4', '2026-10-10', '2026-10-12', { targa: 'BB222BB', status: 'annullata' }),
+      prenotazione('p5', '2026-09-28', '2026-10-05', { targa: 'BB222BB', consegnataIl: '2026-09-28' }),
     ];
     expect(prenotazioniSuVeicoloSospeso(flotta, prenotazioni, '2026-10-01').map((p) => p.id)).toEqual(['p1']);
   });

@@ -846,3 +846,21 @@
   max-height: 75vh;
   border-radius: 10px;
 }
+
+.vd-stato--sospeso { background: #fff4e0; color: #b45309; }
+
+.vd-sospeso {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid #f5d9a8;
+  border-radius: 10px;
+  background: #fff8ec;
+  color: #7c4a03;
+  font-size: 14px;
+}
+.vd-sospeso > svg { flex-shrink: 0; margin-top: 2px; }
+.vd-sospeso-motivo, .vd-sospeso-nota { display: block; margin-top: 2px; font-size: 13px; }
+.vd-sospeso-nota { color: #92600b; }
+.vd-sospeso-lista { margin: 8px 0 0; padding-left: 18px; font-weight: 600; }

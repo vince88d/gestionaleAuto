@@ -6,7 +6,7 @@ import itLocale from "@fullcalendar/core/locales/it";
 import { useNavigate } from "react-router-dom";
 import {
   Car, CalendarPlus, Pencil, Trash2, X, Plus, ImageOff, AlertTriangle,
-  CalendarDays, Gauge, Palette, Fuel, Cog, DoorOpen, Euro, Wrench,
+  CalendarDays, Gauge, Palette, Fuel, Cog, DoorOpen, Euro, Wrench, PauseCircle, PlayCircle,
 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
 import "../styles/VehicleDetailModal.css";
@@ -14,7 +14,7 @@ import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";
 import { updatePrenotazione } from "../store/prenotazioniSlice";
 import { isPrenotazioneVisibile, segnaDannoPrenotazioneRiparato } from "../lib/firestorePrenotazioni";
-import { disponibiliPerCategoria } from "../utils/disponibilitaCategoria";
+import { disponibiliPerCategoria, prenotazioniSuVeicoloSospeso } from "../utils/disponibilitaCategoria";
 import { SCADENZE_VEICOLO, coloreScadenza, testoScadenza, formattaData, giornoLocale } from "../utils/scadenze";
 
 // Schede della finestra. Danni e Manutenzioni solo nella versione completa
@@ -64,6 +64,8 @@ const VehicleDetailModal = ({
   onAddManutenzione,
   onDeleteManutenzione,
   onToggleRepairStatus,
+  onSospendi,
+  onRiattiva,
   modalLite = false,
   prenotazioni,
   veicoli = [],
@@ -218,6 +220,9 @@ const VehicleDetailModal = ({
   const oggi = giornoLocale(new Date());
   const nome = [veicolo.marca, veicolo.modello].filter(Boolean).join(" ") || "Veicolo senza nome";
   const liberoOggi = !isGiornoOccupato(oggi);
+  const prenotazioniDaRiassegnare = veicolo.sospeso
+    ? prenotazioniSuVeicoloSospeso([veicolo], prenotazioni || [], oggi)
+    : [];
   const prezzoDaTariffa = "prezzoVeicolo" in veicolo && veicolo.categoria;
 
   const prossimePrenotazioni = prenotazioniValide
@@ -279,9 +284,13 @@ const VehicleDetailModal = ({
               <div className="vd-meta">
                 {veicolo.targa && <span className="vd-targa">{veicolo.targa}</span>}
                 {veicolo.categoria && <span className="vd-categoria">{veicolo.categoria}</span>}
-                <span className={`vd-stato ${liberoOggi ? "vd-stato--libero" : "vd-stato--occupato"}`}>
-                  {liberoOggi ? "Disponibile oggi" : "Occupato oggi"}
-                </span>
+                {veicolo.sospeso ? (
+                  <span className="vd-stato vd-stato--sospeso">Sospeso dal noleggio</span>
+                ) : (
+                  <span className={`vd-stato ${liberoOggi ? "vd-stato--libero" : "vd-stato--occupato"}`}>
+                    {liberoOggi ? "Disponibile oggi" : "Occupato oggi"}
+                  </span>
+                )}
               </div>
             </div>
             <div className="vd-azioni">
@@ -290,6 +299,15 @@ const VehicleDetailModal = ({
               </button>
               {!modalLite && (
                 <>
+                  {veicolo.sospeso ? (
+                    <button type="button" className="vd-btn" onClick={onRiattiva}>
+                      <PlayCircle size={16} aria-hidden="true" /> Riattiva
+                    </button>
+                  ) : (
+                    <button type="button" className="vd-btn" onClick={onSospendi}>
+                      <PauseCircle size={16} aria-hidden="true" /> Sospendi
+                    </button>
+                  )}
                   <button type="button" className="vd-btn" onClick={onEdit}>
                     <Pencil size={16} aria-hidden="true" /> Modifica
                   </button>
@@ -334,6 +352,29 @@ const VehicleDetailModal = ({
           <div className="vd-contenuto" role="tabpanel">
             {scheda === "panoramica" && (
               <>
+                {veicolo.sospeso && (
+                  <div className="vd-sospeso" role="status">
+                    <PauseCircle size={18} aria-hidden="true" />
+                    <div>
+                      <strong>Sospeso dal noleggio</strong>
+                      {veicolo.sospesoIl && ` dal ${formattaData(String(veicolo.sospesoIl).slice(0, 10))}`}
+                      {veicolo.sospesoMotivo && <span className="vd-sospeso-motivo">{veicolo.sospesoMotivo}</span>}
+                      <span className="vd-sospeso-nota">
+                        Non è proposto sul sito né nelle nuove prenotazioni. Lo riattivi tu quando è pronto.
+                      </span>
+                      {prenotazioniDaRiassegnare.length > 0 && (
+                        <ul className="vd-sospeso-lista">
+                          {prenotazioniDaRiassegnare.map((p) => (
+                            <li key={p.id}>
+                              Da riassegnare: {formattaData(p.dataInizio)} → {formattaData(p.dataFine)} · {p.cliente || "Cliente non indicato"}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {!modalLite && daRiparare > 0 && (
                   <button type="button" className="vd-avviso" onClick={() => setScheda("danni")}>
                     <AlertTriangle size={18} aria-hidden="true" />

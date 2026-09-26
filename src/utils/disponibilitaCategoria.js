@@ -82,6 +82,9 @@ const prossimoGiorno = (iso) => {
   d.setDate(d.getDate() + 1);
   return ISO(d);
 };
+// Stessa regola di eConsegnata (regolePrenotazione.js), qui per non importarla
+// e creare un giro tra i due file.
+const giaConsegnata = (p) => Boolean(p?.consegnataIl || p?.schedaVeicolo?.kmIniziali);
 const giornoDi = (valore) => (valore ? String(valore).slice(0, 10) : '');
 
 // Giorni (da `oggi` in poi) in cui una categoria ha piu' prenotazioni/hold che
@@ -128,12 +131,13 @@ export function sovraprenotazioniCategoria(categoria, veicoli, prenotazioni, hol
 }
 
 // Prenotazioni ancora da onorare che hanno la targa di un veicolo sospeso:
-// vanno riassegnate a un altro mezzo. Le concluse, le annullate e quelle gia'
-// finite non contano.
+// vanno riassegnate a un altro mezzo. Le concluse, le annullate, quelle gia'
+// finite e quelle in cui il cliente ha gia' il veicolo non contano.
 export function prenotazioniSuVeicoloSospeso(veicoli, prenotazioni, oggi) {
   const sospese = new Set((veicoli || []).filter((v) => v.sospeso && v.targa).map((v) => v.targa));
   if (sospese.size === 0) return [];
   return (prenotazioni || []).filter(
-    (p) => p.status === 'attiva' && p.targa && sospese.has(p.targa) && giornoDi(p.dataRientroEffettiva || p.dataFine) >= oggi
+    (p) => p.status === 'attiva' && p.targa && sospese.has(p.targa) && !giaConsegnata(p) &&
+      giornoDi(p.dataRientroEffettiva || p.dataFine) >= oggi
   );
 }

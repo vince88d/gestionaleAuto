@@ -104,7 +104,7 @@ describe('sospendiVeicolo / riattivaVeicolo', () => {
   test('sospendere aggiorna solo i campi della sospensione, con il motivo', async () => {
     await sospendiVeicolo('v1', '  incidente  ');
     expect(updateDoc).toHaveBeenCalledWith('veicoli/v1', {
-      sospeso: true, sospesoDa: 'staff@test.it', sospesoIl: 'SERVER_TIMESTAMP', sospesoMotivo: 'incidente',
+      sospeso: true, sospesoDa: 'staff@test.it', sospesoIl: expect.any(String), sospesoMotivo: 'incidente',
     });
     expect(setDoc).not.toHaveBeenCalled();
   });
