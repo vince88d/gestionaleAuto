@@ -79,3 +79,20 @@ describe('prezzoPrenotazione e veicoliLiberiNelPeriodo', () => {
     expect(liberi.map((v) => v.id)).toEqual(['v1', 'v2', 'v4']);
   });
 });
+
+describe('auto sospese nella dashboard', () => {
+  const conSospeso = veicoli.map((v) => (v.id === 'v3' ? { ...v, sospeso: true } : v));
+  const r = riepilogoDashboard({ veicoli: conSospeso, prenotazioni, holds: [], oggi: OGGI });
+
+  test('le prenotazioni ancora da onorare su un\'auto sospesa vanno riassegnate', () => {
+    expect(r.suVeicoloSospeso.map((p) => p.id)).toEqual(['p6']);
+  });
+
+  test('un\'auto sospesa non e mai libera oggi', () => {
+    expect(r.liberiOggi.map((v) => v.id)).toEqual([]);
+  });
+
+  test('senza sospesi non c\'e niente da riassegnare', () => {
+    expect(riepilogoDashboard({ veicoli, prenotazioni, holds: [], oggi: OGGI }).suVeicoloSospeso).toEqual([]);
+  });
+});

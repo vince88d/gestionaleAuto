@@ -6,9 +6,11 @@ const ETICHETTA_STATO = {
   libero: 'Libero',
   occupato: 'Occupato',
   'categoria-piena': 'Categoria piena',
+  sospeso: 'Sospeso',
   'da-verificare': '',
 };
 
+const NON_SCEGLIBILI = ['occupato', 'categoria-piena', 'sospeso'];
 const SENZA_CATEGORIA = 'Senza categoria';
 const nomeVeicolo = (v) => [v.marca, v.modello].filter(Boolean).join(' ') || v.targa;
 
@@ -46,7 +48,7 @@ function SceltaVeicolo({
       const nome = veicolo.categoria || SENZA_CATEGORIA;
       const c = perNome.get(nome) || { nome, totale: 0, liberi: 0 };
       c.totale += 1;
-      if (stato !== 'occupato' && stato !== 'categoria-piena') c.liberi += 1;
+      if (!NON_SCEGLIBILI.includes(stato)) c.liberi += 1;
       perNome.set(nome, c);
     });
     return [...perNome.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
@@ -60,7 +62,7 @@ function SceltaVeicolo({
     return parole.every((p) => testo.includes(p));
   });
   const nonDisponibili = trovati.filter(({ stato, veicolo }) =>
-    (stato === 'occupato' || stato === 'categoria-piena') && veicolo.targa !== targaScelta);
+    NON_SCEGLIBILI.includes(stato) && veicolo.targa !== targaScelta);
   const visibili = (mostraTutti ? trovati : trovati.filter((t) => !nonDisponibili.includes(t)))
     .sort((a, b) => {
       const peso = (s) => (s === 'libero' || s === 'da-verificare' ? 0 : 1);
@@ -116,7 +118,7 @@ function SceltaVeicolo({
           </p>
         ) : visibili.map(({ veicolo, stato }) => {
           const scelto = veicolo.targa === targaScelta;
-          const bloccato = (stato === 'occupato' || stato === 'categoria-piena') && !scelto;
+          const bloccato = NON_SCEGLIBILI.includes(stato) && !scelto;
           return (
             <button
               key={veicolo.targa}

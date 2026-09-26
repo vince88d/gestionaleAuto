@@ -37,6 +37,7 @@ import {
 } from '../utils/regolePrenotazione';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { daAssegnare } from '../utils/assegnazioneVeicolo';
+import { prenotazioniSuVeicoloSospeso } from '../utils/disponibilitaCategoria';
 import { giornoLocale, formattaData } from '../utils/scadenze';
 import{
   addPrenotazione,
@@ -751,6 +752,10 @@ const eseguiConclusioneInBlocco = async () => {
 
 
 const oggi = giornoLocale();
+// Prenotazioni ancora da onorare sulla targa di un'auto sospesa dal gestore.
+const idSuVeicoloSospeso = new Set(
+  prenotazioniSuVeicoloSospeso(availableVehicles, prenotazioni, oggi).map((p) => p.id)
+);
 // Ricerca su piu' parole (es. "rossi panda"), come in Veicoli. Le prenotazioni
 // del sito possono non avere email o targa: niente crash sui campi vuoti.
 const paroleCercate = search.toLowerCase().split(/\s+/).filter(Boolean);
@@ -915,6 +920,9 @@ return (
                     <td>
                       <span className="bk-principale">{p.veicolo || p.categoria || '—'}</span>
                       {p.targa && <span className="bk-targa">{p.targa}</span>}
+                      {idSuVeicoloSospeso.has(p.id) && (
+                        <span className="bk-sospeso">Auto sospesa, da riassegnare</span>
+                      )}
                     </td>
                     <td>
                       <span className="bk-principale">{formattaData(p.dataInizio)} → {formattaData(p.dataFine)}</span>

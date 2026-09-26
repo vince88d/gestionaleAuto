@@ -109,3 +109,30 @@ export async function ripristinaVeicolo(id) {
 export async function eliminaVeicoloDefinitivo(id) {
   await deleteDoc(doc(db, VEICOLI_COLLECTION, id));
 }
+
+// Sospende il veicolo dal noleggio (incidente, riparazione, fermo deciso dal
+// gestore): resta in flotta ma esce dal conteggio delle auto noleggiabili, su
+// sito e gestionale. Scrive solo questi campi, senza toccare il resto del
+// documento. Si riattiva a mano con riattivaVeicolo.
+export async function sospendiVeicolo(id, motivo = '') {
+  // Data come testo (non serverTimestamp): la stessa copia resta nello stato
+  // dell'app e non cambia tipo se il veicolo viene poi risalvato per intero.
+  const campi = {
+    sospeso: true,
+    sospesoDa: auth.currentUser?.email || '',
+    sospesoIl: new Date().toISOString(),
+  };
+  const testo = String(motivo || '').trim();
+  if (testo) campi.sospesoMotivo = testo;
+  await updateDoc(doc(db, VEICOLI_COLLECTION, id), campi);
+  return campi;
+}
+
+export async function riattivaVeicolo(id) {
+  await updateDoc(doc(db, VEICOLI_COLLECTION, id), {
+    sospeso: deleteField(),
+    sospesoMotivo: deleteField(),
+    sospesoDa: deleteField(),
+    sospesoIl: deleteField(),
+  });
+}

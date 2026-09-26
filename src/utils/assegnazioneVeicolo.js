@@ -23,7 +23,7 @@ export function veicoliLiberiPerPrenotazione(prenotazione, veicoli, prenotazioni
   const fine = giorno(prenotazione.dataFine);
 
   return (veicoli || []).filter((veicolo) => {
-    if (!veicolo.targa || veicolo.categoria !== prenotazione.categoria) return false;
+    if (!veicolo.targa || veicolo.sospeso || veicolo.categoria !== prenotazione.categoria) return false;
 
     const occupato = (prenotazioni || []).some((p) => {
       if (p.id === prenotazione.id || p.targa !== veicolo.targa) return false;
