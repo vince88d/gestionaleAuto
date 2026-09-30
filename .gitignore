@@ -9,6 +9,7 @@ out/
 dist/
 dist-installer/
 dist-installer-2/
+dist-demo/
 
 # Log e file di sistema
 *.log
