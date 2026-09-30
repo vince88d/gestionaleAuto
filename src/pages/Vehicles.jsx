@@ -8,6 +8,7 @@ import VehicleDetailModal from '../components/VehicleDetailModal';
 import { setPrenotazioni } from '../store/prenotazioniSlice';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Plus, Search } from 'lucide-react';
+import FiltroCategorie from '../components/FiltroCategorie';
 import VehicleCard from '../components/VeichleCard';
 import VehicleForm from '../components/VehicleForm';
 import SospendiVeicoloModal from '../components/SospendiVeicoloModal';
@@ -20,7 +21,7 @@ import { veicoloLibero } from '../utils/disponibilitaCategoria';
 import { cambiaStatoRiparazione } from '../utils/danniVeicolo';
 import { coloreScadenza, giornoLocale } from '../utils/scadenze';
 import { validaVeicolo, preparaVeicolo } from '../utils/validaVeicolo';
-import { filtraPerCategorie, chipCategorie, alternaCategoria } from '../utils/filtroCategorie';
+import { filtraPerCategorie, chipCategorie } from '../utils/filtroCategorie';
 import './Vehicle.css';
 
 Modal.setAppElement('#root');
@@ -524,38 +525,18 @@ const handleToggleRepairStatus = (index) => {
               aria-label="Cerca veicoli"
             />
           </label>
+          {veicoli.length > 0 && chip.length > 0 && (
+            <FiltroCategorie
+              opzioni={chip}
+              scelte={chipAttivi}
+              onChange={setCategorieScelte}
+            />
+          )}
           <button type="button" onClick={() => handleOpenModal()} className="veicoli-aggiungi">
             <Plus size={18} aria-hidden="true" /> Aggiungi veicolo
           </button>
         </div>
       </div>
-
-      {veicoli.length > 0 && chip.length > 0 && (
-        <div className="veicoli-filtri" role="group" aria-label="Filtra per categoria">
-          <button
-            type="button"
-            className={`veicoli-chip${chipAttivi.length === 0 ? ' attivo' : ''}`}
-            aria-pressed={chipAttivi.length === 0}
-            onClick={() => setCategorieScelte([])}
-          >
-            Tutte <span className="veicoli-chip-num">{veicoli.length}</span>
-          </button>
-          {chip.map(({ nome, conteggio }) => {
-            const attivo = chipAttivi.includes(nome);
-            return (
-              <button
-                key={nome}
-                type="button"
-                className={`veicoli-chip${attivo ? ' attivo' : ''}`}
-                aria-pressed={attivo}
-                onClick={() => setCategorieScelte(alternaCategoria(chipAttivi, nome))}
-              >
-                {nome} <span className="veicoli-chip-num">{conteggio}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {veicoli.length === 0 ? (
         <p className="veicoli-vuoto">Nessun veicolo in flotta. Aggiungi il primo con il bottone qui sopra.</p>
