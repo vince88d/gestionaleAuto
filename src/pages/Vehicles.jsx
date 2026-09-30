@@ -20,6 +20,7 @@ import { veicoloLibero } from '../utils/disponibilitaCategoria';
 import { cambiaStatoRiparazione } from '../utils/danniVeicolo';
 import { coloreScadenza, giornoLocale } from '../utils/scadenze';
 import { validaVeicolo, preparaVeicolo } from '../utils/validaVeicolo';
+import { filtraPerCategorie, chipCategorie, alternaCategoria } from '../utils/filtroCategorie';
 import './Vehicle.css';
 
 Modal.setAppElement('#root');
@@ -63,6 +64,7 @@ function Vehicles() {
   const [selectedDamagePhoto, setSelectedDamagePhoto] = useState(null);
   const [damageModalOpen, setDamageModalOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [categorieScelte, setCategorieScelte] = useState([]);
   const [nuovaManutenzione, setNuovaManutenzione] = useState({
     data: '',
     descrizione: '',
@@ -441,7 +443,7 @@ const veicoliOrdinati = [...veicoli].sort((a, b) => {
 // C3 anche se marca e modello sono campi separati. Tollerante ai campi
 // mancanti (prima un veicolo senza marca mandava in errore la pagina).
 const paroleCercate = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
-const veicoliFiltrati = paroleCercate.length
+const veicoliCercati = paroleCercate.length
   ? veicoliOrdinati.filter((v) => {
       const testoVeicolo = [v.marca, v.modello, v.targa, v.categoria]
         .map((campo) => (campo || '').toString().toLowerCase())
@@ -449,6 +451,13 @@ const veicoliFiltrati = paroleCercate.length
       return paroleCercate.every((parola) => testoVeicolo.includes(parola));
     })
   : veicoliOrdinati;
+
+// Filtro per categoria (selezione multipla), in combinazione con la ricerca.
+// I chip sono calcolati su tutta la flotta, cosi' i numeri non cambiano
+// mentre si scrive nella ricerca.
+const chip = chipCategorie(veicoli, categorie);
+const chipAttivi = categorieScelte.filter((c) => chip.some((k) => k.nome === c));
+const veicoliFiltrati = filtraPerCategorie(veicoliCercati, chipAttivi);
 
 const getScadenzaColor = coloreScadenza;
 
@@ -521,10 +530,41 @@ const handleToggleRepairStatus = (index) => {
         </div>
       </div>
 
+      {veicoli.length > 0 && chip.length > 0 && (
+        <div className="veicoli-filtri" role="group" aria-label="Filtra per categoria">
+          <button
+            type="button"
+            className={`veicoli-chip${chipAttivi.length === 0 ? ' attivo' : ''}`}
+            aria-pressed={chipAttivi.length === 0}
+            onClick={() => setCategorieScelte([])}
+          >
+            Tutte <span className="veicoli-chip-num">{veicoli.length}</span>
+          </button>
+          {chip.map(({ nome, conteggio }) => {
+            const attivo = chipAttivi.includes(nome);
+            return (
+              <button
+                key={nome}
+                type="button"
+                className={`veicoli-chip${attivo ? ' attivo' : ''}`}
+                aria-pressed={attivo}
+                onClick={() => setCategorieScelte(alternaCategoria(chipAttivi, nome))}
+              >
+                {nome} <span className="veicoli-chip-num">{conteggio}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {veicoli.length === 0 ? (
         <p className="veicoli-vuoto">Nessun veicolo in flotta. Aggiungi il primo con il bottone qui sopra.</p>
       ) : veicoliFiltrati.length === 0 ? (
-        <p className="veicoli-vuoto">Nessun veicolo corrisponde a “{search}”.</p>
+        <p className="veicoli-vuoto">
+          {paroleCercate.length
+            ? `Nessun veicolo corrisponde a “${search.trim()}”${chipAttivi.length ? ' nelle categorie scelte' : ''}.`
+            : 'Nessun veicolo nelle categorie scelte.'}
+        </p>
       ) : (
         <div className="vehicle-list">
           {veicoliFiltrati.map((veicolo) => (
