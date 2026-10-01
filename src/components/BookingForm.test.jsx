@@ -71,13 +71,32 @@ test('tre passi in ordine: quando, quale auto, chi (cliente nuovo con nome e tel
 test('cliente gia\' in anagrafica: si cerca e porta con se\' contatti e documenti', () => {
   const onSubmit = apri({ dataInizio: '2099-03-10', dataFine: '2099-03-11', targa: 'ABC004' });
   fireEvent.change(screen.getByPlaceholderText(/Rossi/), { target: { value: 'ross' } });
-  fireEvent.click(screen.getByRole('button', { name: /Mario Rossi/ }));
+  fireEvent.mouseDown(screen.getByRole('option', { name: /Mario Rossi/ }));
   expect(screen.getByText('Documenti completi')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Conferma prenotazione' }));
   expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
     cliente: 'Mario Rossi', telefono: '333 1111111', emailCliente: 'mario@rossi.it',
     codiceFiscale: 'RSSMRA80A01H501U', patente: 'AB12', prezzoGiornaliero: '35',
   }));
+});
+
+test('ricerca cliente: tendina con frecce e Invio, senza confermare la prenotazione', () => {
+  const onSubmit = apri({ dataInizio: '2099-03-10', dataFine: '2099-03-11', targa: 'ABC004' });
+  const campo = screen.getByRole('combobox');
+  fireEvent.change(campo, { target: { value: 'mario' } });
+  expect(screen.getByRole('listbox')).toBeInTheDocument();
+  fireEvent.keyDown(campo, { key: 'Enter' });
+  expect(onSubmit).not.toHaveBeenCalled();
+  expect(screen.queryByRole('listbox')).toBeNull();
+  expect(screen.getByText('Documenti completi')).toBeInTheDocument();
+});
+
+test('nessun cliente trovato: si aggiunge come nuovo con il nome gia\' scritto', () => {
+  apri();
+  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Anna Verdi' } });
+  expect(screen.getByText(/Nessun cliente trovato/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /Aggiungi «Anna Verdi» come cliente nuovo/ }));
+  expect(screen.getByLabelText('Nome e cognome')).toHaveValue('Anna Verdi');
 });
 
 test('se manca qualcosa non salva e dice cosa manca', () => {

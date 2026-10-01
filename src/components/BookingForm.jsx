@@ -69,6 +69,10 @@ function BookingForm({
   const [tentato, setTentato] = useState(false);
   const [showAddClient, setShowAddClient] = useState(false);
   const campoCerca = useRef(null);
+  const comboRef = useRef(null);
+  const [aperta, setAperta] = useState(false);
+  const [versoAlto, setVersoAlto] = useState(false);
+  const [evidenziato, setEvidenziato] = useState(0);
 
   // Si riparte da quello che arriva (nuova vuota, con data/auto, o modifica).
   useEffect(() => {
@@ -127,12 +131,47 @@ function BookingForm({
     setModoCliente('scelto');
     setConDocumenti(false);
     setCerca('');
+    setAperta(false);
   };
 
   const clientiTrovati = useMemo(
     () => (cerca.trim().length >= 2 ? cercaClienti(clienti, cerca, prenotazioni).slice(0, 6) : []),
     [clienti, cerca, prenotazioni],
   );
+
+  const tendinaAperta = aperta && cerca.trim().length >= 2;
+
+  // Si apre verso il basso; verso l'alto se sotto, nella parte visibile della
+  // finestra, non c'e' posto (la sezione cliente e' l'ultima).
+  const apriTendina = () => {
+    const campo = comboRef.current;
+    const contenitore = campo?.closest('.np-corpo');
+    if (campo && contenitore) {
+      const c = campo.getBoundingClientRect();
+      const v = contenitore.getBoundingClientRect();
+      const sotto = v.bottom - c.bottom;
+      setVersoAlto(sotto < 300 && c.top - v.top > sotto);
+    }
+    setAperta(true);
+  };
+
+  const tastiRicerca = (e) => {
+    // Invio nella ricerca non deve mai confermare la prenotazione.
+    if (e.key === 'Enter') e.preventDefault();
+    if (!tendinaAperta) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setEvidenziato((i) => Math.min(i + 1, clientiTrovati.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setEvidenziato((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      if (clientiTrovati[evidenziato]) scegliCliente(clientiTrovati[evidenziato]);
+    } else if (e.key === 'Escape') {
+      e.stopPropagation();
+      setAperta(false);
+    }
+  };
 
   // Il cliente scelto e' in anagrafica? (per "documenti completi")
   const clienteInAnagrafica = clienti.find(
@@ -279,35 +318,68 @@ function BookingForm({
 
             {modoCliente === 'cerca' && (
               <>
-                <label className="np-campo">
+                <label className="np-campo" htmlFor="np-cerca-cliente">
                   <span className="np-etichetta">Cerca il cliente per nome, telefono o codice fiscale</span>
+                </label>
+                {/* Tendina sopra il contenuto (non sposta la finestra), come i
+                    suggerimenti di un motore di ricerca: frecce + Invio, Esc chiude. */}
+                <div className="np-combo" ref={comboRef}>
                   <span className="np-cerca">
                     <Search size={18} aria-hidden="true" />
                     <input
+                      id="np-cerca-cliente"
                       ref={campoCerca}
                       type="search"
+                      role="combobox"
+                      aria-expanded={tendinaAperta}
+                      aria-controls="np-tendina-clienti"
+                      aria-autocomplete="list"
+                      aria-activedescendant={tendinaAperta && evidenziato >= 0 ? `np-cliente-${evidenziato}` : undefined}
                       value={cerca}
-                      onChange={(e) => setCerca(e.target.value)}
+                      onChange={(e) => { setCerca(e.target.value); setEvidenziato(0); apriTendina(); }}
+                      onFocus={apriTendina}
+                      onBlur={() => setTimeout(() => setAperta(false), 150)}
+                      onKeyDown={tastiRicerca}
                       placeholder="Es. Rossi, 333 1234567…"
                       autoComplete="off"
                     />
                   </span>
-                </label>
-                <div className="np-risultati">
-                  {clientiTrovati.map((c) => (
-                    <button key={c.id || c.codiceFiscale} type="button" className="np-risultato" onClick={() => scegliCliente(c)}>
-                      <span className="np-risultato-nome">{c.nome} {c.cognome}</span>
-                      <span className="np-risultato-info">{c.telefono || c.cellulare || c.email || ''}</span>
-                      {documentiCompleti(c) && <span className="np-ok"><ShieldCheck size={15} aria-hidden="true" /> Documenti completi</span>}
-                    </button>
-                  ))}
-                  {cerca.trim().length >= 2 && clientiTrovati.length === 0 && (
-                    <p className="np-aiuto">Nessun cliente trovato con «{cerca.trim()}».</p>
+                  {tendinaAperta && (
+                    <ul
+                      id="np-tendina-clienti"
+                      role="listbox"
+                      aria-label="Clienti trovati"
+                      className={`np-tendina ${versoAlto ? 'np-tendina--sopra' : ''}`}
+                    >
+                      {clientiTrovati.map((c, i) => (
+                        <li
+                          key={c.id || c.codiceFiscale}
+                          id={`np-cliente-${i}`}
+                          role="option"
+                          aria-selected={i === evidenziato}
+                          className={`np-opzione ${i === evidenziato ? 'np-opzione--attiva' : ''}`}
+                          onMouseDown={(e) => { e.preventDefault(); scegliCliente(c); }}
+                          onMouseEnter={() => setEvidenziato(i)}
+                        >
+                          <span className="np-risultato-nome">{c.nome} {c.cognome}</span>
+                          <span className="np-risultato-info">{c.telefono || c.cellulare || c.email || ''}</span>
+                          {documentiCompleti(c) && <span className="np-ok"><ShieldCheck size={15} aria-hidden="true" /> Documenti completi</span>}
+                        </li>
+                      ))}
+                      {clientiTrovati.length === 0 && (
+                        <li className="np-opzione np-opzione--vuota" role="presentation">
+                          Nessun cliente trovato con «{cerca.trim()}».
+                        </li>
+                      )}
+                    </ul>
                   )}
-                  <button type="button" className="np-risultato np-risultato--nuovo" onClick={nuovoClienteDaRicerca}>
-                    <UserPlus size={18} aria-hidden="true" /> È un cliente nuovo: scrivi nome e telefono
-                  </button>
                 </div>
+                <button type="button" className="np-risultato np-risultato--nuovo" onClick={nuovoClienteDaRicerca}>
+                  <UserPlus size={18} aria-hidden="true" />
+                  {cerca.trim() && clientiTrovati.length === 0
+                    ? `Aggiungi «${cerca.trim()}» come cliente nuovo`
+                    : 'È un cliente nuovo: scrivi nome e telefono'}
+                </button>
                 {mostraErrore('cliente') && <span className="np-errore" role="alert">{errori.cliente}</span>}
               </>
             )}

@@ -200,7 +200,52 @@
   color: #9a5b00;
 }
 
-/* 3. Chi la prende */
+/* 3. Chi la prende: ricerca con tendina sopra il contenuto */
+.np-combo { position: relative; }
+
+.np-tendina {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 290px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid #cdd5de;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(20, 35, 50, 0.18);
+}
+
+.np-tendina--sopra { top: auto; bottom: calc(100% + 6px); }
+
+.np-opzione {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.np-opzione--attiva { background: #e3effb; }
+.np-opzione--vuota { color: #5d6b79; cursor: default; }
+
+.pz .np-risultato--nuovo {
+  width: 100%;
+  border: 1px dashed #b6c6d6;
+  border-radius: 10px;
+}
+
+.pz .np-risultato--nuovo:hover { border-style: solid; }
+
+
 .pz .np-cerca {
   display: flex;
   align-items: center;
@@ -213,7 +258,8 @@
 }
 
 .pz .np-cerca input { border: none; padding-left: 0; box-shadow: none; }
-.pz .np-cerca input:focus { box-shadow: none; }
+.pz .np-cerca input:focus,
+.pz .np-cerca input:focus-visible { box-shadow: none; outline: none; border: none; }
 
 .np-risultati {
   display: flex;
