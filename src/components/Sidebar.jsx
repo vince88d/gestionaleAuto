@@ -1,9 +1,9 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import {
   PanelLeftClose, PanelLeftOpen, LayoutDashboard, Car, Users, CalendarDays,
-  Euro, Tags, Archive, Trash2, Settings, LogOut,
+  Euro, Tags, Archive, Trash2, Settings, LogOut, CalendarPlus,
 } from 'lucide-react';
 import { auth } from './firebase';
 import { useAzienda } from '../lib/firestoreAzienda';
@@ -38,6 +38,7 @@ function iniziali(nome) {
 function Sidebar({ collapsed, toggleSidebar }) {
   // Nome da Impostazioni, in tempo reale (anche se lo cambia un'altra postazione).
   const { dati: azienda } = useAzienda();
+  const navigate = useNavigate();
   const nomeAzienda = azienda.nome;
 
   const titolo = nomeAzienda || 'La tua azienda';
@@ -65,6 +66,18 @@ function Sidebar({ collapsed, toggleSidebar }) {
           <IconaToggle size={18} />
         </button>
       </div>
+      {/* Azione principale sempre nello stesso posto, da ogni pagina (come
+          "Scrivi" in Gmail): apre il modulo nella pagina Prenotazioni. */}
+      <button
+        type="button"
+        className="nuova-prenotazione-btn"
+        onClick={() => navigate('/booking', { state: { azione: 'nuova' } })}
+        title={collapsed ? 'Nuova prenotazione' : undefined}
+        aria-label={collapsed ? 'Nuova prenotazione' : undefined}
+      >
+        <CalendarPlus size={20} aria-hidden="true" />
+        {!collapsed && <span>Nuova prenotazione</span>}
+      </button>
       <nav>
         <ul>
           {VOCI_MENU.map(({ to, etichetta, Icona, end }) => (

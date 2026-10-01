@@ -48,3 +48,16 @@ export function formattaData(valore) {
   const data = new Date(valore);
   return Number.isNaN(data.getTime()) ? String(valore) : data.toLocaleDateString('it-IT');
 }
+
+// Nuova scadenza proposta quando si segna un rinnovo: un anno dopo quella
+// vecchia (due per la revisione). Se manca o non e' valida si parte da oggi.
+// Il gestore la puo' sempre correggere.
+export function prossimaScadenza(chiave, dataAttuale, oggi = giornoLocale()) {
+  const anni = chiave === 'revisione' ? 2 : 1;
+  const base = /^\d{4}-\d{2}-\d{2}/.test(dataAttuale || '') ? String(dataAttuale).slice(0, 10) : oggi;
+  const [a, m, g] = base.split('-').map(Number);
+  const data = new Date(a + anni, m - 1, g);
+  // 29 febbraio -> 28 febbraio (senza sconfinare a marzo).
+  if (data.getMonth() !== m - 1) data.setDate(0);
+  return giornoLocale(data);
+}

@@ -22,7 +22,7 @@ import ConcludiPrenotazioneModal from '../components/ConcludiPrenotazioneModal';
 import PrenotazioniDaAssegnare from '../components/PrenotazioniDaAssegnare';
 import AnnullaConPenaleModal from '../components/AnnullaConPenaleModal';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   isPrenotazioneVisibile, isPagataOnline,
   aggiornaPrenotazione, eliminaPrenotazione, messaggioErrorePrenotazione, salvaPrenotazione,
@@ -144,6 +144,9 @@ function Bookings() {
     ? clienti.find((c) => (c.codiceFiscale || '').toUpperCase() === (consegnaDi.codiceFiscale || '').trim().toUpperCase())
     : null;
   const location = useLocation();
+  const navigate = useNavigate();
+  // Ultima richiesta arrivata da Dashboard o menu gia' eseguita (location.key).
+  const azioneEseguita = useRef(null);
   const righePerPagina = 10;
   const listaRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -230,6 +233,39 @@ useEffect(() => {
   }
 }, [location.state]);
   
+  // Richieste da Dashboard e menu laterale (state della navigazione):
+  //  - nuova: apre il modulo vuoto;
+  //  - consegna / concludi / dettagli: apre quella finestra per quella prenotazione;
+  //  - filtro / vista: mostra subito l'elenco filtrato o il calendario.
+  // Si aspetta che prenotazioni e veicoli siano arrivati; poi si toglie lo
+  // state, cosi' tornando indietro o ricaricando non si riapre la finestra.
+  useEffect(() => {
+    const { azione, id, filtro, vista: vistaRichiesta } = location.state || {};
+    if (!azione && !filtro && !vistaRichiesta) return;
+    if (azioneEseguita.current === location.key) return;
+
+    let prenotazione = null;
+    if (id) {
+      prenotazione = prenotazioni.find((p) => p.id === id);
+      if (!prenotazione || (azione === 'consegna' && availableVehicles.length === 0)) return; // dati in arrivo
+    }
+    azioneEseguita.current = location.key;
+
+    if (filtro) setFiltroFase(filtro);
+    if (vistaRichiesta) cambiaVista(vistaRichiesta);
+    if (azione === 'nuova') apriNuovaPrenotazione();
+    if (azione === 'consegna') avviaConsegna(prenotazione);
+    if (azione === 'dettagli') openInfoModal(prenotazione);
+    if (azione === 'concludi') {
+      setInfoModalOpen(false);
+      setModalIsOpen(false);
+      setPrenotazioneDaConcludere(prenotazione);
+      setConcludiModalOpen(true);
+    }
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key, location.state, prenotazioni, availableVehicles]);
+
   // Clienti e prenotazioni arrivano in tempo reale da App.js.
   
 
