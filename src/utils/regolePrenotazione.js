@@ -42,7 +42,7 @@ export function controllaPrenotazione({ dati, originale = null, veicoli = [], pr
     // Contano solo le prenotazioni che occupano davvero: non le annullate, non
     // le richieste del sito non pagate/scadute, non i noleggi conclusi, e non
     // quella che si sta modificando.
-    const occupanti = occupantiTranne(prenotazioni, originale?.id);
+    const occupanti = occupantiTranne(prenotazioni, originale?.id, oggi);
     if (!veicoloLibero(veicolo, inizio, fine, veicoli, occupanti, holds)) {
       const nome = [veicolo.marca, veicolo.modello].filter(Boolean).join(' ') || veicolo.targa;
       return {
@@ -60,19 +60,23 @@ export function controllaPrenotazione({ dati, originale = null, veicoli = [], pr
 
 // Prenotazioni che occupano davvero un veicolo (niente annullate, pagamenti
 // del sito falliti o scaduti, noleggi conclusi), tolta quella in modifica.
-export const occupantiTranne = (prenotazioni, idEscluso) =>
-  (prenotazioni || []).filter((p) => !STATI_NON_OCCUPANTI.includes(p.status) && (!idEscluso || p.id !== idEscluso));
+// Con `oggi`, un'auto consegnata e non ancora riportata resta occupata fino a
+// oggi anche se la data di fine e' passata (e' ancora dal cliente).
+export const occupantiTranne = (prenotazioni, idEscluso, oggi) =>
+  (prenotazioni || [])
+    .filter((p) => !STATI_NON_OCCUPANTI.includes(p.status) && (!idEscluso || p.id !== idEscluso))
+    .map((p) => (oggi && eConsegnata(p) && giorno(p.dataFine) < oggi ? { ...p, dataFine: oggi } : p));
 
 // Per la scelta del veicolo nel form: 'libero', 'occupato' (la sua targa ha
 // gia' un noleggio in quelle date), 'sospeso' (fermo dal gestore) o 'categoria-piena' (hold e prenotazioni del
 // sito non ancora assegnate hanno preso tutti i posti della categoria).
 // Senza date non si sa: 'da-verificare'.
-export function statoVeicoloNelPeriodo({ veicolo, inizio, fine, veicoli, prenotazioni, holds, idEscluso }) {
+export function statoVeicoloNelPeriodo({ veicolo, inizio, fine, veicoli, prenotazioni, holds, idEscluso, oggi }) {
   const da = giorno(inizio);
   const a = giorno(fine);
   if (veicolo.sospeso) return 'sospeso';
   if (!da || !a || a < da) return 'da-verificare';
-  const occupanti = occupantiTranne(prenotazioni, idEscluso);
+  const occupanti = occupantiTranne(prenotazioni, idEscluso, oggi);
   const occupatoPerTarga = occupanti.some(
     (p) => veicolo.targa && p.targa === veicolo.targa && giorno(p.dataInizio) <= a && giorno(p.dataFine) >= da
   );

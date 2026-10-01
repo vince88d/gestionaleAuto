@@ -152,6 +152,17 @@ describe('registraConsegna', () => {
     expect(esito.cliente).toBe('creato');
   });
 
+  test('prenotazione fatta senza codice fiscale: quello scritto alla consegna si salva e crea il cliente', async () => {
+    const t = transazioneCon({ status: 'attiva' });
+    const esito = await registraConsegna({
+      prenotazione: { id: 'p3', cliente: 'Luca Neri', telefono: '333', targa: 'CC333CC' },
+      scheda: {}, patente: 'zz11', codiceFiscale: ' nrilcu85a01h501z ',
+    });
+    expect(t.update.mock.calls[0][1].codiceFiscale).toBe('NRILCU85A01H501Z');
+    expect(creaCliente).toHaveBeenCalledWith(expect.objectContaining({ nome: 'Luca', cognome: 'Neri', codiceFiscale: 'NRILCU85A01H501Z', telefono: '333' }));
+    expect(esito.cliente).toBe('creato');
+  });
+
   test('non consegna una prenotazione annullata nel frattempo', async () => {
     const t = transazioneCon({ status: 'annullata' });
     await expect(registraConsegna({ prenotazione: { id: 'p1' }, scheda: {} })).rejects.toThrow(/annullata nel frattempo/);

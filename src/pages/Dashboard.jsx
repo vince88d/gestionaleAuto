@@ -542,6 +542,7 @@ function Dashboard() {
         setNuovaManutenzione={() => {}}
         onAddManutenzione={() => {}}
         modalLite
+        periodoScelto={dateValide ? { dataInizio: dataInizioRicerca, dataFine: dataFineRicerca } : null}
       />
     </div>
   );

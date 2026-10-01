@@ -5,6 +5,7 @@ import { Upload, X } from 'lucide-react';
 import { caricaFotoDanno } from '../lib/storageFoto';
 import { formattaData, giornoLocale } from '../utils/scadenze';
 import { controllaPatente } from '../utils/validaCliente';
+import { codiceFiscaleValido } from '../utils/nuovaPrenotazione';
 import '../components/schedaModal.css';
 import '../styles/Prenotazione.css';
 
@@ -57,7 +58,11 @@ function SchedaVeicoloModal({
   const inputFoto = useRef(null);
   // La patente si chiede solo se la prenotazione non ce l'ha (es. arrivata dal
   // sito); la scadenza se il cliente in anagrafica non ce l'ha.
-  const chiediPatente = Boolean(prenotazione) && !prenotazione.patente;
+  const patenteNota = prenotazione?.patente || cliente?.patente || '';
+  const chiediPatente = Boolean(prenotazione) && !patenteNota;
+  // Anche il codice fiscale si puo' lasciare vuoto prenotando: serve qui, per
+  // il contratto e per mettere il cliente in anagrafica.
+  const chiediCodiceFiscale = Boolean(prenotazione) && !codiceFiscaleValido(prenotazione.codiceFiscale);
   const scadenzaInAnagrafica = cliente?.scadenzaPatente || '';
   const chiediScadenza = Boolean(prenotazione) && !scadenzaInAnagrafica;
   const scadenzaPatente = scadenzaInAnagrafica || documenti.scadenzaPatente || '';
@@ -99,6 +104,10 @@ function SchedaVeicoloModal({
       toast.error(esitoPatente.blocca);
       return;
     }
+    if (chiediCodiceFiscale && !codiceFiscaleValido(documenti.codiceFiscale)) {
+      toast.error('Scrivi il codice fiscale del cliente: 16 lettere e numeri.');
+      return;
+    }
     if (!schedaVeicolo.carburante) {
       setMancaCarburante(true);
       return;
@@ -135,8 +144,23 @@ function SchedaVeicoloModal({
         <div className="pz-corpo">
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Documenti del cliente</h3>
-            {(chiediPatente || chiediScadenza) ? (
+            {(chiediPatente || chiediScadenza || chiediCodiceFiscale) ? (
               <div className="pz-griglia pz-griglia--2">
+                {chiediCodiceFiscale && (
+                  <label className="pz-campo pz-intera" htmlFor="consegna-codice-fiscale">
+                    <span className="pz-etichetta">Codice fiscale <span className="pz-obbligatorio">*</span></span>
+                    <input
+                      id="consegna-codice-fiscale"
+                      type="text"
+                      value={documenti.codiceFiscale || ''}
+                      onChange={(e) => aggiornaDocumento('codiceFiscale', e.target.value)}
+                      placeholder="Es. RSSMRA80A01H501U"
+                      maxLength={16}
+                      style={{ textTransform: 'uppercase' }}
+                      required
+                    />
+                  </label>
+                )}
                 {chiediPatente ? (
                   <label className="pz-campo" htmlFor="consegna-patente">
                     <span className="pz-etichetta">Numero patente <span className="pz-obbligatorio">*</span></span>
@@ -153,7 +177,7 @@ function SchedaVeicoloModal({
                 ) : (
                   <div className="pz-campo">
                     <span className="pz-etichetta">Numero patente</span>
-                    <strong style={{ fontSize: 14, lineHeight: '40px' }}>{prenotazione.patente}</strong>
+                    <strong style={{ fontSize: 14, lineHeight: '40px' }}>{patenteNota}</strong>
                   </div>
                 )}
                 {chiediScadenza ? (
@@ -180,7 +204,8 @@ function SchedaVeicoloModal({
               </div>
             ) : (
               <dl className="pz-dati">
-                <div><dt>Numero patente</dt><dd>{prenotazione?.patente}</dd></div>
+                <div className="pz-intera"><dt>Codice fiscale</dt><dd>{prenotazione?.codiceFiscale}</dd></div>
+                <div><dt>Numero patente</dt><dd>{patenteNota}</dd></div>
                 <div><dt>Scadenza patente</dt><dd>{formattaData(scadenzaPatente)}</dd></div>
               </dl>
             )}

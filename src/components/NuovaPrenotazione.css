@@ -1,0 +1,374 @@
+/* Finestra "Nuova prenotazione": tre domande a sinistra (quando, quale auto,
+   chi), riepilogo con totale e conferma sempre visibile a destra.
+   Testi da 15-16px, campi e pulsanti alti almeno 44px. Tutto parte da .np. */
+
+.DialogContent.pz-dialog.np-dialog {
+  width: 94vw;
+  max-width: 1180px;
+  max-height: 92vh;
+}
+
+.np { font-size: 15px; color: #1e2a36; }
+
+/* Testata con i passi */
+.pz-testa.np-testa {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  padding: 18px 28px;
+}
+
+.pz .np-titolo { font-size: 24px; font-weight: 800; color: #1e2a36; }
+
+.np-passi {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: #7a8795;
+}
+
+.np-passo { display: inline-flex; align-items: center; gap: 8px; }
+
+.np-passo-numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e3e8ee;
+  color: #4d5b69;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.np-passo--attivo { color: #1f6fb2; }
+.np-passo--attivo .np-passo-numero { background: #1f6fb2; color: #fff; }
+.np-passo--fatto { color: #1b7a4a; }
+.np-passo--fatto .np-passo-numero { background: #1b7a4a; color: #fff; }
+.np-passi-linea { width: 28px; height: 2px; background: #d5dde6; }
+
+.np-nascosto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* Corpo: colonna che scorre + riepilogo fisso */
+.np-corpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 22px;
+  align-items: start;
+  padding: 22px 28px 26px;
+  background: #f3f5f8;
+}
+
+.np-colonna { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.np-sezione {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+  border: 1px solid #e1e6ec;
+  border-radius: 14px;
+  background: #fff;
+}
+
+/* La domanda su cui lavorare adesso ha il bordo blu. */
+.np-sezione--attiva { border: 2px solid #1f6fb2; padding: 19px 21px; }
+.np-sezione--errore { border: 2px solid #c0392b; padding: 19px 21px; }
+
+.pz .np-sezione-titolo {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: #1e2a36;
+}
+
+.np-numero { color: #1f6fb2; }
+
+/* Campi */
+.np-campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+.np-etichetta { font-size: 15px; font-weight: 600; color: #3a4754; }
+.np-facoltativo { font-weight: 400; color: #6b7886; }
+
+.pz .np-campo input,
+.pz .np-cerca input {
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 1px solid #cdd5de;
+  border-radius: 10px;
+  background: #fff;
+  color: #1e2a36;
+  font-family: inherit;
+  font-size: 17px;
+}
+
+.pz .np-campo input:focus,
+.pz .np-cerca:focus-within {
+  outline: none;
+  border-color: #1f6fb2;
+  box-shadow: 0 0 0 3px rgba(31, 111, 178, 0.18);
+}
+
+.np-campo--errore input { border-color: #c0392b !important; }
+.np-errore { font-size: 14px; font-weight: 600; color: #b0321f; }
+.pz .np-aiuto { margin: 0; font-size: 14px; color: #5d6b79; }
+
+.np-griglia {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.np-intera { grid-column: 1 / -1; }
+
+/* 1. Quando */
+.np-date { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
+.np-date .np-campo { width: 210px; }
+.np .react-datepicker-wrapper,
+.np .react-datepicker__input-container { display: block; width: 100%; }
+.np .react-datepicker-popper { z-index: 10001; }
+.np .react-datepicker { font-size: 14px; }
+
+.np-giorni {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: #e3effb;
+  color: #174a75;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.np-rapide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #5d6b79;
+}
+
+.pz .np-chip {
+  min-height: 38px;
+  margin: 0;
+  padding: 0 16px;
+  border: 1px solid #cdd5de;
+  border-radius: 999px;
+  background: #fff;
+  color: #1e2a36;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pz .np-chip:hover { border-color: #1f6fb2; background: #f2f8fd; }
+
+/* 2. Quale auto: la scelta esistente, un po' piu' grande */
+.np .sv-nome { font-size: 16px; }
+.np .sv-dettagli { font-size: 13px; }
+.np .sv-prezzo { font-size: 14px; }
+.sv-totale { font-size: 14px; font-weight: 800; color: #1e2a36; white-space: nowrap; }
+.np .sv-stato { font-size: 12px; }
+
+/* 3. Chi la prende */
+.pz .np-cerca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 14px;
+  border: 2px solid #cdd5de;
+  border-radius: 10px;
+  background: #fff;
+  color: #5d6b79;
+}
+
+.pz .np-cerca input { border: none; padding-left: 0; box-shadow: none; }
+.pz .np-cerca input:focus { box-shadow: none; }
+
+.np-risultati {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e1e6ec;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.pz .np-risultato {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  min-height: 52px;
+  margin: 0;
+  padding: 10px 16px;
+  border: none;
+  border-bottom: 1px solid #e1e6ec;
+  border-radius: 0;
+  background: #fff;
+  color: #1e2a36;
+  font-family: inherit;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pz .np-risultato:last-child { border-bottom: none; }
+.pz .np-risultato:hover { background: #f2f8fd; }
+.np-risultato-nome { font-weight: 700; text-transform: capitalize; }
+.np-risultato-info { color: #5d6b79; font-size: 15px; }
+.np-risultati > .np-aiuto { padding: 12px 16px; border-bottom: 1px solid #e1e6ec; }
+
+.pz .np-risultato--nuovo { gap: 10px; color: #1f6fb2; font-weight: 700; }
+
+.np-ok,
+.np-da-fare {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.np-ok { margin-left: auto; color: #1b7a4a; }
+.np-cliente .np-ok { margin-left: 0; }
+.np-da-fare { color: #9a5b00; }
+
+.np-cliente {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid #cfe0f1;
+  border-radius: 12px;
+  background: #f2f8fd;
+}
+
+.np-cliente-testi { display: flex; flex-direction: column; gap: 6px; }
+.np-cliente-nome { font-size: 19px; font-weight: 800; text-transform: capitalize; }
+.np-cliente-info { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 15px; color: #3a4754; }
+.np-cliente-info span { display: inline-flex; align-items: center; gap: 6px; }
+.np-cliente-azioni { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+.np-nuovo { display: flex; flex-direction: column; gap: 12px; }
+
+.pz .np-link {
+  justify-self: start;
+  margin: 0;
+  padding: 6px 0;
+  border: none;
+  background: none;
+  color: #1f6fb2;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pz .np-link:hover { text-decoration: underline; }
+
+/* Riepilogo */
+.np-riepilogo {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid #e1e6ec;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.pz .np-riepilogo-titolo { margin: 0; font-size: 19px; font-weight: 800; color: #1e2a36; }
+
+.np-dati { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.np-dati div { display: flex; flex-direction: column; gap: 2px; }
+.np-dati dt { font-size: 13px; font-weight: 700; color: #5d6b79; letter-spacing: 0.02em; }
+.np-dati dd { margin: 0; font-size: 16px; font-weight: 600; }
+.np-capitalizza { text-transform: capitalize; }
+.np-vuoto { color: #8a96a3; font-weight: 400; font-style: italic; text-transform: none; }
+
+.np-prezzi {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #e1e6ec;
+}
+
+.np-riga-prezzo { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 15px; }
+
+.np-totale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.pz .np-conferma {
+  min-height: 56px;
+  margin: 0;
+  border: none;
+  border-radius: 12px;
+  background: #1b7a4a;
+  color: #fff;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pz .np-conferma:hover:not(:disabled) { background: #14603a; }
+.pz .np-conferma:disabled { opacity: 0.6; cursor: wait; }
+.pz .np-conferma:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
+
+.np-manca { margin: 0; font-size: 14px; font-weight: 700; color: #b0321f; text-align: center; }
+.np-dopo { margin: 0; font-size: 14px; color: #5d6b79; text-align: center; }
+
+.pz .np-annulla {
+  min-height: 44px;
+  margin: 0;
+  border: 1px solid #cdd5de;
+  border-radius: 10px;
+  background: #fff;
+  color: #3a4754;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pz .np-annulla:hover { background: #f1f4f8; }
+
+/* Finestra stretta: una colonna, riepilogo in fondo */
+@media (max-width: 900px) {
+  .np-corpo { grid-template-columns: 1fr; padding: 16px; }
+  .np-riepilogo { position: static; }
+  .np-griglia { grid-template-columns: 1fr; }
+  .np-date .np-campo { width: 100%; }
+}

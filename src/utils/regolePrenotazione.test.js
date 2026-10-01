@@ -145,6 +145,18 @@ describe('scelta del veicolo nel form', () => {
     expect(statoVeicoloNelPeriodo({ ...periodo, veicolo: veicoli[2], prenotazioni })).toBe('categoria-piena');
   });
 
+  test('un\'auto consegnata e non riportata resta occupata oltre la data di fine', () => {
+    // Doveva rientrare il 20/09, oggi e' il 23/09 ed e' ancora fuori.
+    const fuori = [{ id: 'f1', targa: 'AA111AA', status: 'attiva', dataInizio: '2026-09-15', dataFine: '2026-09-20', consegnataIl: '2026-09-15T09:00:00Z' }];
+    const oggiStesso = { ...periodo, inizio: OGGI, fine: OGGI, veicolo: panda, prenotazioni: fuori };
+    expect(statoVeicoloNelPeriodo({ ...oggiStesso, oggi: OGGI })).toBe('occupato');
+    expect(controllaPrenotazione({ dati: { ...base, dataInizio: OGGI, dataFine: '2026-09-25' }, veicoli, prenotazioni: fuori, oggi: OGGI }).errore)
+      .toMatch(/non è libero/);
+    // Mai consegnata: la data passata non la blocca.
+    const maiConsegnata = [{ ...fuori[0], consegnataIl: undefined }];
+    expect(statoVeicoloNelPeriodo({ ...oggiStesso, prenotazioni: maiConsegnata, oggi: OGGI })).toBe('libero');
+  });
+
   test('senza date non si sa', () => {
     expect(statoVeicoloNelPeriodo({ ...periodo, inizio: '', veicolo: panda, prenotazioni: [] })).toBe('da-verificare');
   });

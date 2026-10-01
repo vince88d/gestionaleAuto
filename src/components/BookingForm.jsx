@@ -1,51 +1,53 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
-import { confrontaConListino, devoApplicareListino, prezzoIniziale } from '../utils/prezzoListino';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
-import AutocompleteClienti from './AutocompleteClienti';
-import ClienteFormModal from './ClienteFormModal';
-import { addCliente } from '../store/clientiSlice';
-import { creaCliente, messaggioErroreCliente } from '../lib/firestoreClienti';
 import DatePicker from 'react-datepicker';
 import { it } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
-import { giorniOccupati } from '../utils/regolePrenotazione';
+import { Check, Search, UserPlus, Phone, Mail, ShieldCheck, FileWarning } from 'lucide-react';
+import ClienteFormModal from './ClienteFormModal';
 import SceltaVeicolo from './SceltaVeicolo';
+import { addCliente } from '../store/clientiSlice';
+import { creaCliente, messaggioErroreCliente } from '../lib/firestoreClienti';
+import { giorniOccupati, pagataSulSito } from '../utils/regolePrenotazione';
+import { prezzoPrenotazione } from '../utils/dashboard';
+import { confrontaConListino } from '../utils/prezzoListino';
+import { cercaClienti } from '../utils/validaCliente';
+import { formattaData, giornoLocale } from '../utils/scadenze';
+import {
+  DURATE_RAPIDE, dateRapide, giorniDelNoleggio, statoPassi, validaNuovaPrenotazione, datiDaCliente, documentiCompleti,
+} from '../utils/nuovaPrenotazione';
 import './BookingForm.css';
 import '../styles/Prenotazione.css';
+import './NuovaPrenotazione.css';
 
+const CAMPI_VUOTI = {
+  cliente: '', telefono: '', emailCliente: '', codiceFiscale: '', patente: '',
+  veicolo: '', targa: '', dataInizio: '', dataFine: '', prezzoGiornaliero: '',
+};
+const nomeVeicolo = (v) => [v?.marca, v?.modello].filter(Boolean).join(' ') || v?.targa || '';
+const euro = (valore) => `${Number(valore || 0).toFixed(2).replace('.', ',')} €`;
+const dataLunga = (iso) => (iso
+  ? new Date(`${iso}T12:00:00`).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'long' })
+  : '');
+const versoData = (d) => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`) : null);
+const daData = (date) => (date ? giornoLocale(date) : '');
+// Nomi dei campi per "Manca ancora:" sotto il pulsante.
+const NOMI_ERRORI = {
+  dataInizio: 'giorno di uscita', dataFine: 'giorno di rientro', targa: 'auto', prezzoGiornaliero: 'prezzo',
+  cliente: 'cliente', telefono: 'telefono', emailCliente: 'email', codiceFiscale: 'codice fiscale',
+};
 
-
-const schema = yup.object().shape({
-  cliente: yup.string().required('Scrivi o cerca il cliente'),
-  codiceFiscale: yup
-    .string()
-    .required('Il codice fiscale è obbligatorio')
-    .matches(/^[A-Z0-9]{16}$/i, 'Codice fiscale non valido: servono 16 lettere e numeri'),
-  patente: yup.string().required('Il numero della patente è obbligatorio'),
-  veicolo: yup.string().required('Scegli un veicolo'),
-  targa: yup.string().required('Scegli un veicolo'),
-  dataInizio: yup.string().required('Scegli il giorno del ritiro'),
-  dataFine: yup.string().required('Scegli il giorno della riconsegna'),
-  prezzoGiornaliero: yup
-    .number()
-    .typeError('Inserisci un numero valido')
-    .positive('Deve essere maggiore di zero')
-    .required('Il prezzo al giorno è obbligatorio'),
-  emailCliente: yup
-    .string()
-    .email('Email non valida')
-    .required('L’email è obbligatoria'),
-});
-
+// Finestra "Nuova prenotazione" (e "Modifica"). Una sola finestra con tre
+// domande nell'ordine in cui le fa chi sta al banco: quando, quale auto, chi.
+// A destra il riepilogo sempre visibile con il totale e il pulsante di conferma.
+// Codice fiscale, patente ed email si possono lasciare vuoti: si completano
+// alla consegna. Da qualunque strada si arrivi (menu, calendario, scheda
+// dell'auto, ricerca della Dashboard) quello gia' scelto arriva compilato.
 function BookingForm({
   onSubmit,
   initialValues,
-  availableVehicles,
+  availableVehicles = [],
   veicoli = [],
   holds = [],
   clienti = [],
@@ -54,17 +56,106 @@ function BookingForm({
   onAnnulla,
 }) {
   const dispatch = useDispatch();
-  const [clienteSelezionato, setClienteSelezionato] = useState(null);
-  const [showAddClient, setShowAddClient] = useState(false);
+  const bookingId = initialValues?.id;
+  const sito = pagataSulSito(initialValues);
+  const oggi = giornoLocale();
 
-  // Nuovo cliente dalla prenotazione: stesso form e stessi controlli della
-  // pagina Clienti. Salva solo quel cliente e lo seleziona.
+  const [dati, setDati] = useState(CAMPI_VUOTI);
+  // 'cerca' (nessun cliente), 'scelto' (scheda del cliente), 'nuovo' (campi da scrivere)
+  const [modoCliente, setModoCliente] = useState('cerca');
+  const [cerca, setCerca] = useState('');
+  const [conDocumenti, setConDocumenti] = useState(false);
+  const [cambiaPrezzo, setCambiaPrezzo] = useState(false);
+  const [tentato, setTentato] = useState(false);
+  const [showAddClient, setShowAddClient] = useState(false);
+  const campoCerca = useRef(null);
+
+  // Si riparte da quello che arriva (nuova vuota, con data/auto, o modifica).
+  useEffect(() => {
+    const iniziali = { ...CAMPI_VUOTI };
+    Object.keys(CAMPI_VUOTI).forEach((k) => {
+      if (initialValues?.[k] != null) iniziali[k] = String(initialValues[k]);
+    });
+    iniziali.dataInizio = iniziali.dataInizio.slice(0, 10);
+    iniziali.dataFine = iniziali.dataFine.slice(0, 10);
+    if (iniziali.targa && !iniziali.prezzoGiornaliero) {
+      const v = veicoli.find((x) => x.targa === iniziali.targa);
+      if (v?.prezzo) iniziali.prezzoGiornaliero = String(v.prezzo);
+    }
+    setDati(iniziali);
+    setModoCliente(iniziali.cliente ? 'scelto' : 'cerca');
+    setConDocumenti(Boolean(iniziali.codiceFiscale || iniziali.patente));
+    setCerca('');
+    setCambiaPrezzo(false);
+    setTentato(false);
+    // veicoli: solo per il listino iniziale, non deve riazzerare il form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues]);
+
+  const aggiorna = (campi) => setDati((d) => ({ ...d, ...campi }));
+
+  // Veicoli sceglibili: quelli dell'elenco piu' quello gia' assegnato (in modifica).
+  const veicoliSelezionabili = useMemo(() => {
+    const elenco = availableVehicles.map((v) => veicoli.find((x) => x.targa === v.targa) || v);
+    if (initialValues?.targa && !elenco.some((v) => v.targa === initialValues.targa)) {
+      elenco.push({ targa: initialValues.targa, modello: initialValues.veicolo || 'Veicolo selezionato', prezzo: initialValues.prezzoGiornaliero || '' });
+    }
+    return elenco;
+  }, [availableVehicles, veicoli, initialValues]);
+
+  const veicoloScelto = veicoliSelezionabili.find((v) => v.targa === dati.targa);
+  const giorni = giorniDelNoleggio(dati);
+  const passi = statoPassi(dati);
+  const errori = validaNuovaPrenotazione(dati);
+  const mostraErrore = (campo) => tentato && errori[campo];
+  const totale = sito ? prezzoPrenotazione(initialValues) : giorni * (parseFloat(dati.prezzoGiornaliero) || 0);
+  const confrontoListino = confrontaConListino(dati.prezzoGiornaliero, veicoloScelto?.prezzo);
+
+  // Giorni gia' occupati dall'auto scelta (se si arriva con l'auto gia' decisa).
+  const giorniBloccati = giorniOccupati({ targa: dati.targa, prenotazioni, idEscluso: bookingId })
+    .map((g) => new Date(`${g}T12:00:00`));
+
+  const scegliVeicolo = (v) => aggiorna({
+    targa: v.targa,
+    veicolo: v.modello || nomeVeicolo(v),
+    // Il listino si applica quando si cambia auto; un prezzo del sito non cambia.
+    ...(sito ? {} : { prezzoGiornaliero: v.prezzo ? String(v.prezzo) : dati.prezzoGiornaliero }),
+  });
+
+  const scegliCliente = (c) => {
+    aggiorna(datiDaCliente(c));
+    setModoCliente('scelto');
+    setConDocumenti(false);
+    setCerca('');
+  };
+
+  const clientiTrovati = useMemo(
+    () => (cerca.trim().length >= 2 ? cercaClienti(clienti, cerca, prenotazioni).slice(0, 6) : []),
+    [clienti, cerca, prenotazioni],
+  );
+
+  // Il cliente scelto e' in anagrafica? (per "documenti completi")
+  const clienteInAnagrafica = clienti.find(
+    (c) => dati.codiceFiscale && (c.codiceFiscale || '').toUpperCase() === dati.codiceFiscale.toUpperCase(),
+  );
+  const documentiOk = documentiCompleti(clienteInAnagrafica || dati);
+
+  const nuovoClienteDaRicerca = () => {
+    // Quello scritto nella ricerca diventa il nome, o il telefono se sono numeri.
+    const testo = cerca.trim();
+    const sonoNumeri = /^[+\d\s]{6,}$/.test(testo);
+    aggiorna({
+      cliente: sonoNumeri ? '' : testo, telefono: sonoNumeri ? testo : '', emailCliente: '', codiceFiscale: '', patente: '',
+    });
+    setModoCliente('nuovo');
+  };
+
   const salvaNuovoCliente = async (nuovoCliente) => {
     try {
       const salvato = await creaCliente(nuovoCliente);
       dispatch(addCliente(salvato));
       toast.success(`Cliente ${salvato.nome} ${salvato.cognome} aggiunto.`);
-      setClienteSelezionato(salvato);
+      scegliCliente(salvato);
       setShowAddClient(false);
     } catch (error) {
       console.error('Errore salvataggio cliente:', error);
@@ -72,255 +163,305 @@ function BookingForm({
     }
   };
 
-  const veicoliSelezionabili = [
-    ...(availableVehicles || []),
-    ...(initialValues?.targa && !(availableVehicles || []).some((v) => v.targa === initialValues.targa)
-      ? [
-          {
-            targa: initialValues.targa,
-            modello: initialValues.veicolo || 'Veicolo selezionato',
-            prezzo: initialValues.prezzoGiornaliero || '',
-          },
-        ]
-      : []),
-  ];
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm({
-    resolver: yupResolver(schema),
-    defaultValues: { ...initialValues },
-  });
-
-  useEffect(() => {
-    reset({ ...initialValues });
-  }, [initialValues, reset]);
-
-  useEffect(() => {
-    if (clienteSelezionato) {
-      setValue('cliente', `${clienteSelezionato.nome} ${clienteSelezionato.cognome}`);
-      setValue('emailCliente', clienteSelezionato.email || '');
-      setValue('codiceFiscale', clienteSelezionato.codiceFiscale || '');
-      setValue('patente', clienteSelezionato.patente || '');
-    }
-  }, [clienteSelezionato, setValue]);
-
-  const watchTarga = watch('targa');
-  const dataInizio = watch('dataInizio');
-  const dataFine = watch('dataFine');
-  const prezzoGiornaliero = watch('prezzoGiornaliero');
-  const bookingId = initialValues?.id;
-
-  // Il prezzo giornaliero parte dal listino dell'auto ma il gestore può cambiarlo.
-  // Il listino si applica solo quando sceglie un'auto diversa: aggiornare la lista
-  // dei veicoli o riaprire una prenotazione non deve rimettere a listino il prezzo
-  // concordato.
-  const targaAllineata = useRef(initialValues?.targa || '');
-
-  useEffect(() => {
-    if (watchTarga && availableVehicles) {
-      const selectedVehicle = availableVehicles.find((v) => v.targa === watchTarga);
-      if (selectedVehicle) {
-        setValue('veicolo', selectedVehicle.modello || '');
-        if (devoApplicareListino({ targaScelta: watchTarga, targaAllineata: targaAllineata.current })) {
-          setValue('prezzoGiornaliero', selectedVehicle.prezzo || '');
-          targaAllineata.current = watchTarga;
-        }
-      } else {
-        setValue('veicolo', '');
-        setValue('prezzoGiornaliero', '');
-        targaAllineata.current = '';
-      }
-    }
-  }, [watchTarga, availableVehicles, setValue]);
-
-  useEffect(() => {
-    reset({ ...initialValues });
-    targaAllineata.current = initialValues?.targa || '';
-
-    if (initialValues?.targa && availableVehicles?.length > 0) {
-      const selected = availableVehicles.find((v) => v.targa === initialValues.targa);
-      if (selected) {
-        setValue('veicolo', selected.modello || initialValues.veicolo || '');
-        // Un prezzo già salvato (anche diverso dal listino) resta com'è.
-        setValue(
-          'prezzoGiornaliero',
-          prezzoIniziale({ prezzoSalvato: initialValues.prezzoGiornaliero, listino: selected.prezzo }),
-        );
-      }
-    }
-  }, [initialValues, reset, availableVehicles, setValue]);
-
-  // Giorni gia' noleggiati per il veicolo scelto: non si possono scegliere nel
-  // calendario. Contano solo le prenotazioni attive (non le annullate o i
-  // pagamenti del sito falliti/scaduti, che prima bloccavano le date).
-  const disabledDates = giorniOccupati({ targa: watchTarga, prenotazioni, idEscluso: bookingId })
-    .map((g) => new Date(`${g}T12:00:00`));
-
-  // Listino dell'auto scelta (dall'elenco completo, non dalla voce di ripiego che
-  // usa il prezzo della prenotazione) e scarto rispetto al prezzo applicato.
-  const listinoAuto = (veicoli.find((v) => v.targa === watchTarga) || {}).prezzo;
-  const confrontoListino = confrontaConListino(prezzoGiornaliero, listinoAuto);
-  const euro = (valore) => `${Number(valore).toFixed(2).replace('.', ',')} €`;
-
-  const calcolaPrezzoTotale = () => {
-    if (!dataInizio || !dataFine || !prezzoGiornaliero) return '';
-    const giorni = calcolaGiorniNoleggio(dataInizio, dataFine);
-    return giorni * parseFloat(prezzoGiornaliero || 0);
+  const invia = (e) => {
+    e.preventDefault();
+    setTentato(true);
+    if (Object.keys(errori).length > 0) return;
+    onSubmit({
+      ...dati,
+      cliente: dati.cliente.trim().replace(/\s+/g, ' '),
+      telefono: dati.telefono.trim(),
+      emailCliente: dati.emailCliente.trim(),
+      codiceFiscale: dati.codiceFiscale.trim().toUpperCase(),
+      patente: dati.patente.trim().toUpperCase(),
+    });
   };
 
-  const giorni = dataInizio && dataFine ? calcolaGiorniNoleggio(dataInizio, dataFine) : 0;
-  const totale = calcolaPrezzoTotale();
-  const erroriPresenti = Object.keys(errors).length > 0;
-  const classeCampo = (nome) => `pz-campo ${errors[nome] ? 'pz-campo--errore' : ''}`;
-  const errore = (nome) => errors[nome] && <p className="pz-errore" role="alert">{errors[nome].message}</p>;
-  const scegliData = (campo) => (date) => {
-    if (!date) {
-      setValue(campo, '', { shouldValidate: true });
-      return;
-    }
-    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-      .toISOString()
-      .split('T')[0];
-    setValue(campo, localDate, { shouldValidate: true });
+  const Passo = ({ numero, fatto, testo }) => {
+    const attivo = passi.attivo === numero && !fatto;
+    return (
+      <li className={`np-passo ${fatto ? 'np-passo--fatto' : ''} ${attivo ? 'np-passo--attivo' : ''}`}>
+        <span className="np-passo-numero" aria-hidden="true">{fatto ? <Check size={15} strokeWidth={3} /> : numero}</span>
+        {testo}
+        {fatto && <span className="np-nascosto"> (fatto)</span>}
+      </li>
+    );
   };
+
+  const erroriElenco = Object.keys(errori).map((k) => NOMI_ERRORI[k] || k);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="pz pz-form" noValidate>
-      <header className="pz-testa">
-        <div>
-          <h2 className="pz-titolo">{bookingId ? 'Modifica prenotazione' : 'Nuova prenotazione'}</h2>
-          <span className="pz-sottotitolo">
-            Km, carburante, accessori e contratto si compilano il giorno del ritiro, con «Consegna».
-          </span>
-        </div>
+    <form onSubmit={invia} className="pz pz-form np" noValidate>
+      <header className="pz-testa np-testa">
+        <h2 className="pz-titolo np-titolo">{bookingId ? 'Modifica prenotazione' : 'Nuova prenotazione'}</h2>
+        <ol className="np-passi" aria-label="Passaggi">
+          <Passo numero={1} fatto={passi.quando} testo="Quando" />
+          <li className="np-passi-linea" aria-hidden="true" />
+          <Passo numero={2} fatto={passi.auto} testo="Quale auto" />
+          <li className="np-passi-linea" aria-hidden="true" />
+          <Passo numero={3} fatto={passi.chi && !errori.telefono} testo="Chi la prende" />
+        </ol>
       </header>
 
-      <div className="pz-corpo">
-        <section className="pz-sezione">
-          <h3 className="pz-titolo-sezione">Cliente</h3>
-          <div className="pz-griglia pz-griglia--2">
-            <div className={`${classeCampo('cliente')} pz-intera`}>
-              <span className="pz-etichetta">Nome e cognome <span className="pz-obbligatorio">*</span></span>
-              <AutocompleteClienti
-                clienti={clienti}
-                onSelect={(cliente) => setClienteSelezionato(cliente)}
-                onInputChange={(value) => setValue('cliente', value, { shouldValidate: true })}
-                initialValue={
-                  clienteSelezionato
-                    ? `${clienteSelezionato.nome} ${clienteSelezionato.cognome}`.trim()
-                    : initialValues?.cliente || ''
-                }
-              />
-              <input type="hidden" {...register('cliente')} />
-              {errore('cliente') || (
-                <button type="button" className="pz-link" onClick={() => setShowAddClient(true)}>
-                  + Nuovo cliente in anagrafica
-                </button>
+      <div className="np-corpo">
+        <div className="np-colonna">
+          {/* 1. Quando */}
+          <section className={`np-sezione ${passi.attivo === 1 ? 'np-sezione--attiva' : ''}`}>
+            <h3 className="np-sezione-titolo"><span className="np-numero">1.</span> Quando?</h3>
+            <div className="np-date">
+              <label className={`np-campo ${mostraErrore('dataInizio') ? 'np-campo--errore' : ''}`}>
+                <span className="np-etichetta">Esce il</span>
+                <DatePicker
+                  locale={it}
+                  selected={versoData(dati.dataInizio)}
+                  onChange={(d) => aggiorna({ dataInizio: daData(d), ...(dati.dataFine && daData(d) > dati.dataFine ? { dataFine: '' } : {}) })}
+                  minDate={bookingId ? null : versoData(oggi)}
+                  excludeDates={giorniBloccati}
+                  dateFormat="dd/MM/yyyy"
+                  placeholderText="gg/mm/aaaa"
+                />
+                {mostraErrore('dataInizio') && <span className="np-errore" role="alert">{errori.dataInizio}</span>}
+              </label>
+              <label className={`np-campo ${mostraErrore('dataFine') ? 'np-campo--errore' : ''}`}>
+                <span className="np-etichetta">Rientra il</span>
+                <DatePicker
+                  locale={it}
+                  selected={versoData(dati.dataFine)}
+                  onChange={(d) => aggiorna({ dataFine: daData(d) })}
+                  minDate={versoData(dati.dataInizio) || (bookingId ? null : versoData(oggi))}
+                  excludeDates={giorniBloccati}
+                  openToDate={versoData(dati.dataFine) || versoData(dati.dataInizio) || undefined}
+                  dateFormat="dd/MM/yyyy"
+                  placeholderText="gg/mm/aaaa"
+                />
+                {mostraErrore('dataFine') && <span className="np-errore" role="alert">{errori.dataFine}</span>}
+              </label>
+              {giorni > 0 && (
+                <span className="np-giorni">{giorni} {giorni === 1 ? 'giorno' : 'giorni'}</span>
               )}
             </div>
-            <label className={classeCampo('codiceFiscale')}>
-              <span className="pz-etichetta">Codice fiscale <span className="pz-obbligatorio">*</span></span>
-              <input {...register('codiceFiscale')} placeholder="Es. RSSMRA80A01H501U" style={{ textTransform: 'uppercase' }} />
-              {errore('codiceFiscale')}
-            </label>
-            <label className={classeCampo('patente')}>
-              <span className="pz-etichetta">Numero patente <span className="pz-obbligatorio">*</span></span>
-              <input {...register('patente')} placeholder="Es. AB1234567" />
-              {errore('patente')}
-            </label>
-            <label className={`${classeCampo('emailCliente')} pz-intera`}>
-              <span className="pz-etichetta">Email <span className="pz-obbligatorio">*</span></span>
-              <input type="email" {...register('emailCliente')} placeholder="nome@esempio.it" />
-              {errore('emailCliente')}
-            </label>
-          </div>
-        </section>
+            <div className="np-rapide">
+              <span>Scelta rapida{dati.dataInizio ? ` dal ${formattaData(dati.dataInizio)}` : ' da oggi'}:</span>
+              {DURATE_RAPIDE.map((d) => (
+                <button
+                  key={d.chiave}
+                  type="button"
+                  className="np-chip"
+                  onClick={() => aggiorna(dateRapide(d.chiave, dati.dataInizio, oggi))}
+                >
+                  {d.etichetta}
+                </button>
+              ))}
+            </div>
+          </section>
 
-        <section className="pz-sezione">
-          <h3 className="pz-titolo-sezione">Periodo e veicolo</h3>
-          <div className="pz-griglia pz-griglia--2">
-            <label className={classeCampo('dataInizio')}>
-              <span className="pz-etichetta">Ritiro <span className="pz-obbligatorio">*</span></span>
-              <DatePicker
-                locale={it}
-                selected={dataInizio ? new Date(dataInizio) : null}
-                onChange={scegliData('dataInizio')}
-                excludeDates={disabledDates}
-                dateFormat="dd/MM/yyyy"
-                placeholderText="gg/mm/aaaa"
-              />
-              {errore('dataInizio')}
-            </label>
-            <label className={classeCampo('dataFine')}>
-              <span className="pz-etichetta">Riconsegna <span className="pz-obbligatorio">*</span></span>
-              <DatePicker
-                locale={it}
-                selected={dataFine ? new Date(dataFine) : null}
-                onChange={scegliData('dataFine')}
-                excludeDates={disabledDates}
-                minDate={dataInizio ? new Date(dataInizio) : null}
-                dateFormat="dd/MM/yyyy"
-                placeholderText="gg/mm/aaaa"
-              />
-              {errore('dataFine')}
-            </label>
-            <div className={`${classeCampo('targa')} pz-intera`}>
-              <span className="pz-etichetta">Veicolo <span className="pz-obbligatorio">*</span></span>
-              <SceltaVeicolo
-                veicoli={veicoliSelezionabili.map((v) => veicoli.find((x) => x.targa === v.targa) || v)}
-                targaScelta={watchTarga}
-                targaIniziale={initialValues?.targa}
-                onScegli={(v) => setValue('targa', v.targa, { shouldValidate: true, shouldDirty: true })}
-                inizio={dataInizio}
-                fine={dataFine}
-                prenotazioni={prenotazioni}
-                holds={holds}
-                idEscluso={bookingId}
-              />
-              <input type="hidden" {...register('targa')} />
-              <input type="hidden" {...register('veicolo')} />
-              {errore('targa')}
+          {/* 2. Quale auto */}
+          <section className={`np-sezione ${passi.attivo === 2 ? 'np-sezione--attiva' : ''} ${mostraErrore('targa') ? 'np-sezione--errore' : ''}`}>
+            <h3 className="np-sezione-titolo"><span className="np-numero">2.</span> Quale auto?</h3>
+            <SceltaVeicolo
+              veicoli={veicoliSelezionabili}
+              targaScelta={dati.targa}
+              targaIniziale={initialValues?.targa}
+              onScegli={scegliVeicolo}
+              inizio={dati.dataInizio}
+              fine={dati.dataFine}
+              prenotazioni={prenotazioni}
+              holds={holds}
+              idEscluso={bookingId}
+              giorni={giorni}
+            />
+            {mostraErrore('targa') && <span className="np-errore" role="alert">{errori.targa}</span>}
+          </section>
+
+          {/* 3. Chi la prende */}
+          <section className={`np-sezione ${passi.attivo === 3 ? 'np-sezione--attiva' : ''} ${mostraErrore('cliente') ? 'np-sezione--errore' : ''}`}>
+            <h3 className="np-sezione-titolo"><span className="np-numero">3.</span> Chi la prende?</h3>
+
+            {modoCliente === 'cerca' && (
+              <>
+                <label className="np-campo">
+                  <span className="np-etichetta">Cerca il cliente per nome, telefono o codice fiscale</span>
+                  <span className="np-cerca">
+                    <Search size={18} aria-hidden="true" />
+                    <input
+                      ref={campoCerca}
+                      type="search"
+                      value={cerca}
+                      onChange={(e) => setCerca(e.target.value)}
+                      placeholder="Es. Rossi, 333 1234567…"
+                      autoComplete="off"
+                    />
+                  </span>
+                </label>
+                <div className="np-risultati">
+                  {clientiTrovati.map((c) => (
+                    <button key={c.id || c.codiceFiscale} type="button" className="np-risultato" onClick={() => scegliCliente(c)}>
+                      <span className="np-risultato-nome">{c.nome} {c.cognome}</span>
+                      <span className="np-risultato-info">{c.telefono || c.cellulare || c.email || ''}</span>
+                      {documentiCompleti(c) && <span className="np-ok"><ShieldCheck size={15} aria-hidden="true" /> Documenti completi</span>}
+                    </button>
+                  ))}
+                  {cerca.trim().length >= 2 && clientiTrovati.length === 0 && (
+                    <p className="np-aiuto">Nessun cliente trovato con «{cerca.trim()}».</p>
+                  )}
+                  <button type="button" className="np-risultato np-risultato--nuovo" onClick={nuovoClienteDaRicerca}>
+                    <UserPlus size={18} aria-hidden="true" /> È un cliente nuovo: scrivi nome e telefono
+                  </button>
+                </div>
+                {mostraErrore('cliente') && <span className="np-errore" role="alert">{errori.cliente}</span>}
+              </>
+            )}
+
+            {modoCliente === 'scelto' && (
+              <div className="np-cliente">
+                <div className="np-cliente-testi">
+                  <span className="np-cliente-nome">{dati.cliente}</span>
+                  <span className="np-cliente-info">
+                    {dati.telefono && <span><Phone size={14} aria-hidden="true" /> {dati.telefono}</span>}
+                    {dati.emailCliente && <span><Mail size={14} aria-hidden="true" /> {dati.emailCliente}</span>}
+                  </span>
+                  {documentiOk ? (
+                    <span className="np-ok"><ShieldCheck size={15} aria-hidden="true" /> Documenti completi</span>
+                  ) : (
+                    <span className="np-da-fare"><FileWarning size={15} aria-hidden="true" /> Codice fiscale e patente si completano alla consegna</span>
+                  )}
+                  {mostraErrore('telefono') && <span className="np-errore" role="alert">{errori.telefono}</span>}
+                </div>
+                <div className="np-cliente-azioni">
+                  <button type="button" className="np-link" onClick={() => setModoCliente('nuovo')}>Correggi i dati</button>
+                  <button
+                    type="button"
+                    className="np-link"
+                    onClick={() => {
+                      aggiorna({ cliente: '', telefono: '', emailCliente: '', codiceFiscale: '', patente: '' });
+                      setModoCliente('cerca');
+                      setTimeout(() => campoCerca.current?.focus(), 0);
+                    }}
+                  >
+                    Cambia cliente
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {modoCliente === 'nuovo' && (
+              <div className="np-nuovo">
+                <div className="np-griglia">
+                  <label className={`np-campo np-intera ${mostraErrore('cliente') ? 'np-campo--errore' : ''}`}>
+                    <span className="np-etichetta">Nome e cognome</span>
+                    <input value={dati.cliente} onChange={(e) => aggiorna({ cliente: e.target.value })} placeholder="Es. Mario Rossi" autoComplete="off" />
+                    {mostraErrore('cliente') && <span className="np-errore" role="alert">{errori.cliente}</span>}
+                  </label>
+                  <label className={`np-campo ${mostraErrore('telefono') ? 'np-campo--errore' : ''}`}>
+                    <span className="np-etichetta">Telefono</span>
+                    <input type="tel" value={dati.telefono} onChange={(e) => aggiorna({ telefono: e.target.value })} placeholder="Es. 333 1234567" autoComplete="off" />
+                    {mostraErrore('telefono') && <span className="np-errore" role="alert">{errori.telefono}</span>}
+                  </label>
+                  <label className={`np-campo ${mostraErrore('emailCliente') ? 'np-campo--errore' : ''}`}>
+                    <span className="np-etichetta">Email <span className="np-facoltativo">(facoltativa)</span></span>
+                    <input type="email" value={dati.emailCliente} onChange={(e) => aggiorna({ emailCliente: e.target.value })} placeholder="nome@esempio.it" autoComplete="off" />
+                    {mostraErrore('emailCliente') && <span className="np-errore" role="alert">{errori.emailCliente}</span>}
+                  </label>
+                  {conDocumenti ? (
+                    <>
+                      <label className={`np-campo ${mostraErrore('codiceFiscale') ? 'np-campo--errore' : ''}`}>
+                        <span className="np-etichetta">Codice fiscale <span className="np-facoltativo">(facoltativo)</span></span>
+                        <input value={dati.codiceFiscale} onChange={(e) => aggiorna({ codiceFiscale: e.target.value })} maxLength={16} style={{ textTransform: 'uppercase' }} placeholder="Es. RSSMRA80A01H501U" autoComplete="off" />
+                        {mostraErrore('codiceFiscale') && <span className="np-errore" role="alert">{errori.codiceFiscale}</span>}
+                      </label>
+                      <label className="np-campo">
+                        <span className="np-etichetta">Numero patente <span className="np-facoltativo">(facoltativo)</span></span>
+                        <input value={dati.patente} onChange={(e) => aggiorna({ patente: e.target.value })} style={{ textTransform: 'uppercase' }} placeholder="Es. AB1234567" autoComplete="off" />
+                      </label>
+                    </>
+                  ) : (
+                    <button type="button" className="np-link np-intera" onClick={() => setConDocumenti(true)}>
+                      + Hai già codice fiscale e patente? Aggiungili ora
+                    </button>
+                  )}
+                </div>
+                <p className="np-aiuto">
+                  Codice fiscale e patente non servono adesso: li chiede la consegna, e lì il cliente entra in anagrafica.
+                </p>
+                <div className="np-cliente-azioni">
+                  <button type="button" className="np-link" onClick={() => setModoCliente('cerca')}>← Cerca tra i clienti</button>
+                  <button type="button" className="np-link" onClick={() => setShowAddClient(true)}>Scheda completa in anagrafica</button>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Riepilogo sempre visibile */}
+        <aside className="np-riepilogo" aria-label="Riepilogo">
+          <h3 className="np-riepilogo-titolo">Riepilogo</h3>
+          <dl className="np-dati">
+            <div>
+              <dt>Quando</dt>
+              <dd>{giorni > 0 ? `da ${dataLunga(dati.dataInizio)} a ${dataLunga(dati.dataFine)} · ${giorni} ${giorni === 1 ? 'giorno' : 'giorni'}` : <span className="np-vuoto">da scegliere</span>}</dd>
+            </div>
+            <div>
+              <dt>Auto</dt>
+              <dd>{veicoloScelto ? `${nomeVeicolo(veicoloScelto)} · ${veicoloScelto.targa}` : <span className="np-vuoto">da scegliere</span>}</dd>
+            </div>
+            <div>
+              <dt>Cliente</dt>
+              <dd className="np-capitalizza">{dati.cliente.trim() || <span className="np-vuoto">da scegliere</span>}</dd>
+            </div>
+          </dl>
+
+          <div className="np-prezzi">
+            {sito ? (
+              <p className="np-aiuto">Pagata sul sito: il prezzo resta quello pagato.</p>
+            ) : (
+              <>
+                <div className="np-riga-prezzo">
+                  <span>{dati.prezzoGiornaliero ? `${euro(dati.prezzoGiornaliero)} × ${giorni || '—'} ${giorni === 1 ? 'giorno' : 'giorni'}` : 'Prezzo al giorno'}</span>
+                  <button type="button" className="np-link" onClick={() => setCambiaPrezzo((x) => !x)}>
+                    {cambiaPrezzo ? 'Fatto' : 'Cambia prezzo'}
+                  </button>
+                </div>
+                {(cambiaPrezzo || mostraErrore('prezzoGiornaliero')) && (
+                  <label className={`np-campo ${mostraErrore('prezzoGiornaliero') ? 'np-campo--errore' : ''}`}>
+                    <span className="np-etichetta">Prezzo concordato al giorno (€)</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={dati.prezzoGiornaliero}
+                      onChange={(e) => aggiorna({ prezzoGiornaliero: e.target.value })}
+                    />
+                    {mostraErrore('prezzoGiornaliero') && <span className="np-errore" role="alert">{errori.prezzoGiornaliero}</span>}
+                  </label>
+                )}
+                {confrontoListino.stato !== 'nessuno' && confrontoListino.stato !== 'uguale' && (
+                  <p className="np-aiuto">
+                    Listino {euro(confrontoListino.listino)} al giorno · concordato {confrontoListino.stato === 'sopra' ? '+' : ''}{euro(confrontoListino.differenza)}
+                  </p>
+                )}
+              </>
+            )}
+            <div className="np-totale">
+              <span>Totale</span>
+              <span>{euro(totale)}</span>
             </div>
           </div>
-        </section>
 
-        <section className="pz-sezione">
-          <h3 className="pz-titolo-sezione">Prezzo</h3>
-          <div className="pz-griglia pz-griglia--2">
-            <label className={classeCampo('prezzoGiornaliero')}>
-              <span className="pz-etichetta">Prezzo al giorno (€) <span className="pz-obbligatorio">*</span></span>
-              <input type="number" step="0.01" min="0" {...register('prezzoGiornaliero')} placeholder="Es. 30" />
-              {errore('prezzoGiornaliero') || (confrontoListino.stato !== 'nessuno' && (
-                <p className={`pz-aiuto listino-${confrontoListino.stato}`}>
-                  Listino: {euro(confrontoListino.listino)} al giorno
-                  {confrontoListino.stato === 'sopra' && ` · concordato +${euro(confrontoListino.differenza)}`}
-                  {confrontoListino.stato === 'sotto' && ` · concordato ${euro(confrontoListino.differenza)}`}
-                </p>
-              ))}
-            </label>
-            <label className="pz-campo">
-              <span className="pz-etichetta">Totale{giorni ? ` · ${giorni} ${giorni === 1 ? 'giorno' : 'giorni'}` : ''}</span>
-              <input readOnly value={totale === '' ? '' : euro(totale)} placeholder="—" />
-            </label>
-          </div>
-        </section>
+          <button type="submit" className="np-conferma" disabled={salvando}>
+            {salvando ? 'Salvataggio…' : bookingId ? 'Salva modifiche' : 'Conferma prenotazione'}
+          </button>
+          {tentato && erroriElenco.length > 0 ? (
+            <p className="np-manca" role="alert">Manca ancora: {erroriElenco.join(', ')}.</p>
+          ) : (
+            !bookingId && dati.dataInizio && (
+              <p className="np-dopo">Il {formattaData(dati.dataInizio)} la trovi in Dashboard, sotto «Da consegnare al cliente».</p>
+            )
+          )}
+          {onAnnulla && (
+            <button type="button" className="np-annulla" onClick={onAnnulla} disabled={salvando}>Annulla</button>
+          )}
+        </aside>
       </div>
-
-      <footer className="pz-piede">
-        {erroriPresenti && <span className="pz-piede-nota pz-piede-nota--errore">Controlla i campi segnati in rosso.</span>}
-        {onAnnulla && (
-          <button type="button" className="vd-btn" onClick={onAnnulla} disabled={salvando}>Annulla</button>
-        )}
-        <button type="submit" className="vd-btn vd-btn--primario" disabled={salvando}>
-          {salvando ? 'Salvataggio…' : bookingId ? 'Salva modifiche' : 'Salva prenotazione'}
-        </button>
-      </footer>
 
       <ClienteFormModal
         isOpen={showAddClient}
