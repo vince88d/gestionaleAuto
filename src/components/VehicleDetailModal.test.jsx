@@ -76,3 +76,24 @@ test('dalla Dashboard (modalLite) niente danni, manutenzioni, modifica ed elimin
   expect(screen.queryByText('Modifica')).toBeNull();
   expect(screen.getByText('Prenota questa auto')).toBeInTheDocument();
 });
+
+test('auto sospesa: fascia visibile da ogni scheda, niente Prenota, Rimetti a noleggio', () => {
+  const onRiattiva = jest.fn();
+  const sospeso = { ...veicolo, sospeso: true, sospesoIl: '2026-09-26T10:00:00Z', sospesoMotivo: 'in officina' };
+  const { rerender } = render(<VehicleDetailModal {...props} veicolo={sospeso} onRiattiva={onRiattiva} />);
+  expect(screen.getByText(/Auto sospesa dal noleggio dal 26\/09\/2026/)).toBeInTheDocument();
+  expect(screen.getByText(/Motivo: in officina/)).toBeInTheDocument();
+  expect(screen.queryByText('Prenota questa auto')).toBeNull();
+  expect(screen.queryByText('Sospendi dal noleggio')).toBeNull();
+  // Anche su un'altra scheda la fascia resta.
+  fireEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
+  expect(screen.getByText(/Auto sospesa dal noleggio/)).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Rimetti a noleggio'));
+  expect(onRiattiva).toHaveBeenCalled();
+
+  // Rimessa a noleggio: conferma verde e di nuovo prenotabile.
+  rerender(<VehicleDetailModal {...props} veicolo={veicolo} onRiattiva={onRiattiva} />);
+  expect(screen.getByText('Di nuovo a noleggio')).toBeInTheDocument();
+  expect(screen.getByText('Prenota questa auto')).toBeInTheDocument();
+  expect(screen.getByText('Sospendi dal noleggio')).toBeInTheDocument();
+});

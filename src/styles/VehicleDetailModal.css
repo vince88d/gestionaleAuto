@@ -864,3 +864,59 @@
 .vd-sospeso-motivo, .vd-sospeso-nota { display: block; margin-top: 2px; font-size: 13px; }
 .vd-sospeso-nota { color: #92600b; }
 .vd-sospeso-lista { margin: 8px 0 0; padding-left: 18px; font-weight: 600; }
+
+/* Fascia di stato sotto la testata: auto sospesa (arancione, con il pulsante
+   per rimetterla a noleggio) o appena rimessa a noleggio (verde). */
+.vd-fascia {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 24px;
+  border-bottom: 1px solid transparent;
+  font-size: 15px;
+}
+
+.vd-fascia > svg { flex-shrink: 0; }
+.vd-fascia-testi { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vd-fascia-testi strong { font-size: 16px; }
+
+.vd-fascia--sospesa { background: #fff1db; border-color: #f2cf94; color: #6b3f00; }
+.vd-fascia--riattivata { background: #e6f6ec; border-color: #b9e2c8; color: #14532d; }
+
+.vd-fascia-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 18px;
+  border: none;
+  border-radius: 10px;
+  background: #1b7a4a;
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vd-fascia-btn:hover { background: #14603a; }
+.vd-fascia-btn:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
+
+.vd-fascia-chiudi {
+  flex-shrink: 0;
+  display: flex;
+  margin: 0;
+  padding: 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.vd-fascia-chiudi:hover { background: rgba(0, 0, 0, 0.06); }
+
+/* Stato nella testata: piu' evidente quando e' sospesa. */
+.vd-stato--sospeso { font-size: 13px; padding: 4px 12px; }

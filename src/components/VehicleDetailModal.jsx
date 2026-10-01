@@ -81,6 +81,19 @@ const VehicleDetailModal = ({
   const [formDannoAperto, setFormDannoAperto] = React.useState(false);
   const [nuovoDanno, setNuovoDanno] = React.useState(DANNO_VUOTO);
   const [salvandoDanno, setSalvandoDanno] = React.useState(false);
+  // Conferma visibile dopo "Rimetti a noleggio" (il toast da solo sparisce
+  // e non si capiva cosa fosse cambiato).
+  const [appenaRiattivata, setAppenaRiattivata] = React.useState(false);
+  const eraSospesa = React.useRef(Boolean(veicolo?.sospeso));
+  React.useEffect(() => {
+    const ora = Boolean(veicolo?.sospeso);
+    if (eraSospesa.current && !ora) setAppenaRiattivata(true);
+    if (ora) setAppenaRiattivata(false);
+    eraSospesa.current = ora;
+  }, [veicolo?.sospeso]);
+  React.useEffect(() => {
+    if (!isOpen) setAppenaRiattivata(false);
+  }, [isOpen, veicolo?.id]);
   const fileInputRef = React.useRef();
   const dispatch = useDispatch();
 
@@ -301,18 +314,20 @@ const VehicleDetailModal = ({
               </div>
             </div>
             <div className="vd-azioni">
-              <button type="button" className="vd-btn vd-btn--primario" onClick={nuovaPrenotazione}>
-                <CalendarPlus size={16} aria-hidden="true" /> Prenota questa auto
-              </button>
+              {/* Un'auto sospesa non si prenota: il pulsante sparisce invece di
+                  portare a un modulo che poi rifiuterebbe l'auto. */}
+              {!veicolo.sospeso && (
+                <button type="button" className="vd-btn vd-btn--primario" onClick={nuovaPrenotazione}>
+                  <CalendarPlus size={16} aria-hidden="true" /> Prenota questa auto
+                </button>
+              )}
               {!modalLite && (
                 <>
-                  {veicolo.sospeso ? (
-                    <button type="button" className="vd-btn" onClick={onRiattiva}>
-                      <PlayCircle size={16} aria-hidden="true" /> Riattiva
-                    </button>
-                  ) : (
+                  {/* "Rimetti a noleggio" sta nella fascia arancione qui sotto,
+                      vicino allo stato che cambia. */}
+                  {!veicolo.sospeso && (
                     <button type="button" className="vd-btn" onClick={onSospendi}>
-                      <PauseCircle size={16} aria-hidden="true" /> Sospendi
+                      <PauseCircle size={16} aria-hidden="true" /> Sospendi dal noleggio
                     </button>
                   )}
                   <button type="button" className="vd-btn" onClick={onEdit}>
@@ -334,6 +349,49 @@ const VehicleDetailModal = ({
               </button>
             </div>
           </header>
+
+          {/* Stato del noleggio sempre visibile, qualunque scheda sia aperta. */}
+          {veicolo.sospeso && (
+            <div className="vd-fascia vd-fascia--sospesa" role="status">
+              <PauseCircle size={22} aria-hidden="true" />
+              <div className="vd-fascia-testi">
+                <strong>
+                  Auto sospesa dal noleggio
+                  {veicolo.sospesoIl && ` dal ${formattaData(String(veicolo.sospesoIl).slice(0, 10))}`}
+                </strong>
+                <span>
+                  {veicolo.sospesoMotivo ? `Motivo: ${veicolo.sospesoMotivo}. ` : ''}
+                  Non si può prenotare, né qui né sul sito.
+                </span>
+                {prenotazioniDaRiassegnare.length > 0 && (
+                  <ul className="vd-sospeso-lista">
+                    {prenotazioniDaRiassegnare.map((p) => (
+                      <li key={p.id}>
+                        Da riassegnare: {formattaData(p.dataInizio)} → {formattaData(p.dataFine)} · {p.cliente || "Cliente non indicato"}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {!modalLite && (
+                <button type="button" className="vd-fascia-btn" onClick={onRiattiva}>
+                  <PlayCircle size={18} aria-hidden="true" /> Rimetti a noleggio
+                </button>
+              )}
+            </div>
+          )}
+          {!veicolo.sospeso && appenaRiattivata && (
+            <div className="vd-fascia vd-fascia--riattivata" role="status">
+              <PlayCircle size={22} aria-hidden="true" />
+              <div className="vd-fascia-testi">
+                <strong>Di nuovo a noleggio</strong>
+                <span>Da adesso si può prenotare, anche dal sito.</span>
+              </div>
+              <button type="button" className="vd-fascia-chiudi" onClick={() => setAppenaRiattivata(false)} aria-label="Nascondi avviso">
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+          )}
 
           <div className="vd-schede" role="tablist">
             {schede.map((s) => (
@@ -359,29 +417,6 @@ const VehicleDetailModal = ({
           <div className="vd-contenuto" role="tabpanel">
             {scheda === "panoramica" && (
               <>
-                {veicolo.sospeso && (
-                  <div className="vd-sospeso" role="status">
-                    <PauseCircle size={18} aria-hidden="true" />
-                    <div>
-                      <strong>Sospeso dal noleggio</strong>
-                      {veicolo.sospesoIl && ` dal ${formattaData(String(veicolo.sospesoIl).slice(0, 10))}`}
-                      {veicolo.sospesoMotivo && <span className="vd-sospeso-motivo">{veicolo.sospesoMotivo}</span>}
-                      <span className="vd-sospeso-nota">
-                        Non è proposto sul sito né nelle nuove prenotazioni. Lo riattivi tu quando è pronto.
-                      </span>
-                      {prenotazioniDaRiassegnare.length > 0 && (
-                        <ul className="vd-sospeso-lista">
-                          {prenotazioniDaRiassegnare.map((p) => (
-                            <li key={p.id}>
-                              Da riassegnare: {formattaData(p.dataInizio)} → {formattaData(p.dataFine)} · {p.cliente || "Cliente non indicato"}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {!modalLite && daRiparare > 0 && (
                   <button type="button" className="vd-avviso" onClick={() => setScheda("danni")}>
                     <AlertTriangle size={18} aria-hidden="true" />
