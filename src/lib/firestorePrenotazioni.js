@@ -165,7 +165,7 @@ export async function assegnaVeicolo({ prenotazione, veicolo, patente }) {
 // Campi che si scelgono prenotando (finestra "Nuova prenotazione"/"Modifica").
 // La scheda del veicolo, il contratto e lo stato si scrivono in altri momenti.
 export const CAMPI_PRENOTAZIONE = [
-  'cliente', 'codiceFiscale', 'patente', 'emailCliente',
+  'cliente', 'telefono', 'codiceFiscale', 'patente', 'emailCliente',
   'veicolo', 'targa', 'dataInizio', 'dataFine', 'prezzoGiornaliero', 'prezzoTotale',
 ];
 
@@ -189,13 +189,14 @@ export async function salvaPrenotazione(dati, originale = null) {
 }
 
 // Consegna del veicolo al cliente: salva la scheda (km, carburante, accessori,
-// danni gia' presenti), l'ora della consegna e, se inserita ora, la patente.
+// danni gia' presenti), l'ora della consegna e, se inseriti ora, patente e
+// codice fiscale (la prenotazione si puo' fare senza: si completano qui).
 // Poi aggiorna l'anagrafica: se il cliente non c'e' (es. prenotazione dal
 // sito) lo crea con i dati della prenotazione; se c'e', completa i campi
 // vuoti (patente, scadenza, email, telefono) e aggiunge il contratto.
 // Restituisce { campi } salvati sulla prenotazione e `cliente`: 'creato',
 // 'aggiornato' o null (anagrafica non toccata o non riuscita).
-export async function registraConsegna({ prenotazione, scheda, patente, scadenzaPatente, ip }) {
+export async function registraConsegna({ prenotazione, scheda, patente, scadenzaPatente, codiceFiscale, ip }) {
   const campi = {
     schedaVeicolo: scheda || {},
     consegnataIl: new Date().toISOString(),
@@ -203,6 +204,8 @@ export async function registraConsegna({ prenotazione, scheda, patente, scadenza
   };
   const patentePulita = (patente || '').trim().toUpperCase();
   if (patentePulita) campi.patente = patentePulita;
+  const cfPulito = normalizzaCodiceFiscale(codiceFiscale);
+  if (/^[A-Z0-9]{16}$/.test(cfPulito)) campi.codiceFiscale = cfPulito;
 
   await aggiornaPrenotazione(prenotazione.id, campi, { statoAtteso: 'attiva' });
 

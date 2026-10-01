@@ -74,5 +74,5 @@ test('dalla Dashboard (modalLite) niente danni, manutenzioni, modifica ed elimin
   expect(screen.queryByRole('tab', { name: /Danni/ })).toBeNull();
   expect(screen.queryByRole('tab', { name: /Manutenzioni/ })).toBeNull();
   expect(screen.queryByText('Modifica')).toBeNull();
-  expect(screen.getByText('Nuova prenotazione')).toBeInTheDocument();
+  expect(screen.getByText('Prenota questa auto')).toBeInTheDocument();
 });

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Car, Search } from 'lucide-react';
-import { statoVeicoloNelPeriodo } from '../utils/regolePrenotazione';
+import { Car, Search, AlertTriangle } from 'lucide-react';
+import { statoVeicoloNelPeriodo, rientroInRitardo } from '../utils/regolePrenotazione';
+import { giornoLocale, formattaData } from '../utils/scadenze';
 
 const ETICHETTA_STATO = {
   libero: 'Libero',
@@ -27,7 +28,9 @@ function SceltaVeicolo({
   holds = [],
   idEscluso,
   targaIniziale,
+  giorni = 0,
 }) {
+  const oggi = giornoLocale();
   const [cerca, setCerca] = useState('');
   const [mostraTutti, setMostraTutti] = useState(false);
   const [categoria, setCategoria] = useState(
@@ -37,9 +40,14 @@ function SceltaVeicolo({
   // Stato di ogni veicolo nelle date scelte. Quello gia' assegnato a questa
   // prenotazione resta sempre sceglibile.
   const conStato = useMemo(() => veicoli.map((v) => {
-    const stato = statoVeicoloNelPeriodo({ veicolo: v, inizio, fine, veicoli, prenotazioni, holds, idEscluso });
+    const stato = statoVeicoloNelPeriodo({ veicolo: v, inizio, fine, veicoli, prenotazioni, holds, idEscluso, oggi });
     return { veicolo: v, stato: v.targa === targaIniziale ? 'libero' : stato };
-  }), [veicoli, inizio, fine, prenotazioni, holds, idEscluso, targaIniziale]);
+  }), [veicoli, inizio, fine, prenotazioni, holds, idEscluso, targaIniziale, oggi]);
+
+  // Auto ancora dal cliente oltre la data di fine (avviso sulla scheda).
+  const ritardi = useMemo(() => Object.fromEntries(
+    veicoli.map((v) => [v.targa, rientroInRitardo(v.targa, prenotazioni, oggi)]).filter(([, p]) => p),
+  ), [veicoli, prenotazioni, oggi]);
 
   const dateScelte = conStato.length > 0 && conStato[0].stato !== 'da-verificare';
   const categorie = useMemo(() => {
@@ -139,9 +147,18 @@ function SceltaVeicolo({
                   <span className="sv-targa">{veicolo.targa}</span>
                   {categoria === 'tutte' && veicolo.categoria && <span>{veicolo.categoria}</span>}
                 </span>
+                {ritardi[veicolo.targa] && (
+                  <span className="sv-ritardo" title={`Non ancora rientrata: doveva tornare il ${formattaData(ritardi[veicolo.targa].dataFine)}`}>
+                    <AlertTriangle size={14} aria-hidden="true" />
+                    Non rientrata (doveva il {formattaData(ritardi[veicolo.targa].dataFine).slice(0, 5)})
+                  </span>
+                )}
               </span>
               <span className="sv-destra">
                 {veicolo.prezzo ? <span className="sv-prezzo">€ {Number(veicolo.prezzo).toLocaleString('it-IT')}<small>/g</small></span> : null}
+                {veicolo.prezzo && giorni > 0 ? (
+                  <span className="sv-totale">€ {(Number(veicolo.prezzo) * giorni).toLocaleString('it-IT')} in tutto</span>
+                ) : null}
                 {ETICHETTA_STATO[stato] && <span className={`sv-stato sv-stato--${stato}`}>{ETICHETTA_STATO[stato]}</span>}
               </span>
             </button>

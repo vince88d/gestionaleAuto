@@ -67,6 +67,8 @@ const VehicleDetailModal = ({
   onSospendi,
   onRiattiva,
   modalLite = false,
+  // Date gia' scelte altrove (ricerca della Dashboard): passano al modulo.
+  periodoScelto = null,
   prenotazioni,
   veicoli = [],
   holds = [],
@@ -207,6 +209,8 @@ const VehicleDetailModal = ({
         targaSelezionata: veicolo.targa,
         modelloSelezionato: veicolo.modello,
         prezzoSelezionato: veicolo.prezzo,
+        dataSelezionata: periodoScelto?.dataInizio || '',
+        dataFineSelezionata: periodoScelto?.dataFine || '',
       },
     });
   };
@@ -295,7 +299,7 @@ const VehicleDetailModal = ({
             </div>
             <div className="vd-azioni">
               <button type="button" className="vd-btn vd-btn--primario" onClick={nuovaPrenotazione}>
-                <CalendarPlus size={16} aria-hidden="true" /> Nuova prenotazione
+                <CalendarPlus size={16} aria-hidden="true" /> Prenota questa auto
               </button>
               {!modalLite && (
                 <>

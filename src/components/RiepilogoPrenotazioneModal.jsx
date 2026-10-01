@@ -145,6 +145,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
             prenotazione,
             scheda: datiScheda,
             patente: formData.patente,
+            codiceFiscale: formData.codiceFiscale,
             scadenzaPatente,
             ip: ipPubblico || 'Non disponibile',
           });
