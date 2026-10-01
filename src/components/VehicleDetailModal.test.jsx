@@ -8,7 +8,7 @@ jest.mock('@fullcalendar/daygrid', () => ({}));
 jest.mock('@fullcalendar/core/locales/it', () => ({}));
 jest.mock('react-redux', () => ({ useDispatch: () => jest.fn() }));
 // react-router-dom v7 non si carica nei test di Create React App: basta useNavigate.
-jest.mock('react-router-dom', () => ({ useNavigate: () => jest.fn() }), { virtual: true });
+jest.mock('react-router-dom', () => ({ useNavigate: () => jest.fn(), useLocation: () => ({ pathname: '/vehicles' }) }), { virtual: true });
 jest.mock('../lib/firestorePrenotazioni', () => ({
   isPrenotazioneVisibile: (p) => !['annullata', 'richiesta-sito', 'scaduta', 'pagamento-fallito'].includes(p.status),
   segnaDannoPrenotazioneRiparato: jest.fn(),

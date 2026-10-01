@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import {
   PanelLeftClose, PanelLeftOpen, LayoutDashboard, Car, Users, CalendarDays,
@@ -39,6 +39,7 @@ function Sidebar({ collapsed, toggleSidebar }) {
   // Nome da Impostazioni, in tempo reale (anche se lo cambia un'altra postazione).
   const { dati: azienda } = useAzienda();
   const navigate = useNavigate();
+  const location = useLocation();
   const nomeAzienda = azienda.nome;
 
   const titolo = nomeAzienda || 'La tua azienda';
@@ -71,7 +72,7 @@ function Sidebar({ collapsed, toggleSidebar }) {
       <button
         type="button"
         className="nuova-prenotazione-btn"
-        onClick={() => navigate('/booking', { state: { azione: 'nuova' } })}
+        onClick={() => navigate('/booking', { state: { azione: 'nuova', da: location.pathname } })}
         title={collapsed ? 'Nuova prenotazione' : undefined}
         aria-label={collapsed ? 'Nuova prenotazione' : undefined}
       >

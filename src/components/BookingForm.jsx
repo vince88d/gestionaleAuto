@@ -54,6 +54,7 @@ function BookingForm({
   prenotazioni = [],
   salvando = false,
   onAnnulla,
+  onModificato,
 }) {
   const dispatch = useDispatch();
   const bookingId = initialValues?.id;
@@ -61,6 +62,7 @@ function BookingForm({
   const oggi = giornoLocale();
 
   const [dati, setDati] = useState(CAMPI_VUOTI);
+  const datiIniziali = useRef(CAMPI_VUOTI);
   // 'cerca' (nessun cliente), 'scelto' (scheda del cliente), 'nuovo' (campi da scrivere)
   const [modoCliente, setModoCliente] = useState('cerca');
   const [cerca, setCerca] = useState('');
@@ -87,6 +89,7 @@ function BookingForm({
       if (v?.prezzo) iniziali.prezzoGiornaliero = String(v.prezzo);
     }
     setDati(iniziali);
+    datiIniziali.current = iniziali;
     setModoCliente(iniziali.cliente ? 'scelto' : 'cerca');
     setConDocumenti(Boolean(iniziali.codiceFiscale || iniziali.patente));
     setCerca('');
@@ -97,6 +100,10 @@ function BookingForm({
   }, [initialValues]);
 
   const aggiorna = (campi) => setDati((d) => ({ ...d, ...campi }));
+
+  // Toccato qualcosa rispetto a come si e' aperto? (per chiedere conferma alla chiusura)
+  const modificato = Object.keys(CAMPI_VUOTI).some((k) => dati[k] !== datiIniziali.current[k]) || cerca.trim() !== '';
+  useEffect(() => { onModificato?.(modificato); }, [modificato, onModificato]);
 
   // Veicoli sceglibili: quelli dell'elenco piu' quello gia' assegnato (in modifica).
   const veicoliSelezionabili = useMemo(() => {
