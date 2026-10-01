@@ -190,6 +190,15 @@
 .np .sv-prezzo { font-size: 14px; }
 .sv-totale { font-size: 14px; font-weight: 800; color: #1e2a36; white-space: nowrap; }
 .np .sv-stato { font-size: 12px; }
+.sv-ritardo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #9a5b00;
+}
 
 /* 3. Chi la prende */
 .pz .np-cerca {

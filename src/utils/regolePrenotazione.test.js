@@ -190,3 +190,23 @@ describe('veicolo sospeso', () => {
     expect(statoVeicoloNelPeriodo({ ...periodo, inizio: '', veicolo: veicoliSospeso[0] })).toBe('sospeso');
   });
 });
+
+describe('auto non ancora rientrata', () => {
+  const { rientroInRitardo } = require('./regolePrenotazione');
+  const consegnata = { status: 'attiva', consegnataIl: '2026-09-15T09:00:00Z' };
+
+  test('consegnata e oltre la data di fine: e\' in ritardo', () => {
+    const p = { id: 'r1', targa: 'AA111AA', dataInizio: '2026-09-15', dataFine: '2026-09-20', ...consegnata };
+    expect(rientroInRitardo('AA111AA', [p], OGGI)).toBe(p);
+  });
+
+  test('non in ritardo: rientra oggi, non consegnata, conclusa o altra targa', () => {
+    const lista = [
+      { id: 'a', targa: 'AA111AA', dataInizio: '2026-09-20', dataFine: OGGI, ...consegnata },
+      { id: 'b', targa: 'AA111AA', status: 'attiva', dataInizio: '2026-09-10', dataFine: '2026-09-12' },
+      { id: 'c', targa: 'AA111AA', status: 'completata', dataInizio: '2026-09-10', dataFine: '2026-09-12', consegnataIl: 'x' },
+      { id: 'd', targa: 'BB222BB', dataInizio: '2026-09-10', dataFine: '2026-09-12', ...consegnata },
+    ];
+    expect(rientroInRitardo('AA111AA', lista, OGGI)).toBeNull();
+  });
+});

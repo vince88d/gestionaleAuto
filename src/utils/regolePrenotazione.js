@@ -145,6 +145,16 @@ export function promemoria(p, oggi) {
   return { testo: `${cosa} tra ${giorni} gg`, livello: giorni === 2 ? 'prossima' : '' };
 }
 
+// Noleggio ancora aperto su quella targa che doveva gia' finire: l'auto e'
+// "non ancora rientrata". Dal giorno dopo risulta libera (non si sa quando
+// torna), ma chi prenota deve saperlo. null se non c'e'.
+export function rientroInRitardo(targa, prenotazioni, oggi) {
+  if (!targa || !oggi) return null;
+  return (prenotazioni || [])
+    .filter((p) => p.targa === targa && puoConcludere(p) && giorno(p.dataFine) < oggi)
+    .sort((a, b) => giorno(a.dataFine).localeCompare(giorno(b.dataFine)))[0] || null;
+}
+
 // "Concludi in blocco": solo i noleggi finiti da ieri o prima (quelli che
 // finiscono oggi il veicolo magari non e' ancora rientrato).
 export function daConcludereInBlocco(prenotazioni, oggi) {

@@ -86,3 +86,11 @@ test('se manca qualcosa non salva e dice cosa manca', () => {
   expect(onSubmit).not.toHaveBeenCalled();
   expect(screen.getByText(/Manca ancora: giorno di uscita, giorno di rientro, auto, cliente/)).toBeInTheDocument();
 });
+
+test('un\'auto ancora dal cliente oltre la data di fine ha l\'avviso "non ancora rientrata"', () => {
+  const inRitardo = { id: 'r1', targa: 'ABC004', status: 'attiva', dataInizio: '2020-01-01', dataFine: '2020-01-05', consegnataIl: '2020-01-01T09:00:00Z' };
+  render(
+    <BookingForm onSubmit={jest.fn()} initialValues={{}} availableVehicles={veicoli} veicoli={veicoli} clienti={[]} prenotazioni={[inRitardo]} />,
+  );
+  expect(screen.getByText(/Non rientrata \(doveva il 05\/01\)/)).toBeInTheDocument();
+});
