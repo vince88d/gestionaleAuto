@@ -1,5 +1,5 @@
 {
-  "name": "gestionale-noleggio-demo",
+  "name": "react-electron",
   "version": "0.1.1",
   "repository": "github:vince88d/gestionaleAuto",
   "description": "Software di gestione noleggio veicoli - Versione Demo",
@@ -51,6 +51,25 @@
     "web-vitals": "^2.1.4",
     "yup": "^1.6.1"
   },
+  "scripts": {
+    "start": "electron-forge start",
+    "test": "react-scripts test --watchAll=false",
+    "build": "react-scripts build",
+    "electron": "react-scripts build && electron .",
+    "clean:data": "node scripts/cleanData.js",
+    "package": "electron-forge package",
+    "premake": "npm run build",
+    "make": "cross-env DEBUG=electron-forge:* electron-forge make",
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "dist:dir": "npm run build && electron-builder --dir",
+    "dist:demo": "npm run build && electron-builder --config electron-builder.demo.js --win portable"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
   "browserslist": {
     "production": [
       ">0.2%",
@@ -62,6 +81,62 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.11.2",
+    "@electron-forge/maker-deb": "^7.11.2",
+    "@electron-forge/maker-rpm": "^7.11.2",
+    "@electron-forge/maker-squirrel": "^7.11.2",
+    "@electron-forge/maker-zip": "^7.11.2",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.11.2",
+    "@electron-forge/plugin-fuses": "^7.11.2",
+    "@electron/fuses": "^1.8.0",
+    "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
+    "electron": "^44.3.0",
+    "electron-builder": "^24.13.3",
+    "electron-reload": "^2.0.0-alpha.1",
+    "postcss": "^8.5.3"
+  },
+  "build": {
+    "extends": null,
+    "appId": "com.gestionaleauto.app",
+    "productName": "Gestionale Auto Noleggio",
+    "extraMetadata": {
+      "main": "main.js"
+    },
+    "directories": {
+      "output": "dist-installer"
+    },
+    "files": [
+      "build/**/*",
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Gestionale Auto Noleggio"
+    }
   },
   "config": {
     "forge": {
@@ -96,6 +171,5 @@
         }
       ]
     }
-  },
-  "productName": "Gestionale Noleggio Demo"
+  }
 }

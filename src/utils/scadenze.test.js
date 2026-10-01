@@ -1,4 +1,4 @@
-import { coloreScadenza, testoScadenza, formattaData, giornoLocale } from './scadenze';
+import { prossimaScadenza, coloreScadenza, testoScadenza, formattaData, giornoLocale } from './scadenze';
 
 const OGGI = new Date('2026-09-23T10:00:00');
 
@@ -35,5 +35,22 @@ describe('formattaData', () => {
 describe('giornoLocale', () => {
   test('usa la data locale, non quella UTC', () => {
     expect(giornoLocale(new Date(2026, 8, 23, 0, 30))).toBe('2026-09-23');
+  });
+});
+
+describe('prossimaScadenza', () => {
+  test('un anno dopo per bollo e assicurazione, due per la revisione', () => {
+    expect(prossimaScadenza('bollo', '2026-07-05')).toBe('2027-07-05');
+    expect(prossimaScadenza('assicurazione', '2026-09-24')).toBe('2027-09-24');
+    expect(prossimaScadenza('revisione', '2026-09-30')).toBe('2028-09-30');
+  });
+
+  test('senza data valida parte da oggi', () => {
+    expect(prossimaScadenza('bollo', '', '2026-10-01')).toBe('2027-10-01');
+    expect(prossimaScadenza('bollo', 'boh', '2026-10-01')).toBe('2027-10-01');
+  });
+
+  test('29 febbraio diventa 28 febbraio', () => {
+    expect(prossimaScadenza('bollo', '2028-02-29')).toBe('2029-02-28');
   });
 });

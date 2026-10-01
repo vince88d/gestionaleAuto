@@ -48,9 +48,53 @@ describe('riepilogoDashboard', () => {
       ['v1', 'graffio', 'veicolo'],
       ['v3', 'specchietto', 'riconsegna'],
     ]);
+    // Per segnarli riparati: posizione nel veicolo o prenotazione d'origine.
+    expect(r.danniDaRiparare[0].indice).toBe(0);
+    expect(r.danniDaRiparare[1].prenotazione.id).toBe('p4');
     expect(r.scadenze.map((s) => [s.nome, s.giorni])).toEqual([
       ['Revisione', -5], ['Bollo', 12], ['Assicurazione', 20],
     ]);
+  });
+});
+
+describe('da consegnare, da ricevere e scadenze divise', () => {
+  const consegnata = { consegnataIl: '2026-09-20T09:00:00Z' };
+  const lista = [
+    { id: 'a', targa: 'AD123XY', status: 'attiva', dataInizio: '2026-09-23', dataFine: '2026-09-25' },
+    { id: 'b', targa: 'EF456GH', status: 'attiva', dataInizio: '2026-09-21', dataFine: '2026-09-28' },
+    { id: 'c', targa: 'GH789IJ', status: 'attiva', dataInizio: '2026-09-23', dataFine: '2026-09-27', ...consegnata },
+    { id: 'd', targa: 'KL012MN', status: 'attiva', dataInizio: '2026-09-18', dataFine: '2026-09-23', ...consegnata },
+    { id: 'e', targa: 'KL012MN', status: 'attiva', dataInizio: '2026-09-10', dataFine: '2026-09-20', ...consegnata },
+    { id: 'f', targa: 'AD123XY', status: 'attiva', dataInizio: '2026-09-30', dataFine: '2026-10-02' },
+    { id: 'g', targa: '', origine: 'sito', categoria: 'SUV', status: 'attiva', dataInizio: '2026-09-23', dataFine: '2026-09-24' },
+  ];
+  const r = riepilogoDashboard({ veicoli, prenotazioni: lista, holds: [], oggi: OGGI });
+
+  test('da consegnare: oggi o in ritardo, solo con auto assegnata e non ancora data', () => {
+    expect(r.daConsegnare.map((p) => p.id)).toEqual(['b', 'a']);
+  });
+
+  test('da ricevere: consegnate che rientrano oggi o dovevano gia\' rientrare', () => {
+    expect(r.daRicevere.map((p) => p.id)).toEqual(['e', 'd']);
+  });
+
+  test('un\'auto consegnata e non riportata non e\' libera, anche dopo la data di fine', () => {
+    const auto = [{ id: 'x', targa: 'XX111XX' }];
+    const inRitardo = [{ id: 'r', targa: 'XX111XX', status: 'attiva', dataInizio: '2026-09-10', dataFine: '2026-09-20', ...consegnata }];
+    expect(riepilogoDashboard({ veicoli: auto, prenotazioni: inRitardo, oggi: OGGI }).liberiOggi).toEqual([]);
+    expect(veicoliLiberiNelPeriodo(auto, OGGI, OGGI, inRitardo, [], OGGI)).toEqual([]);
+    // Non ancora consegnata: la data passata non la tiene occupata.
+    const maiConsegnata = [{ ...inRitardo[0], consegnataIl: undefined }];
+    expect(riepilogoDashboard({ veicoli: auto, prenotazioni: maiConsegnata, oggi: OGGI }).liberiOggi).toHaveLength(1);
+  });
+
+  test('auto fuori: tutte quelle consegnate e non chiuse', () => {
+    expect(r.fuori.map((p) => p.id)).toEqual(['c', 'd', 'e']);
+  });
+
+  test('scadenze divise tra gia\' passate e in arrivo', () => {
+    expect(r.scadute.map((s) => s.nome)).toEqual(['Revisione']);
+    expect(r.inScadenza.map((s) => s.nome)).toEqual(['Bollo', 'Assicurazione']);
   });
 });
 

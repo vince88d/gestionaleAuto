@@ -4,6 +4,7 @@
 import { daAssegnare } from './assegnazioneVeicolo';
 import { SCADENZE_VEICOLO } from './scadenze';
 import { veicoloLibero, prenotazioniSuVeicoloSospeso } from './disponibilitaCategoria';
+import { puoConsegnare, puoConcludere } from './regolePrenotazione';
 
 const giorno = (valore) => (valore ? String(valore).slice(0, 10) : '');
 
@@ -23,13 +24,17 @@ function giorniDa(oggi, data) {
   return Math.round((Date.UTC(a2, m2 - 1, g2) - Date.UTC(a1, m1 - 1, g1)) / 86400000);
 }
 
-// Prenotazioni che occupano un veicolo (le concluse lo hanno gia' liberato).
 // Occupano un veicolo solo le prenotazioni attive: non le concluse, le
-// annullate o i pagamenti del sito non andati a buon fine.
-export const prenotazioniOccupanti = (prenotazioni) => (prenotazioni || []).filter((p) => p.status === 'attiva');
+// annullate o i pagamenti del sito non andati a buon fine. Un'auto consegnata
+// e non ancora riportata resta occupata anche dopo la data di fine: con `oggi`
+// la sua fine si allunga fino a oggi (prima risultava "libera" mentre era
+// ancora dal cliente).
+export const prenotazioniOccupanti = (prenotazioni, oggi) => (prenotazioni || [])
+  .filter((p) => p.status === 'attiva')
+  .map((p) => (oggi && puoConcludere(p) && giorno(p.dataFine) < oggi ? { ...p, dataFine: oggi } : p));
 
-export function veicoliLiberiNelPeriodo(veicoli, dataInizio, dataFine, prenotazioni, holds) {
-  const occupanti = prenotazioniOccupanti(prenotazioni);
+export function veicoliLiberiNelPeriodo(veicoli, dataInizio, dataFine, prenotazioni, holds, oggi) {
+  const occupanti = prenotazioniOccupanti(prenotazioni, oggi);
   return (veicoli || []).filter((v) => veicoloLibero(v, dataInizio, dataFine, veicoli, occupanti, holds));
 }
 
@@ -37,13 +42,18 @@ export function riepilogoDashboard({ veicoli = [], prenotazioni = [], holds = []
   const attive = prenotazioni.filter((p) => p.status === 'attiva');
   const perVeicolo = (p) => veicoli.find((v) => v.targa && v.targa === p.targa);
 
+  // `indice` (posizione nell'elenco danni del veicolo) e `prenotazione`
+  // servono alla Dashboard per segnare il danno come riparato.
   const danniDaRiparare = [
     ...veicoli.flatMap((v) =>
-      (v.danni || []).filter((d) => d.daRiparare).map((d) => ({ veicolo: v, descrizione: d.descrizione, origine: 'veicolo' }))
+      (v.danni || [])
+        .map((d, indice) => ({ veicolo: v, descrizione: d.descrizione, origine: 'veicolo', indice, daRiparare: d.daRiparare }))
+        .filter((d) => d.daRiparare)
+        .map(({ daRiparare, ...d }) => d)
     ),
     ...prenotazioni
       .filter((p) => p.status === 'completata' && p.daRiparare)
-      .map((p) => ({ veicolo: perVeicolo(p), descrizione: p.descrizioneDanno, origine: 'riconsegna' }))
+      .map((p) => ({ veicolo: perVeicolo(p), descrizione: p.descrizioneDanno, origine: 'riconsegna', prenotazione: p }))
       .filter((d) => d.veicolo),
   ];
 
@@ -53,29 +63,38 @@ export function riepilogoDashboard({ veicoli = [], prenotazioni = [], holds = []
         const data = v.scadenze?.[chiave];
         if (!data) return null;
         const giorni = giorniDa(oggi, data);
-        return giorni <= 30 ? { veicolo: v, nome, data, giorni } : null;
+        return giorni <= 30 ? { veicolo: v, chiave, nome, data, giorni } : null;
       })
     )
     .filter(Boolean)
     .sort((a, b) => a.giorni - b.giorni);
 
   const mese = oggi.slice(0, 7);
+  const perData = (campo) => (a, b) => giorno(a[campo]).localeCompare(giorno(b[campo]));
 
   return {
     flotta: veicoli.length,
-    liberiOggi: veicoliLiberiNelPeriodo(veicoli, oggi, oggi, prenotazioni, holds),
+    liberiOggi: veicoliLiberiNelPeriodo(veicoli, oggi, oggi, prenotazioni, holds, oggi),
     inCorso: attive.filter((p) => giorno(p.dataInizio) <= oggi && giorno(p.dataFine) >= oggi),
     inArrivo: attive.filter((p) => giorno(p.dataInizio) > oggi),
     ritiriOggi: attive.filter((p) => giorno(p.dataInizio) === oggi),
     riconsegneOggi: attive.filter((p) => giorno(p.dataFine) === oggi),
+    // Auto davvero fuori: consegnate al cliente e non ancora riportate.
+    fuori: prenotazioni.filter(puoConcludere),
+    // Da dare al cliente oggi, o gia' da ieri e non ancora consegnate.
+    daConsegnare: prenotazioni.filter((p) => puoConsegnare(p) && giorno(p.dataInizio) <= oggi).sort(perData('dataInizio')),
+    // Da riprendere oggi, o che dovevano gia' rientrare e non sono chiuse.
+    daRicevere: prenotazioni.filter((p) => puoConcludere(p) && giorno(p.dataFine) <= oggi).sort(perData('dataFine')),
     incassoMese: prenotazioni
       .filter((p) => conta(p) && giorno(p.dataInizio).slice(0, 7) === mese)
       .reduce((totale, p) => totale + prezzoPrenotazione(p), 0),
     suVeicoloSospeso: prenotazioniSuVeicoloSospeso(veicoli, prenotazioni, oggi)
-      .sort((a, b) => giorno(a.dataInizio).localeCompare(giorno(b.dataInizio))),
-    daAssegnare: prenotazioni.filter(daAssegnare).sort((a, b) => giorno(a.dataInizio).localeCompare(giorno(b.dataInizio))),
+      .sort(perData('dataInizio')),
+    daAssegnare: prenotazioni.filter(daAssegnare).sort(perData('dataInizio')),
     danniDaRiparare,
     scadenze,
+    scadute: scadenze.filter((x) => x.giorni < 0),
+    inScadenza: scadenze.filter((x) => x.giorni >= 0),
   };
 }
 
