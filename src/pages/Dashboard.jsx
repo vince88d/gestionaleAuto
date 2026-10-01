@@ -123,7 +123,9 @@ function Dashboard() {
   const apriVeicolo = (veicolo, scheda = 'panoramica') =>
     navigate('/vehicles', { state: { apriVeicoloId: veicolo.id, scheda } });
   // Apre la pagina Prenotazioni direttamente sulla finestra giusta.
-  const vaiAPrenotazioni = (state) => navigate('/booking', { state });
+  // Le finestre aperte da qui (consegna, ricevi, dettagli), chiudendosi,
+  // riportano alla Dashboard (`da`).
+  const vaiAPrenotazioni = (state) => navigate('/booking', { state: { ...state, da: '/' } });
 
   // Salvataggi dalla Dashboard: si rilegge il veicolo appena prima, cosi' non
   // si sovrascrive con una copia vecchia quello che un'altra postazione ha

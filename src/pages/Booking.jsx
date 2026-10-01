@@ -104,7 +104,6 @@ function Bookings() {
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [dettagliPrenotazione, setDettagliPrenotazione] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
-  const [isAddingNewBooking, setIsAddingNewBooking] = useState(false);
   const [search, setSearch] = useState('');
   const [riepilogoOpen, setRiepilogoOpen] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState(null);
@@ -148,6 +147,18 @@ function Bookings() {
   const navigate = useNavigate();
   // Ultima richiesta arrivata da Dashboard o menu gia' eseguita (location.key).
   const azioneEseguita = useRef(null);
+  // Pagina da cui si e' arrivati (Dashboard, Veicoli...): chiudendo la
+  // finestra aperta da li' (annullando o finendo) si torna li', non al
+  // calendario. Vuota se si e' partiti da Prenotazioni.
+  const tornaA = useRef(null);
+  const ricordaProvenienza = (da) => { tornaA.current = da && da !== location.pathname ? da : null; };
+  const fineFlusso = () => {
+    const destinazione = tornaA.current;
+    tornaA.current = null;
+    if (destinazione) navigate(destinazione);
+  };
+  // Il modulo dice se e' stato toccato: solo allora si chiede conferma.
+  const moduloModificato = useRef(false);
   const righePerPagina = 10;
   const listaRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -214,7 +225,8 @@ accessori: {
 // del suo calendario): modulo con auto, prezzo e date gia' scelte.
 useEffect(() => {
   if (!location.state?.targaSelezionata) return;
-  const { targaSelezionata, modelloSelezionato, prezzoSelezionato, dataSelezionata, dataFineSelezionata } = location.state;
+  const { targaSelezionata, modelloSelezionato, prezzoSelezionato, dataSelezionata, dataFineSelezionata, da } = location.state;
+  ricordaProvenienza(da);
   apriNuovaPrenotazione({
     targa: targaSelezionata,
     veicolo: modelloSelezionato || '',
@@ -233,7 +245,7 @@ useEffect(() => {
   // Si aspetta che prenotazioni e veicoli siano arrivati; poi si toglie lo
   // state, cosi' tornando indietro o ricaricando non si riapre la finestra.
   useEffect(() => {
-    const { azione, id, filtro, vista: vistaRichiesta } = location.state || {};
+    const { azione, id, filtro, vista: vistaRichiesta, da } = location.state || {};
     if (!azione && !filtro && !vistaRichiesta) return;
     if (azioneEseguita.current === location.key) return;
 
@@ -243,6 +255,7 @@ useEffect(() => {
       if (!prenotazione || (azione === 'consegna' && availableVehicles.length === 0)) return; // dati in arrivo
     }
     azioneEseguita.current = location.key;
+    ricordaProvenienza(azione ? da : null);
 
     if (filtro) setFiltroFase(filtro);
     if (vistaRichiesta) cambiaVista(vistaRichiesta);
@@ -305,20 +318,15 @@ useEffect(() => {
 
 
   const resetModal = () => {
-    console.log('Reset modal chiamato');
     setModalIsOpen(false);
+    fineFlusso();
     setSchedaModalOpen(false);
     setRiepilogoOpen(false);
   
     setTimeout(() => {
       const root = document.getElementById('root');
       if (root) root.removeAttribute('aria-hidden');
-      console.log('aria-hidden rimosso:', root.getAttribute('aria-hidden'));
-  
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-        console.log('Focus spostato su:', searchInputRef.current);
-      }
+      if (searchInputRef.current) searchInputRef.current.focus();
     }, 50);
   
     setFormData({
@@ -350,18 +358,8 @@ accessori: {
     });
   };
 
-  const hasDraftBooking = () => (
-    isAddingNewBooking ||
-    editingIndex !== null ||
-    Boolean(
-      formData.cliente ||
-      formData.codiceFiscale ||
-      formData.patente ||
-      formData.veicolo ||
-      formData.targa ||
-      formData.emailCliente
-    )
-  );
+  // Si chiede conferma solo se nel modulo e' stato scritto o cambiato qualcosa.
+  const hasDraftBooking = () => moduloModificato.current;
 
   const handleRequestCancelBooking = () => {
     if (!hasDraftBooking()) {
@@ -409,6 +407,7 @@ accessori: {
   const closeInfoModal = () => {
     setDettagliPrenotazione(null);
     setInfoModalOpen(false);
+    fineFlusso();
   };
 
   const handleDelete = (index) => {
@@ -492,7 +491,6 @@ accessori: {
         ? "Prenotazione modificata."
         : `Prenotazione salvata. Il ${formattaData(data.dataInizio)} la trovi in Dashboard, sotto «Da consegnare al cliente».`);
       setEditingIndex(null);
-      setIsAddingNewBooking(false);
       resetModal();
     } catch (error) {
       console.error("Errore salvataggio prenotazione:", error);
@@ -512,7 +510,6 @@ accessori: {
     });
     setSelectedDate(giaScelto.dataInizio || null);
     setEditingIndex(null);
-    setIsAddingNewBooking(true);
     setModalIsOpen(true);
   };
 
@@ -520,7 +517,6 @@ accessori: {
   const apriModifica = (prenotazione) => {
     setFormData({ ...prenotazione });
     setEditingIndex(prenotazioni.findIndex((p) => p.id === prenotazione.id));
-    setIsAddingNewBooking(true);
     setSelectedDate(prenotazione.dataInizio);
     setInfoModalOpen(false);
     setModalIsOpen(true);
@@ -543,6 +539,7 @@ accessori: {
     setSchedaModalOpen(false);
     setRiepilogoOpen(false);
     setConsegnaDi(null);
+    fineFlusso();
   };
 
   const handleSaveSchedaVeicolo = () => {
@@ -654,6 +651,7 @@ const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoD
     showFeedback("Prenotazione conclusa con esito registrato.");
     setConcludiModalOpen(false);
     setPrenotazioneDaConcludere(null);
+    fineFlusso();
   } catch (error) {
     console.error("Errore conclusione prenotazione:", error);
     showFeedback(messaggioErrorePrenotazione(error, "Errore durante la conclusione del noleggio."), "error");
@@ -732,7 +730,12 @@ const numeroPagine = Math.ceil(prenotazioniAttiveFiltrate.length / righePerPagin
 
 
 return (
-  <div className="bookings-container">
+  <div
+    className="bookings-container"
+    // Un clic nella pagina (non nelle finestre, che stanno fuori da questo
+    // elemento) vuol dire che si lavora qui: chiudendo non si torna altrove.
+    onClickCapture={(e) => { if (e.currentTarget.contains(e.target)) tornaA.current = null; }}
+  >
   {feedbackMessage && (
       <div className={`feedback ${feedbackType}`}>
         {feedbackType === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
@@ -943,6 +946,7 @@ return (
         clienti={clienti}
         prenotazioni={prenotazioni}
         salvando={salvandoPrenotazione}
+        onModificato={(si) => { moduloModificato.current = si; }}
       />
     </BookingModal>
 
@@ -1026,15 +1030,16 @@ return (
     open={cancelConfirmOpen}
     onCancel={() => setCancelConfirmOpen(false)}
     onConfirm={handleConfirmCancelBooking}
-    title="Annullare Prenotazione?"
-    message="Se annulli ora, i dati inseriti in questa prenotazione verranno scartati. Vuoi continuare?"
-    confirmLabel="Sì, annulla"
+    title="Chiudere senza salvare?"
+    message="Quello che hai scritto in questa prenotazione non verrà salvato."
+    cancelLabel="Continua a scrivere"
+    confirmLabel="Chiudi senza salvare"
     tone="danger"
   />
 
   <ConcludiPrenotazioneModal
   isOpen={concludiModalOpen}
-  onClose={() => setConcludiModalOpen(false)}
+  onClose={() => { setConcludiModalOpen(false); fineFlusso(); }}
   onConferma={confermaConclusioneConDanni}
   prenotazione={prenotazioneDaConcludere}
 />

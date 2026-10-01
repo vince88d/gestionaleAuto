@@ -3,7 +3,7 @@ import Modal from "react-modal";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import itLocale from "@fullcalendar/core/locales/it";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Car, CalendarPlus, Pencil, Trash2, X, Plus, ImageOff, AlertTriangle,
   CalendarDays, Gauge, Palette, Fuel, Cog, DoorOpen, Euro, Wrench, PauseCircle, PlayCircle,
@@ -75,6 +75,7 @@ const VehicleDetailModal = ({
   schedaIniziale = "panoramica",
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
   const [scheda, setScheda] = React.useState("panoramica");
   const [formDannoAperto, setFormDannoAperto] = React.useState(false);
@@ -190,6 +191,7 @@ const VehicleDetailModal = ({
 
     navigate("/booking", {
       state: {
+        da: location.pathname,
         targaSelezionata: veicolo.targa,
         modelloSelezionato: veicolo.modello,
         prezzoSelezionato: veicolo.prezzo,
@@ -206,6 +208,7 @@ const VehicleDetailModal = ({
   const nuovaPrenotazione = () => {
     navigate("/booking", {
       state: {
+        da: location.pathname,
         targaSelezionata: veicolo.targa,
         modelloSelezionato: veicolo.modello,
         prezzoSelezionato: veicolo.prezzo,

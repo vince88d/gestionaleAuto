@@ -113,3 +113,15 @@ test('un\'auto ancora dal cliente oltre la data di fine ha l\'avviso "non ancora
   );
   expect(screen.getByText(/Non rientrata \(doveva il 05\/01\)/)).toBeInTheDocument();
 });
+
+test('dice se e\' stato toccato (per chiedere conferma solo se c\'e\' qualcosa da perdere)', () => {
+  const onModificato = jest.fn();
+  render(
+    <BookingForm onSubmit={jest.fn()} initialValues={{ dataInizio: '2099-03-10' }} availableVehicles={veicoli} veicoli={veicoli}
+      clienti={[]} prenotazioni={[]} onModificato={onModificato} />,
+  );
+  // Aperto dal calendario con il giorno gia' scelto: non e' una modifica.
+  expect(onModificato).toHaveBeenLastCalledWith(false);
+  fireEvent.click(screen.getByRole('button', { name: '1 giorno' }));
+  expect(onModificato).toHaveBeenLastCalledWith(true);
+});
