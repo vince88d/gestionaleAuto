@@ -34,7 +34,7 @@ const VehicleCard = ({
           <Car size={48} className="vcard-foto-vuota" aria-hidden="true" />
         )}
         {veicolo.sospeso ? (
-          <span className="vcard-stato vcard-stato--sospeso">Sospeso dal noleggio</span>
+          <span className="vcard-stato vcard-stato--sospeso">Sospesa · non prenotabile</span>
         ) : (
           <span className={`vcard-stato ${disponibile ? 'vcard-stato--libero' : 'vcard-stato--occupato'}`}>
             {disponibile ? 'Disponibile oggi' : 'Occupato oggi'}
