@@ -17,7 +17,7 @@ const formattaPrezzo = (valore) => (
 // che il cliente vede e paga sul sito) e come listino quando si prenota dal gestionale.
 // Veicoli e tariffe arrivano in tempo reale, così la pagina non rischia di salvare
 // sopra dati vecchi se qualcuno cambia qualcosa da un'altra postazione.
-function Tariffe() {
+function Tariffe({ incorporata = false }) {
   const [veicoliCaricati, setVeicoliCaricati] = useState(false);
   const [tariffeCaricate, setTariffeCaricate] = useState(false);
   const [categorieCaricate, setCategorieCaricate] = useState(false);
@@ -201,16 +201,16 @@ function Tariffe() {
     <div className="tar">
       <div className="tar-toolbar">
         <div>
-          <h1 className="tar-titolo">Tariffe per categoria</h1>
+          {/* Dentro "Tariffe e optional" il titolo della pagina c'e' gia'. */}
+          {!incorporata && <h1 className="tar-titolo">Tariffe per categoria</h1>}
           <span className="tar-sottotitolo">
             {righe.length} {righe.length === 1 ? 'categoria' : 'categorie'} · {Object.keys(salvate).length} {Object.keys(salvate).length === 1 ? 'tariffa salvata' : 'tariffe salvate'}
           </span>
         </div>
       </div>
       <p className="tar-intro">
-        Il prezzo al giorno di ogni categoria. È quello che il cliente vede e paga sul sito, e il listino di
-        partenza quando crei una prenotazione qui (puoi sempre cambiarlo nella singola prenotazione). Le
-        prenotazioni già fatte non cambiano.
+        Il prezzo al giorno di ogni categoria{incorporata ? '' : '. È quello che il cliente vede e paga sul sito, e il listino di partenza quando crei una prenotazione qui'}
+        {' '}(puoi sempre cambiarlo nella singola prenotazione). Le prenotazioni già fatte non cambiano.
       </p>
 
       {righe.length === 0 ? (

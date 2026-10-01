@@ -21,7 +21,7 @@ const VOCI_MENU = [
   { to: '/vehicles', etichetta: 'Veicoli', Icona: Car },
   { to: '/clients', etichetta: 'Clienti', Icona: Users },
   { to: '/booking', etichetta: 'Prenotazioni', Icona: CalendarDays },
-  { to: '/tariffe', etichetta: 'Tariffe', Icona: Euro },
+  { to: '/tariffe', etichetta: 'Tariffe e optional', Icona: Euro },
   { to: '/categorie', etichetta: 'Categorie', Icona: Tags },
   { to: '/archivio-prenotazione', etichetta: 'Archivio', Icona: Archive },
   { to: '/cestino', etichetta: 'Cestino', Icona: Trash2 },
