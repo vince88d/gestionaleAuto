@@ -191,3 +191,8 @@
   .tar-input { width: 100px; }
 }
 .tar-elenco[hidden] { display: none; }
+
+/* Ricerca in alto a destra, come in Veicoli e Categorie */
+.tar-toolbar-azioni { display: flex; justify-content: flex-end; flex: 1 1 280px; }
+.tar-toolbar-azioni .campo-ricerca { max-width: 300px; }
+.campo-ricerca-vuoto + .tar-elenco[hidden] { display: none; }

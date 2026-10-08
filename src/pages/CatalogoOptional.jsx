@@ -143,7 +143,13 @@ function CatalogoOptional() {
     <div className={`opt ${form ? 'opt--con-riquadro' : ''}`}>
       <section className="opt-box">
         <div className="opt-box-testa">
-          <h2 className="opt-box-titolo">Optional a pagamento</h2>
+          <div>
+            <h2 className="opt-box-titolo">Optional a pagamento</h2>
+            {ricerca.trim() && <span className="opt-conteggio">Mostro {mostrati.length} di {ordinati.length}</span>}
+          </div>
+          {ordinati.length > 0 && (
+            <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca optional…" etichetta="Cerca optional" />
+          )}
           <button type="button" className="opt-btn opt-btn--primario" onClick={() => apri(null)}>
             <Plus size={18} aria-hidden="true" /> Aggiungi optional
           </button>
@@ -155,7 +161,6 @@ function CatalogoOptional() {
           </p>
         ) : (
           <>
-          <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca optional…" etichetta="Cerca optional" />
           {mostrati.length === 0 && <p className="campo-ricerca-vuoto">Nessun optional trovato per «{ricerca.trim()}».</p>}
           {mostrati.length > 0 && (
           <table className="opt-tabella">
@@ -163,8 +168,8 @@ function CatalogoOptional() {
               <tr>
                 <th>Optional</th>
                 <th>Prezzo</th>
-                <th>Pezzi</th>
-                <th>Sul sito</th>
+                <th className="opt-col-extra">Pezzi</th>
+                <th className="opt-col-extra">Sul sito</th>
                 <th aria-label="Azioni" />
               </tr>
             </thead>
@@ -178,8 +183,8 @@ function CatalogoOptional() {
                     </span>
                   </td>
                   <td>{testoPrezzo(o)}</td>
-                  <td>{o.pezzi === null ? 'senza limite' : o.pezzi}</td>
-                  <td>
+                  <td className="opt-col-extra">{o.pezzi === null ? 'senza limite' : o.pezzi}</td>
+                  <td className="opt-col-extra">
                     <span className={`opt-etichetta ${o.sulSito ? 'opt-etichetta--si' : ''}`}>
                       {o.sulSito ? 'Sì' : 'Solo al banco'}
                     </span>

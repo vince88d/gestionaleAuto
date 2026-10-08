@@ -63,10 +63,12 @@ test('aggiunge una categoria nuova, ma non un doppione', async () => {
   render(<Categorie />);
   await screen.findByText('City Car');
 
+  fireEvent.click(screen.getByRole('button', { name: /Aggiungi categoria/ }));
   fireEvent.change(screen.getByLabelText('Nuova categoria'), { target: { value: 'city car' } });
   fireEvent.click(screen.getByRole('button', { name: 'Aggiungi' }));
   expect(writeCategorie).not.toHaveBeenCalled();
 
+  if (!screen.queryByLabelText('Nuova categoria')) fireEvent.click(screen.getByRole('button', { name: /Aggiungi categoria/ }));
   fireEvent.change(screen.getByLabelText('Nuova categoria'), { target: { value: 'Furgone' } });
   fireEvent.click(screen.getByRole('button', { name: 'Aggiungi' }));
   await waitFor(() => expect(writeCategorie).toHaveBeenCalledWith(['City Car', 'Furgone']));

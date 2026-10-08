@@ -30,6 +30,7 @@ function Categorie() {
   const [veicoli, setVeicoli] = useState([]);
   const [categorie, setCategorie] = useState([]);
   const [ricerca, setRicerca] = useState('');
+  const [aggiungiAperto, setAggiungiAperto] = useState(false);
   const [tariffe, setTariffe] = useState({});
   const [nuova, setNuova] = useState('');
   const [rinominando, setRinominando] = useState(null); // { vecchia, valore } | null
@@ -83,6 +84,7 @@ function Categorie() {
       const aggiornate = normalizzaElencoCategorie([...categorie, pulita]);
       await writeCategorie(aggiornate);
       setNuova('');
+      setAggiungiAperto(false);
       toast.success('Categoria aggiunta.');
     } catch (err) {
       console.error('Errore aggiunta categoria:', err);
@@ -183,7 +185,17 @@ function Categorie() {
       <div className="cat-toolbar">
         <div>
           <h1 className="cat-titolo">Categorie</h1>
-          <span className="cat-sottotitolo">{conta(categorie.length, 'categoria', 'categorie')}</span>
+          <span className="cat-sottotitolo">
+            {ricerca.trim() ? `Mostro ${categorieMostrate.length} di ${conta(categorie.length, 'categoria', 'categorie')}` : conta(categorie.length, 'categoria', 'categorie')}
+          </span>
+        </div>
+        <div className="cat-toolbar-azioni">
+          {categorie.length > 0 && (
+            <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca categoria…" etichetta="Cerca categoria" />
+          )}
+          <button type="button" className="cat-btn cat-btn--primario cat-btn--alto" onClick={() => setAggiungiAperto(true)} disabled={aggiungiAperto}>
+            <Plus size={16} aria-hidden="true" /> Aggiungi categoria
+          </button>
         </div>
       </div>
       <p className="cat-intro">
@@ -191,12 +203,29 @@ function Categorie() {
         eliminare; rinominarla aggiorna automaticamente i veicoli, le prenotazioni e la tariffa collegati ad essa.
       </p>
 
-      {categorie.length > 0 && (
-        <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca categoria…" etichetta="Cerca categoria" />
+      {aggiungiAperto && (
+        <form className="cat-aggiungi" onSubmit={aggiungi} onKeyDown={(e) => { if (e.key === 'Escape') { setAggiungiAperto(false); setNuova(''); } }}>
+          <input
+            type="text"
+            className="cat-input"
+            aria-label="Nuova categoria"
+            placeholder="Nome della categoria, es. Furgone Merci"
+            value={nuova}
+            onChange={(e) => setNuova(e.target.value)}
+            disabled={inCorso}
+            autoFocus
+          />
+          <button type="submit" className="cat-btn cat-btn--primario" disabled={inCorso || !nuova.trim()}>
+            <Check size={16} aria-hidden="true" /> Aggiungi
+          </button>
+          <button type="button" className="cat-btn" onClick={() => { setAggiungiAperto(false); setNuova(''); }} disabled={inCorso}>
+            Annulla
+          </button>
+        </form>
       )}
 
       {categorie.length === 0 ? (
-        <p className="cat-nota">Nessuna categoria ancora: aggiungine una qui sotto.</p>
+        <p className="cat-nota">Nessuna categoria ancora: premi «Aggiungi categoria».</p>
       ) : categorieMostrate.length === 0 ? (
         <p className="campo-ricerca-vuoto">Nessuna categoria trovata per «{ricerca.trim()}».</p>
       ) : (
@@ -273,20 +302,6 @@ function Categorie() {
         </div>
       )}
 
-      <form className="cat-aggiungi" onSubmit={aggiungi}>
-        <input
-          type="text"
-          className="cat-input"
-          aria-label="Nuova categoria"
-          placeholder="Es. Furgone Merci"
-          value={nuova}
-          onChange={(e) => setNuova(e.target.value)}
-          disabled={inCorso}
-        />
-        <button type="submit" className="cat-btn cat-btn--primario" disabled={inCorso || !nuova.trim()}>
-          <Plus size={16} aria-hidden="true" /> Aggiungi
-        </button>
-      </form>
 
       <ConfirmDialog
         open={richiestaRinomina !== null}

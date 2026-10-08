@@ -208,9 +208,14 @@ function Tariffe({ incorporata = false }) {
           {/* Dentro "Tariffe e optional" il titolo della pagina c'e' gia'. */}
           {!incorporata && <h1 className="tar-titolo">Tariffe per categoria</h1>}
           <span className="tar-sottotitolo">
-            {righe.length} {righe.length === 1 ? 'categoria' : 'categorie'} · {Object.keys(salvate).length} {Object.keys(salvate).length === 1 ? 'tariffa salvata' : 'tariffe salvate'}
+            {ricerca.trim() ? `Mostro ${righeMostrate.length} di ` : ''}{righe.length} {righe.length === 1 ? 'categoria' : 'categorie'} · {Object.keys(salvate).length} {Object.keys(salvate).length === 1 ? 'tariffa salvata' : 'tariffe salvate'}
           </span>
         </div>
+        {righe.length > 0 && (
+          <div className="tar-toolbar-azioni">
+            <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca categoria…" etichetta="Cerca categoria" />
+          </div>
+        )}
       </div>
       <p className="tar-intro">
         Il prezzo al giorno di ogni categoria{incorporata ? '' : '. È quello che il cliente vede e paga sul sito, e il listino di partenza quando crei una prenotazione qui'}
@@ -221,7 +226,6 @@ function Tariffe({ incorporata = false }) {
         <p className="tar-nota">Non ci sono ancora categorie: aggiungine una dalla pagina Categorie.</p>
       ) : (
         <form onSubmit={apriConferma}>
-          <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca categoria…" etichetta="Cerca categoria" />
           {righeMostrate.length === 0 && <p className="campo-ricerca-vuoto">Nessuna categoria trovata per «{ricerca.trim()}».</p>}
           <div className="tar-elenco" hidden={righeMostrate.length === 0}>
             <table className="tar-tabella">
