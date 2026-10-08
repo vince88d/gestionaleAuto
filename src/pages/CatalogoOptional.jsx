@@ -178,29 +178,29 @@ function CatalogoOptional() {
 
           <div className="opt-griglia">
             <label className={`opt-campo ${mostra('prezzo') ? 'opt-campo--errore' : ''}`}>
-              <span>Prezzo (€)</span>
+              <span>{form.modo === 'giorno' ? 'Prezzo al giorno (€)' : 'Prezzo a noleggio (€)'}</span>
               <input type="number" inputMode="decimal" min="0" step="any" value={form.prezzo} onChange={(e) => aggiorna({ prezzo: e.target.value })} />
-              <small className="opt-aiuto">{form.modo === 'giorno' ? 'Per ogni giorno di noleggio.' : 'Una volta sola per noleggio.'}</small>
+              <small className="opt-aiuto">{form.modo === 'giorno' ? 'Quanto paga il cliente per ogni giorno.' : 'Quanto paga il cliente, una volta sola.'}</small>
               {mostra('prezzo') && <span className="opt-errore-campo" role="alert">{errori.prezzo}</span>}
             </label>
             {form.modo === 'giorno' && (
               <label className={`opt-campo ${mostra('massimo') ? 'opt-campo--errore' : ''}`}>
-                <span>Tetto di spesa (€)</span>
+                <span>Non far pagare più di (€)</span>
                 <input type="number" inputMode="decimal" min="0" step="any" value={form.massimo} onChange={(e) => aggiorna({ massimo: e.target.value })} placeholder="nessuno" />
-                <small className="opt-aiuto">Il cliente non paga mai più di così. Vuoto = nessun tetto.</small>
+                <small className="opt-aiuto">Utile per i noleggi lunghi. Vuoto = nessun limite.</small>
                 {mostra('massimo') && <span className="opt-errore-campo" role="alert">{errori.massimo}</span>}
               </label>
             )}
             <label className={`opt-campo ${mostra('maxPerNoleggio') ? 'opt-campo--errore' : ''}`}>
-              <span>Massimo per cliente</span>
+              <span>Quanti ne può prendere un cliente</span>
               <input type="number" min="1" step="1" value={form.maxPerNoleggio} onChange={(e) => aggiorna({ maxPerNoleggio: e.target.value })} />
-              <small className="opt-aiuto">Quanti ne può prendere in un noleggio.</small>
+              <small className="opt-aiuto">Es. 2 seggiolini al massimo per noleggio.</small>
               {mostra('maxPerNoleggio') && <span className="opt-errore-campo" role="alert">{errori.maxPerNoleggio}</span>}
             </label>
             <label className={`opt-campo ${mostra('pezzi') ? 'opt-campo--errore' : ''}`}>
-              <span>Quanti ne avete</span>
+              <span>Quanti ne avete a disposizione</span>
               <input type="number" min="0" step="1" value={form.pezzi} onChange={(e) => aggiorna({ pezzi: e.target.value })} placeholder="senza limite" />
-              <small className="opt-aiuto">In totale, per tutti i clienti. Vuoto = senza limite.</small>
+              <small className="opt-aiuto">In tutto, per tutti i clienti. Vuoto = senza limite.</small>
               {mostra('pezzi') && <span className="opt-errore-campo" role="alert">{errori.pezzi}</span>}
             </label>
           </div>
