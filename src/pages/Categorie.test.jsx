@@ -137,3 +137,17 @@ test('rinominare in un nome già presente è rifiutato subito, senza conferma', 
   expect(rinominaCategoriaOvunque).not.toHaveBeenCalled();
   expect(screen.queryByText('Rinominare la categoria?')).not.toBeInTheDocument();
 });
+
+test('la ricerca filtra le categorie e dice quando non trova nulla', async () => {
+  finteVeicoli([]);
+  finteCategorie(['City Car', 'SUV', 'Berlina']);
+  render(<Categorie />);
+
+  await screen.findByText('City Car');
+  fireEvent.change(screen.getByLabelText('Cerca categoria'), { target: { value: 'su' } });
+  expect(screen.getByText('SUV')).toBeInTheDocument();
+  expect(screen.queryByText('Berlina')).not.toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText('Cerca categoria'), { target: { value: 'xyz' } });
+  expect(screen.getByText(/Nessuna categoria trovata/)).toBeInTheDocument();
+});

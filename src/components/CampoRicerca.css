@@ -1,0 +1,16 @@
+.campo-ricerca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  padding: 0 12px;
+  background: #fff;
+  border: 1px solid #d5dde6;
+  border-radius: 8px;
+  color: #6b7886;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.campo-ricerca:focus-within { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2); }
+.campo-ricerca input { flex: 1; min-width: 0; border: none; outline: none; background: none; padding: 10px 0; font-size: 14px; color: #2c3e50; }
+.campo-ricerca-vuoto { margin: 0; padding: 14px 4px; color: #55616d; font-size: 14px; }

@@ -9,6 +9,7 @@ import {
 } from '../lib/firestoreCategorie';
 import { normalizzaElencoCategorie, puoiEliminareCategoria, contaVeicoliPerCategoria } from '../utils/categorie';
 import ConfirmDialog from '../components/ConfirmDialog';
+import CampoRicerca, { filtraPerTesto } from '../components/CampoRicerca';
 import './Categorie.css';
 
 const formattaPrezzo = (valore) => `${Number(valore).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
@@ -28,6 +29,7 @@ function Categorie() {
   const [errore, setErrore] = useState('');
   const [veicoli, setVeicoli] = useState([]);
   const [categorie, setCategorie] = useState([]);
+  const [ricerca, setRicerca] = useState('');
   const [tariffe, setTariffe] = useState({});
   const [nuova, setNuova] = useState('');
   const [rinominando, setRinominando] = useState(null); // { vecchia, valore } | null
@@ -171,6 +173,8 @@ function Categorie() {
       : `Eliminare "${daEliminare}"? Nessun veicolo la usa, quindi non ci sono altri effetti.`;
   }, [daEliminare, tariffe]);
 
+  const categorieMostrate = filtraPerTesto(categorie, ricerca, (c) => c);
+
   if (errore) return <div className="cat"><p className="cat-errore">{errore}</p></div>;
   if (!veicoliCaricati || !categorieCaricate) return <div className="cat"><p className="cat-nota">Caricamento…</p></div>;
 
@@ -187,8 +191,14 @@ function Categorie() {
         eliminare; rinominarla aggiorna automaticamente i veicoli, le prenotazioni e la tariffa collegati ad essa.
       </p>
 
+      {categorie.length > 0 && (
+        <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca categoria…" etichetta="Cerca categoria" />
+      )}
+
       {categorie.length === 0 ? (
         <p className="cat-nota">Nessuna categoria ancora: aggiungine una qui sotto.</p>
+      ) : categorieMostrate.length === 0 ? (
+        <p className="campo-ricerca-vuoto">Nessuna categoria trovata per «{ricerca.trim()}».</p>
       ) : (
         <div className="cat-elenco">
           <table className="cat-tabella">
@@ -200,7 +210,7 @@ function Categorie() {
               </tr>
             </thead>
             <tbody>
-              {categorie.map((categoria) => {
+              {categorieMostrate.map((categoria) => {
                 const numero = conteggio.get(categoria) || 0;
                 const inRinomina = rinominando?.vecchia === categoria;
                 return (

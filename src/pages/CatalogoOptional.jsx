@@ -6,6 +6,7 @@ import {
   OPTIONAL_VUOTO, validaOptional, testoPrezzo, esempioPrezzo, ordinaOptional,
 } from '../utils/optional';
 import ConfirmDialog from '../components/ConfirmDialog';
+import CampoRicerca, { filtraPerTesto } from '../components/CampoRicerca';
 import './CatalogoOptional.css';
 
 // Dal catalogo salvato ai campi del form (numeri come testo, vuoti per "nessuno").
@@ -42,7 +43,9 @@ function CatalogoOptional() {
     },
   ), []);
 
+  const [ricerca, setRicerca] = useState('');
   const ordinati = useMemo(() => ordinaOptional(elenco), [elenco]);
+  const mostrati = useMemo(() => filtraPerTesto(ordinati, ricerca, (o) => `${o.nome} ${o.descrizione || ''}`), [ordinati, ricerca]);
   const errori = form ? validaOptional(form, elenco, form.id || null) : {};
   const mostra = (campo) => tentato && errori[campo];
   const aggiorna = (campi) => setForm((f) => ({ ...f, ...campi }));
@@ -105,6 +108,10 @@ function CatalogoOptional() {
             Nessun optional ancora. Aggiungi quelli che offrite: per esempio seggiolino, catene, navigatore.
           </p>
         ) : (
+          <>
+          <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca optional…" etichetta="Cerca optional" />
+          {mostrati.length === 0 && <p className="campo-ricerca-vuoto">Nessun optional trovato per «{ricerca.trim()}».</p>}
+          {mostrati.length > 0 && (
           <table className="opt-tabella">
             <thead>
               <tr>
@@ -116,7 +123,7 @@ function CatalogoOptional() {
               </tr>
             </thead>
             <tbody>
-              {ordinati.map((o) => (
+              {mostrati.map((o) => (
                 <tr key={o.id} className={form?.id === o.id ? 'opt-riga--aperta' : ''}>
                   <td>
                     <span className="opt-nome">{o.nome}</span>
@@ -140,6 +147,8 @@ function CatalogoOptional() {
               ))}
             </tbody>
           </table>
+          )}
+          </>
         )}
         <p className="opt-nota">
           Il prezzo pagato resta salvato in ogni prenotazione: se cambi il listino, le prenotazioni già fatte non cambiano.
@@ -185,7 +194,7 @@ function CatalogoOptional() {
             </label>
             {form.modo === 'giorno' && (
               <label className={`opt-campo ${mostra('massimo') ? 'opt-campo--errore' : ''}`}>
-                <span>Non far pagare più di (€)</span>
+                <span>Non far pagare più di (€)</span>
                 <input type="number" inputMode="decimal" min="0" step="any" value={form.massimo} onChange={(e) => aggiorna({ massimo: e.target.value })} placeholder="nessuno" />
                 <small className="opt-aiuto">Utile per i noleggi lunghi. Vuoto = nessun limite.</small>
                 {mostra('massimo') && <span className="opt-errore-campo" role="alert">{errori.massimo}</span>}

@@ -7,6 +7,7 @@ import { ascoltaCategorie } from '../lib/firestoreCategorie';
 import { suggerisciTariffe, tariffeDaCampi, differenzeTariffe } from '../utils/tariffe';
 import { normalizzaElencoCategorie, contaVeicoliPerCategoria } from '../utils/categorie';
 import ConfirmDialog from '../components/ConfirmDialog';
+import CampoRicerca, { filtraPerTesto } from '../components/CampoRicerca';
 import './Tariffe.css';
 
 const formattaPrezzo = (valore) => (
@@ -22,6 +23,7 @@ function Tariffe({ incorporata = false }) {
   const [tariffeCaricate, setTariffeCaricate] = useState(false);
   const [categorieCaricate, setCategorieCaricate] = useState(false);
   const [errore, setErrore] = useState('');
+  const [ricerca, setRicerca] = useState('');
   const [salvataggio, setSalvataggio] = useState(false);
   const [veicoli, setVeicoli] = useState([]);
   const [categorieList, setCategorieList] = useState([]);
@@ -73,6 +75,8 @@ function Tariffe({ incorporata = false }) {
     () => tutteLeCategorie.map((categoria) => ({ categoria, numero: conteggioVeicoli.get(categoria) || 0 })),
     [tutteLeCategorie, conteggioVeicoli],
   );
+
+  const righeMostrate = useMemo(() => filtraPerTesto(righe, ricerca, (r) => r.categoria), [righe, ricerca]);
 
   const categorieAttuali = useMemo(() => new Set(tutteLeCategorie), [tutteLeCategorie]);
   const suggerite = useMemo(() => suggerisciTariffe(veicoli), [veicoli]);
@@ -217,7 +221,9 @@ function Tariffe({ incorporata = false }) {
         <p className="tar-nota">Non ci sono ancora categorie: aggiungine una dalla pagina Categorie.</p>
       ) : (
         <form onSubmit={apriConferma}>
-          <div className="tar-elenco">
+          <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca categoria…" etichetta="Cerca categoria" />
+          {righeMostrate.length === 0 && <p className="campo-ricerca-vuoto">Nessuna categoria trovata per «{ricerca.trim()}».</p>}
+          <div className="tar-elenco" hidden={righeMostrate.length === 0}>
             <table className="tar-tabella">
               <thead>
                 <tr>
@@ -228,7 +234,7 @@ function Tariffe({ incorporata = false }) {
                 </tr>
               </thead>
               <tbody>
-                {righe.map(({ categoria, numero }) => (
+                {righeMostrate.map(({ categoria, numero }) => (
                   <tr key={categoria} className={conflitti.includes(categoria) ? 'tar-riga--conflitto' : ''}>
                     <td className="tar-categoria">{categoria}</td>
                     <td>

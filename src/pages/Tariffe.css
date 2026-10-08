@@ -190,3 +190,4 @@
   .tar-tabella td { padding: 9px 10px; }
   .tar-input { width: 100px; }
 }
+.tar-elenco[hidden] { display: none; }
