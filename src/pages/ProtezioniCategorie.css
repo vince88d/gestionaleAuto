@@ -43,3 +43,11 @@
 .opt--con-riquadro .pro-testi { grid-template-columns: 1fr; }
 @media (max-width: 900px) { .pro-testi { grid-template-columns: 1fr; } }
 .pro-box-testi .opt-btn:disabled { cursor: not-allowed; }
+
+/* Copia su altre categorie */
+.pro-link { align-self: flex-start; min-height: 36px; margin: 0; padding: 0; border: none; background: none; color: #1f6fb2; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.pro-link:hover { text-decoration: underline; }
+.pro-copia { margin: 0; }
+.pro-copia legend { padding: 0 4px; }
+.pro-copia-azioni { display: flex; gap: 16px; }
+.pro-avviso { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fdf0d5; color: #6b4200; font-size: 14px; line-height: 1.4; }

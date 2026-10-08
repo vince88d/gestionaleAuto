@@ -1,5 +1,7 @@
 import { db, auth } from '../components/firebase';
-import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import {
+  doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc, deleteField, FieldPath,
+} from 'firebase/firestore';
 import { normalizzaProtezioni } from '../utils/protezioni';
 
 // Protezioni e cauzione per categoria, lette anche dal sito per mostrarle al
@@ -30,4 +32,16 @@ export async function salvaProtezioni(categorie, protezione) {
 // Testi uguali per tutte le categorie (sito e contratto).
 export async function salvaTestiProtezioni({ nonCopre, cauzioneTesto }) {
   await setDoc(doc(db, ...PROTEZIONI_DOC), { nonCopre, cauzioneTesto, ...firma() }, { merge: true });
+}
+
+// Toglie le protezioni di una categoria appena eliminata dall'elenco.
+// FieldPath perche' il nome della categoria puo' contenere spazi o punti.
+export async function rimuoviProtezioniCategoria(categoria) {
+  const ref = doc(db, ...PROTEZIONI_DOC);
+  const snapshot = await getDoc(ref);
+  const perCategoria = snapshot.data()?.perCategoria;
+  if (!perCategoria || !Object.prototype.hasOwnProperty.call(perCategoria, categoria)) return false;
+  const f = firma();
+  await updateDoc(ref, new FieldPath('perCategoria', categoria), deleteField(), 'aggiornatoIl', f.aggiornatoIl, 'aggiornatoDa', f.aggiornatoDa);
+  return true;
 }

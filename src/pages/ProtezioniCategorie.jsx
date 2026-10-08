@@ -45,6 +45,8 @@ function ProtezioniCategorie() {
   const [tentato, setTentato] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [testi, setTesti] = useState(null); // null = come salvati
+  const [copiaAperta, setCopiaAperta] = useState(false);
+  const [copiaSu, setCopiaSu] = useState([]); // altre categorie a cui applicare gli stessi valori
 
   const segnalaErrore = (cosa) => (err) => {
     console.error(`Errore lettura ${cosa}:`, err);
@@ -65,6 +67,8 @@ function ProtezioniCategorie() {
     setAperta(categoria);
     setForm(perForm(dati?.perCategoria[categoria]));
     setTentato(false);
+    setCopiaAperta(false);
+    setCopiaSu([]);
   };
   const chiudi = () => { setAperta(null); setForm(null); };
 
@@ -79,8 +83,10 @@ function ProtezioniCategorie() {
     if (Object.keys(errori).length > 0) return;
     setSalvando(true);
     try {
-      await salvaProtezioni([aperta], preparaProtezione(form));
-      toast.success(`Protezioni di ${aperta} salvate.`);
+      await salvaProtezioni([aperta, ...copiaSu], preparaProtezione(form));
+      toast.success(copiaSu.length > 0
+        ? `Protezioni salvate su ${copiaSu.length + 1} categorie.`
+        : `Protezioni di ${aperta} salvate.`);
       chiudi();
     } catch (err) {
       console.error('Errore salvataggio protezioni:', err);
@@ -104,6 +110,10 @@ function ProtezioniCategorie() {
       toast.error('Testi non salvati, riprova.');
     }
   };
+
+  const altre = aperta ? categorie.filter((c) => c !== aperta) : [];
+  const giaImpostate = copiaSu.filter((c) => protezioneImpostata(dati?.perCategoria[c]));
+  const scegliCopia = (c, si) => setCopiaSu((prima) => (si ? [...prima, c] : prima.filter((x) => x !== c)));
 
   if (errore) return <p className="opt-errore">{errore}</p>;
   if (!dati || !caricati.veicoli || !caricati.categorie) return <p className="opt-nota">Caricamento…</p>;
@@ -283,10 +293,39 @@ function ProtezioniCategorie() {
 
           {esempioProtezione(form) && <p className="opt-esempio">{esempioProtezione(form)}</p>}
 
+          {altre.length > 0 && !copiaAperta && (
+            <button type="button" className="pro-link" onClick={() => setCopiaAperta(true)}>
+              Copia questi valori su altre categorie…
+            </button>
+          )}
+          {copiaAperta && (
+            <fieldset className="pro-sezione pro-copia">
+              <legend className="pro-sezione-titolo">Applica gli stessi valori anche a</legend>
+              <div className="pro-copia-azioni">
+                <button type="button" className="pro-link" onClick={() => setCopiaSu(altre)}>Tutte</button>
+                <button type="button" className="pro-link" onClick={() => setCopiaSu([])}>Nessuna</button>
+              </div>
+              <div className="pro-coperture">
+                {altre.map((c) => (
+                  <label key={c} className={`pro-chip ${copiaSu.includes(c) ? 'pro-chip--si' : ''}`}>
+                    <input type="checkbox" checked={copiaSu.includes(c)} onChange={(e) => scegliCopia(c, e.target.checked)} />
+                    {c}
+                  </label>
+                ))}
+              </div>
+              {giaImpostate.length > 0 && (
+                <p className="pro-avviso" role="status">
+                  {giaImpostate.length === 1 ? `${giaImpostate[0]} ha già i suoi valori:` : `${giaImpostate.join(', ')} hanno già i loro valori:`}
+                  {' '}salvando vengono sostituiti.
+                </p>
+              )}
+            </fieldset>
+          )}
+
           <div className="opt-riquadro-piede">
             <button type="button" className="opt-btn opt-btn--largo" onClick={chiudi} disabled={salvando}>Annulla</button>
             <button type="submit" className="opt-btn opt-btn--largo opt-btn--salva" disabled={salvando}>
-              {salvando ? 'Salvo…' : 'Salva'}
+              {salvando ? 'Salvo…' : copiaSu.length > 0 ? `Salva su ${copiaSu.length + 1} categorie` : 'Salva'}
             </button>
           </div>
         </form>

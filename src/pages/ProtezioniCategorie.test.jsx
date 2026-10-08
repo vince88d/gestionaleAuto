@@ -79,3 +79,18 @@ test('i testi comuni si salvano solo se cambiati', async () => {
   fireEvent.click(bottone);
   await waitFor(() => expect(salvaTestiProtezioni).toHaveBeenCalledWith({ nonCopre: 'Chiavi perse, ebbrezza', cauzioneTesto: '' }));
 });
+
+test('copia gli stessi valori su altre categorie, avvisando se ne sostituisce', async () => {
+  render(<ProtezioniCategorie />);
+  fireEvent.click(within(riga('City Car')).getByRole('button', { name: /Modifica/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Copia questi valori su altre categorie/ }));
+  fireEvent.click(screen.getByLabelText('SUV'));
+  fireEvent.click(screen.getByLabelText('Furgone'));
+  expect(screen.getByText(/Furgone ha già i suoi valori: salvando vengono sostituiti/)).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Salva su 3 categorie' }));
+  await waitFor(() => expect(salvaProtezioni).toHaveBeenCalledWith(
+    ['City Car', 'SUV', 'Furgone'],
+    expect.objectContaining({ base: { danni: 1200, furto: 1500, cauzione: 500 } }),
+  ));
+});

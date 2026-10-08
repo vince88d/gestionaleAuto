@@ -51,7 +51,8 @@ export async function writeCategorie(elenco) {
 
 // Rinomina una categoria ovunque compaia: elenco categorie, veicoli,
 // prenotazioni (tutte, anche quelle già assegnate: la disponibilità legge per
-// prima cosa il loro campo `categoria`) e l'eventuale tariffa. Un unico batch,
+// prima cosa il loro campo `categoria`), l'eventuale tariffa e le protezioni
+// (franchigie e cauzione). Un unico batch,
 // o va tutto a buon fine o niente (evita di lasciare nomi diversi in giro).
 // Nota: gli `holds` temporanei non sono inclusi perché non scrivibili dal
 // client (solo le Cloud Functions), rischio trascurabile: scadono da soli
@@ -65,10 +66,11 @@ export async function rinominaCategoriaOvunque(vecchia, nuova, elencoAggiornato)
     aggiornatoDa: chi,
   });
 
-  const [veicoliSnap, prenotazioniSnap, tariffeSnap] = await Promise.all([
+  const [veicoliSnap, prenotazioniSnap, tariffeSnap, protezioniSnap] = await Promise.all([
     getDocs(query(collection(db, 'veicoli'), where('categoria', '==', vecchia))),
     getDocs(query(collection(db, 'prenotazioni'), where('categoria', '==', vecchia))),
     getDoc(doc(db, 'impostazioni', 'tariffe')),
+    getDoc(doc(db, 'impostazioni', 'protezioni')),
   ]);
 
   veicoliSnap.forEach((d) => batch.update(d.ref, { categoria: nuova }));
@@ -80,6 +82,16 @@ export async function rinominaCategoriaOvunque(vecchia, nuova, elencoAggiornato)
     aggiornate[nuova] = aggiornate[vecchia];
     delete aggiornate[vecchia];
     batch.set(doc(db, 'impostazioni', 'tariffe'), { prezziGiorno: aggiornate, aggiornatoIl: serverTimestamp(), aggiornatoDa: chi });
+  }
+
+  // Protezioni: si riscrive il documento appena letto con la chiave spostata
+  // (i testi comuni restano com'erano).
+  const protezioni = protezioniSnap.data();
+  if (protezioni?.perCategoria && Object.prototype.hasOwnProperty.call(protezioni.perCategoria, vecchia)) {
+    const perCategoria = { ...protezioni.perCategoria };
+    perCategoria[nuova] = perCategoria[vecchia];
+    delete perCategoria[vecchia];
+    batch.set(doc(db, 'impostazioni', 'protezioni'), { ...protezioni, perCategoria, aggiornatoIl: serverTimestamp(), aggiornatoDa: chi });
   }
 
   await batch.commit();

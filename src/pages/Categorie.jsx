@@ -8,6 +8,8 @@ import {
   ascoltaCategorie, writeCategorie, rinominaCategoriaOvunque, rimuoviTariffaCategoria,
 } from '../lib/firestoreCategorie';
 import { normalizzaElencoCategorie, puoiEliminareCategoria, contaVeicoliPerCategoria } from '../utils/categorie';
+import { ascoltaProtezioni, rimuoviProtezioniCategoria } from '../lib/firestoreProtezioni';
+import { protezioneImpostata } from '../utils/protezioni';
 import ConfirmDialog from '../components/ConfirmDialog';
 import CampoRicerca, { filtraPerTesto } from '../components/CampoRicerca';
 import './Categorie.css';
@@ -32,6 +34,7 @@ function Categorie() {
   const [ricerca, setRicerca] = useState('');
   const [aggiungiAperto, setAggiungiAperto] = useState(false);
   const [tariffe, setTariffe] = useState({});
+  const [protezioni, setProtezioni] = useState({});
   const [nuova, setNuova] = useState('');
   const [rinominando, setRinominando] = useState(null); // { vecchia, valore } | null
   const [richiestaRinomina, setRichiestaRinomina] = useState(null); // { vecchia, nuova } | null
@@ -58,6 +61,12 @@ function Categorie() {
     (dati) => setTariffe(dati),
     (err) => console.error('Errore lettura tariffe:', err),
   ), []);
+
+  useEffect(() => ascoltaProtezioni(
+    (dati) => setProtezioni(dati.perCategoria),
+    (err) => console.error('Errore lettura protezioni:', err),
+  ), []);
+  const haProtezioni = (categoria) => protezioneImpostata(protezioni[categoria]);
 
   const conteggio = useMemo(() => contaVeicoliPerCategoria(veicoli), [veicoli]);
   const prenotazioniPerCategoria = useMemo(() => {
@@ -141,6 +150,7 @@ function Categorie() {
     try {
       const aggiornate = categorie.filter((c) => c !== categoria);
       await rimuoviTariffaCategoria(categoria);
+      await rimuoviProtezioniCategoria(categoria);
       await writeCategorie(aggiornate);
       toast.success('Categoria eliminata.');
     } catch (err) {
@@ -157,23 +167,28 @@ function Categorie() {
     const numVeicoli = conteggio.get(vecchia) || 0;
     const numPrenotazioni = prenotazioniPerCategoria.get(vecchia) || 0;
     const haTariffa = tariffe[vecchia] !== undefined;
-    if (numVeicoli === 0 && numPrenotazioni === 0 && !haTariffa) {
-      return `Nessun veicolo, prenotazione o tariffa collegati: rinomino solo "${vecchia}" in "${nuovoNome}" nell'elenco.`;
+    const conProtezioni = haProtezioni(vecchia);
+    if (numVeicoli === 0 && numPrenotazioni === 0 && !haTariffa && !conProtezioni) {
+      return `Nessun veicolo, prenotazione, tariffa o protezione collegati: rinomino solo "${vecchia}" in "${nuovoNome}" nell'elenco.`;
     }
     const parti = [];
     if (numVeicoli > 0) parti.push(conta(numVeicoli, 'veicolo', 'veicoli'));
     if (numPrenotazioni > 0) parti.push(conta(numPrenotazioni, 'prenotazione', 'prenotazioni'));
     const base = parti.length > 0 ? `Aggiorna ${parti.join(' e ')} che usano "${vecchia}"` : `Rinomina "${vecchia}"`;
-    return `${base}${haTariffa ? ', e sposta la tariffa collegata' : ''} in "${nuovoNome}".`;
-  }, [richiestaRinomina, conteggio, prenotazioniPerCategoria, tariffe]);
+    const collegati = [haTariffa && 'la tariffa', conProtezioni && 'le protezioni'].filter(Boolean).join(' e ');
+    return `${base}${collegati ? `, e sposta ${collegati}` : ''} in "${nuovoNome}".`;
+  }, [richiestaRinomina, conteggio, prenotazioniPerCategoria, tariffe, protezioni]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const messaggioEliminazione = useMemo(() => {
     if (!daEliminare) return '';
-    const haTariffa = tariffe[daEliminare] !== undefined;
-    return haTariffa
-      ? `Eliminare "${daEliminare}"? Nessun veicolo la usa, ma toglie anche la tariffa salvata (${formattaPrezzo(tariffe[daEliminare])} al giorno) collegata a questa categoria.`
+    const toglie = [
+      tariffe[daEliminare] !== undefined && `la tariffa salvata (${formattaPrezzo(tariffe[daEliminare])} al giorno)`,
+      haProtezioni(daEliminare) && 'le protezioni e la cauzione impostate',
+    ].filter(Boolean);
+    return toglie.length > 0
+      ? `Eliminare "${daEliminare}"? Nessun veicolo la usa, ma toglie anche ${toglie.join(' e ')} di questa categoria.`
       : `Eliminare "${daEliminare}"? Nessun veicolo la usa, quindi non ci sono altri effetti.`;
-  }, [daEliminare, tariffe]);
+  }, [daEliminare, tariffe, protezioni]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const categorieMostrate = filtraPerTesto(categorie, ricerca, (c) => c);
 
