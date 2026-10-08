@@ -187,8 +187,8 @@
 .opt-campo input[inputmode=decimal]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .opt-campo input[inputmode=decimal] { -moz-appearance: textfield; appearance: textfield; }
 
-/* Etichette sopra i campi: piccole e grigie, i campi restano allineati */
-.opt-campo > span:first-child, .opt-modo legend { font-size: 13px; font-weight: 500; color: #5b6773; line-height: 1.3; }
+/* Etichette: scure, 14px, semi-grassetto (contrasto alto). Spiegazioni: piu' piccole e grigie. */
+.opt-campo > span:first-child, .opt-modo legend { font-size: 14px; font-weight: 600; color: #26323d; line-height: 1.3; }
 .opt-campo em { font-size: 13px; }
-.opt-griglia .opt-campo > span:first-child { min-height: 34px; display: flex; align-items: flex-end; }
-.opt-aiuto { font-size: 12.5px; color: #6b7886; }
+.opt-griglia .opt-campo > span:first-child { min-height: 37px; display: flex; align-items: flex-end; }
+.opt-aiuto { font-size: 13px; font-weight: 400; color: #55616d; line-height: 1.35; }
