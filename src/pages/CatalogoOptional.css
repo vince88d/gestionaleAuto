@@ -184,6 +184,6 @@
 .opt-aiuto { display: block; font-size: 13px; font-weight: 400; color: #5b6773; line-height: 1.3; }
 
 .opt-campo > span:first-child { min-height: 22px; }
-.opt-campo input[type=number]::-webkit-outer-spin-button,
-.opt-campo input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.opt-campo input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+.opt-campo input[inputmode=decimal]::-webkit-outer-spin-button,
+.opt-campo input[inputmode=decimal]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.opt-campo input[inputmode=decimal] { -moz-appearance: textfield; appearance: textfield; }
