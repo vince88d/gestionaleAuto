@@ -78,7 +78,8 @@ export function normalizzaProtezioni(dati = {}) {
 export const protezioneImpostata = (p) => Boolean(p) && IMPORTI.every((k) => typeof p.base?.[k] === 'number');
 
 // Campi del form (testo) da una protezione salvata, o vuoti per una nuova.
-const testo = (n) => (n === null || n === undefined ? '' : String(n));
+// Nelle caselle gli importi si leggono all'italiana ("1.200", "12,5"); leggiEuro li rilegge.
+const testo = (n) => (n === null || n === undefined ? '' : n.toLocaleString('it-IT', { maximumFractionDigits: 2, useGrouping: 'always' }));
 export function perForm(p) {
   const n = normalizzaProtezione(p || {});
   return {
@@ -140,7 +141,8 @@ export function prezzoProtezione(protezione, giorni) {
   return arrotonda(Math.min(t.prezzoGiorno * Math.max(1, giorni || 1), t.massimo ?? Infinity));
 }
 
-export const euro = (n) => `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
+// "1.200 €": il punto delle migliaia sempre (in italiano di serie parte da 10.000).
+export const euro = (n) => `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2, useGrouping: 'always' })} €`;
 
 // "Esempio per 3 giorni: Totale +36 €. Con la Totale, in caso di danno il
 // cliente paga al massimo 0 €."
@@ -150,6 +152,6 @@ export function esempioProtezione(form, giorni = 3) {
   const prezzo = prezzoProtezione(p, giorni);
   if (!(prezzo > 0)) return '';
   const danni = p.totale.danni;
-  return `Esempio per ${giorni} giorni: Base inclusa, Totale +${euro(prezzo)}.`
-    + (typeof danni === 'number' ? ` Con la Totale, in caso di danno il cliente paga al massimo ${euro(danni)}.` : '');
+  return `Esempio per ${giorni} giorni: Base inclusa, Totale\u00a0+${euro(prezzo).replace(' ', '\u00a0')}.`
+    + (typeof danni === 'number' ? ` Con la Totale, in caso di danno il cliente paga al massimo ${euro(danni).replace(' ', '\u00a0')}.` : '');
 }

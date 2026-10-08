@@ -81,7 +81,7 @@ test('dal form ai dati e ritorno', () => {
   const p = preparaProtezione(formOk());
   expect(p.base).toEqual({ danni: 1200, furto: 1500, cauzione: 500 });
   expect(p.totale).toMatchObject({ offerta: true, prezzoGiorno: 12, massimo: 120, danni: 0 });
-  expect(perForm(p).base.danni).toBe('1200');
+  expect(perForm(p).base.danni).toBe('1.200');
   expect(perForm(undefined).totale.offerta).toBe(false);
 });
 
@@ -93,7 +93,7 @@ test('prezzo della Totale: al giorno, fino al tetto; 0 se non offerta', () => {
 });
 
 test('esempio per il form', () => {
-  expect(esempioProtezione(formOk())).toBe(
+  expect(esempioProtezione(formOk()).replace(/\u00a0/g, ' ')).toBe(
     'Esempio per 3 giorni: Base inclusa, Totale +36 €. Con la Totale, in caso di danno il cliente paga al massimo 0 €.',
   );
   const f = formOk();

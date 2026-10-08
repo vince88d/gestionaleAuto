@@ -4,7 +4,7 @@ import TariffeEOptional from './TariffeEOptional';
 
 jest.mock('../lib/firestoreVeicoli', () => ({ ascoltaVeicoli: (cb) => { cb([{ id: '1', categoria: 'SUV', prezzo: 35 }]); return () => {}; } }));
 jest.mock('../lib/firestoreTariffe', () => ({ ascoltaTariffe: (cb) => { cb({ SUV: 35 }); return () => {}; }, writeTariffe: jest.fn() }));
-jest.mock('../lib/firestoreCategorie', () => ({ ascoltaCategorie: (cb) => { cb(['SUV']); return () => {}; } }));
+jest.mock('../lib/firestoreCategorie', () => ({ ascoltaCategorie: (cb) => { cb(['SUV', 'Berlina']); return () => {}; } }));
 jest.mock('../lib/firestoreOptional', () => ({ ascoltaOptional: (cb) => { cb([]); return () => {}; }, salvaOptional: jest.fn(), togliOptional: jest.fn() }));
 jest.mock('react-toastify', () => ({ toast: { success: jest.fn(), error: jest.fn(), info: jest.fn() } }));
 
@@ -27,4 +27,12 @@ test('cambiando scheda con prezzi non salvati chiede conferma', async () => {
   fireEvent.click(screen.getByRole('tab', { name: 'Optional' }));
   fireEvent.click(screen.getByRole('button', { name: 'Esci senza salvare' }));
   expect(screen.getByText('Optional a pagamento')).toBeInTheDocument();
+});
+
+test('i prezzi solo proposti (mai toccati) non fanno comparire l\'avviso', async () => {
+  // SUV ha una tariffa salvata; "Berlina" no: il suo campo e' proposto, non cambiato dal gestore.
+  render(<TariffeEOptional />);
+  await waitFor(() => expect(screen.getByLabelText('Prezzo al giorno SUV').value).toBe('35'));
+  fireEvent.click(screen.getByRole('tab', { name: 'Optional' }));
+  expect(screen.queryByText('Prezzi non salvati')).not.toBeInTheDocument();
 });
