@@ -53,3 +53,21 @@ test('nome gia\' usato e "togli dall\'elenco" con conferma', async () => {
   fireEvent.click(screen.getAllByRole('button', { name: "Togli dall'elenco" }).pop());
   await waitFor(() => expect(togliOptional).toHaveBeenCalledWith('o1'));
 });
+
+test('le quantita\' si cambiano di uno in uno con − e +', () => {
+  render(<CatalogoOptional />);
+  fireEvent.click(screen.getByRole('button', { name: /Aggiungi optional/ }));
+  const perCliente = screen.getByLabelText(/^Quanti ne può prendere/);
+  expect(perCliente).toHaveValue('1');
+  expect(screen.getByRole('button', { name: 'Uno in meno, per cliente' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Uno in più, per cliente' }));
+  expect(perCliente).toHaveValue('2');
+
+  // "A disposizione" vuoto = senza limite: + parte da 1, − scende fino a 0.
+  const pezzi = screen.getByLabelText(/^Quanti ne avete/);
+  expect(pezzi).toHaveValue('');
+  fireEvent.click(screen.getByRole('button', { name: 'Uno in più, a disposizione' }));
+  expect(pezzi).toHaveValue('1');
+  fireEvent.click(screen.getByRole('button', { name: 'Uno in meno, a disposizione' }));
+  expect(pezzi).toHaveValue('0');
+});

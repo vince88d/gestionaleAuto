@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Plus, Pencil, X } from 'lucide-react';
+import { Plus, Minus, Pencil, X } from 'lucide-react';
 import { ascoltaOptional, salvaOptional, togliOptional } from '../lib/firestoreOptional';
 import {
   OPTIONAL_VUOTO, validaOptional, testoPrezzo, esempioPrezzo, ordinaOptional,
@@ -21,6 +21,52 @@ const perForm = (o) => ({
   pezzi: o.pezzi === null || o.pezzi === undefined ? '' : String(o.pezzi),
   sulSito: o.sulSito !== false,
 });
+
+// Un campo del form: titolo, riga di aiuto, casella, eventuale errore (in
+// quest'ordine, come nelle linee guida GOV.UK). Una sola colonna, cosi' le
+// caselle restano sempre allineate.
+function Campo({ id, titolo, aiuto, errore, children }) {
+  return (
+    <div className={`opt-campo ${errore ? 'opt-campo--errore' : ''}`}>
+      <label htmlFor={id} className="opt-titolo-campo">{titolo}</label>
+      {aiuto && <span id={`${id}-aiuto`} className="opt-aiuto">{aiuto}</span>}
+      {children}
+      {errore && <span className="opt-errore-campo" role="alert">{errore}</span>}
+    </div>
+  );
+}
+
+// Importo in euro: il simbolo sta dentro la casella, si scrive a mano (anche i centesimi).
+function CampoEuro({ id, valore, onChange, placeholder }) {
+  return (
+    <div className="opt-euro">
+      <input id={id} className="opt-input" type="text" inputMode="decimal" value={valore} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-describedby={`${id}-aiuto`} />
+      <span className="opt-euro-simbolo" aria-hidden="true">€</span>
+    </div>
+  );
+}
+
+// Quantita': pulsanti − e + grandi, di uno in uno. Vuoto resta "senza limite"
+// finche' non si preme +.
+function Contatore({ id, nome, valore, minimo, onChange, placeholder }) {
+  const numero = valore === '' ? null : Number(valore);
+  const meno = () => {
+    if (numero === null || Number.isNaN(numero)) return;
+    onChange(String(Math.max(minimo, numero - 1)));
+  };
+  const piu = () => onChange(String(numero === null || Number.isNaN(numero) ? Math.max(minimo, 1) : numero + 1));
+  return (
+    <div className="opt-contatore">
+      <button type="button" className="opt-contatore-btn" onClick={meno} disabled={numero === null || numero <= minimo} aria-label={`Uno in meno, ${nome}`}>
+        <Minus size={18} aria-hidden="true" />
+      </button>
+      <input id={id} className="opt-input" type="text" inputMode="numeric" value={valore} onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ''))} placeholder={placeholder} aria-describedby={`${id}-aiuto`} />
+      <button type="button" className="opt-contatore-btn" onClick={piu} aria-label={`Uno in più, ${nome}`}>
+        <Plus size={18} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
 
 // Scheda "Optional" della pagina Tariffe e optional: l'elenco degli extra a
 // pagamento (seggiolino, catene...) lo decide lo staff. A destra il riquadro
@@ -164,19 +210,16 @@ function CatalogoOptional() {
             </button>
           </div>
 
-          <label className={`opt-campo ${mostra('nome') ? 'opt-campo--errore' : ''}`}>
-            <span>Nome</span>
-            <input value={form.nome} onChange={(e) => aggiorna({ nome: e.target.value })} placeholder="Es. Seggiolino bambino" />
-            {mostra('nome') && <span className="opt-errore-campo" role="alert">{errori.nome}</span>}
-          </label>
+          <Campo id="opt-nome" titolo="Nome" errore={mostra('nome') && errori.nome}>
+            <input id="opt-nome" className="opt-input" value={form.nome} onChange={(e) => aggiorna({ nome: e.target.value })} placeholder="Es. Seggiolino bambino" />
+          </Campo>
 
-          <label className="opt-campo">
-            <span>Descrizione breve <em>(si vede sul sito)</em></span>
-            <input value={form.descrizione} onChange={(e) => aggiorna({ descrizione: e.target.value })} placeholder="Es. 0–4 anni, omologato" maxLength={80} />
-          </label>
+          <Campo id="opt-descrizione" titolo="Descrizione breve" aiuto="Si vede sul sito, sotto il nome.">
+            <input id="opt-descrizione" className="opt-input" value={form.descrizione} onChange={(e) => aggiorna({ descrizione: e.target.value })} placeholder="Es. 0–4 anni, omologato" maxLength={80} aria-describedby="opt-descrizione-aiuto" />
+          </Campo>
 
           <fieldset className="opt-modo">
-            <legend>Come si paga</legend>
+            <legend className="opt-titolo-campo">Come si paga</legend>
             {[['giorno', 'Al giorno'], ['noleggio', 'A noleggio']].map(([valore, testo]) => (
               <label key={valore} className={`opt-scelta ${form.modo === valore ? 'opt-scelta--attiva' : ''}`}>
                 <input type="radio" name="opt-modo" value={valore} checked={form.modo === valore} onChange={() => aggiorna({ modo: valore })} />
@@ -185,34 +228,28 @@ function CatalogoOptional() {
             ))}
           </fieldset>
 
-          <div className="opt-griglia">
-            <label className={`opt-campo ${mostra('prezzo') ? 'opt-campo--errore' : ''}`}>
-              <span>{form.modo === 'giorno' ? 'Prezzo al giorno (€)' : 'Prezzo a noleggio (€)'}</span>
-              <input type="number" inputMode="decimal" min="0" step="any" value={form.prezzo} onChange={(e) => aggiorna({ prezzo: e.target.value })} />
-              <small className="opt-aiuto">{form.modo === 'giorno' ? 'Quanto paga il cliente per ogni giorno.' : 'Quanto paga il cliente, una volta sola.'}</small>
-              {mostra('prezzo') && <span className="opt-errore-campo" role="alert">{errori.prezzo}</span>}
-            </label>
-            {form.modo === 'giorno' && (
-              <label className={`opt-campo ${mostra('massimo') ? 'opt-campo--errore' : ''}`}>
-                <span>Non far pagare più di (€)</span>
-                <input type="number" inputMode="decimal" min="0" step="any" value={form.massimo} onChange={(e) => aggiorna({ massimo: e.target.value })} placeholder="nessuno" />
-                <small className="opt-aiuto">Utile per i noleggi lunghi. Vuoto = nessun limite.</small>
-                {mostra('massimo') && <span className="opt-errore-campo" role="alert">{errori.massimo}</span>}
-              </label>
-            )}
-            <label className={`opt-campo ${mostra('maxPerNoleggio') ? 'opt-campo--errore' : ''}`}>
-              <span>Quanti ne può prendere un cliente</span>
-              <input type="number" min="1" step="1" value={form.maxPerNoleggio} onChange={(e) => aggiorna({ maxPerNoleggio: e.target.value })} />
-              <small className="opt-aiuto">Es. 2 seggiolini al massimo per noleggio.</small>
-              {mostra('maxPerNoleggio') && <span className="opt-errore-campo" role="alert">{errori.maxPerNoleggio}</span>}
-            </label>
-            <label className={`opt-campo ${mostra('pezzi') ? 'opt-campo--errore' : ''}`}>
-              <span>Quanti ne avete a disposizione</span>
-              <input type="number" min="0" step="1" value={form.pezzi} onChange={(e) => aggiorna({ pezzi: e.target.value })} placeholder="senza limite" />
-              <small className="opt-aiuto">In tutto, per tutti i clienti. Vuoto = senza limite.</small>
-              {mostra('pezzi') && <span className="opt-errore-campo" role="alert">{errori.pezzi}</span>}
-            </label>
-          </div>
+          <Campo
+            id="opt-prezzo"
+            titolo={form.modo === 'giorno' ? 'Prezzo al giorno' : 'Prezzo a noleggio'}
+            aiuto={form.modo === 'giorno' ? 'Quanto paga il cliente per ogni giorno.' : 'Quanto paga il cliente, una volta sola.'}
+            errore={mostra('prezzo') && errori.prezzo}
+          >
+            <CampoEuro id="opt-prezzo" valore={form.prezzo} onChange={(v) => aggiorna({ prezzo: v })} />
+          </Campo>
+
+          {form.modo === 'giorno' && (
+            <Campo id="opt-massimo" titolo="Non far pagare più di" aiuto="Utile per i noleggi lunghi. Vuoto = nessun limite." errore={mostra('massimo') && errori.massimo}>
+              <CampoEuro id="opt-massimo" valore={form.massimo} onChange={(v) => aggiorna({ massimo: v })} placeholder="nessuno" />
+            </Campo>
+          )}
+
+          <Campo id="opt-max" titolo="Quanti ne può prendere un cliente" aiuto="Per ogni noleggio, es. 2 seggiolini." errore={mostra('maxPerNoleggio') && errori.maxPerNoleggio}>
+            <Contatore id="opt-max" nome="per cliente" valore={form.maxPerNoleggio} minimo={1} onChange={(v) => aggiorna({ maxPerNoleggio: v })} />
+          </Campo>
+
+          <Campo id="opt-pezzi" titolo="Quanti ne avete a disposizione" aiuto="In tutto, per tutti i clienti. Vuoto = senza limite." errore={mostra('pezzi') && errori.pezzi}>
+            <Contatore id="opt-pezzi" nome="a disposizione" valore={form.pezzi} minimo={0} onChange={(v) => aggiorna({ pezzi: v })} placeholder="senza limite" />
+          </Campo>
 
           <label className="opt-spunta">
             <input type="checkbox" checked={form.sulSito} onChange={(e) => aggiorna({ sulSito: e.target.checked })} />
