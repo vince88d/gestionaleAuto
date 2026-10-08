@@ -1,148 +1,157 @@
-/* src/pages/Tariffe.css — stessa grafica di Clienti/Prenotazioni/Archivio,
-   con prefisso tar- per restare isolata dalle altre pagine. */
+/* src/pages/Tariffe.css — scheda "Prezzo per categoria" di Tariffe e optional.
+   Stessa grafica della scheda Optional (CatalogoOptional.css): card bianca,
+   testi da 15-16px, campi alti 44px, blu #1f6fb2 e verde #1b7a4a per Salva.
+   Prefisso tar- per restare isolata dalle altre pagine. */
 
 .tar {
-  max-width: 900px;
+  max-width: 1240px;
   margin: 0 auto;
   padding: 8px 4px 32px;
-  color: #2c3e50;
+  color: #1e2a36;
 }
 
-.tar-toolbar {
+.main-content .tar-titolo { margin: 0 0 16px; }
+
+/* ---------- Card ---------- */
+.tar-box {
+  border: 1px solid #e1e6ec;
+  border-radius: 14px;
+  background: #fff;
+  /* niente overflow: hidden, altrimenti la barra di salvataggio non resta "sticky" */
+}
+
+.tar-box-testa {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 6px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e1e6ec;
 }
 
-.main-content .tar-titolo { margin: 0; }
-.tar-sottotitolo { font-size: 14px; color: #7f8c9a; }
+.main-content .tar-box-titolo,
+.tar-box-titolo { margin: 0; font-size: 20px; font-weight: 800; color: #1e2a36; }
+.tar-sottotitolo { display: block; margin-top: 2px; font-size: 14px; color: #55616d; }
+.tar-box-testa .campo-ricerca { flex: 1 1 220px; max-width: 320px; margin-left: auto; }
 
 .tar-intro {
-  margin: 4px 0 20px;
-  color: #4b5563;
+  margin: 0;
+  padding: 12px 20px;
+  font-size: 15px;
   line-height: 1.5;
-  max-width: 640px;
+  color: #4d5b69;
+  border-bottom: 1px solid #eef1f5;
 }
+
+.tar-vuoto { padding: 18px 20px; }
 
 /* ---------- Tabella ---------- */
-.tar-elenco {
-  border: 1px solid #e3e8ee;
-  border-radius: 12px;
-  background: #fff;
-  overflow-x: auto;
-}
-
-.tar-tabella {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
+.tar-tabella { width: 100%; border-collapse: collapse; font-size: 15px; }
 
 .tar-tabella th {
-  padding: 11px 14px;
-  border-bottom: 1px solid #e3e8ee;
-  background: #f8fafc;
-  color: #7f8c9a;
-  font-size: 12px;
+  padding: 11px 16px;
+  background: #f6f8fa;
+  color: #4d5b69;
+  font-size: 14px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
   text-align: left;
   white-space: nowrap;
 }
 
-.tar-tabella td {
-  padding: 10px 14px;
-  border-bottom: 1px solid #eef1f5;
-  vertical-align: middle;
-  text-align: left;
-}
-
-.tar-tabella tbody tr:last-child td { border-bottom: none; }
+.tar-tabella td { padding: 10px 16px; border-top: 1px solid #eef1f5; vertical-align: middle; text-align: left; }
+.tar-tabella tr.tar-riga--cambiata td { background: #fffaf0; }
 .tar-tabella tr.tar-riga--conflitto td { background: #fef2f2; }
 
-.tar-categoria { font-weight: 600; }
+.tar-categoria { font-size: 16px; font-weight: 700; }
+.tar-nessun-veicolo { color: #6b7886; font-style: italic; }
 
-.tar-nessun-veicolo {
-  color: #9ca3af;
-  font-style: italic;
-}
-
+/* Prezzo: simbolo € dentro la casella, come nel form degli optional */
+.tar-euro { position: relative; width: 150px; }
 .tar-input {
-  width: 120px;
-  padding: 8px 10px;
-  border: 1px solid #d5dde6;
-  border-radius: 7px;
-  font-size: 14px;
-  color: #2c3e50;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 34px 0 12px;
+  border: 1px solid #cdd5de;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 16px;
+  color: #1e2a36;
 }
-
-.tar-input:focus {
-  outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
-}
+.tar-input:focus { outline: none; border-color: #1f6fb2; box-shadow: 0 0 0 3px rgba(31, 111, 178, 0.18); }
+.tar-euro-simbolo { position: absolute; top: 50%; right: 13px; transform: translateY(-50%); font-size: 16px; font-weight: 600; color: #55616d; pointer-events: none; }
 
 .tar-etichetta {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
-.tar-etichetta--ok { background: #eafaf1; color: #15803d; }
-.tar-etichetta--manca { background: #fef3e0; color: #b45309; }
-.tar-etichetta--conflitto { background: #fdecea; color: #c0392b; }
+.tar-etichetta--ok { background: #e2f5ea; color: #1b7a4a; }
+.tar-etichetta--manca { background: #eef1f5; color: #4d5b69; }
+.tar-etichetta--cambiata { background: #fdf0d5; color: #8a5300; }
+.tar-etichetta--conflitto { background: #fdecea; color: #b0321f; }
 
-/* ---------- Azioni ---------- */
-.tar-azioni {
+/* ---------- Barra di salvataggio (sticky in fondo allo schermo) ---------- */
+.tar-barra {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
-  margin-top: 18px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  border-top: 1px solid #e1e6ec;
+  border-radius: 0 0 14px 14px;
+  background: #fff;
 }
+.tar-barra--attiva { background: #fffaf0; border-top: 2px solid #e8a33a; box-shadow: 0 -6px 16px rgba(30, 42, 54, 0.08); }
+.tar-barra-testo { margin-right: auto; font-size: 15px; color: #55616d; }
+.tar-barra--attiva .tar-barra-testo { color: #8a5300; font-weight: 700; }
 
 .tar-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 16px;
-  border: 1px solid #d5dde6;
-  border-radius: 8px;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 16px;
+  border: 1px solid #cdd5de;
+  border-radius: 10px;
   background: #fff;
-  color: #2c3e50;
-  font-size: 14px;
+  color: #1e2a36;
+  font-family: inherit;
+  font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
 }
-.tar-btn:disabled { color: #9ca3af; cursor: not-allowed; }
+.tar-btn:hover:not(:disabled) { background: #f1f4f8; }
+.tar-btn:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
+.tar-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.tar-btn--salva { border-color: #1b7a4a; background: #1b7a4a; color: #fff; font-weight: 800; }
+.tar-btn--salva:hover:not(:disabled) { background: #14603a; }
 
-.tar-btn--primario { border-color: #3498db; background: #3498db; color: #fff; }
-.tar-btn--primario:hover:not(:disabled) { background: #2980b9; }
-.tar-btn--primario:disabled { border-color: #9ca3af; background: #9ca3af; color: #fff; }
-
-.tar-nota {
-  margin-top: 12px;
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.tar-errore { color: #b91c1c; }
+.tar-nota { margin: 12px 0 0; color: #55616d; font-size: 14px; }
+.tar-errore { color: #b0321f; font-weight: 600; }
 
 /* ---------- Tariffe orfane ---------- */
 .tar-orfane {
-  margin-top: 28px;
-  padding-top: 18px;
-  border-top: 1px solid #e3e8ee;
+  margin-top: 24px;
+  padding: 16px 20px;
+  border: 1px solid #e1e6ec;
+  border-radius: 14px;
+  background: #fff;
 }
-.tar-orfane-titolo { margin: 0 0 4px; font-size: 15px; }
+.tar-orfane-titolo { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
 
 .tar-orfane-elenco {
   list-style: none;
@@ -158,15 +167,14 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  border: 1px solid #e3e8ee;
-  border-radius: 8px;
-  background: #fff;
-  font-size: 14px;
+  border: 1px solid #e1e6ec;
+  border-radius: 10px;
+  font-size: 15px;
 }
 .tar-orfane-elenco li.tar-orfana--da-togliere {
   background: #fef2f2;
   border-color: #f5c6c0;
-  color: #9ca3af;
+  color: #6b7886;
   text-decoration: line-through;
 }
 
@@ -174,25 +182,22 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-height: 36px;
+  padding: 0 6px;
   border: none;
   background: none;
-  color: #3498db;
-  font-size: 13px;
-  font-weight: 600;
+  color: #1f6fb2;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
-  padding: 0;
-  text-decoration: none;
 }
-.tar-orfana--da-togliere .tar-link { color: #6b7280; }
+.tar-orfana--da-togliere .tar-link { color: #4d5b69; }
 
 @media (max-width: 700px) {
   .tar-tabella th,
   .tar-tabella td { padding: 9px 10px; }
-  .tar-input { width: 100px; }
+  .tar-euro { width: 120px; }
 }
-.tar-elenco[hidden] { display: none; }
 
-/* Ricerca in alto a destra, come in Veicoli e Categorie */
-.tar-toolbar-azioni { display: flex; justify-content: flex-end; flex: 1 1 280px; }
-.tar-toolbar-azioni .campo-ricerca { max-width: 300px; }
-.campo-ricerca-vuoto + .tar-elenco[hidden] { display: none; }
+.tar-avviso { margin: 0; padding: 12px 20px; background: #eef5fc; color: #174a75; font-size: 15px; border-bottom: 1px solid #dbe7f3; }

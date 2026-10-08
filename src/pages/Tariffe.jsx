@@ -18,7 +18,7 @@ const formattaPrezzo = (valore) => (
 // che il cliente vede e paga sul sito) e come listino quando si prenota dal gestionale.
 // Veicoli e tariffe arrivano in tempo reale, così la pagina non rischia di salvare
 // sopra dati vecchi se qualcuno cambia qualcosa da un'altra postazione.
-function Tariffe({ incorporata = false }) {
+function Tariffe({ incorporata = false, onModifiche }) {
   const [veicoliCaricati, setVeicoliCaricati] = useState(false);
   const [tariffeCaricate, setTariffeCaricate] = useState(false);
   const [categorieCaricate, setCategorieCaricate] = useState(false);
@@ -155,6 +155,11 @@ function Tariffe({ incorporata = false }) {
     [toccati, baseAlTocco, salvate],
   );
   const modificato = differenze.length > 0;
+  const nModifiche = differenze.length;
+
+  // Avvisa la pagina che contiene la scheda, cosi' puo' chiedere conferma
+  // prima di cambiare scheda e perdere i prezzi non salvati.
+  useEffect(() => { if (onModifiche) onModifiche(modificato); }, [modificato, onModifiche]);
 
   const apriConferma = (e) => {
     e.preventDefault();
@@ -201,96 +206,110 @@ function Tariffe({ incorporata = false }) {
     return <div className="tar"><p className="tar-nota">Caricamento…</p></div>;
   }
 
+  const cambiate = new Set(differenze.map((d) => d.categoria));
+
   return (
     <div className="tar">
-      <div className="tar-toolbar">
-        <div>
-          {/* Dentro "Tariffe e optional" il titolo della pagina c'e' gia'. */}
-          {!incorporata && <h1 className="tar-titolo">Tariffe per categoria</h1>}
-          <span className="tar-sottotitolo">
-            {ricerca.trim() ? `Mostro ${righeMostrate.length} di ` : ''}{righe.length} {righe.length === 1 ? 'categoria' : 'categorie'} · {Object.keys(salvate).length} {Object.keys(salvate).length === 1 ? 'tariffa salvata' : 'tariffe salvate'}
-          </span>
-        </div>
-        {righe.length > 0 && (
-          <div className="tar-toolbar-azioni">
-            <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca categoria…" etichetta="Cerca categoria" />
-          </div>
-        )}
-      </div>
-      <p className="tar-intro">
-        Il prezzo al giorno di ogni categoria{incorporata ? '' : '. È quello che il cliente vede e paga sul sito, e il listino di partenza quando crei una prenotazione qui'}
-        {' '}(puoi sempre cambiarlo nella singola prenotazione). Le prenotazioni già fatte non cambiano.
-      </p>
+      {/* Fuori da "Tariffe e optional" serve il titolo della pagina. */}
+      {!incorporata && <h1 className="tar-titolo">Tariffe per categoria</h1>}
 
       {righe.length === 0 ? (
         <p className="tar-nota">Non ci sono ancora categorie: aggiungine una dalla pagina Categorie.</p>
       ) : (
         <form onSubmit={apriConferma}>
-          {righeMostrate.length === 0 && <p className="campo-ricerca-vuoto">Nessuna categoria trovata per «{ricerca.trim()}».</p>}
-          <div className="tar-elenco" hidden={righeMostrate.length === 0}>
-            <table className="tar-tabella">
-              <thead>
-                <tr>
-                  <th>Categoria</th>
-                  <th>Veicoli</th>
-                  <th>Prezzo al giorno (€)</th>
-                  <th>Stato</th>
-                </tr>
-              </thead>
-              <tbody>
-                {righeMostrate.map(({ categoria, numero }) => (
-                  <tr key={categoria} className={conflitti.includes(categoria) ? 'tar-riga--conflitto' : ''}>
-                    <td className="tar-categoria">{categoria}</td>
-                    <td>
-                      {numero === 0
-                        ? <span className="tar-nessun-veicolo">Nessun veicolo</span>
-                        : `${numero} ${numero === 1 ? 'veicolo' : 'veicoli'}`}
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="tar-input"
-                        aria-label={`Prezzo al giorno ${categoria}`}
-                        value={campi[categoria] ?? ''}
-                        onChange={(e) => cambiaCampo(categoria, e.target.value)}
-                        placeholder="Es. 25"
-                      />
-                    </td>
-                    <td>
-                      {conflitti.includes(categoria) ? (
-                        <span className="tar-etichetta tar-etichetta--conflitto">
-                          <AlertTriangle size={13} aria-hidden="true" /> Cambiata da un altro
-                        </span>
-                      ) : salvate[categoria] !== undefined ? (
-                        <span className="tar-etichetta tar-etichetta--ok">In uso</span>
-                      ) : (
-                        <span className="tar-etichetta tar-etichetta--manca">Da salvare</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="tar-azioni">
-            <button type="submit" className="tar-btn tar-btn--primario" disabled={salvataggio || !modificato}>
-              <Save size={16} aria-hidden="true" /> {salvataggio ? 'Salvo…' : 'Salva tariffe'}
-            </button>
-            {toccati.size > 0 && (
-              <button type="button" className="tar-btn" onClick={annullaModifiche} disabled={salvataggio}>
-                <RotateCcw size={16} aria-hidden="true" /> Annulla modifiche
-              </button>
-            )}
-          </div>
-
-          {Object.keys(salvate).length === 0 && (
-            <p className="tar-nota">
-              Non hai ancora salvato nessuna tariffa: i campi sono compilati con il prezzo più basso delle auto di
-              ogni categoria. Controllali e premi Salva.
+          <section className="tar-box">
+            <div className="tar-box-testa">
+              <div>
+                <h2 className="tar-box-titolo">Prezzo al giorno per categoria</h2>
+                <span className="tar-sottotitolo">
+                  {ricerca.trim() ? `Mostro ${righeMostrate.length} di ` : ''}{righe.length} {righe.length === 1 ? 'categoria' : 'categorie'} · {Object.keys(salvate).length} {Object.keys(salvate).length === 1 ? 'tariffa salvata' : 'tariffe salvate'}
+                </span>
+              </div>
+              <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca categoria…" etichetta="Cerca categoria" />
+            </div>
+            <p className="tar-intro">
+              {incorporata ? '' : 'È il prezzo che il cliente vede e paga sul sito, e il listino di partenza quando prenoti dal gestionale. '}
+              Puoi sempre cambiarlo nella singola prenotazione. Le prenotazioni già fatte non cambiano.
             </p>
-          )}
+            {Object.keys(salvate).length === 0 && (
+              <p className="tar-avviso">
+                Non hai ancora salvato nessuna tariffa: i campi sono compilati con il prezzo più basso delle auto di
+                ogni categoria. Controllali e premi «Salva tariffe».
+              </p>
+            )}
+
+            {righeMostrate.length === 0 ? (
+              <p className="campo-ricerca-vuoto tar-vuoto">Nessuna categoria trovata per «{ricerca.trim()}».</p>
+            ) : (
+              <table className="tar-tabella">
+                <thead>
+                  <tr>
+                    <th>Categoria</th>
+                    <th>Veicoli</th>
+                    <th>Prezzo al giorno</th>
+                    <th>Stato</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {righeMostrate.map(({ categoria, numero }) => (
+                    <tr key={categoria} className={conflitti.includes(categoria) ? 'tar-riga--conflitto' : cambiate.has(categoria) ? 'tar-riga--cambiata' : ''}>
+                      <td className="tar-categoria">{categoria}</td>
+                      <td>
+                        {numero === 0
+                          ? <span className="tar-nessun-veicolo">Nessun veicolo</span>
+                          : `${numero} ${numero === 1 ? 'veicolo' : 'veicoli'}`}
+                      </td>
+                      <td>
+                        <div className="tar-euro">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className="tar-input"
+                            aria-label={`Prezzo al giorno ${categoria}`}
+                            value={campi[categoria] ?? ''}
+                            onChange={(e) => cambiaCampo(categoria, e.target.value)}
+                            placeholder="Es. 25"
+                          />
+                          <span className="tar-euro-simbolo" aria-hidden="true">€</span>
+                        </div>
+                      </td>
+                      <td>
+                        {conflitti.includes(categoria) ? (
+                          <span className="tar-etichetta tar-etichetta--conflitto">
+                            <AlertTriangle size={13} aria-hidden="true" /> Cambiata da un altro
+                          </span>
+                        ) : cambiate.has(categoria) ? (
+                          <span className="tar-etichetta tar-etichetta--cambiata">Non salvato</span>
+                        ) : salvate[categoria] !== undefined ? (
+                          <span className="tar-etichetta tar-etichetta--ok">In uso</span>
+                        ) : (
+                          <span className="tar-etichetta tar-etichetta--manca">Da salvare</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {/* Barra di salvataggio sempre visibile in fondo allo schermo (sticky):
+                dice se ci sono modifiche non salvate e offre Salva / Annulla lì dove si guarda. */}
+            <div className={`tar-barra ${nModifiche > 0 ? 'tar-barra--attiva' : ''}`} role="status" aria-live="polite">
+              <span className="tar-barra-testo">
+                {nModifiche > 0
+                  ? `${nModifiche} ${nModifiche === 1 ? 'modifica non salvata' : 'modifiche non salvate'}`
+                  : 'Nessuna modifica da salvare'}
+              </span>
+              {toccati.size > 0 && (
+                <button type="button" className="tar-btn" onClick={annullaModifiche} disabled={salvataggio}>
+                  <RotateCcw size={16} aria-hidden="true" /> Annulla modifiche
+                </button>
+              )}
+              <button type="submit" className="tar-btn tar-btn--salva" disabled={salvataggio || !modificato}>
+                <Save size={16} aria-hidden="true" /> {salvataggio ? 'Salvo…' : 'Salva tariffe'}
+              </button>
+            </div>
+          </section>
 
           {orfane.length > 0 && (
             <div className="tar-orfane">
