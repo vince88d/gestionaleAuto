@@ -12,7 +12,7 @@ import Clients from './pages/Clients';
 import Booking from './pages/Booking';
 import ImpostazioniAzienda from './pages/ImpostazioniAzienda';
 import RecuperoDati from './pages/RecuperoDati';
-import Tariffe from './pages/Tariffe';
+import TariffeEOptional from './pages/TariffeEOptional';
 import Categorie from './pages/Categorie';
 import ArchivioPrenotazione from './pages/ArchivioPrenotazioni';
 import Cestino from './pages/Cestino';
@@ -81,7 +81,7 @@ function AppContent() {
           <Route path="/vehicles" element={<Vehicles />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/booking" element={<Booking />} />
-          <Route path="/tariffe" element={<Tariffe />} />
+          <Route path="/tariffe" element={<TariffeEOptional />} />
           <Route path="/categorie" element={<Categorie />} />
           <Route path="/impostazioni-azienda" element={<ImpostazioniAzienda />} />
           <Route path="/recupero-dati" element={<RecuperoDati />} />

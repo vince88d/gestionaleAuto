@@ -166,3 +166,16 @@ test('una tariffa di una categoria non più nell\'elenco si vede in fondo e si p
 
   await waitFor(() => expect(writeTariffe).toHaveBeenCalledWith({ 'City Car': 25, SUV: 40 }));
 });
+
+test('la barra in fondo dice quante modifiche non sono salvate', async () => {
+  finteVeicoli(flotta);
+  finteTariffe({ 'City Car': 25, SUV: 35 });
+  render(<Tariffe />);
+  await waitFor(() => expect(campo('City Car').value).toBe('25'));
+  expect(screen.getByText('Nessuna modifica da salvare')).toBeInTheDocument();
+
+  fireEvent.change(campo('City Car'), { target: { value: '27' } });
+  fireEvent.change(campo('SUV'), { target: { value: '40' } });
+  expect(screen.getByText('2 modifiche non salvate')).toBeInTheDocument();
+  expect(screen.getAllByText('Non salvato')).toHaveLength(2);
+});

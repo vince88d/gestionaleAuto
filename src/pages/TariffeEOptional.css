@@ -1,0 +1,26 @@
+/* Pagina Tariffe e optional: titolo e schede. Prefisso teo-. */
+.teo { max-width: 1240px; margin: 0 auto; padding: 8px 4px 32px; color: #1e2a36; }
+.main-content .teo-titolo { margin: 0; }
+.teo-intro { margin: 6px 0 18px; font-size: 16px; color: #4d5b69; max-width: 760px; line-height: 1.5; }
+
+.teo-schede { display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 2px solid #e1e6ec; }
+
+.teo-scheda {
+  margin: 0 0 -2px;
+  padding: 12px 18px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: #4d5b69;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.teo-scheda:hover { color: #1e2a36; }
+.teo-scheda--attiva { border-bottom-color: #1f6fb2; color: #1f6fb2; font-weight: 800; }
+.teo-scheda:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
+
+/* La pagina Tariffe dentro la scheda: niente margini propri. */
+.teo .tar { max-width: none; margin: 0; padding: 0; }

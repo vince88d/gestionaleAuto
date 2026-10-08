@@ -63,10 +63,12 @@ test('aggiunge una categoria nuova, ma non un doppione', async () => {
   render(<Categorie />);
   await screen.findByText('City Car');
 
+  fireEvent.click(screen.getByRole('button', { name: /Aggiungi categoria/ }));
   fireEvent.change(screen.getByLabelText('Nuova categoria'), { target: { value: 'city car' } });
   fireEvent.click(screen.getByRole('button', { name: 'Aggiungi' }));
   expect(writeCategorie).not.toHaveBeenCalled();
 
+  if (!screen.queryByLabelText('Nuova categoria')) fireEvent.click(screen.getByRole('button', { name: /Aggiungi categoria/ }));
   fireEvent.change(screen.getByLabelText('Nuova categoria'), { target: { value: 'Furgone' } });
   fireEvent.click(screen.getByRole('button', { name: 'Aggiungi' }));
   await waitFor(() => expect(writeCategorie).toHaveBeenCalledWith(['City Car', 'Furgone']));
@@ -136,4 +138,18 @@ test('rinominare in un nome già presente è rifiutato subito, senza conferma', 
 
   expect(rinominaCategoriaOvunque).not.toHaveBeenCalled();
   expect(screen.queryByText('Rinominare la categoria?')).not.toBeInTheDocument();
+});
+
+test('la ricerca filtra le categorie e dice quando non trova nulla', async () => {
+  finteVeicoli([]);
+  finteCategorie(['City Car', 'SUV', 'Berlina']);
+  render(<Categorie />);
+
+  await screen.findByText('City Car');
+  fireEvent.change(screen.getByLabelText('Cerca categoria'), { target: { value: 'su' } });
+  expect(screen.getByText('SUV')).toBeInTheDocument();
+  expect(screen.queryByText('Berlina')).not.toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText('Cerca categoria'), { target: { value: 'xyz' } });
+  expect(screen.getByText(/Nessuna categoria trovata/)).toBeInTheDocument();
 });

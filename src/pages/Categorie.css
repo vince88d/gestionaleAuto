@@ -107,9 +107,14 @@
 
 /* ---------- Aggiungi ---------- */
 .cat-aggiungi {
-  margin-top: 20px;
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
 }
 .cat-aggiungi .cat-input { flex: 1; max-width: 320px; }
 
@@ -142,3 +147,8 @@
   .cat-tabella th,
   .cat-tabella td { padding: 9px 10px; }
 }
+
+/* Ricerca e "Aggiungi" in alto a destra, come in Veicoli */
+.cat-toolbar-azioni { display: flex; align-items: center; gap: 10px; flex: 1 1 360px; justify-content: flex-end; }
+.cat-toolbar-azioni .campo-ricerca { max-width: 300px; }
+.cat-btn--alto { min-height: 40px; }
