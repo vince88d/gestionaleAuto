@@ -181,3 +181,4 @@
   .opt--con-riquadro { grid-template-columns: 1fr; }
   .opt-riquadro { position: static; }
 }
+.opt-aiuto { display: block; font-size: 13px; font-weight: 400; color: #5b6773; line-height: 1.3; }
