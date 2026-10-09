@@ -30,6 +30,7 @@ import {
 import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento';
 import { readVeicoli } from '../lib/firestoreVeicoli';
 import { useHolds } from '../lib/firestoreHolds';
+import { useExtra } from '../lib/useExtra';
 import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
 import {
@@ -111,6 +112,8 @@ function Bookings() {
   const [availableVehicles, setAvailableVehicles] = useState([]);
   // Hold del sito (cliente che sta pagando online), in tempo reale.
   const holds = useHolds();
+  // Protezioni per categoria e optional: prezzo, cauzione e pezzi liberi.
+  const extra = useExtra();
   const [forceRenderKey, setForceRenderKey] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
@@ -458,6 +461,11 @@ accessori: {
   // accessori e contratto si fanno dopo, il giorno del ritiro, con "Consegna".
   const handleBookingSubmit = async (data) => {
     if (salvandoPrenotazione) return;
+    // Senza protezioni e optional la prenotazione resterebbe senza cauzione.
+    if (!extra.pronti) {
+      showFeedback('Sto ancora caricando protezioni ed extra: riprova tra un attimo.', 'error');
+      return;
+    }
     const prenotazioneCorrente = editingIndex !== null ? prenotazioni[editingIndex] : null;
 
     // Date, veicolo libero (stessa regola di Veicoli e Dashboard: le annullate e
@@ -470,6 +478,8 @@ accessori: {
       prenotazioni,
       holds,
       oggi: giornoLocale(),
+      protezioni: extra.protezioni,
+      catalogo: extra.catalogo,
     });
     if (esito.errore) {
       showFeedback(esito.errore, "error");
@@ -482,7 +492,8 @@ accessori: {
         {
           ...data,
           codiceFiscale: data.codiceFiscale?.toUpperCase() || '',
-          prezzoTotale: esito.prezzoTotale,
+          // Prezzo, e per quelle del gestionale protezione, cauzione ed extra.
+          ...esito,
         },
         prenotazioneCorrente,
       );

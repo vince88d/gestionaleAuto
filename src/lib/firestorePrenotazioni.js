@@ -167,6 +167,8 @@ export async function assegnaVeicolo({ prenotazione, veicolo, patente }) {
 export const CAMPI_PRENOTAZIONE = [
   'cliente', 'telefono', 'codiceFiscale', 'patente', 'emailCliente',
   'veicolo', 'targa', 'dataInizio', 'dataFine', 'prezzoGiornaliero', 'prezzoTotale',
+  // Protezione ed extra (stessi campi delle prenotazioni del sito, vedi utils/sceltaExtra.js).
+  'totaleNoleggio', 'protezione', 'cauzione', 'optional',
 ];
 
 const soloCampiPrenotazione = (dati) =>

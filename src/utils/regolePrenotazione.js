@@ -3,6 +3,7 @@ import { calcolaGiorniNoleggio } from './giorniNoleggio';
 import { veicoloLibero, disponibiliPerCategoria } from './disponibilitaCategoria';
 import { daAssegnare } from './assegnazioneVeicolo';
 import { prezzoPrenotazione } from './dashboard';
+import { pezziOccupati, preventivoPrenotazione } from './sceltaExtra';
 
 const STATI_NON_OCCUPANTI = ['annullata', 'completata', 'richiesta-sito', 'scaduta', 'pagamento-fallito'];
 const giorno = (valore) => (valore ? String(valore).slice(0, 10) : '');
@@ -11,8 +12,13 @@ const giorno = (valore) => (valore ? String(valore).slice(0, 10) : '');
 export const pagataSulSito = (p) => Boolean(p && (p.paymentIntentId || p.origine === 'sito'));
 
 // Controlli prima di salvare una prenotazione nuova (`originale` assente) o
-// modificata. Restituisce { errore } oppure { prezzoTotale } da salvare.
-export function controllaPrenotazione({ dati, originale = null, veicoli = [], prenotazioni = [], holds = [], oggi }) {
+// modificata. Restituisce { errore } oppure { prezzoTotale } da salvare, con
+// totaleNoleggio, protezione, cauzione e optional (vedi sceltaExtra.js) per
+// quelle fatte nel gestionale. `protezioni`: per categoria; `catalogo`: gli
+// optional. Le scelte arrivano in dati.sceltaProtezione e dati.sceltaOptional.
+export function controllaPrenotazione({
+  dati, originale = null, veicoli = [], prenotazioni = [], holds = [], oggi, protezioni = {}, catalogo = [], adesso,
+}) {
   const inizio = giorno(dati.dataInizio);
   const fine = giorno(dati.dataFine);
   if (!inizio || !fine) return { errore: 'Inserisci la data di inizio e di fine.' };
@@ -51,11 +57,31 @@ export function controllaPrenotazione({ dati, originale = null, veicoli = [], pr
     }
   }
 
+  // Pagata sul sito: prezzo, protezione ed extra sono quelli pagati e non si
+  // cambiano da qui.
   if (originale && pagataSulSito(originale)) {
     return { prezzoTotale: prezzoPrenotazione(originale) };
   }
   const giorni = calcolaGiorniNoleggio(inizio, fine);
-  return { prezzoTotale: giorni * (parseFloat(dati.prezzoGiornaliero) || 0) };
+  const categoria = veicolo?.categoria || veicoli.find((v) => v.targa === originale?.targa)?.categoria;
+  return preventivoPrenotazione({
+    prezzoGiornaliero: dati.prezzoGiornaliero,
+    giorni,
+    protezione: categoria ? protezioni[categoria] : undefined,
+    sceltaProtezione: dati.sceltaProtezione ?? originale?.protezione?.tipo,
+    catalogo,
+    sceltaOptional: dati.sceltaOptional ?? Object.fromEntries(
+      (Array.isArray(originale?.optional) ? originale.optional : []).filter((r) => r?.id).map((r) => [r.id, r.quantita]),
+    ),
+    optionalSalvati: originale?.optional,
+    occupati: pezziOccupati({
+      occupanti: occupantiTranne(prenotazioni, originale?.id, oggi),
+      holds,
+      inizio,
+      fine,
+      ...(adesso !== undefined ? { adesso } : {}),
+    }),
+  });
 }
 
 // Prenotazioni che occupano davvero un veicolo (niente annullate, pagamenti

@@ -17,7 +17,47 @@ const base = { targa: 'AA111AA', dataInizio: '2026-10-01', dataFine: '2026-10-03
 
 describe('controllaPrenotazione', () => {
   test('prenotazione nuova valida: prezzo giorni x prezzo al giorno', () => {
-    expect(controllaPrenotazione({ dati: base, veicoli, prenotazioni: [], oggi: OGGI })).toEqual({ prezzoTotale: 60 });
+    expect(controllaPrenotazione({ dati: base, veicoli, prenotazioni: [], oggi: OGGI })).toEqual({
+      prezzoTotale: 60, totaleNoleggio: 60, protezione: null, cauzione: null, optional: [],
+    });
+  });
+
+  const protezioni = {
+    'City Car': {
+      base: { danni: 1200, furto: 1500, cauzione: 500 },
+      totale: { offerta: true, prezzoGiorno: 12, massimo: 120, danni: 0, furto: 300, cauzione: 200, copre: { cristalli: true } },
+    },
+  };
+  const catalogo = [{ id: 's', nome: 'Seggiolino', modo: 'giorno', prezzo: 8, massimo: 60, maxPerNoleggio: 2, pezzi: 2, sulSito: true }];
+
+  test('con protezione ed extra: totale = noleggio + Totale + extra, cauzione della Totale', () => {
+    const r = controllaPrenotazione({
+      dati: { ...base, sceltaProtezione: 'totale', sceltaOptional: { s: 1 } }, veicoli, prenotazioni: [], oggi: OGGI, protezioni, catalogo,
+    });
+    expect(r).toMatchObject({ totaleNoleggio: 60, prezzoTotale: 60 + 24 + 16, cauzione: 200 });
+    expect(r.protezione).toMatchObject({ tipo: 'totale', prezzo: 24, danni: 0, copre: { cristalli: true, gomme: false } });
+    expect(r.optional).toEqual([{ id: 's', nome: 'Seggiolino', modo: 'giorno', prezzo: 8, massimo: 60, quantita: 1, totale: 16 }]);
+  });
+
+  test('senza scelte: Base della categoria e cauzione salvate', () => {
+    const r = controllaPrenotazione({ dati: base, veicoli, prenotazioni: [], oggi: OGGI, protezioni, catalogo });
+    expect(r).toMatchObject({ prezzoTotale: 60, cauzione: 500, protezione: { tipo: 'base', prezzo: 0, danni: 1200 } });
+  });
+
+  test('extra gia\' presi da altre prenotazioni nelle stesse date: errore', () => {
+    const altra = { id: 'p9', targa: 'BB222BB', status: 'attiva', dataInizio: '2026-10-02', dataFine: '2026-10-05', optional: [{ id: 's', quantita: 2 }] };
+    const r = controllaPrenotazione({
+      dati: { ...base, sceltaOptional: { s: 1 } }, veicoli, prenotazioni: [altra], oggi: OGGI, protezioni, catalogo,
+    });
+    expect(r.errore).toMatch(/Seggiolino: in quelle date sono già tutti prenotati/);
+  });
+
+  test('in modifica gli extra salvati restano, e la prenotazione stessa non conta nei pezzi', () => {
+    const originale = { id: 'p1', ...base, status: 'attiva', protezione: { tipo: 'totale' }, optional: [{ id: 's', nome: 'Seggiolino', modo: 'giorno', prezzo: 8, massimo: 60, quantita: 2 }] };
+    const r = controllaPrenotazione({ dati: { ...base, dataFine: '2026-10-04' }, originale, veicoli, prenotazioni: [originale], oggi: OGGI, protezioni, catalogo });
+    expect(r.errore).toBeUndefined();
+    expect(r.protezione.tipo).toBe('totale');
+    expect(r.optional[0]).toMatchObject({ quantita: 2, totale: 48 });
   });
 
   test('date mancanti, invertite o nel passato', () => {
@@ -181,7 +221,7 @@ describe('veicolo sospeso', () => {
     const originale = { id: 'p1', ...base, status: 'attiva' };
     const dati = { ...base, dataFine: '2026-10-04' };
     const r = controllaPrenotazione({ dati, originale, veicoli: veicoliSospeso, prenotazioni: [originale], oggi: OGGI });
-    expect(r).toEqual({ prezzoTotale: 90 });
+    expect(r).toMatchObject({ prezzoTotale: 90 });
   });
 
   test('nel form il veicolo sospeso risulta sospeso', () => {
