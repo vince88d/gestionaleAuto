@@ -84,4 +84,19 @@ describe('periodo, totali e CSV', () => {
     expect(righe[2]).toEqual(expect.arrayContaining(['240,5', 'Sito', '10/09/2026']));
     expect(testoCsv(righe).split('\r\n')[1].startsWith('"Mario ""Mimmo"" Rossi";')).toBe(true);
   });
+
+  test('CSV dei conclusi: protezione, cauzione ed extra (vuoti per le prenotazioni di prima)', () => {
+    const conScelte = {
+      ...conclusi[1],
+      protezione: { tipo: 'totale', prezzo: 36, cauzione: 200 },
+      optional: [{ nome: 'Seggiolino', quantita: 1, totale: 24 }, { nome: 'GPS', quantita: 2, totale: 30.5 }],
+    };
+    const righe = righeCsv([conScelte, conclusi[0]]);
+    const col = (nome) => righe[0].indexOf(nome);
+    expect(righe[1][col('Protezione')]).toBe('Totale (36)');
+    expect(righe[1][col('Cauzione')]).toBe('200');
+    expect(righe[1][col('Extra')]).toBe('Seggiolino x1 (24), GPS x2 (30,5)');
+    expect([righe[2][col('Protezione')], righe[2][col('Cauzione')], righe[2][col('Extra')]]).toEqual(['', '', '']);
+    expect(righe[0][righe[0].length - 1]).toBe('Danni alla riconsegna');
+  });
 });

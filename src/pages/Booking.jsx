@@ -37,6 +37,7 @@ import {
   controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, promemoria,
 } from '../utils/regolePrenotazione';
 import { prezzoPrenotazione } from '../utils/dashboard';
+import { colonneProtezioneExtra, INTESTAZIONI_PROTEZIONE_EXTRA } from '../utils/archivio';
 import { daAssegnare } from '../utils/assegnazioneVeicolo';
 import { prenotazioniSuVeicoloSospeso } from '../utils/disponibilitaCategoria';
 import { giornoLocale, formattaData } from '../utils/scadenze';
@@ -382,11 +383,11 @@ accessori: {
   const exportToCSV = () => {
     const header = [
       "Cliente", "Codice Fiscale", "Patente", "Veicolo", "Targa",
-      "Data Inizio", "Data Fine", "Prezzo Giornaliero", "Prezzo Totale"
+      "Data Inizio", "Data Fine", "Prezzo Giornaliero", "Prezzo Totale", ...INTESTAZIONI_PROTEZIONE_EXTRA
     ];
     const rows = prenotazioniAttive.map(p => [
       p.cliente, p.codiceFiscale, p.patente, p.veicolo, p.targa,
-      p.dataInizio, p.dataFine, p.prezzoGiornaliero, p.prezzoTotale
+      p.dataInizio, p.dataFine, p.prezzoGiornaliero, prezzoPrenotazione(p), ...colonneProtezioneExtra(p)
     ]);
     const csvContent = [header, ...rows].map(e => e.map(v => `"${v}"`).join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
