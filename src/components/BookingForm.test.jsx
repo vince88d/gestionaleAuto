@@ -125,3 +125,64 @@ test('dice se e\' stato toccato (per chiedere conferma solo se c\'e\' qualcosa d
   fireEvent.click(screen.getByRole('button', { name: '1 giorno' }));
   expect(onModificato).toHaveBeenLastCalledWith(true);
 });
+
+describe('domanda 4: protezione ed extra', () => {
+  const protezioni = {
+    Utilitaria: {
+      base: { danni: 1200, furto: 1500, cauzione: 500 },
+      totale: { offerta: true, prezzoGiorno: 12, massimo: 120, danni: 0, furto: 300, cauzione: 200, copre: { cristalli: true, gomme: true, sottoscocca: false } },
+    },
+  };
+  const catalogo = [
+    { id: 's', nome: 'Seggiolino', descrizione: '', modo: 'giorno', prezzo: 8, massimo: 60, maxPerNoleggio: 2, pezzi: 3, sulSito: true },
+    { id: 'g', nome: 'Navigatore', descrizione: '', modo: 'giorno', prezzo: 5, massimo: null, maxPerNoleggio: 1, pezzi: null, sulSito: false },
+  ];
+  const apriCon = (initialValues, altre = []) => {
+    const onSubmit = jest.fn();
+    render(
+      <BookingForm onSubmit={onSubmit} initialValues={initialValues} availableVehicles={veicoli} veicoli={veicoli}
+        clienti={clienti} prenotazioni={altre} protezioni={protezioni} catalogo={catalogo} />,
+    );
+    return onSubmit;
+  };
+  const scelta = { dataInizio: '2099-03-10', dataFine: '2099-03-13', targa: 'ABC004', cliente: 'Mario Rossi', telefono: '333 1111111' };
+
+  test('Totale e un seggiolino: righe nel riepilogo, cauzione e scelte inviate', () => {
+    const onSubmit = apriCon(scelta);
+    expect(screen.getByText('Cauzione da bloccare al ritiro').closest('.px-cauzione')).toHaveTextContent('500 €');
+    fireEvent.click(screen.getByRole('radio', { name: /Totale/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aggiungi Seggiolino' }));
+    expect(screen.getByText('Seggiolino × 1')).toBeInTheDocument();
+    // 3 giorni x 35 + Totale 36 + seggiolino 24
+    expect(screen.getByText('165,00 €')).toBeInTheDocument();
+    expect(screen.getByText(/non paga nulla/)).toBeInTheDocument();
+    expect(screen.getByText('Solo al banco')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma prenotazione' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ sceltaProtezione: 'totale', sceltaOptional: { s: 1 } }));
+  });
+
+  test('pezzi gia\' presi in quelle date: il + si ferma ai liberi', () => {
+    const altra = { id: 'p1', targa: 'AB123TR', status: 'attiva', dataInizio: '2099-03-11', dataFine: '2099-03-12', optional: [{ id: 's', quantita: 2 }] };
+    apriCon(scelta, [altra]);
+    expect(screen.getByText('1 libero in queste date (3 in tutto)')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Aggiungi Seggiolino' }));
+    expect(screen.getByRole('button', { name: 'Aggiungi Seggiolino' })).toBeDisabled();
+  });
+
+  test('categoria senza protezione: avviso, si prenota lo stesso', () => {
+    apriCon({ ...scelta, targa: 'AB123TR' });
+    expect(screen.getByText(/Furgone: protezione e cauzione non impostate/)).toBeInTheDocument();
+  });
+
+  test('pagata sul sito: si vede cosa ha scelto il cliente, non si cambia', () => {
+    apriCon({
+      ...scelta, id: 'w1', origine: 'sito', paymentIntentId: 'pi_1', status: 'attiva', totale: 99,
+      protezione: { tipo: 'base', prezzo: 0, danni: 1200, furto: 1500, cauzione: 500 },
+      optional: [{ id: 's', nome: 'Seggiolino', quantita: 1, totale: 24 }],
+    });
+    expect(screen.getByText(/Scelti e pagati dal cliente sul sito/)).toBeInTheDocument();
+    expect(screen.getByText('Seggiolino × 1')).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /Totale/ })).toBeNull();
+    expect(screen.getByText('Cauzione da bloccare al ritiro').closest('.px-cauzione')).toHaveTextContent('500 €');
+  });
+});

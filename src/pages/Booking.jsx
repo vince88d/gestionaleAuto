@@ -958,6 +958,8 @@ return (
         prenotazioni={prenotazioni}
         salvando={salvandoPrenotazione}
         onModificato={(si) => { moduloModificato.current = si; }}
+        protezioni={extra.protezioni}
+        catalogo={extra.catalogo}
       />
     </BookingModal>
 

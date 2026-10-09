@@ -7,9 +7,13 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { Check, Search, UserPlus, Phone, Mail, ShieldCheck, FileWarning } from 'lucide-react';
 import ClienteFormModal from './ClienteFormModal';
 import SceltaVeicolo from './SceltaVeicolo';
+import SceltaProtezioneExtra from './SceltaProtezioneExtra';
 import { addCliente } from '../store/clientiSlice';
 import { creaCliente, messaggioErroreCliente } from '../lib/firestoreClienti';
-import { giorniOccupati, pagataSulSito } from '../utils/regolePrenotazione';
+import { giorniOccupati, occupantiTranne, pagataSulSito } from '../utils/regolePrenotazione';
+import { pezziOccupati, preventivoPrenotazione, scelteIniziali, totaleSceglibile } from '../utils/sceltaExtra';
+import { protezioneImpostata, euro as euroTondo } from '../utils/protezioni';
+import { normalizzaOptional } from '../utils/optional';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { confrontaConListino } from '../utils/prezzoListino';
 import { cercaClienti } from '../utils/validaCliente';
@@ -55,6 +59,9 @@ function BookingForm({
   salvando = false,
   onAnnulla,
   onModificato,
+  // Protezioni per categoria e catalogo degli optional (vedi lib/useExtra.js).
+  protezioni = {},
+  catalogo = [],
 }) {
   const dispatch = useDispatch();
   const bookingId = initialValues?.id;
@@ -75,6 +82,9 @@ function BookingForm({
   const [aperta, setAperta] = useState(false);
   const [versoAlto, setVersoAlto] = useState(false);
   const [evidenziato, setEvidenziato] = useState(0);
+  // Domanda 4: protezione scelta ed extra (id -> quantita').
+  const [scelte, setScelte] = useState(() => scelteIniziali(null));
+  const scelteDiPartenza = useRef(scelte);
 
   // Si riparte da quello che arriva (nuova vuota, con data/auto, o modifica).
   useEffect(() => {
@@ -95,6 +105,9 @@ function BookingForm({
     setCerca('');
     setCambiaPrezzo(false);
     setTentato(false);
+    const iniziali4 = scelteIniziali(initialValues);
+    setScelte(iniziali4);
+    scelteDiPartenza.current = iniziali4;
     // veicoli: solo per il listino iniziale, non deve riazzerare il form.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
@@ -102,7 +115,8 @@ function BookingForm({
   const aggiorna = (campi) => setDati((d) => ({ ...d, ...campi }));
 
   // Toccato qualcosa rispetto a come si e' aperto? (per chiedere conferma alla chiusura)
-  const modificato = Object.keys(CAMPI_VUOTI).some((k) => dati[k] !== datiIniziali.current[k]) || cerca.trim() !== '';
+  const modificato = Object.keys(CAMPI_VUOTI).some((k) => dati[k] !== datiIniziali.current[k]) || cerca.trim() !== ''
+    || JSON.stringify(scelte) !== JSON.stringify(scelteDiPartenza.current);
   useEffect(() => { onModificato?.(modificato); }, [modificato, onModificato]);
 
   // Veicoli sceglibili: quelli dell'elenco piu' quello gia' assegnato (in modifica).
@@ -119,7 +133,43 @@ function BookingForm({
   const passi = statoPassi(dati);
   const errori = validaNuovaPrenotazione(dati);
   const mostraErrore = (campo) => tentato && errori[campo];
-  const totale = sito ? prezzoPrenotazione(initialValues) : giorni * (parseFloat(dati.prezzoGiornaliero) || 0);
+  // Protezione della categoria dell'auto scelta ed extra (anche quelli tolti
+  // dall'elenco ma gia' salvati su questa prenotazione).
+  const categoria = (veicoloScelto && (veicoli.find((x) => x.targa === veicoloScelto.targa) || veicoloScelto).categoria) || '';
+  const protezione = categoria ? protezioni[categoria] : undefined;
+  const sceltaProtezione = scelte.sceltaProtezione === 'totale' && protezioneImpostata(protezione) && totaleSceglibile(protezione)
+    ? 'totale' : 'base';
+  const elencoExtra = useMemo(() => {
+    const salvati = (Array.isArray(initialValues?.optional) ? initialValues.optional : [])
+      .filter((r) => r?.id && !catalogo.some((o) => o.id === r.id))
+      .map((r) => ({ ...normalizzaOptional({ ...r, maxPerNoleggio: r.quantita, pezzi: '' }), id: r.id, fuoriElenco: true }));
+    return [...catalogo].sort((a, b) => a.nome.localeCompare(b.nome, 'it')).concat(salvati);
+  }, [catalogo, initialValues]);
+  const conDate = giorni > 0;
+  const occupati = useMemo(() => pezziOccupati({
+    occupanti: occupantiTranne(prenotazioni, bookingId, oggi),
+    holds,
+    inizio: dati.dataInizio,
+    fine: dati.dataFine,
+  }), [prenotazioni, bookingId, oggi, holds, dati.dataInizio, dati.dataFine]);
+  const preventivo = sito ? null : preventivoPrenotazione({
+    prezzoGiornaliero: dati.prezzoGiornaliero,
+    giorni,
+    protezione,
+    sceltaProtezione,
+    catalogo,
+    sceltaOptional: scelte.sceltaOptional,
+    optionalSalvati: initialValues?.optional,
+    occupati,
+  });
+  const cambiaQuantita = (id, q) => setScelte((x) => {
+    const sceltaOptional = { ...x.sceltaOptional };
+    if (q > 0) sceltaOptional[id] = q; else delete sceltaOptional[id];
+    return { ...x, sceltaOptional };
+  });
+  // Della prenotazione del sito valgono le scelte pagate.
+  const protezioneMostrata = sito ? initialValues?.protezione : preventivo?.protezione;
+  const totale = sito ? prezzoPrenotazione(initialValues) : (preventivo?.prezzoTotale ?? giorni * (parseFloat(dati.prezzoGiornaliero) || 0));
   const confrontoListino = confrontaConListino(dati.prezzoGiornaliero, veicoloScelto?.prezzo);
 
   // Giorni gia' occupati dall'auto scelta (se si arriva con l'auto gia' decisa).
@@ -212,8 +262,11 @@ function BookingForm({
   const invia = (e) => {
     e.preventDefault();
     setTentato(true);
-    if (Object.keys(errori).length > 0) return;
+    if (Object.keys(errori).length > 0 || preventivo?.errore) return;
     onSubmit({
+      // Domanda 4: le scelte (il prezzo lo ricalcola controllaPrenotazione).
+      sceltaProtezione,
+      sceltaOptional: scelte.sceltaOptional,
       ...dati,
       cliente: dati.cliente.trim().replace(/\s+/g, ' '),
       telefono: dati.telefono.trim(),
@@ -246,6 +299,12 @@ function BookingForm({
           <Passo numero={2} fatto={passi.auto} testo="Quale auto" />
           <li className="np-passi-linea" aria-hidden="true" />
           <Passo numero={3} fatto={passi.chi && !errori.telefono} testo="Chi la prende" />
+          <li className="np-passi-linea" aria-hidden="true" />
+          {/* Facoltativa: e' "da fare" solo dopo le prime tre. */}
+          <li className={`np-passo ${passi.quando && passi.auto && passi.chi ? 'np-passo--attivo' : ''}`}>
+            <span className="np-passo-numero" aria-hidden="true">4</span>
+            Protezione ed extra
+          </li>
         </ol>
       </header>
 
@@ -320,7 +379,7 @@ function BookingForm({
           </section>
 
           {/* 3. Chi la prende */}
-          <section className={`np-sezione ${passi.attivo === 3 ? 'np-sezione--attiva' : ''} ${mostraErrore('cliente') ? 'np-sezione--errore' : ''}`}>
+          <section className={`np-sezione ${passi.attivo === 3 && !passi.chi ? 'np-sezione--attiva' : ''} ${mostraErrore('cliente') ? 'np-sezione--errore' : ''}`}>
             <h3 className="np-sezione-titolo"><span className="np-numero">3.</span> Chi la prende?</h3>
 
             {modoCliente === 'cerca' && (
@@ -469,6 +528,23 @@ function BookingForm({
               </div>
             )}
           </section>
+
+          {/* 4. Protezione ed extra */}
+          <SceltaProtezioneExtra
+            categoria={categoria}
+            protezione={protezione}
+            sceltaProtezione={sceltaProtezione}
+            onProtezione={(tipo) => setScelte((x) => ({ ...x, sceltaProtezione: tipo }))}
+            catalogo={elencoExtra}
+            quantita={scelte.sceltaOptional}
+            onQuantita={cambiaQuantita}
+            giorni={giorni}
+            occupati={occupati}
+            conDate={conDate}
+            sito={sito}
+            salvata={initialValues}
+            attiva={passi.quando && passi.auto && passi.chi}
+          />
         </div>
 
         {/* Riepilogo sempre visibile */}
@@ -520,10 +596,36 @@ function BookingForm({
                 )}
               </>
             )}
+            {!sito && preventivo?.protezione && (
+              <div className="np-riga-prezzo">
+                <span>Protezione {preventivo.protezione.tipo === 'totale' ? 'Totale' : 'Base'}</span>
+                <span>{preventivo.protezione.tipo === 'totale' ? euro(preventivo.protezione.prezzo) : 'inclusa'}</span>
+              </div>
+            )}
+            {!sito && (preventivo?.optional || []).map((o) => (
+              <div className="np-riga-prezzo" key={o.id}>
+                <span>{o.nome} × {o.quantita}</span>
+                <span>{euro(o.totale)}</span>
+              </div>
+            ))}
             <div className="np-totale">
               <span>Totale</span>
               <span>{euro(totale)}</span>
             </div>
+            {typeof protezioneMostrata?.cauzione === 'number' && (
+              <p className="px-cauzione">
+                <span className="px-cauzione-riga">
+                  <b>Cauzione da bloccare al ritiro</b>
+                  <b className="px-cifra">{euroTondo(protezioneMostrata.cauzione)}</b>
+                </span>
+                {typeof protezioneMostrata.danni === 'number' && (
+                  <>{protezioneMostrata.danni === 0
+                    ? 'In caso di danno il cliente non paga nulla.'
+                    : <>In caso di danno il cliente paga al massimo <span className="px-cifra">{euroTondo(protezioneMostrata.danni)}</span>.</>}</>
+                )}
+              </p>
+            )}
+            {preventivo?.errore && <p className="np-manca" role="alert">{preventivo.errore}</p>}
           </div>
 
           <button type="submit" className="np-conferma" disabled={salvando}>
