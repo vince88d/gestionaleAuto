@@ -11,6 +11,7 @@ import { puoConcludere, puoConsegnare, eConsegnata } from '../utils/regolePrenot
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { salvaPdfConsegna } from '../utils/pdfConsegna';
 import { toast } from 'react-toastify';
+import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
 
 
 const NOMI_ACCESSORI = {
@@ -130,6 +131,8 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
             </dl>
           </section>
 
+          <ProtezioneExtraDettagli prenotazione={prenotazione} />
+
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Consegna</h3>
             {consegnata ? (
@@ -142,6 +145,12 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
                   <div><dt>Km alla consegna</dt><dd>{scheda.kmIniziali ? Number(scheda.kmIniziali).toLocaleString('it-IT') : '—'}</dd></div>
                   <div><dt>Carburante</dt><dd>{scheda.carburante || '—'}</dd></div>
                   <div className="pz-intera"><dt>Danni già presenti</dt><dd>{scheda.danni || 'Nessuno'}</dd></div>
+                  {typeof prenotazione.cauzioneBloccata === 'boolean' && (
+                    <div className="pz-intera">
+                      <dt>Cauzione</dt>
+                      <dd>{prenotazione.cauzioneBloccata ? 'Bloccata sulla carta alla consegna' : 'Non segnata come bloccata'}</dd>
+                    </div>
+                  )}
                 </dl>
                 {accessori.length > 0 && (
                   <>

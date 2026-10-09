@@ -163,6 +163,15 @@ describe('registraConsegna', () => {
     expect(esito.cliente).toBe('creato');
   });
 
+  test('salva la spunta della cauzione bloccata solo se passata', async () => {
+    let t = transazioneCon({ status: 'attiva' });
+    await registraConsegna({ prenotazione: { id: 'p4' }, scheda: {}, cauzioneBloccata: true });
+    expect(t.update.mock.calls[0][1].cauzioneBloccata).toBe(true);
+    t = transazioneCon({ status: 'attiva' });
+    await registraConsegna({ prenotazione: { id: 'p5' }, scheda: {} });
+    expect(t.update.mock.calls[0][1]).not.toHaveProperty('cauzioneBloccata');
+  });
+
   test('non consegna una prenotazione annullata nel frattempo', async () => {
     const t = transazioneCon({ status: 'annullata' });
     await expect(registraConsegna({ prenotazione: { id: 'p1' }, scheda: {} })).rejects.toThrow(/annullata nel frattempo/);
