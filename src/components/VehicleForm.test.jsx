@@ -46,3 +46,39 @@ test('la foto si puo\' togliere; durante il salvataggio i pulsanti sono bloccati
   expect(screen.getByRole('button', { name: 'Salvataggio…' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Annulla' })).toBeDisabled();
 });
+
+describe('dotazione a bordo', () => {
+  // setFormData vero: riceve una funzione (prev) => nuovo, come useState.
+  const conStato = (iniziali, extra = {}) => {
+    let dati = { ...base, ...iniziali };
+    const { rerender } = render(<VehicleForm formData={dati} onChange={jest.fn()} onClose={jest.fn()} onSubmit={jest.fn()}
+      onImageSelect={jest.fn()} isEditing setFormData={(f) => { dati = f(dati); rerender(<VehicleForm formData={dati} onChange={jest.fn()} onClose={jest.fn()} onSubmit={jest.fn()} onImageSelect={jest.fn()} isEditing setFormData={() => {}} categorie={[]} {...extra} />); }}
+      categorie={[]} {...extra} />);
+    return () => dati;
+  };
+
+  test('si spuntano le voci, se ne aggiungono di nuove, si scelgono le chiavi', () => {
+    const dati = conStato({ dotazione: ['Cric'], chiavi: 2 });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Triangolo' }));
+    expect(dati().dotazione).toEqual(['Cric', 'Triangolo']);
+  });
+
+  test('voce nuova con Invio e chiavi', () => {
+    const dati = conStato({ dotazione: ['Cric'], chiavi: 2 });
+    fireEvent.change(screen.getByLabelText('Altra voce della dotazione'), { target: { value: 'Tappetini' } });
+    fireEvent.keyDown(screen.getByLabelText('Altra voce della dotazione'), { key: 'Enter' });
+    expect(dati().dotazione).toEqual(['Cric', 'Tappetini']);
+  });
+
+  test('chiavi e gomme invernali', () => {
+    const dati = conStato({ dotazione: [], chiavi: 2 });
+    fireEvent.click(screen.getByRole('button', { name: '1' }));
+    expect(dati().chiavi).toBe(1);
+  });
+
+  test('auto elettrica senza cavo: avviso; veicolo mai impostato: avviso', () => {
+    conStato({ dotazione: ['Cric'], carburante: 'Elettrico' }, { dotazioneNonImpostata: true });
+    expect(screen.getByText(/controlla che ci sia il/)).toBeInTheDocument();
+    expect(screen.getByText(/Dotazione non ancora impostata/)).toBeInTheDocument();
+  });
+});

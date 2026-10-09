@@ -1,3 +1,5 @@
+import { normalizzaVoci } from './dotazione';
+
 // Regole del form "Aggiungi / Modifica veicolo".
 // Le prenotazioni sono legate al veicolo SOLO tramite la targa: per questo la
 // targa e' obbligatoria, scritta sempre allo stesso modo e unica in flotta.
@@ -56,5 +58,9 @@ export function preparaVeicolo(dati) {
     const valore = numeroOVuoto(pronto[campo]);
     pronto[campo] = Number.isNaN(valore) ? '' : valore;
   });
+  // Dotazione di bordo (utils/dotazione.js): voci pulite, chiavi 1 o 2.
+  if (Array.isArray(pronto.dotazione)) pronto.dotazione = normalizzaVoci(pronto.dotazione);
+  if ('chiavi' in pronto && pronto.chiavi !== 1 && pronto.chiavi !== 2) delete pronto.chiavi;
+  if ('gommeInvernali' in pronto) pronto.gommeInvernali = pronto.gommeInvernali === true;
   return pronto;
 }

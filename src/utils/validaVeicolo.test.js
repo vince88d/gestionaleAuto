@@ -47,3 +47,12 @@ describe('preparaVeicolo', () => {
       .toEqual({ targa: 'AB123CD', marca: 'Fiat', anno: 2022, km: 45210, porte: '', note: 'ok' });
   });
 });
+
+test('preparaVeicolo: dotazione pulita, chiavi solo 1 o 2, gomme invernali si/no', () => {
+  const { preparaVeicolo } = require('./validaVeicolo');
+  const p = preparaVeicolo({ targa: 'ab123cd', dotazione: [' Cric', 'cric', ''], chiavi: 3, gommeInvernali: 'si' });
+  expect(p.dotazione).toEqual(['Cric']);
+  expect(p).not.toHaveProperty('chiavi');
+  expect(p.gommeInvernali).toBe(false);
+  expect(preparaVeicolo({ targa: 'AB123CD', chiavi: 2 }).chiavi).toBe(2);
+});

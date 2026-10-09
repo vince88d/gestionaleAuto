@@ -21,6 +21,7 @@ import { veicoloLibero } from '../utils/disponibilitaCategoria';
 import { cambiaStatoRiparazione } from '../utils/danniVeicolo';
 import { coloreScadenza, giornoLocale } from '../utils/scadenze';
 import { validaVeicolo, preparaVeicolo } from '../utils/validaVeicolo';
+import { DOTAZIONE_NUOVO_VEICOLO, CHIAVI_NUOVO_VEICOLO } from '../utils/dotazione';
 import { filtraPerCategorie, chipCategorie } from '../utils/filtroCategorie';
 import './Vehicle.css';
 
@@ -51,6 +52,10 @@ const emptyFormData = {
     revisione: '',
   },
   manutenzioni: [], 
+  // Dotazione di bordo (vedi utils/dotazione.js): un veicolo nuovo parte con quella minima.
+  dotazione: DOTAZIONE_NUOVO_VEICOLO,
+  chiavi: CHIAVI_NUOVO_VEICOLO,
+  gommeInvernali: false,
 };
 
 function Vehicles() {
@@ -624,6 +629,7 @@ const handleToggleRepairStatus = (index) => {
   onImageSelect={handleImageSelect}
   isEditing={!!editingVeicolo}
   setFormData={setFormData}
+  dotazioneNonImpostata={Boolean(editingVeicolo) && !Array.isArray(editingVeicolo.dotazione)}
   categorie={categorie}
   errori={erroriForm}
   salvando={salvandoForm}

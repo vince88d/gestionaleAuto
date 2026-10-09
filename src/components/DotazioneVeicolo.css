@@ -1,0 +1,159 @@
+/* Sezione "Dotazione a bordo" del modulo veicolo (e controllo alla consegna).
+   Mockup approvato: formiarent-documenti/mockup/gestionale-dotazione-bordo.html */
+
+.dv-aiuto { margin: 0 0 10px; font-size: 14px; color: #5d6b79; }
+
+.dv-avviso {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border: 1px solid #f0c75e;
+  border-radius: 8px;
+  background: #fff6e5;
+  color: #6b4a00;
+  font-size: 13px;
+}
+
+.dv-voci { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+
+.dv-voce {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 11px;
+  box-sizing: border-box;
+  border: 1px solid #e3e8ee;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+  cursor: pointer;
+}
+
+.dv-voce--si { border-color: #3498db; background: #eaf4fc; }
+.dv-voce:focus-within { outline: 3px solid #5fb0f0; outline-offset: 1px; }
+.dv-voce input { width: 16px; height: 16px; margin: 0; flex-shrink: 0; accent-color: #3498db; }
+.dv-nome { min-width: 0; }
+
+.dv-togli {
+  display: flex;
+  margin-left: auto;
+  padding: 4px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #7a8795;
+  cursor: pointer;
+}
+
+.dv-togli:hover { background: #d9e9f7; color: #c0392b; }
+
+.dv-aggiungi { display: flex; gap: 8px; margin-top: 10px; }
+
+.dv-aggiungi input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #cdd5de;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+}
+
+.dv-opzioni {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 24px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e3e8ee;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.dv-chiavi, .dv-gomme { display: inline-flex; align-items: center; gap: 8px; }
+.dv-gomme input { width: 16px; height: 16px; margin: 0; accent-color: #3498db; }
+.dv-scelte { display: inline-flex; }
+
+.dv-scelte button {
+  min-width: 44px;
+  min-height: 40px;
+  border: 1px solid #cdd5de;
+  background: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2c3e50;
+  cursor: pointer;
+}
+
+.dv-scelte button:first-child { border-radius: 8px 0 0 8px; }
+.dv-scelte button:last-child { border-radius: 0 8px 8px 0; border-left: none; }
+.dv-scelte button.dv-si { border-color: #3498db; background: #eaf4fc; color: #1f6fa8; }
+.dv-scelte button:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 1px; position: relative; }
+
+/* --- Consegna: controllo della dotazione --- */
+.dv-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.dv-testa p { margin: 0; font-size: 14px; color: #5d6b79; }
+
+.dv-controllo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+.pz .dv-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #b9d8f2;
+  border-radius: 8px;
+  background: #eaf4fc;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e2a36;
+  cursor: pointer;
+}
+
+.pz .dv-check input { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: #1b7a4a; }
+.pz .dv-check:focus-within { outline: 3px solid #5fb0f0; outline-offset: 1px; }
+.dv-stato { margin-left: auto; font-size: 13px; font-weight: 700; color: #1b7a4a; white-space: nowrap; }
+.pz .dv-check--manca { border-color: #f1b4ab; background: #fdf0ee; }
+.dv-check--manca .dv-stato { color: #b0321f; font-weight: 800; }
+
+.dv-inverno {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #f0c75e;
+  border-radius: 8px;
+  background: #fff6e5;
+  color: #6b4a00;
+  font-size: 14px;
+}
+
+.dv-extra {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #e3e8ee;
+  border-radius: 8px;
+  background: #f6f8fa;
+  font-size: 14px;
+  color: #3a4754;
+}
+
+.dv-manca {
+  display: inline-flex;
+  padding: 4px 10px;
+  border: 1px solid #f1b4ab;
+  border-radius: 999px;
+  background: #fdf0ee;
+  color: #b0321f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .dv-voci { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dv-controllo { grid-template-columns: 1fr; }
+}
