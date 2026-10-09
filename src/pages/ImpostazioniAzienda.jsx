@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAzienda, salvaAzienda } from '../lib/firestoreAzienda';
+import OrariSede from '../components/OrariSede';
 import { leggiDatiPerBackup } from '../lib/backupDati';
 import {
   AZIENDA_VUOTA, validaAzienda, aziendeUguali, normalizzaAzienda, campiCambiati,
@@ -153,7 +154,7 @@ function ImpostazioniAzienda() {
       <div className="imp-toolbar">
         <h1 className="imp-titolo">Impostazioni</h1>
       </div>
-      <p className="imp-intro">Dati dell&apos;azienda, licenza e copia di sicurezza dei dati.</p>
+      <p className="imp-intro">Dati dell&apos;azienda, orari della sede, licenza e copia di sicurezza dei dati.</p>
 
       <section className="imp-sezione">
         <header className="imp-sezione-testa">
@@ -220,6 +221,8 @@ function ImpostazioniAzienda() {
           </button>
         </div>
       </section>
+
+      <OrariSede />
 
       <section className="imp-sezione">
         <header className="imp-sezione-testa">
