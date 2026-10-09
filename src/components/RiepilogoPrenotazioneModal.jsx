@@ -11,15 +11,8 @@ import { prezzoPrenotazione } from '../utils/dashboard';
 import { salvaPdfConsegna } from '../utils/pdfConsegna';
 import { euro as euroTondo } from '../utils/protezioni';
 import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
+import DotazioneConsegnata from './DotazioneConsegnata';
 
-const NOMI_ACCESSORI = {
-  cric: 'Cric',
-  triangolo: 'Triangolo',
-  giubbotto: 'Giubbotto',
-  ruotaScorta: 'Ruota di scorta',
-  cavoRicarica: 'Cavo ricarica',
-  cateneNeve: 'Catene da neve',
-};
 
 // Secondo passo della consegna: riepilogo, contratto, PDF ed email. "Conferma
 // consegna" salva la scheda sulla prenotazione (la prenotazione esiste gia').
@@ -45,7 +38,6 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
     carburante: '',
     kmIniziali: '',
     danni: '',
-    accessori: {},
   };
 
   useEffect(() => {
@@ -187,13 +179,6 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
     }
   };
 
-  const accessoriPresenti = [
-    ...Object.entries(datiScheda.accessori || {})
-      .filter(([chiave, valore]) => chiave !== 'altro' && valore)
-      .map(([chiave]) => NOMI_ACCESSORI[chiave] || chiave),
-    ...(datiScheda.accessori?.altro ? [datiScheda.accessori.altro] : []),
-  ];
-
   return (
     <Modal
       isOpen={isOpen}
@@ -253,14 +238,8 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
                 <div><dt>Km alla consegna</dt><dd>{datiScheda.kmIniziali ? Number(datiScheda.kmIniziali).toLocaleString('it-IT') : '—'}</dd></div>
                 <div><dt>Danni già presenti</dt><dd>{datiScheda.danni || 'Nessuno'}</dd></div>
                 <div className="pz-intera">
-                  <dt>Accessori a bordo</dt>
-                  <dd>
-                    {accessoriPresenti.length === 0 ? 'Nessuno' : (
-                      <ul className="pz-chip-lista">
-                        {accessoriPresenti.map((nome) => <li key={nome} className="pz-chip">✓ {nome}</li>)}
-                      </ul>
-                    )}
-                  </dd>
+                  <dt>Dotazione a bordo</dt>
+                  <dd><DotazioneConsegnata scheda={datiScheda} /></dd>
                 </div>
               </dl>
               {datiScheda.fotoDanni && (

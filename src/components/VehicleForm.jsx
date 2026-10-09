@@ -223,7 +223,7 @@ const VehicleForm = ({
                 value={formData.note ?? ''}
                 onChange={onChange}
                 rows={3}
-                placeholder="Es. gancio traino, seggiolino incluso…"
+                placeholder="Es. gancio traino, tagliando a 60.000 km…"
                 aria-label="Note"
               />
             </section>

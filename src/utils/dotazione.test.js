@@ -35,6 +35,8 @@ test('avviso catene solo senza gomme invernali e senza catene a bordo', () => {
   expect(avvisoCatene({ dotazione: ['Cric', CATENE] }, '2026-12-10')).toBe(false);
   expect(avvisoCatene({ gommeInvernali: true }, '2026-12-10')).toBe(false);
   expect(avvisoCatene({}, '2026-07-10')).toBe(false);
+  // Dotazione mai impostata: non si sa se le catene ci sono.
+  expect(avvisoCatene({}, '2026-12-10')).toBe(false);
 });
 
 test('consegna: dotazione dell\'auto gia\' spuntata, o lista base vuota da salvare', () => {

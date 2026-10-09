@@ -12,16 +12,9 @@ import { prezzoPrenotazione } from '../utils/dashboard';
 import { salvaPdfConsegna } from '../utils/pdfConsegna';
 import { toast } from 'react-toastify';
 import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
+import DotazioneConsegnata from './DotazioneConsegnata';
 
 
-const NOMI_ACCESSORI = {
-  cric: 'Cric',
-  triangolo: 'Triangolo',
-  giubbotto: 'Giubbotto',
-  ruotaScorta: 'Ruota di scorta',
-  cavoRicarica: 'Cavo ricarica',
-  cateneNeve: 'Catene da neve',
-};
 
 function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, onConsegna, soloLettura = false }) {
   const printRef = useRef();
@@ -71,14 +64,6 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
   const scheda = prenotazione.schedaVeicolo || {};
   const consegnata = eConsegnata(prenotazione);
   const fotoRiconsegna = [].concat(prenotazione.fotoDanni || []).filter(Boolean);
-  const accessori = scheda.accessori
-    ? [
-        ...Object.entries(scheda.accessori)
-          .filter(([k]) => k !== 'altro')
-          .map(([k, v]) => ({ nome: NOMI_ACCESSORI[k] || k, presente: Boolean(v) })),
-        ...(scheda.accessori.altro ? [{ nome: scheda.accessori.altro, presente: true }] : []),
-      ]
-    : [];
   const statoTesto = {
     completata: 'Conclusa',
     annullata: 'Annullata',
@@ -152,23 +137,15 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
                     </div>
                   )}
                 </dl>
-                {accessori.length > 0 && (
-                  <>
-                    <h4 className="pz-titolo-sezione" style={{ margin: '14px 0 8px' }}>Accessori</h4>
-                    <ul className="pz-chip-lista">
-                      {accessori.map((a) => (
-                        <li key={a.nome} className={`pz-chip ${a.presente ? '' : 'pz-chip--no'}`}>{a.nome}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
+                <h4 className="pz-titolo-sezione" style={{ margin: '14px 0 8px' }}>Dotazione a bordo</h4>
+                <DotazioneConsegnata scheda={scheda} />
                 {scheda.fotoDanni && (
                   <div className="pz-foto"><img src={scheda.fotoDanni} alt="Danni alla consegna" /></div>
                 )}
               </>
             ) : (
               <p className="pz-aiuto" style={{ fontSize: 14 }}>
-                Non ancora consegnata: il giorno del ritiro usa «Consegna» per km, carburante, accessori e contratto.
+                Non ancora consegnata: il giorno del ritiro usa «Consegna» per km, carburante, dotazione e contratto.
               </p>
             )}
           </section>
@@ -258,46 +235,10 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
   </div>
 
 
-{prenotazione.schedaVeicolo?.accessori && (
+{prenotazione.schedaVeicolo && (
   <>
-    <h4 style={{ marginTop: '10px' }}>Accessori</h4>
-    <div style={{
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: '10px',
-      paddingLeft: '10px',
-      marginTop: '10px'
-    }}>
-      {Object.entries(prenotazione.schedaVeicolo.accessori)
-        .filter(([k]) => k !== "altro")
-        .map(([k, v]) => (
-          <span
-            key={k}
-            style={{
-              background: '#f0f0f0',
-              borderRadius: '6px',
-              padding: '5px 10px',
-              fontSize: '0.9rem',
-              border: '1px solid #ccc'
-            }}
-          >
-            {v ? '✅' : '❌'} {k.charAt(0).toUpperCase() + k.slice(1)}
-          </span>
-        ))}
-      {prenotazione.schedaVeicolo.accessori.altro && (
-        <span
-          style={{
-            background: '#f0f0f0',
-            borderRadius: '6px',
-            padding: '5px 10px',
-            fontSize: '0.9rem',
-            border: '1px solid #ccc'
-          }}
-        >
-          ✅ {prenotazione.schedaVeicolo.accessori.altro}
-        </span>
-      )}
-    </div>
+    <h4 style={{ marginTop: '10px' }}>Dotazione a bordo</h4>
+    <DotazioneConsegnata scheda={prenotazione.schedaVeicolo} />
   </>
 )}
 

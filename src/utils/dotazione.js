@@ -48,10 +48,12 @@ export function inStagioneCatene(dataISO) {
   return md >= '11-15' || md <= '04-15';
 }
 
-// Avviso alla consegna: inverno, niente gomme invernali e niente catene in dotazione.
+// Avviso alla consegna: inverno, niente gomme invernali e niente catene in
+// dotazione. Solo se la dotazione e' impostata: altrimenti non si sa.
 export function avvisoCatene(veicolo, dataISO) {
-  if (!inStagioneCatene(dataISO) || veicolo?.gommeInvernali === true) return false;
-  return !(dotazioneVeicolo(veicolo) || []).some((v) => v.toLowerCase() === CATENE.toLowerCase());
+  const dotazione = dotazioneVeicolo(veicolo);
+  if (!dotazione || !inStagioneCatene(dataISO) || veicolo?.gommeInvernali === true) return false;
+  return !dotazione.some((v) => v.toLowerCase() === CATENE.toLowerCase());
 }
 
 // Stato di partenza della consegna: la dotazione dell'auto gia' spuntata, o
