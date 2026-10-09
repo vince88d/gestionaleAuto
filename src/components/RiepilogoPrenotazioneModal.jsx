@@ -144,7 +144,12 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
     setIsSending(true);
     toast.dismiss();
 
-    const prenotazione = { ...formData, schedaVeicolo: datiScheda };
+    // Con la spunta della cauzione, che finisce anche nel PDF.
+    const prenotazione = {
+      ...formData,
+      schedaVeicolo: datiScheda,
+      ...(typeof cauzione === 'number' ? { cauzioneBloccata } : {}),
+    };
     try {
       if (!consegnaSalvata) {
         try {
