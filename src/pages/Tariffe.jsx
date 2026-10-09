@@ -158,8 +158,10 @@ function Tariffe({ incorporata = false, onModifiche }) {
   const nModifiche = differenze.length;
 
   // Avvisa la pagina che contiene la scheda, cosi' puo' chiedere conferma
-  // prima di cambiare scheda e perdere i prezzi non salvati.
-  useEffect(() => { if (onModifiche) onModifiche(modificato); }, [modificato, onModifiche]);
+  // prima di cambiare scheda e perdere i prezzi non salvati. Conta solo cio'
+  // che il gestore ha cambiato: i prezzi proposti e mai salvati non bastano.
+  const cambiatoDaTe = modificato && (toccati.size > 0 || daRimuovere.size > 0);
+  useEffect(() => { if (onModifiche) onModifiche(cambiatoDaTe); }, [cambiatoDaTe, onModifiche]);
 
   const apriConferma = (e) => {
     e.preventDefault();

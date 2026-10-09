@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Tariffe from './Tariffe';
 import CatalogoOptional from './CatalogoOptional';
+import ProtezioniCategorie from './ProtezioniCategorie';
 import './TariffeEOptional.css';
 
 const SCHEDE = [
   { id: 'tariffe', etichetta: 'Prezzo per categoria' },
   { id: 'optional', etichetta: 'Optional' },
+  { id: 'protezioni', etichetta: 'Protezioni e cauzione' },
 ];
 
 // Pagina "Tariffe e optional": tutto quello che il cliente paga, deciso dallo
@@ -42,7 +44,9 @@ function TariffeEOptional() {
         ))}
       </div>
       <div role="tabpanel">
-        {scheda === 'tariffe' ? <Tariffe incorporata onModifiche={setPrezziNonSalvati} /> : <CatalogoOptional />}
+        {scheda === 'tariffe' && <Tariffe incorporata onModifiche={setPrezziNonSalvati} />}
+        {scheda === 'optional' && <CatalogoOptional />}
+        {scheda === 'protezioni' && <ProtezioniCategorie />}
       </div>
       <ConfirmDialog
         open={schedaInAttesa !== null}

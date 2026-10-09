@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import Categorie from './Categorie';
 import { ascoltaVeicoli } from '../lib/firestoreVeicoli';
 import { ascoltaTariffe } from '../lib/firestoreTariffe';
+import { ascoltaProtezioni, rimuoviProtezioniCategoria } from '../lib/firestoreProtezioni';
 import {
   ascoltaCategorie, writeCategorie, rinominaCategoriaOvunque, rimuoviTariffaCategoria,
 } from '../lib/firestoreCategorie';
@@ -16,6 +17,10 @@ jest.mock('../lib/firestoreCategorie', () => ({
   writeCategorie: jest.fn(),
   rinominaCategoriaOvunque: jest.fn(),
   rimuoviTariffaCategoria: jest.fn(),
+}));
+jest.mock('../lib/firestoreProtezioni', () => ({
+  ascoltaProtezioni: jest.fn(),
+  rimuoviProtezioniCategoria: jest.fn(),
 }));
 jest.mock('react-toastify', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 
@@ -32,6 +37,10 @@ function finteCategorie(elenco) {
   ascoltaCategorie.mockImplementation((cb) => { onDati = cb; cb(elenco); return () => {}; });
   return (nuovo) => onDati(nuovo);
 }
+function finteProtezioni(perCategoria) {
+  ascoltaProtezioni.mockImplementation((cb) => { cb({ perCategoria, nonCopre: '', cauzioneTesto: '' }); return () => {}; });
+}
+const protezioneBase = { base: { danni: 1200, furto: 1500, cauzione: 500 }, totale: { offerta: false } };
 function finteTariffe(tariffe) {
   ascoltaTariffe.mockImplementation((cb) => { cb(tariffe); return () => {}; });
 }
@@ -45,6 +54,8 @@ beforeEach(() => {
   rinominaCategoriaOvunque.mockResolvedValue(true);
   rimuoviTariffaCategoria.mockResolvedValue(false);
   finteTariffe({});
+  finteProtezioni({});
+  rimuoviProtezioniCategoria.mockResolvedValue(false);
 });
 
 test('elenca le categorie col numero di veicoli di ciascuna', async () => {
@@ -152,4 +163,32 @@ test('la ricerca filtra le categorie e dice quando non trova nulla', async () =>
 
   fireEvent.change(screen.getByLabelText('Cerca categoria'), { target: { value: 'xyz' } });
   expect(screen.getByText(/Nessuna categoria trovata/)).toBeInTheDocument();
+});
+
+test('eliminare una categoria con protezioni lo dice e le toglie', async () => {
+  finteVeicoli([]);
+  finteCategorie(['Berlina']);
+  finteProtezioni({ Berlina: protezioneBase });
+  render(<Categorie />);
+  await screen.findByText('Berlina');
+
+  fireEvent.click(within(riga('Berlina')).getByRole('button', { name: 'Elimina' }));
+  expect(await screen.findByText(/toglie anche le protezioni e la cauzione impostate/)).toBeInTheDocument();
+  const bottoniElimina = screen.getAllByRole('button', { name: 'Elimina' });
+  fireEvent.click(bottoniElimina[bottoniElimina.length - 1]);
+  await waitFor(() => expect(rimuoviProtezioniCategoria).toHaveBeenCalledWith('Berlina'));
+});
+
+test('rinominare una categoria con tariffa e protezioni dice che le sposta', async () => {
+  finteVeicoli([]);
+  finteCategorie(['SUV']);
+  finteTariffe({ SUV: 60 });
+  finteProtezioni({ SUV: protezioneBase });
+  render(<Categorie />);
+  await screen.findByText('SUV');
+
+  fireEvent.click(within(riga('SUV')).getByRole('button', { name: 'Rinomina' }));
+  fireEvent.change(screen.getByLabelText('Nuovo nome per SUV'), { target: { value: 'SUV Grande' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Salva' }));
+  expect(await screen.findByText(/e sposta la tariffa e le protezioni in "SUV Grande"/)).toBeInTheDocument();
 });

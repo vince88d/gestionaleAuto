@@ -1,0 +1,53 @@
+/* Scheda "Protezioni e cauzione". Usa le classi opt- di CatalogoOptional.css
+   (stessa grafica); qui solo i pezzi propri, prefisso pro-. */
+
+.pro-cifre { display: block; font-size: 14px; line-height: 1.45; color: #3a4754; }
+.pro-cifre b { color: #1e2a36; }
+.pro-etichetta--manca { background: #fdf0d5; color: #8a5300; white-space: normal; }
+.pro-vuoto { padding: 18px 20px; }
+
+/* Riquadro di modifica: due sezioni, Base e Totale */
+.pro-sezione { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid #e1e6ec; border-radius: 12px; }
+.pro-sezione--spenta { background: #f6f8fa; }
+.main-content .pro-sezione-titolo,
+.pro-sezione-titolo { margin: 0; font-size: 16px; font-weight: 800; color: #1e2a36; }
+.pro-sezione-titolo em { font-style: normal; font-size: 14px; font-weight: 600; color: #55616d; }
+
+.pro-tre { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pro-tre .opt-euro { width: auto; }
+
+.pro-coperture { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: none; }
+.pro-coperture legend { width: 100%; margin-bottom: 6px; }
+.pro-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border: 1px solid #cdd5de; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.pro-chip--si { border: 2px solid #1f6fb2; background: #e3effb; color: #174a75; }
+.pro-chip input { width: 18px; height: 18px; margin: 0; accent-color: #1f6fb2; }
+
+/* Testi comuni */
+.pro-box-testi { margin-top: 20px; }
+.pro-testi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding: 18px 20px; }
+.pro-testo {
+  width: 100%;
+  min-height: 90px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #cdd5de;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #1e2a36;
+  resize: vertical;
+}
+.pro-testo:focus { outline: none; border-color: #1f6fb2; box-shadow: 0 0 0 3px rgba(31, 111, 178, 0.18); }
+
+.opt--con-riquadro .pro-testi { grid-template-columns: 1fr; }
+@media (max-width: 900px) { .pro-testi { grid-template-columns: 1fr; } }
+.pro-box-testi .opt-btn:disabled { cursor: not-allowed; }
+
+/* Copia su altre categorie */
+.pro-link { align-self: flex-start; min-height: 36px; margin: 0; padding: 0; border: none; background: none; color: #1f6fb2; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.pro-link:hover { text-decoration: underline; }
+.pro-copia { margin: 0; }
+.pro-copia legend { padding: 0 4px; }
+.pro-copia-azioni { display: flex; gap: 16px; }
+.pro-avviso { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fdf0d5; color: #6b4200; font-size: 14px; line-height: 1.4; }
