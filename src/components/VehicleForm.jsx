@@ -3,6 +3,7 @@ import React from 'react';
 import { Car, Upload, X } from 'lucide-react';
 import { SCADENZE_VEICOLO } from '../utils/scadenze';
 import { normalizzaTarga } from '../utils/validaVeicolo';
+import DotazioneVeicolo from './DotazioneVeicolo';
 // vd-btn, vd-link, vd-titolo-sezione: stessi pulsanti e titoli della scheda veicolo.
 import '../styles/VehicleDetailModal.css';
 import '../styles/VehicleForm.css';
@@ -39,6 +40,7 @@ const VehicleForm = ({
   categorie = [],
   errori = {},
   salvando = false,
+  dotazioneNonImpostata = false,
 }) => {
   const input = (nome, { tipo = 'text', ...altri } = {}) => (
     <input
@@ -188,6 +190,8 @@ const VehicleForm = ({
               </div>
             </section>
 
+            <DotazioneVeicolo formData={formData} setFormData={setFormData} nonImpostata={dotazioneNonImpostata} />
+
             <section className="vf-sezione">
               <h3 className="vd-titolo-sezione">Scadenze</h3>
               <div className="vf-griglia vf-griglia--3">
@@ -219,7 +223,7 @@ const VehicleForm = ({
                 value={formData.note ?? ''}
                 onChange={onChange}
                 rows={3}
-                placeholder="Es. gancio traino, seggiolino incluso…"
+                placeholder="Es. gancio traino, tagliando a 60.000 km…"
                 aria-label="Note"
               />
             </section>

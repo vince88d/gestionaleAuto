@@ -6,17 +6,9 @@ import { caricaFotoDanno } from '../lib/storageFoto';
 import { formattaData, giornoLocale } from '../utils/scadenze';
 import { controllaPatente } from '../utils/validaCliente';
 import { codiceFiscaleValido } from '../utils/nuovaPrenotazione';
+import ControlloDotazione from './ControlloDotazione';
 import '../components/schedaModal.css';
 import '../styles/Prenotazione.css';
-
-const ACCESSORI = [
-  ['cric', 'Cric'],
-  ['triangolo', 'Triangolo'],
-  ['giubbotto', 'Giubbotto'],
-  ['ruotaScorta', 'Ruota di scorta'],
-  ['cavoRicarica', 'Cavo ricarica'],
-  ['cateneNeve', 'Catene da neve'],
-];
 
 const LIVELLI_CARBURANTE = ['1/4', '1/2', '3/4', 'Pieno'];
 
@@ -52,6 +44,8 @@ function SchedaVeicoloModal({
   documenti = {},
   onDocumentiChange,
   onSave,
+  // Il veicolo da consegnare: dotazione, chiavi, gomme invernali.
+  veicolo,
 }) {
   const [uploading, setUploading] = useState(false);
   const [mancaCarburante, setMancaCarburante] = useState(false);
@@ -76,8 +70,6 @@ function SchedaVeicoloModal({
   const aggiornaDocumento = (campo, valore) => onDocumentiChange({ ...documenti, [campo]: valore });
 
   const aggiorna = (campo, valore) => setSchedaVeicolo((prev) => ({ ...prev, [campo]: valore }));
-  const aggiornaAccessorio = (chiave, valore) =>
-    setSchedaVeicolo((prev) => ({ ...prev, accessori: { ...prev.accessori, [chiave]: valore } }));
 
   // Prima la foto finiva in una cartella del PC e nella prenotazione restava un
   // percorso che dagli altri computer non si apriva: ora va su Storage (danni/).
@@ -257,30 +249,13 @@ function SchedaVeicoloModal({
             </div>
           </section>
 
-          <section className="pz-sezione">
-            <h3 className="pz-titolo-sezione">Accessori a bordo</h3>
-            <div className="pz-spunte">
-              {ACCESSORI.map(([chiave, nome]) => (
-                <label key={chiave} className="pz-spunta">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(schedaVeicolo.accessori?.[chiave])}
-                    onChange={(e) => aggiornaAccessorio(chiave, e.target.checked)}
-                  />
-                  {nome}
-                </label>
-              ))}
-            </div>
-            <label className="pz-campo" style={{ marginTop: 12 }}>
-              <span className="pz-etichetta">Altro</span>
-              <input
-                type="text"
-                value={schedaVeicolo.accessori?.altro || ''}
-                onChange={(e) => aggiornaAccessorio('altro', e.target.value)}
-                placeholder="Es. seggiolino bimbi"
-              />
-            </label>
-          </section>
+          <ControlloDotazione
+            dotazione={schedaVeicolo.dotazione}
+            onChange={(dotazione) => aggiorna('dotazione', dotazione)}
+            veicolo={veicolo}
+            dataRitiro={prenotazione?.dataInizio}
+            extra={(Array.isArray(prenotazione?.optional) ? prenotazione.optional : []).filter((r) => r?.quantita > 0)}
+          />
 
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Danni già presenti</h3>

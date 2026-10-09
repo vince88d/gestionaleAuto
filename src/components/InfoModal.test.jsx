@@ -33,13 +33,26 @@ test('una prenotazione creata dal gestionale (senza pagamento online) mostra "El
   expect(screen.getByText('Elimina')).toBeTruthy();
 });
 
-test('con la scheda veicolo compilata mostra gli accessori', () => {
+test('consegne di prima con gli accessori: solo quelli presenti, non quelli spenti', () => {
   const conScheda = {
     ...prenotazioneDalSito,
     schedaVeicolo: { accessori: { cric: true, triangolo: false, altro: '' } },
   };
   render(<InfoModal isOpen prenotazione={conScheda} {...azioni} />);
-  expect(screen.getAllByText('Accessori').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Dotazione a bordo').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('✓ Cric').length).toBeGreaterThan(0);
+  expect(screen.queryByText(/Triangolo/)).toBeNull();
+});
+
+test('dotazione alla consegna: presenti, mancanti, chiavi e nota', () => {
+  const conScheda = {
+    ...prenotazioneDalSito,
+    consegnataIl: '2026-10-01T09:00:00Z',
+    schedaVeicolo: { kmIniziali: '1000', dotazione: { voci: ['Cric', 'Cavo di ricarica'], presenti: ['Cric'], impostata: true, chiaviConsegnate: 2, note: 'in officina' } },
+  };
+  render(<InfoModal isOpen prenotazione={conScheda} {...azioni} />);
+  expect(screen.getAllByText('Mancava: Cavo di ricarica').length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/in officina/).length).toBeGreaterThan(0);
 });
 
 test('veicolo assegnato ma non consegnato: c\'e\' "Consegna", non "Concludi"', () => {

@@ -3,6 +3,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { prezzoPrenotazione } from './dashboard';
 import { COPERTURE } from './protezioni';
+import { riassuntoDotazione } from './dotazione';
 
 // "1.200 EUR" / "36,00 EUR": nel PDF si scrive EUR come nel resto del riepilogo.
 const eur = (n, decimali = false) => `${Number(n || 0).toLocaleString('it-IT', {
@@ -26,6 +27,17 @@ export function righeProtezioneExtra(prenotazione = {}) {
     if (coperte.length > 0) righe.push(['Copre anche', coperte.join(', ')]);
   }
   extra.forEach((r, i) => righe.push([i === 0 ? 'Extra' : '', `${r.nome} x ${r.quantita} (${eur(r.totale, true)})`]));
+  return righe;
+}
+
+// Righe [etichetta, valore] della dotazione nel PDF.
+export function righeDotazione(scheda = {}) {
+  const { presenti, mancanti, chiaviConsegnate, note } = riassuntoDotazione(scheda);
+  const righe = [];
+  if (chiaviConsegnate) righe.push(['Chiavi consegnate', String(chiaviConsegnate)]);
+  if (presenti.length > 0) righe.push(['A bordo', presenti.join(', ')]);
+  if (mancanti.length > 0) righe.push(['Mancante', `${mancanti.join(', ')}${note ? ` (${note})` : ''}`]);
+  else if (note) righe.push(['Note dotazione', note]);
   return righe;
 }
 
@@ -116,32 +128,8 @@ export async function generaRiepilogoPdf(prenotazione, scheda = {}) {
   drawField('Km alla consegna', scheda.kmIniziali);
   drawField('Danni', scheda.danni || 'Nessuno');
 
-  if (scheda.accessori && Object.keys(scheda.accessori).length) {
-    drawField('Accessori', '');
-    Object.entries(scheda.accessori)
-      .filter(([key]) => key !== 'altro')
-      .forEach(([key, value]) => {
-        page.drawText(`- ${key.charAt(0).toUpperCase() + key.slice(1)}: ${value ? 'SI' : 'NO'}`, {
-          x: indent + 20,
-          y,
-          size: 11,
-          font,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-        y -= 14;
-      });
-
-    if (scheda.accessori.altro) {
-      page.drawText(`- ${scheda.accessori.altro}: SI`, {
-        x: indent + 20,
-        y,
-        size: 11,
-        font,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      y -= 14;
-    }
-  }
+  // Dotazione: solo quello che c'era, e a parte cosa mancava (utils/dotazione.js).
+  righeDotazione(scheda).forEach(([etichetta, valore]) => drawField(etichetta, valore));
 
   y -= 30;
   page.drawLine({

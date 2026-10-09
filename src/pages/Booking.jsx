@@ -31,6 +31,8 @@ import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento
 import { readVeicoli } from '../lib/firestoreVeicoli';
 import { useHolds } from '../lib/firestoreHolds';
 import { useExtra } from '../lib/useExtra';
+import { dotazioneIniziale, dotazioneDaSalvare } from '../utils/dotazione';
+import { aggiornaDotazioneVeicolo } from '../lib/firestoreVeicoli';
 import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
 import {
@@ -83,14 +85,12 @@ const leggiVista = () => {
   }
 };
 
+// La dotazione di bordo si prepara dal veicolo all'inizio della consegna
+// (utils/dotazione.js, dotazioneIniziale).
 const schedaVuota = () => ({
   carburante: '',
   kmIniziali: '',
   danni: '',
-  accessori: {
-    cric: false, triangolo: false, giubbotto: false, ruotaScorta: false,
-    cavoRicarica: false, cateneNeve: false, altro: '',
-  },
 });
 
 function Bookings() {
@@ -183,20 +183,7 @@ function Bookings() {
    
 
   const [schedaModalOpen, setSchedaModalOpen] = useState(false);
-  const [schedaVeicolo, setSchedaVeicolo] = useState({
-    carburante: '',
-    kmIniziali: '',
-    danni: '',
-accessori: {
-  cric: false,
-  triangolo: false,
-  giubbotto: false,
-  ruotaScorta: false,
-  cavoRicarica: false,
-  cateneNeve: false,
-  altro: ''
-}
-  }); 
+  const [schedaVeicolo, setSchedaVeicolo] = useState(schedaVuota()); 
   
   
   const showFeedback = (message, type = 'success') => {
@@ -346,20 +333,7 @@ useEffect(() => {
       emailCliente: '',
     });
   
-    setSchedaVeicolo({
-      carburante: '',
-      kmIniziali: '',
-      danni: '',
-accessori: {
-  cric: false,
-  triangolo: false,
-  giubbotto: false,
-  ruotaScorta: false,
-  cavoRicarica: false,
-  cateneNeve: false,
-  altro: ''
-}
-    });
+    setSchedaVeicolo(schedaVuota());
   };
 
   // Si chiede conferma solo se nel modulo e' stato scritto o cambiato qualcosa.
@@ -541,7 +515,7 @@ accessori: {
     setConsegnaDi(prenotazione);
     setDocumentiConsegna({});
     // I km partono da quelli segnati sul veicolo: si correggono se diversi.
-    setSchedaVeicolo({ ...schedaVuota(), kmIniziali: veicolo?.km ?? '' });
+    setSchedaVeicolo({ ...schedaVuota(), kmIniziali: veicolo?.km ?? '', dotazione: dotazioneIniziale(veicolo) });
     setInfoModalOpen(false);
     setModalIsOpen(false);
     setSchedaModalOpen(true);
@@ -565,6 +539,17 @@ accessori: {
     const aggiornata = { ...consegnaDi, ...campi };
     dispatch(updatePrenotazione(aggiornata));
     setConsegnaDi(aggiornata);
+    // "Salva come dotazione di questa auto": la prossima consegna la trova pronta.
+    const dotazione = dotazioneDaSalvare(campi.schedaVeicolo);
+    const veicolo = availableVehicles.find((v) => v.targa === aggiornata.targa);
+    if (dotazione && veicolo?.id) {
+      aggiornaDotazioneVeicolo(veicolo.id, dotazione)
+        .then(() => setAvailableVehicles((elenco) => elenco.map((v) => (v.id === veicolo.id ? { ...v, ...dotazione } : v))))
+        .catch((err) => {
+          console.error('Dotazione del veicolo non salvata:', err);
+          toast.error('Consegna salvata, ma la dotazione dell\'auto non è stata salvata: impostala dalla scheda del veicolo.');
+        });
+    }
   };
 
   // Clic su un giorno del calendario: nuova prenotazione da quel giorno, come
@@ -994,6 +979,7 @@ return (
     documenti={documentiConsegna}
     onDocumentiChange={setDocumentiConsegna}
     onSave={handleSaveSchedaVeicolo}
+    veicolo={consegnaDi ? availableVehicles.find((v) => v.targa === consegnaDi.targa) : null}
   />
 
   {consegnaDi && (

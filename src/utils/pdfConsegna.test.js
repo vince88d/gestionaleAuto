@@ -33,3 +33,11 @@ test('il PDF si genera con la sezione (nessun carattere che il font non sa scriv
   expect(pdf.length).toBeGreaterThan(1000);
   if (process.env.PDF_PROVA) require('fs').writeFileSync(process.env.PDF_PROVA, Buffer.from(pdf));
 });
+
+test('righe della dotazione: chiavi, a bordo, mancante con la nota; vecchi accessori solo se presenti', () => {
+  const { righeDotazione } = require('./pdfConsegna');
+  expect(righeDotazione({ dotazione: { voci: ['Cric', 'Cavo di ricarica'], presenti: ['Cric'], impostata: true, chiaviConsegnate: 2, note: 'in officina' } }))
+    .toEqual([['Chiavi consegnate', '2'], ['A bordo', 'Cric'], ['Mancante', 'Cavo di ricarica (in officina)']]);
+  expect(righeDotazione({ accessori: { cric: true, ruotaScorta: false, altro: '' } })).toEqual([['A bordo', 'Cric']]);
+  expect(righeDotazione({})).toEqual([]);
+});

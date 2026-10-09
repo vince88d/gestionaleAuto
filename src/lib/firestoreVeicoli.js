@@ -136,3 +136,11 @@ export async function riattivaVeicolo(id) {
     sospesoIl: deleteField(),
   });
 }
+
+// Dotazione di bordo salvata alla prima consegna di un'auto che non l'aveva
+// ("Salva come dotazione di questa auto"): scrive solo `dotazione` e
+// `chiavi`, senza toccare il resto del documento (vedi utils/dotazione.js).
+export async function aggiornaDotazioneVeicolo(id, campi) {
+  await updateDoc(doc(db, VEICOLI_COLLECTION, id), campi);
+  return campi;
+}
