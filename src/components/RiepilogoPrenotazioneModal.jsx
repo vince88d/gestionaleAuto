@@ -9,6 +9,8 @@ import { formattaData } from '../utils/scadenze';
 import { registraConsegna, messaggioErrorePrenotazione } from '../lib/firestorePrenotazioni';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { salvaPdfConsegna } from '../utils/pdfConsegna';
+import { euro as euroTondo } from '../utils/protezioni';
+import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
 
 const NOMI_ACCESSORI = {
   cric: 'Cric',
@@ -32,6 +34,11 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
   const [nomeContratto, setNomeContratto] = useState('');
   const [consegnaSalvata, setConsegnaSalvata] = useState(false);
   const [pdfMancante, setPdfMancante] = useState(false);
+  // Promemoria della consegna: cauzione da bloccare ed extra da dare.
+  const [cauzioneBloccata, setCauzioneBloccata] = useState(false);
+  const [extraConsegnati, setExtraConsegnati] = useState(false);
+  const cauzione = typeof formData.cauzione === 'number' ? formData.cauzione : formData.protezione?.cauzione;
+  const extraDaDare = (Array.isArray(formData.optional) ? formData.optional : []).filter((r) => r?.quantita > 0);
   const inputContratto = useRef(null);
 
   const datiScheda = schedaVeicolo || {
@@ -137,7 +144,12 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
     setIsSending(true);
     toast.dismiss();
 
-    const prenotazione = { ...formData, schedaVeicolo: datiScheda };
+    // Con la spunta della cauzione, che finisce anche nel PDF.
+    const prenotazione = {
+      ...formData,
+      schedaVeicolo: datiScheda,
+      ...(typeof cauzione === 'number' ? { cauzioneBloccata } : {}),
+    };
     try {
       if (!consegnaSalvata) {
         try {
@@ -148,6 +160,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
             codiceFiscale: formData.codiceFiscale,
             scadenzaPatente,
             ip: ipPubblico || 'Non disponibile',
+            ...(typeof cauzione === 'number' ? { cauzioneBloccata } : {}),
           });
           setConsegnaSalvata(true);
           onConsegnaSalvata?.(campi);
@@ -254,7 +267,27 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
                 <div className="pz-foto"><img src={datiScheda.fotoDanni} alt="Danni alla consegna" /></div>
               )}
             </section>
+
+            <ProtezioneExtraDettagli prenotazione={formData} />
           </div>
+
+          {(typeof cauzione === 'number' || extraDaDare.length > 0) && !consegnaSalvata && (
+            <section className="pz-sezione">
+              <h3 className="pz-titolo-sezione">Prima di dare le chiavi</h3>
+              {typeof cauzione === 'number' && (
+                <label className="pz-opzione">
+                  <input type="checkbox" checked={cauzioneBloccata} onChange={(e) => setCauzioneBloccata(e.target.checked)} />
+                  <span>Ho bloccato la cauzione di <b>{euroTondo(cauzione)}</b> sulla carta del cliente</span>
+                </label>
+              )}
+              {extraDaDare.length > 0 && (
+                <label className="pz-opzione">
+                  <input type="checkbox" checked={extraConsegnati} onChange={(e) => setExtraConsegnati(e.target.checked)} />
+                  <span>Ho dato al cliente: <b>{extraDaDare.map((r) => `${r.nome} × ${r.quantita}`).join(', ')}</b></span>
+                </label>
+              )}
+            </section>
+          )}
 
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Contratto personalizzato (facoltativo)</h3>

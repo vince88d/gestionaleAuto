@@ -167,6 +167,8 @@ export async function assegnaVeicolo({ prenotazione, veicolo, patente }) {
 export const CAMPI_PRENOTAZIONE = [
   'cliente', 'telefono', 'codiceFiscale', 'patente', 'emailCliente',
   'veicolo', 'targa', 'dataInizio', 'dataFine', 'prezzoGiornaliero', 'prezzoTotale',
+  // Protezione ed extra (stessi campi delle prenotazioni del sito, vedi utils/sceltaExtra.js).
+  'totaleNoleggio', 'protezione', 'cauzione', 'optional',
 ];
 
 const soloCampiPrenotazione = (dati) =>
@@ -196,12 +198,15 @@ export async function salvaPrenotazione(dati, originale = null) {
 // vuoti (patente, scadenza, email, telefono) e aggiunge il contratto.
 // Restituisce { campi } salvati sulla prenotazione e `cliente`: 'creato',
 // 'aggiornato' o null (anagrafica non toccata o non riuscita).
-export async function registraConsegna({ prenotazione, scheda, patente, scadenzaPatente, codiceFiscale, ip }) {
+// `cauzioneBloccata` (se la prenotazione ha una cauzione): spunta del
+// promemoria "Ho bloccato la cauzione", servira' al rientro.
+export async function registraConsegna({ prenotazione, scheda, patente, scadenzaPatente, codiceFiscale, ip, cauzioneBloccata }) {
   const campi = {
     schedaVeicolo: scheda || {},
     consegnataIl: new Date().toISOString(),
     ipConsegna: ip || null,
   };
+  if (typeof cauzioneBloccata === 'boolean') campi.cauzioneBloccata = cauzioneBloccata;
   const patentePulita = (patente || '').trim().toUpperCase();
   if (patentePulita) campi.patente = patentePulita;
   const cfPulito = normalizzaCodiceFiscale(codiceFiscale);

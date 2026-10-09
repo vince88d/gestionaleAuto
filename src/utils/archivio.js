@@ -112,6 +112,20 @@ const origine = (p) => (p.origine === 'sito' ? 'Sito' : 'Ufficio');
 const numeroIt = (n) => (n ? String(n).replace('.', ',') : '0');
 const dataIt = (valore) => (giorno(valore) ? giorno(valore).split('-').reverse().join('/') : '');
 
+// Protezione, cauzione ed extra di una prenotazione per il CSV: tre colonne,
+// vuote per le prenotazioni fatte prima (vedi utils/sceltaExtra.js).
+export const INTESTAZIONI_PROTEZIONE_EXTRA = ['Protezione', 'Cauzione', 'Extra'];
+export function colonneProtezioneExtra(p = {}) {
+  const prot = p.protezione;
+  const protezione = !prot ? '' : prot.tipo === 'totale' ? `Totale (${numeroIt(prot.prezzo)})` : 'Base';
+  const cauzione = typeof prot?.cauzione === 'number' ? numeroIt(prot.cauzione) : '';
+  const extra = (Array.isArray(p.optional) ? p.optional : [])
+    .filter((r) => r?.quantita > 0)
+    .map((r) => `${r.nome} x${r.quantita} (${numeroIt(r.totale)})`)
+    .join(', ');
+  return [protezione, cauzione, extra];
+}
+
 // Righe per il CSV (prima riga = intestazioni). Numeri con la virgola e date
 // gg/mm/aaaa, cosi' Excel in italiano li legge bene.
 export function righeCsv(prenotazioni = [], tipo = 'conclusi') {
@@ -129,10 +143,12 @@ export function righeCsv(prenotazioni = [], tipo = 'conclusi') {
     ];
   }
   return [
-    ['Cliente', 'Codice fiscale', 'Email', 'Veicolo', 'Targa', 'Inizio', 'Fine', 'Rientro', 'Importo', 'Origine', 'Danni alla riconsegna'],
+    ['Cliente', 'Codice fiscale', 'Email', 'Veicolo', 'Targa', 'Inizio', 'Fine', 'Rientro', 'Importo', 'Origine',
+      ...INTESTAZIONI_PROTEZIONE_EXTRA, 'Danni alla riconsegna'],
     ...prenotazioni.map((p) => [
       p.cliente, p.codiceFiscale, p.emailCliente, p.veicolo || p.categoria, p.targa, dataIt(p.dataInizio), dataIt(p.dataFine),
-      dataIt(p.dataRientroEffettiva), numeroIt(importiArchivio(p).totale), origine(p), p.descrizioneDanno || '',
+      dataIt(p.dataRientroEffettiva), numeroIt(importiArchivio(p).totale), origine(p),
+      ...colonneProtezioneExtra(p), p.descrizioneDanno || '',
     ]),
   ];
 }

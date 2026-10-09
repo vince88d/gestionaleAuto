@@ -30,12 +30,14 @@ import {
 import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento';
 import { readVeicoli } from '../lib/firestoreVeicoli';
 import { useHolds } from '../lib/firestoreHolds';
+import { useExtra } from '../lib/useExtra';
 import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
 import {
   controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, promemoria,
 } from '../utils/regolePrenotazione';
 import { prezzoPrenotazione } from '../utils/dashboard';
+import { colonneProtezioneExtra, INTESTAZIONI_PROTEZIONE_EXTRA } from '../utils/archivio';
 import { daAssegnare } from '../utils/assegnazioneVeicolo';
 import { prenotazioniSuVeicoloSospeso } from '../utils/disponibilitaCategoria';
 import { giornoLocale, formattaData } from '../utils/scadenze';
@@ -111,6 +113,8 @@ function Bookings() {
   const [availableVehicles, setAvailableVehicles] = useState([]);
   // Hold del sito (cliente che sta pagando online), in tempo reale.
   const holds = useHolds();
+  // Protezioni per categoria e optional: prezzo, cauzione e pezzi liberi.
+  const extra = useExtra();
   const [forceRenderKey, setForceRenderKey] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
@@ -379,11 +383,11 @@ accessori: {
   const exportToCSV = () => {
     const header = [
       "Cliente", "Codice Fiscale", "Patente", "Veicolo", "Targa",
-      "Data Inizio", "Data Fine", "Prezzo Giornaliero", "Prezzo Totale"
+      "Data Inizio", "Data Fine", "Prezzo Giornaliero", "Prezzo Totale", ...INTESTAZIONI_PROTEZIONE_EXTRA
     ];
     const rows = prenotazioniAttive.map(p => [
       p.cliente, p.codiceFiscale, p.patente, p.veicolo, p.targa,
-      p.dataInizio, p.dataFine, p.prezzoGiornaliero, p.prezzoTotale
+      p.dataInizio, p.dataFine, p.prezzoGiornaliero, prezzoPrenotazione(p), ...colonneProtezioneExtra(p)
     ]);
     const csvContent = [header, ...rows].map(e => e.map(v => `"${v}"`).join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -458,6 +462,11 @@ accessori: {
   // accessori e contratto si fanno dopo, il giorno del ritiro, con "Consegna".
   const handleBookingSubmit = async (data) => {
     if (salvandoPrenotazione) return;
+    // Senza protezioni e optional la prenotazione resterebbe senza cauzione.
+    if (!extra.pronti) {
+      showFeedback('Sto ancora caricando protezioni ed extra: riprova tra un attimo.', 'error');
+      return;
+    }
     const prenotazioneCorrente = editingIndex !== null ? prenotazioni[editingIndex] : null;
 
     // Date, veicolo libero (stessa regola di Veicoli e Dashboard: le annullate e
@@ -470,6 +479,8 @@ accessori: {
       prenotazioni,
       holds,
       oggi: giornoLocale(),
+      protezioni: extra.protezioni,
+      catalogo: extra.catalogo,
     });
     if (esito.errore) {
       showFeedback(esito.errore, "error");
@@ -482,7 +493,8 @@ accessori: {
         {
           ...data,
           codiceFiscale: data.codiceFiscale?.toUpperCase() || '',
-          prezzoTotale: esito.prezzoTotale,
+          // Prezzo, e per quelle del gestionale protezione, cauzione ed extra.
+          ...esito,
         },
         prenotazioneCorrente,
       );
@@ -947,6 +959,8 @@ return (
         prenotazioni={prenotazioni}
         salvando={salvandoPrenotazione}
         onModificato={(si) => { moduloModificato.current = si; }}
+        protezioni={extra.protezioni}
+        catalogo={extra.catalogo}
       />
     </BookingModal>
 

@@ -2,6 +2,32 @@
 // Usato alla consegna e, per riscaricarlo dopo, dai dettagli della prenotazione.
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { prezzoPrenotazione } from './dashboard';
+import { COPERTURE } from './protezioni';
+
+// "1.200 EUR" / "36,00 EUR": nel PDF si scrive EUR come nel resto del riepilogo.
+const eur = (n, decimali = false) => `${Number(n || 0).toLocaleString('it-IT', {
+  minimumFractionDigits: decimali ? 2 : 0, maximumFractionDigits: 2, useGrouping: 'always',
+})} EUR`;
+
+// Righe [etichetta, valore] della sezione "Protezione ed extra" del PDF.
+// Vuoto per le prenotazioni senza protezione ne' extra (quelle di prima).
+export function righeProtezioneExtra(prenotazione = {}) {
+  const p = prenotazione.protezione;
+  const extra = (Array.isArray(prenotazione.optional) ? prenotazione.optional : []).filter((r) => r?.quantita > 0);
+  const righe = [];
+  if (p) {
+    righe.push(['Protezione', p.tipo === 'totale' ? `Totale (${eur(p.prezzo, true)})` : 'Base (inclusa)']);
+    if (typeof p.danni === 'number') righe.push(['Danni (max)', `${eur(p.danni)} a carico del cliente`]);
+    if (typeof p.furto === 'number') righe.push(['Furto (max)', `${eur(p.furto)} a carico del cliente`]);
+    if (typeof p.cauzione === 'number') {
+      righe.push(['Cauzione', `${eur(p.cauzione)}${prenotazione.cauzioneBloccata ? ' - bloccata sulla carta' : ''}`]);
+    }
+    const coperte = COPERTURE.filter(([k]) => p.copre?.[k]).map(([, nome], i) => (i === 0 ? nome : nome.toLowerCase()));
+    if (coperte.length > 0) righe.push(['Copre anche', coperte.join(', ')]);
+  }
+  extra.forEach((r, i) => righe.push([i === 0 ? 'Extra' : '', `${r.nome} x ${r.quantita} (${eur(r.totale, true)})`]));
+  return righe;
+}
 
 export async function generaRiepilogoPdf(prenotazione, scheda = {}) {
   const doc = await PDFDocument.create();
@@ -72,6 +98,18 @@ export async function generaRiepilogoPdf(prenotazione, scheda = {}) {
   drawField('Targa', prenotazione.targa);
   drawField('Periodo', `dal ${prenotazione.dataInizio} al ${prenotazione.dataFine}`);
   drawField('Prezzo Totale', `${prezzoPrenotazione(prenotazione)} EUR`);
+
+  const protezioneExtra = righeProtezioneExtra(prenotazione);
+  if (protezioneExtra.length > 0) {
+    drawSection('Protezione ed extra');
+    protezioneExtra.forEach(([etichetta, valore]) => {
+      if (etichetta) drawField(etichetta, valore);
+      else {
+        page.drawText(valore, { x: indent + 130, y, size: 12, font, color: rgb(0, 0, 0) });
+        y -= lineSpacing;
+      }
+    });
+  }
 
   drawSection('Scheda Veicolo');
   drawField('Carburante', scheda.carburante);
