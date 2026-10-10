@@ -20,6 +20,10 @@ const CAMPI = [
   { nome: 'telefono', etichetta: 'Telefono', tipo: 'tel' },
   { nome: 'email', etichetta: 'Email', tipo: 'email' },
   { nome: 'pec', etichetta: 'PEC', tipo: 'email' },
+  {
+    nome: 'emailNotifiche', etichetta: 'Email per gli avvisi del sito', tipo: 'email', largo: true,
+    aiuto: "Qui arriva un avviso ogni volta che un cliente prenota e paga dal sito. Se la lasci vuota si usa l'email dell'azienda.",
+  },
   { nome: 'indirizzo', etichetta: 'Indirizzo', largo: true },
 ];
 const ETICHETTE = Object.fromEntries(CAMPI.map((c) => [c.nome, c.etichetta]));
@@ -188,7 +192,7 @@ function ImpostazioniAzienda() {
         )}
 
         <div className="imp-griglia">
-          {CAMPI.map(({ nome, etichetta, tipo, obbligatorio, largo }) => (
+          {CAMPI.map(({ nome, etichetta, tipo, obbligatorio, largo, aiuto }) => (
             <label key={nome} className={`imp-campo${largo ? ' imp-campo--largo' : ''}`}>
               <span className="imp-etichetta">{etichetta}{obbligatorio && <span className="imp-obbligatorio"> *</span>}</span>
               <input
@@ -200,6 +204,7 @@ function ImpostazioniAzienda() {
                 disabled={!caricato}
                 aria-invalid={Boolean(errori[nome])}
               />
+              {aiuto && <span className="imp-aiuto">{aiuto}</span>}
               {errori[nome] && <span className="imp-errore">{errori[nome]}</span>}
             </label>
           ))}

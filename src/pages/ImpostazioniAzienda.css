@@ -116,6 +116,8 @@
 .imp-input--errore { border-color: #e74c3c; }
 .imp-input--errore:focus { box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.18); }
 
+.imp-aiuto { font-size: 13px; line-height: 1.4; color: #55616d; }
+
 .imp-errore {
   color: #b91c1c;
   font-size: 12.5px;
