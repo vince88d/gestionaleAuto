@@ -4,17 +4,29 @@
 // stessa ora = 2 giorni, non 3: il giorno di riconsegna non si paga a parte.
 // Ritiro e riconsegna nello stesso giorno = 1 giorno (minimo fatturabile).
 //
-// Le prenotazioni hanno solo la data, senza orario: si assume quindi che
-// riconsegna e ritiro avvengano alla stessa ora. Oltre l'orario concordato
-// (di norma con una tolleranza di 29 minuti) le catene addebitano un giorno
-// in più: va scritto nelle condizioni di noleggio e gestito al rientro.
+// Con le ore ("HH:MM") conta l'orario: alla riconsegna si concedono
+// `tolleranza` minuti (decisi in Impostazioni → Orari della sede), oltre si
+// conta un giorno in piu'. Ritiro 12 alle 9:00, rientro 15 alle 9:29 = 3
+// giorni; alle 9:30 = 4. Senza ore (prenotazioni di prima) si assume la
+// stessa ora: conta solo la data.
 //
-// Deve restare identica a `calcolaGiorni` del sito (formiarent,
-// functions/src/disponibilita.ts): se cambi una, cambia anche l'altra.
-export function calcolaGiorniNoleggio(dataInizio, dataFine) {
-  const inizio = new Date(dataInizio);
-  const fine = new Date(dataFine);
-  const diff = fine - inizio;
-  if (Number.isNaN(diff) || diff < 0) return 0; // date mancanti o non valide
-  return Math.max(Math.ceil(diff / (1000 * 60 * 60 * 24)), 1);
+// Deve restare identica a `giorniNoleggio` del sito (formiarent,
+// src/lib/orari.ts e functions/src/orari.ts): se cambi una, cambia anche le altre.
+const DATA = /^\d{4}-\d{2}-\d{2}$/;
+const ORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+const minuti = (o) => {
+  const [h, m] = o.split(':').map(Number);
+  return h * 60 + m;
+};
+// Minuti "da orologio", senza fuso: la sede e' una sola (niente salti per l'ora legale).
+const istante = (d, o) => Math.round(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 60000) + minuti(o);
+
+export function calcolaGiorniNoleggio(dataInizio, dataFine, oraInizio, oraFine, tolleranza = 0) {
+  const di = String(dataInizio || '').slice(0, 10);
+  const df = String(dataFine || '').slice(0, 10);
+  if (!DATA.test(di) || !DATA.test(df) || df < di) return 0; // date mancanti o non valide
+  const oi = ORA.test(String(oraInizio || '')) ? oraInizio : '00:00';
+  const of = ORA.test(String(oraFine || '')) ? oraFine : oi;
+  const durata = istante(df, of) - istante(di, oi);
+  return Math.max(1, Math.ceil((durata - Math.max(0, Number(tolleranza) || 0)) / 1440));
 }

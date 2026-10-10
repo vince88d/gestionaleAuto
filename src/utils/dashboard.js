@@ -70,7 +70,11 @@ export function riepilogoDashboard({ veicoli = [], prenotazioni = [], holds = []
     .sort((a, b) => a.giorni - b.giorni);
 
   const mese = oggi.slice(0, 7);
-  const perData = (campo) => (a, b) => giorno(a[campo]).localeCompare(giorno(b[campo]));
+  // Per giorno e, a parita', per ora (dataInizio con oraInizio, dataFine con oraFine).
+  const perData = (campo) => {
+    const ora = campo === 'dataFine' ? 'oraFine' : 'oraInizio';
+    return (a, b) => (giorno(a[campo]) + (a[ora] || '')).localeCompare(giorno(b[campo]) + (b[ora] || ''));
+  };
 
   return {
     flotta: veicoli.length,

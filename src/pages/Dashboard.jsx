@@ -14,7 +14,8 @@ import { readVeicoli, salvaVeicolo } from '../lib/firestoreVeicoli';
 import { useHolds } from '../lib/firestoreHolds';
 import { riepilogoDashboard, serieUltimi12Mesi, veicoliLiberiNelPeriodo } from '../utils/dashboard';
 import { cambiaStatoRiparazione } from '../utils/danniVeicolo';
-import { formattaData, giornoLocale } from '../utils/scadenze';
+import { dataEOra, formattaData, giornoLocale } from '../utils/scadenze';
+import { oraBreve } from '../utils/orari';
 import VehicleDetailModal from '../components/VehicleDetailModal';
 import RinnovaScadenzaModal from '../components/RinnovaScadenzaModal';
 import { useAzienda } from '../lib/firestoreAzienda';
@@ -273,7 +274,9 @@ function Dashboard() {
                       nome
                       principale={p.cliente || 'Cliente non indicato'}
                       secondaria={`${veicoloDellaPrenotazione(p)} · ${
-                        ritardo > 0 ? `doveva uscire il ${formattaData(p.dataInizio)}` : `fino al ${formattaData(p.dataFine)}`
+                        ritardo > 0
+                          ? `doveva uscire il ${dataEOra(p.dataInizio, p.oraInizio)}`
+                          : `${p.oraInizio ? `alle ${oraBreve(p.oraInizio)} · ` : ''}fino al ${dataEOra(p.dataFine, p.oraFine)}`
                       }`}
                       secondariaAllerta={ritardo > 0}
                       onApri={() => vaiAPrenotazioni({ azione: 'dettagli', id: p.id })}
@@ -304,7 +307,7 @@ function Dashboard() {
                       nome
                       principale={p.cliente || 'Cliente non indicato'}
                       secondaria={`${veicoloDellaPrenotazione(p)} · ${
-                        ritardo > 0 ? `doveva rientrare il ${formattaData(p.dataFine)}` : 'rientra oggi'
+                        ritardo > 0 ? `doveva rientrare il ${dataEOra(p.dataFine, p.oraFine)}` : `rientra oggi${p.oraFine ? ` entro le ${oraBreve(p.oraFine)}` : ''}`
                       }`}
                       secondariaAllerta={ritardo > 0}
                       onApri={() => vaiAPrenotazioni({ azione: 'dettagli', id: p.id })}
@@ -345,7 +348,7 @@ function Dashboard() {
                     tono="rosso"
                     nome
                     principale={p.cliente || 'Cliente non indicato'}
-                    secondaria={`${p.categoria || '—'} · dal ${formattaData(p.dataInizio)} al ${formattaData(p.dataFine)}`}
+                    secondaria={`${p.categoria || '—'} · dal ${dataEOra(p.dataInizio, p.oraInizio)} al ${dataEOra(p.dataFine, p.oraFine)}`}
                     onApri={() => vaiAPrenotazioni({ azione: 'dettagli', id: p.id })}
                     azione={
                       <button type="button" className="dash-azione" onClick={() => vaiAPrenotazioni({ filtro: 'tutte', vista: 'elenco' })}>
@@ -369,7 +372,7 @@ function Dashboard() {
                     tono="rosso"
                     nome
                     principale={p.cliente || 'Cliente non indicato'}
-                    secondaria={`${p.veicolo || p.categoria || '—'} · ${p.targa} · dal ${formattaData(p.dataInizio)}`}
+                    secondaria={`${p.veicolo || p.categoria || '—'} · ${p.targa} · dal ${dataEOra(p.dataInizio, p.oraInizio)}`}
                     onApri={() => vaiAPrenotazioni({ azione: 'dettagli', id: p.id })}
                     azione={
                       <button type="button" className="dash-azione" onClick={() => vaiAPrenotazioni({ azione: 'dettagli', id: p.id })}>

@@ -46,6 +46,10 @@ const daMinuti = (n) => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String
 // Tutte le ore di un giorno, ogni PASSO_MINUTI: per i menu del gestionale.
 export const ORE_DEL_GIORNO = Array.from({ length: (24 * 60) / PASSO_MINUTI }, (_, i) => daMinuti(i * PASSO_MINUTI));
 
+// Ore per i menu di Impostazioni (apertura e chiusura della sede): dalle 6:00
+// alle 23:00, non tutte le 48 del giorno. Un'ora gia' salvata fuori c'e' sempre.
+export const oreImpostazioni = (scelta) => ORE_DEL_GIORNO.filter((o) => (o >= '06:00' && o <= '23:00') || o === scelta);
+
 // "08:30" -> "8:30"
 export const oraBreve = (o) => String(o || '').replace(/^0(\d)/, '$1');
 
@@ -160,4 +164,75 @@ export function oreSelezionabili(orari, dataISO) {
     for (let m = inizio; m <= minuti(f.a); m += PASSO_MINUTI) ore.push(daMinuti(m));
   });
   return ore;
+}
+
+// Ora proposta: le 9:00 se si puo', altrimenti la prima dopo le 9:00, o la prima.
+export const oraPredefinita = (ore) => ore.find((o) => o >= '09:00') ?? ore[0] ?? '';
+
+// Ora proposta in Nuova prenotazione per quel giorno (giorno chiuso: le 9:00).
+export const oraProposta = (orari, dataISO) => (orari && oraPredefinita(oreSelezionabili(orari, dataISO))) || '09:00';
+
+export const testoFasce = (fasce) => fasce.map((f) => `${oraBreve(f.da)}–${oraBreve(f.a)}`).join(' / ');
+
+// "giovedì 15" da "2026-10-15"
+const giornoBreve = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric' });
+const maiuscola = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+
+// Al banco si puo' scegliere anche fuori orario: qui solo l'avviso (o null).
+export function avvisoFuoriOrario(orari, dataISO, ora) {
+  if (!orari || !oraValida(ora) || apertaAlle(orari, dataISO, ora)) return null;
+  const o = orarioDelGiorno(orari, dataISO);
+  if (!o) return null;
+  const quando = `${maiuscola(giornoBreve(dataISO))} alle ${oraBreve(ora)}`;
+  if (o.chiuso) return `${quando} la sede è chiusa${o.motivo ? ` (${o.motivo})` : ' tutto il giorno'}.`;
+  return `${quando} la sede è chiusa (aperta ${testoFasce(o.fasce)}).`;
+}
+
+const durataTesto = (m) => {
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  const ore = h ? `${h} ${h === 1 ? 'ora' : 'ore'}` : '';
+  const min = r ? `${r} minuti` : '';
+  return [ore, min].filter(Boolean).join(' e ');
+};
+
+// Ultimo minuto per non contare un giorno in piu': ora del ritiro + tolleranza.
+export const riconsegnaEntro = (oraInizio, tolleranza) => oraBreve(daMinuti((minuti(oraInizio) + Math.max(0, Number(tolleranza) || 0)) % 1440));
+
+// Rientro piu' tardi dell'ora del ritiro, oltre la tolleranza: si conta un
+// giorno in piu'. Restituisce { testo, giorni, senza } o null.
+export function avvisoGiornoInPiu({ dataInizio, dataFine, oraInizio, oraFine }, tolleranza) {
+  if (!DATA.test(dataInizio || '') || !DATA.test(dataFine || '') || dataFine <= dataInizio) return null;
+  if (!oraValida(oraInizio) || !oraValida(oraFine)) return null;
+  const oltre = minuti(oraFine) - minuti(oraInizio);
+  if (oltre <= Math.max(0, Number(tolleranza) || 0)) return null;
+  const giorniData = Math.round((new Date(`${dataFine}T12:00:00Z`) - new Date(`${dataInizio}T12:00:00Z`)) / 86400000);
+  const nome = (n) => `${n} ${n === 1 ? 'giorno' : 'giorni'}`;
+  return {
+    giorni: giorniData + 1,
+    senza: giorniData,
+    testo: `Il rientro è ${durataTesto(oltre)} oltre ${giorniData === 1 ? "l'ora del ritiro" : `i ${nome(giorniData)}`}: si contano ${nome(giorniData + 1)} (rientrando entro le ${riconsegnaEntro(oraInizio, tolleranza)} sarebbero ${giorniData}).`,
+  };
+}
+
+// Ora da tenere per quel giorno in Nuova prenotazione: quella gia' scelta se
+// la sede e' aperta (o se lo staff ha chiesto "Orario fuori apertura"),
+// altrimenti quella proposta; '' se quel giorno la sede e' chiusa.
+export function oraPerGiorno(orari, dataISO, attuale, fuoriApertura = false) {
+  if (!orari) return attuale || '09:00';
+  const ore = oreSelezionabili(orari, dataISO);
+  if (attuale && (fuoriApertura || ore.includes(attuale))) return attuale;
+  return oraPredefinita(ore);
+}
+
+// Ore del menu di Nuova prenotazione, per non mostrarne 48: dalla prima
+// apertura all'ultima chiusura della settimana (le pause restano, grigie).
+// Con "Orario fuori apertura" `margine` minuti in piu' prima e dopo.
+// L'ora gia' scelta c'e' sempre.
+export function oreDelMenu(orari, margine = 0, scelta = '') {
+  const fasce = orari ? GIORNI.flatMap(([k]) => (orari.settimana[k].aperto ? orari.settimana[k].fasce : [])) : [];
+  if (fasce.length === 0) return ORE_DEL_GIORNO;
+  const da = Math.min(...fasce.map((f) => minuti(f.da))) - margine;
+  const a = Math.max(...fasce.map((f) => minuti(f.a))) + margine;
+  return ORE_DEL_GIORNO.filter((o) => (minuti(o) >= da && minuti(o) <= a) || o === scelta);
 }

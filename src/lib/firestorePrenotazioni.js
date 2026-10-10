@@ -153,7 +153,9 @@ export async function assegnaVeicolo({ prenotazione, veicolo, patente }) {
   if (patentePulita) aggiornamenti.patente = patentePulita;
 
   if (prenotazione.totale != null && !prenotazione.prezzoTotale) {
-    const giorni = calcolaGiorniNoleggio(prenotazione.dataInizio, prenotazione.dataFine) || 1;
+    const giorni = calcolaGiorniNoleggio(
+      prenotazione.dataInizio, prenotazione.dataFine, prenotazione.oraInizio, prenotazione.oraFine, prenotazione.tolleranzaMinuti,
+    ) || 1;
     aggiornamenti.prezzoTotale = prenotazione.totale;
     aggiornamenti.prezzoGiornaliero = Math.round((prenotazione.totale / giorni) * 100) / 100;
   }
@@ -167,6 +169,8 @@ export async function assegnaVeicolo({ prenotazione, veicolo, patente }) {
 export const CAMPI_PRENOTAZIONE = [
   'cliente', 'telefono', 'codiceFiscale', 'patente', 'emailCliente',
   'veicolo', 'targa', 'dataInizio', 'dataFine', 'prezzoGiornaliero', 'prezzoTotale',
+  // Ore "HH:MM" di uscita e rientro e tolleranza usata per contare i giorni (come il sito).
+  'oraInizio', 'oraFine', 'tolleranzaMinuti',
   // Protezione ed extra (stessi campi delle prenotazioni del sito, vedi utils/sceltaExtra.js).
   'totaleNoleggio', 'protezione', 'cauzione', 'optional',
 ];

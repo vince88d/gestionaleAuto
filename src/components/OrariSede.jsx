@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { AlertTriangle, Clock, Save, X } from 'lucide-react';
 import { ascoltaOrari, salvaOrari } from '../lib/firestoreOrari';
-import { GIORNI, ORE_DEL_GIORNO, testoChiusure, testoSettimana, validaOrari, preparaOrari } from '../utils/orari';
+import { GIORNI, oreImpostazioni, testoChiusure, testoSettimana, validaOrari, preparaOrari } from '../utils/orari';
 import './OrariSede.css';
 
 const FERIALI = ['mar', 'mer', 'gio', 'ven'];
@@ -17,7 +17,7 @@ const entroLe = (t) => {
 function SceltaOra({ valore, onChange, etichetta }) {
   return (
     <select className="or-select" value={valore} onChange={(e) => onChange(e.target.value)} aria-label={etichetta}>
-      {ORE_DEL_GIORNO.map((o) => <option key={o} value={o}>{o}</option>)}
+      {oreImpostazioni(valore).map((o) => <option key={o} value={o}>{o}</option>)}
     </select>
   );
 }

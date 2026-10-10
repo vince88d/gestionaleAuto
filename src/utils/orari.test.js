@@ -1,6 +1,7 @@
 import {
   ORARI_PREDEFINITI, normalizzaOrari, validaOrari, preparaOrari, testoSettimana, testoChiusure,
   orarioDelGiorno, apertaAlle, oreSelezionabili, ORE_DEL_GIORNO, oraBreve,
+  oraPredefinita, oraProposta, avvisoFuoriOrario, avvisoGiornoInPiu, oraPerGiorno, oreDelMenu, oreImpostazioni,
 } from './orari';
 
 const copia = () => JSON.parse(JSON.stringify(ORARI_PREDEFINITI));
@@ -82,4 +83,64 @@ test('ore selezionabili ogni 30 minuti dentro le fasce', () => {
   expect(oreSelezionabili(o, '2026-10-11')).toEqual([]);
   expect(ORE_DEL_GIORNO).toHaveLength(48);
   expect(oraBreve('08:30')).toBe('8:30');
+});
+
+describe('avvisi di Nuova prenotazione', () => {
+  const o = normalizzaOrari({ ...JSON.parse(JSON.stringify(ORARI_PREDEFINITI)), chiusure: [{ dal: '2026-12-25', al: '2026-12-26', motivo: 'Natale' }] });
+
+  test('ora proposta: 9:00, o la prima d\'apertura', () => {
+    expect(oraProposta(o, '2026-10-12')).toBe('09:00');
+    expect(oraProposta(o, '2026-10-11')).toBe('09:00'); // domenica chiusa
+    expect(oraPredefinita(['15:00', '15:30'])).toBe('15:00');
+  });
+
+  test('fuori orario e giorni chiusi', () => {
+    expect(avvisoFuoriOrario(o, '2026-10-15', '09:00')).toBeNull();
+    expect(avvisoFuoriOrario(o, '2026-10-15', '20:00')).toBe('Giovedì 15 alle 20:00 la sede è chiusa (aperta 8:30–13:00 / 15:00–19:30).');
+    expect(avvisoFuoriOrario(o, '2026-10-11', '10:00')).toBe('Domenica 11 alle 10:00 la sede è chiusa tutto il giorno.');
+    expect(avvisoFuoriOrario(o, '2026-12-25', '10:00')).toBe('Venerdì 25 alle 10:00 la sede è chiusa (Natale).');
+  });
+
+  test('giorno in piu\' oltre la tolleranza', () => {
+    const d = { dataInizio: '2026-10-12', dataFine: '2026-10-15', oraInizio: '09:00' };
+    expect(avvisoGiornoInPiu({ ...d, oraFine: '09:29' }, 29)).toBeNull();
+    expect(avvisoGiornoInPiu({ ...d, oraFine: '20:00' }, 29)).toEqual({
+      giorni: 4,
+      senza: 3,
+      testo: 'Il rientro è 11 ore oltre i 3 giorni: si contano 4 giorni (rientrando entro le 9:29 sarebbero 3).',
+    });
+    expect(avvisoGiornoInPiu({ ...d, oraFine: '10:30' }, 29).testo).toMatch(/^Il rientro è 1 ora e 30 minuti oltre/);
+    expect(avvisoGiornoInPiu({ ...d, dataFine: '2026-10-12', oraFine: '18:00' }, 29)).toBeNull(); // stesso giorno
+  });
+});
+
+test('ora da tenere cambiando giorno', () => {
+  const o = normalizzaOrari(undefined);
+  expect(oraPerGiorno(o, '2026-10-12', '15:30')).toBe('15:30'); // aperta
+  expect(oraPerGiorno(o, '2026-10-12', '14:00')).toBe('09:00'); // chiusa a pranzo: si propone
+  expect(oraPerGiorno(o, '2026-10-12', '14:00', true)).toBe('14:00'); // fuori apertura voluto
+  expect(oraPerGiorno(o, '2026-10-12', '')).toBe('09:00');
+  expect(oraPerGiorno(o, '2026-10-11', '09:00')).toBe(''); // domenica chiusa
+  expect(oraPerGiorno(null, '2026-10-12', '')).toBe('09:00'); // orari non ancora arrivati
+});
+
+test('menu delle ore corto: dalla prima apertura all\'ultima chiusura', () => {
+  const o = normalizzaOrari(undefined); // 8:30 - 19:30
+  const ore = oreDelMenu(o);
+  expect(ore[0]).toBe('08:30');
+  expect(ore[ore.length - 1]).toBe('19:30');
+  expect(ore).toContain('14:00'); // la pausa resta (grigia nel menu)
+  const fuori = oreDelMenu(o, 120);
+  expect(fuori[0]).toBe('06:30');
+  expect(fuori[fuori.length - 1]).toBe('21:30');
+  expect(oreDelMenu(o, 0, '22:00')).toContain('22:00'); // ora gia' salvata
+  expect(oreDelMenu(null)).toHaveLength(48);
+});
+
+test('menu di Impostazioni: dalle 6:00 alle 23:00', () => {
+  const ore = oreImpostazioni('08:30');
+  expect(ore[0]).toBe('06:00');
+  expect(ore[ore.length - 1]).toBe('23:00');
+  expect(ore).toHaveLength(35);
+  expect(oreImpostazioni('05:30')).toContain('05:30');
 });

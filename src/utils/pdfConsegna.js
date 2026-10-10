@@ -4,6 +4,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { prezzoPrenotazione } from './dashboard';
 import { COPERTURE } from './protezioni';
 import { riassuntoDotazione } from './dotazione';
+import { dataEOra } from './scadenze';
 
 // "1.200 EUR" / "36,00 EUR": nel PDF si scrive EUR come nel resto del riepilogo.
 const eur = (n, decimali = false) => `${Number(n || 0).toLocaleString('it-IT', {
@@ -108,7 +109,7 @@ export async function generaRiepilogoPdf(prenotazione, scheda = {}) {
   drawSection('Veicolo');
   drawField('Modello', prenotazione.veicolo);
   drawField('Targa', prenotazione.targa);
-  drawField('Periodo', `dal ${prenotazione.dataInizio} al ${prenotazione.dataFine}`);
+  drawField('Periodo', `dal ${dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)} al ${dataEOra(prenotazione.dataFine, prenotazione.oraFine)}`);
   drawField('Prezzo Totale', `${prezzoPrenotazione(prenotazione)} EUR`);
 
   const protezioneExtra = righeProtezioneExtra(prenotazione);

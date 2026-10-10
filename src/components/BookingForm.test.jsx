@@ -13,6 +13,12 @@ jest.mock('../lib/firestoreClienti', () => ({
   messaggioErroreCliente: () => 'errore',
   normalizzaCodiceFiscale: (cf) => String(cf || '').trim().toUpperCase(),
 }));
+// Orari della sede: quelli di partenza (lun-ven 8:30-13 / 15-19:30, dom chiuso), tolleranza 29.
+jest.mock('../lib/firestoreOrari', () => {
+  const { normalizzaOrari } = jest.requireActual('../utils/orari');
+  const orari = normalizzaOrari(undefined);
+  return { useOrari: () => orari };
+});
 jest.mock('../lib/firestorePrenotazioni', () => ({
   STATI_PRENOTAZIONE_NON_CONFERMATE: ['richiesta-sito', 'scaduta', 'pagamento-fallito'],
 }));
@@ -63,9 +69,59 @@ test('tre passi in ordine: quando, quale auto, chi (cliente nuovo con nome e tel
   fireEvent.click(screen.getByRole('button', { name: 'Conferma prenotazione' }));
 
   expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
-    dataInizio: '2099-03-10', dataFine: '2099-03-17', targa: 'ABC004', veicolo: 'Panda', prezzoGiornaliero: '35',
+    dataInizio: '2099-03-10', dataFine: '2099-03-17', oraInizio: '09:00', oraFine: '09:00', tolleranzaMinuti: 29,
+    targa: 'ABC004', veicolo: 'Panda', prezzoGiornaliero: '35',
     cliente: 'Luca Neri', telefono: '333 2222222', codiceFiscale: '', patente: '',
   }));
+});
+
+test('ora di uscita e rientro: proposta alle 9:00, avvisi fuori orario e giorno in piu\'', () => {
+  apri({ dataInizio: '2099-03-10', dataFine: '2099-03-13' }); // martedi' -> venerdi'
+  expect(screen.getByLabelText('Ora di uscita')).toHaveValue('09:00');
+  expect(screen.getByLabelText('Ora di rientro')).toHaveValue('09:00');
+  expect(screen.getAllByText('3 giorni').length).toBeGreaterThan(0);
+
+  // Entro la tolleranza (29 minuti) non cambia nulla.
+  fireEvent.change(screen.getByLabelText('Ora di rientro'), { target: { value: '09:00' } });
+  expect(screen.queryByRole('status')).toBeNull();
+
+  // Menu corto (8:30-19:30): la pausa si vede grigia e non si sceglie, le 20:00 non ci sono...
+  expect(screen.getAllByRole('option', { name: '14:00 · chiuso' })[1]).toBeDisabled();
+  expect(screen.queryByRole('option', { name: '20:00 · chiuso' })).toBeNull();
+  // ...finche' non si chiede "Orario fuori apertura" (per il rientro).
+  fireEvent.click(screen.getAllByRole('button', { name: 'Orario fuori apertura' })[1]);
+  expect(screen.getByRole('option', { name: '20:00 · chiuso' })).toBeEnabled();
+  expect(screen.getAllByRole('option', { name: '14:00 · chiuso' })[0]).toBeDisabled(); // l'uscita no
+
+  // Alle 20:00 la sede e' chiusa e si conta un giorno in piu'.
+  fireEvent.change(screen.getByLabelText('Ora di rientro'), { target: { value: '20:00' } });
+  expect(screen.getAllByText('4 giorni').length).toBeGreaterThan(0);
+  expect(screen.getByText(/Venerdì 13 alle 20:00 la sede è chiusa \(aperta 8:30–13:00 \/ 15:00–19:30\)\./)).toBeInTheDocument();
+  expect(screen.getByText(/si contano 4 giorni \(rientrando entro le 9:29 sarebbero 3\)/)).toBeInTheDocument();
+  expect(screen.getByText(/da mar 10 marzo alle 9:00 a ven 13 marzo alle 20:00 · 4 giorni/)).toBeInTheDocument();
+
+  // Il pulsante riporta il rientro all'ora dell'uscita.
+  fireEvent.click(screen.getByRole('button', { name: 'Rientro alle 9:00' }));
+  expect(screen.getByLabelText('Ora di rientro')).toHaveValue('09:00');
+  expect(screen.queryByRole('status')).toBeNull();
+
+  // Si torna alle sole ore di apertura.
+  fireEvent.click(screen.getByRole('button', { name: 'Solo orari di apertura' }));
+  expect(screen.getAllByRole('button', { name: 'Orario fuori apertura' })).toHaveLength(2);
+  expect(screen.getAllByRole('option', { name: '14:00 · chiuso' })[1]).toBeDisabled();
+});
+
+test('prenotazione salvata fuori apertura: l\'ora resta e si puo\' ancora scegliere', () => {
+  apri({ id: 'x2', dataInizio: '2099-03-10', dataFine: '2099-03-13', oraInizio: '09:00', oraFine: '20:00', targa: 'ABC004', cliente: 'Mario Rossi', telefono: '1' });
+  expect(screen.getByLabelText('Ora di rientro')).toHaveValue('20:00');
+  expect(screen.getByText(/Fuori apertura, d'accordo con il cliente/)).toBeInTheDocument();
+  expect(screen.getAllByText('4 giorni').length).toBeGreaterThan(0);
+});
+
+test('prenotazione di prima, senza ore: "—" e giorni contati per data', () => {
+  apri({ id: 'x1', dataInizio: '2099-03-10', dataFine: '2099-03-13', targa: 'ABC004', cliente: 'Mario Rossi', telefono: '1' });
+  expect(screen.getByLabelText('Ora di uscita')).toHaveValue('');
+  expect(screen.getAllByText('3 giorni').length).toBeGreaterThan(0);
 });
 
 test('cliente gia\' in anagrafica: si cerca e porta con se\' contatti e documenti', () => {
@@ -82,7 +138,7 @@ test('cliente gia\' in anagrafica: si cerca e porta con se\' contatti e document
 
 test('ricerca cliente: tendina con frecce e Invio, senza confermare la prenotazione', () => {
   const onSubmit = apri({ dataInizio: '2099-03-10', dataFine: '2099-03-11', targa: 'ABC004' });
-  const campo = screen.getByRole('combobox');
+  const campo = screen.getByPlaceholderText(/Rossi/);
   fireEvent.change(campo, { target: { value: 'mario' } });
   expect(screen.getByRole('listbox')).toBeInTheDocument();
   fireEvent.keyDown(campo, { key: 'Enter' });
@@ -93,7 +149,7 @@ test('ricerca cliente: tendina con frecce e Invio, senza confermare la prenotazi
 
 test('nessun cliente trovato: si aggiunge come nuovo con il nome gia\' scritto', () => {
   apri();
-  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Anna Verdi' } });
+  fireEvent.change(screen.getByPlaceholderText(/Rossi/), { target: { value: 'Anna Verdi' } });
   expect(screen.getByText(/Nessun cliente trovato/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /Aggiungi «Anna Verdi» come cliente nuovo/ }));
   expect(screen.getByLabelText('Nome e cognome')).toHaveValue('Anna Verdi');

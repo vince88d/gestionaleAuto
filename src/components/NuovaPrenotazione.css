@@ -140,7 +140,40 @@
 
 /* 1. Quando */
 .np-date { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
-.np-date .np-campo { width: 210px; }
+.np-date .np-campo { width: 140px; }
+/* Data e ora una accanto all'altra (mockup gestionale-orari.html) */
+.np-ora { display: flex; align-items: flex-start; gap: 8px; }
+.np-date .np-campo--ora { width: 150px; }
+.np-ora-blocco { display: flex; flex-direction: column; gap: 4px; }
+.np-ora-nota { width: 0; min-width: 100%; margin: 0; font-size: 13px; color: #5d6b79; }
+.np-ora-nota b { color: #9a5b00; }
+.pz .np-link--piccolo { padding: 0; font-size: 13px; font-weight: 600; }
+.pz .np-campo select {
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1px solid #cdd5de;
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 17px;
+  color: #1e2a36;
+}
+.pz .np-campo select:focus { outline: none; border-color: #1f6fb2; box-shadow: 0 0 0 3px rgba(31, 111, 178, 0.18); }
+.np-avviso-ora {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff6e5;
+  border: 1px solid #f0c75e;
+  color: #6b4a00;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.np-avviso-ora p { margin: 0; }
+.np-avviso-ora p + p { margin-top: 6px; }
+.pz .np-avviso-ora .np-link { color: #6b4a00; text-decoration: underline; }
 .np .react-datepicker-wrapper,
 .np .react-datepicker__input-container { display: block; width: 100%; }
 .np .react-datepicker-popper { z-index: 10001; }
@@ -159,6 +192,7 @@
   font-weight: 700;
 }
 
+.np-rapide .np-giorni { align-self: center; min-height: 38px; margin-right: 8px; }
 .np-rapide {
   display: flex;
   flex-wrap: wrap;
@@ -426,4 +460,7 @@
   .np-riepilogo { position: static; }
   .np-griglia { grid-template-columns: 1fr; }
   .np-date .np-campo { width: 100%; }
+  .np-ora, .np-ora-blocco { width: 100%; }
+  .np-date .np-ora .np-campo { flex: 1; }
+  .np-date .np-campo--ora { flex: 0 0 150px !important; }
 }

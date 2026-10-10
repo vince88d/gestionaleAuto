@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import { assegnaVeicolo } from '../lib/firestorePrenotazioni';
 import { updatePrenotazione } from '../store/prenotazioniSlice';
 import { daAssegnare, veicoliLiberiPerPrenotazione } from '../utils/assegnazioneVeicolo';
-import { formattaData } from '../utils/scadenze';
+import { dataEOra } from '../utils/scadenze';
 import '../styles/ConcludiPrenotazioneModal.css'; // classi .modal, .overlay, .btn, .form-group
 
 const stili = {
@@ -58,7 +58,7 @@ function AssegnaVeicoloModal({ prenotazione, veicoliLiberi, onClose, onConferma 
         <div className="prenotazione-dettagli">
           <p><strong>Cliente:</strong> {prenotazione.cliente}</p>
           <p><strong>Categoria prenotata:</strong> {prenotazione.categoria}</p>
-          <p><strong>Periodo:</strong> {prenotazione.dataInizio} → {prenotazione.dataFine}</p>
+          <p><strong>Periodo:</strong> {dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)} → {dataEOra(prenotazione.dataFine, prenotazione.oraFine)}</p>
         </div>
       )}
 
@@ -139,7 +139,7 @@ export default function PrenotazioniDaAssegnare({ prenotazioni, veicoli }) {
       {daFare.map((p) => (
         <div key={p.id} style={stili.riga}>
           <span>
-            <strong>{p.cliente}</strong> · {p.categoria} · {formattaData(p.dataInizio)} → {formattaData(p.dataFine)}
+            <strong>{p.cliente}</strong> · {p.categoria} · {dataEOra(p.dataInizio, p.oraInizio)} → {dataEOra(p.dataFine, p.oraFine)}
           </span>
           <button type="button" style={stili.bottone} onClick={() => setSelezionata(p)}>
             Assegna veicolo

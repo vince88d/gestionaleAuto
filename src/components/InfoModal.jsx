@@ -3,7 +3,8 @@ import Modal from 'react-modal';
 import './InfoModal.css';
 import { Pencil, Trash2, CheckCircle, KeyRound, X, Download, FileText } from 'lucide-react';
 import '../styles/Prenotazione.css';
-import { formattaData } from '../utils/scadenze';
+import { dataEOra, formattaData } from '../utils/scadenze';
+import { oraBreve } from '../utils/orari';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { isPagataOnline } from '../utils/pagamentoOnline';
@@ -84,7 +85,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
             <h2 className="pz-titolo">{prenotazione.cliente || 'Prenotazione'}</h2>
             <span className="pz-sottotitolo">
               {prenotazione.veicolo || prenotazione.categoria}{prenotazione.targa ? ` · ${prenotazione.targa}` : ''}
-              {' · '}{formattaData(prenotazione.dataInizio)} → {formattaData(prenotazione.dataFine)}
+              {' · '}{dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)} → {dataEOra(prenotazione.dataFine, prenotazione.oraFine)}
               {prenotazione.origine === 'sito' ? ' · dal sito' : ''}
             </span>
           </div>
@@ -110,8 +111,8 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
               <div><dt>Veicolo</dt><dd>{prenotazione.veicolo || '—'}</dd></div>
               <div><dt>Targa</dt><dd>{prenotazione.targa || 'Da assegnare'}</dd></div>
               <div><dt>Prezzo</dt><dd className="pz-prezzo">€ {prezzoPrenotazione(prenotazione) || '—'}</dd></div>
-              <div><dt>Ritiro</dt><dd>{formattaData(prenotazione.dataInizio)}</dd></div>
-              <div><dt>Riconsegna</dt><dd>{formattaData(prenotazione.dataFine)}</dd></div>
+              <div><dt>Ritiro</dt><dd>{dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)}</dd></div>
+              <div><dt>Riconsegna</dt><dd>{prenotazione.oraFine ? `${formattaData(prenotazione.dataFine)} entro le ${oraBreve(prenotazione.oraFine)}` : formattaData(prenotazione.dataFine)}</dd></div>
               <div><dt>Stato</dt><dd>{statoTesto}</dd></div>
             </dl>
           </section>
@@ -222,11 +223,11 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
     </div>
     <div className="info-item">
       <span className="info-label">Dal</span>
-      <span className="info-value">{prenotazione.dataInizio}</span>
+      <span className="info-value">{dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)}</span>
     </div>
     <div className="info-item">
       <span className="info-label">Al</span>
-      <span className="info-value">{prenotazione.dataFine}</span>
+      <span className="info-value">{dataEOra(prenotazione.dataFine, prenotazione.oraFine)}</span>
     </div>
     <div className="info-item">
       <span className="info-label">Prezzo</span>

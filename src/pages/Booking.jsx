@@ -42,7 +42,7 @@ import { prezzoPrenotazione } from '../utils/dashboard';
 import { colonneProtezioneExtra, INTESTAZIONI_PROTEZIONE_EXTRA } from '../utils/archivio';
 import { daAssegnare } from '../utils/assegnazioneVeicolo';
 import { prenotazioniSuVeicoloSospeso } from '../utils/disponibilitaCategoria';
-import { giornoLocale, formattaData } from '../utils/scadenze';
+import { giornoLocale, formattaData, dataEOra } from '../utils/scadenze';
 import{
   addPrenotazione,
   updatePrenotazione,
@@ -853,7 +853,7 @@ return (
               .map((p) => {
                 const fase = faseLavoro(p, oggi);
                 const nota = promemoria(p, oggi);
-                const giorniNoleggio = calcGiorni(p.dataInizio, p.dataFine);
+                const giorniNoleggio = calcGiorni(p.dataInizio, p.dataFine, p.oraInizio, p.oraFine, p.tolleranzaMinuti);
                 return (
                   <tr key={p.id} onClick={() => openInfoModal(p)} className="bk-riga">
                     <td>
@@ -868,7 +868,7 @@ return (
                       )}
                     </td>
                     <td>
-                      <span className="bk-principale">{formattaData(p.dataInizio)} → {formattaData(p.dataFine)}</span>
+                      <span className="bk-principale">{dataEOra(p.dataInizio, p.oraInizio)} → {dataEOra(p.dataFine, p.oraFine)}</span>
                       {giorniNoleggio > 0 && (
                         <span className="bk-secondario">{giorniNoleggio} {giorniNoleggio === 1 ? 'giorno' : 'giorni'}</span>
                       )}

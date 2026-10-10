@@ -33,9 +33,10 @@ export function dateRapide(chiave, inizio, oggi) {
   return { dataInizio: da, dataFine: ISO(fine) };
 }
 
+// Con le ore conta anche l'orario, con la tolleranza della prenotazione.
 export const giorniDelNoleggio = (dati) =>
   (giorno(dati.dataInizio) && giorno(dati.dataFine) && giorno(dati.dataFine) >= giorno(dati.dataInizio)
-    ? calcolaGiorniNoleggio(giorno(dati.dataInizio), giorno(dati.dataFine))
+    ? calcolaGiorniNoleggio(giorno(dati.dataInizio), giorno(dati.dataFine), dati.oraInizio, dati.oraFine, dati.tolleranzaMinuti)
     : 0);
 
 // Passi compiuti e passo su cui lavorare (1 quando, 2 auto, 3 cliente).
@@ -60,6 +61,9 @@ export function validaNuovaPrenotazione(dati) {
   if (!inizio) errori.dataInizio = 'Scegli il giorno in cui esce.';
   if (!fine) errori.dataFine = 'Scegli il giorno in cui rientra.';
   else if (inizio && fine < inizio) errori.dataFine = 'Il rientro è prima dell\'uscita.';
+  else if (inizio === fine && dati.oraInizio && dati.oraFine && dati.oraFine <= dati.oraInizio) {
+    errori.dataFine = 'Lo stesso giorno il rientro deve essere dopo l\'uscita.';
+  }
   if (!dati.targa) errori.targa = 'Scegli l\'auto.';
   if (!(dati.cliente || '').trim()) errori.cliente = 'Scegli il cliente o scrivi nome e cognome.';
   else if (!(dati.telefono || '').trim() && !(dati.emailCliente || '').trim()) {

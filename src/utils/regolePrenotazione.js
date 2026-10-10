@@ -23,6 +23,9 @@ export function controllaPrenotazione({
   const fine = giorno(dati.dataFine);
   if (!inizio || !fine) return { errore: 'Inserisci la data di inizio e di fine.' };
   if (fine < inizio) return { errore: 'La data di fine è prima di quella di inizio.' };
+  if (fine === inizio && dati.oraInizio && dati.oraFine && dati.oraFine <= dati.oraInizio) {
+    return { errore: 'Lo stesso giorno il rientro deve essere dopo l\'uscita.' };
+  }
   // Una prenotazione nuova non puo' partire nel passato; una esistente gia'
   // iniziata si puo' ancora correggere (es. allungare il rientro).
   const inizioCambiato = !originale || giorno(originale.dataInizio) !== inizio;
@@ -62,7 +65,8 @@ export function controllaPrenotazione({
   if (originale && pagataSulSito(originale)) {
     return { prezzoTotale: prezzoPrenotazione(originale) };
   }
-  const giorni = calcolaGiorniNoleggio(inizio, fine);
+  // Con le ore conta l'orario e la tolleranza salvata (o quella di Impostazioni).
+  const giorni = calcolaGiorniNoleggio(inizio, fine, dati.oraInizio, dati.oraFine, dati.tolleranzaMinuti ?? originale?.tolleranzaMinuti);
   const categoria = veicolo?.categoria || veicoli.find((v) => v.targa === originale?.targa)?.categoria;
   return preventivoPrenotazione({
     prezzoGiornaliero: dati.prezzoGiornaliero,
