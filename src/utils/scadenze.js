@@ -49,6 +49,9 @@ export function formattaData(valore) {
   return Number.isNaN(data.getTime()) ? String(valore) : data.toLocaleDateString('it-IT');
 }
 
+// "12/10/2026 alle 9:00" (senza ora, solo la data: prenotazioni di prima).
+export const dataEOra = (data, ora) => `${formattaData(data)}${ora ? ` alle ${String(ora).replace(/^0(\d)/, '$1')}` : ''}`;
+
 // Nuova scadenza proposta quando si segna un rinnovo: un anno dopo quella
 // vecchia (due per la revisione). Se manca o non e' valida si parte da oggi.
 // Il gestore la puo' sempre correggere.

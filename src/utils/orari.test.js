@@ -1,6 +1,7 @@
 import {
   ORARI_PREDEFINITI, normalizzaOrari, validaOrari, preparaOrari, testoSettimana, testoChiusure,
   orarioDelGiorno, apertaAlle, oreSelezionabili, ORE_DEL_GIORNO, oraBreve,
+  oraPredefinita, oraProposta, avvisoFuoriOrario, avvisoGiornoInPiu,
 } from './orari';
 
 const copia = () => JSON.parse(JSON.stringify(ORARI_PREDEFINITI));
@@ -82,4 +83,33 @@ test('ore selezionabili ogni 30 minuti dentro le fasce', () => {
   expect(oreSelezionabili(o, '2026-10-11')).toEqual([]);
   expect(ORE_DEL_GIORNO).toHaveLength(48);
   expect(oraBreve('08:30')).toBe('8:30');
+});
+
+describe('avvisi di Nuova prenotazione', () => {
+  const o = normalizzaOrari({ ...JSON.parse(JSON.stringify(ORARI_PREDEFINITI)), chiusure: [{ dal: '2026-12-25', al: '2026-12-26', motivo: 'Natale' }] });
+
+  test('ora proposta: 9:00, o la prima d\'apertura', () => {
+    expect(oraProposta(o, '2026-10-12')).toBe('09:00');
+    expect(oraProposta(o, '2026-10-11')).toBe('09:00'); // domenica chiusa
+    expect(oraPredefinita(['15:00', '15:30'])).toBe('15:00');
+  });
+
+  test('fuori orario e giorni chiusi', () => {
+    expect(avvisoFuoriOrario(o, '2026-10-15', '09:00')).toBeNull();
+    expect(avvisoFuoriOrario(o, '2026-10-15', '20:00')).toBe('Giovedì 15 alle 20:00 la sede è chiusa (aperta 8:30–13:00 / 15:00–19:30).');
+    expect(avvisoFuoriOrario(o, '2026-10-11', '10:00')).toBe('Domenica 11 alle 10:00 la sede è chiusa tutto il giorno.');
+    expect(avvisoFuoriOrario(o, '2026-12-25', '10:00')).toBe('Venerdì 25 alle 10:00 la sede è chiusa (Natale).');
+  });
+
+  test('giorno in piu\' oltre la tolleranza', () => {
+    const d = { dataInizio: '2026-10-12', dataFine: '2026-10-15', oraInizio: '09:00' };
+    expect(avvisoGiornoInPiu({ ...d, oraFine: '09:29' }, 29)).toBeNull();
+    expect(avvisoGiornoInPiu({ ...d, oraFine: '20:00' }, 29)).toEqual({
+      giorni: 4,
+      senza: 3,
+      testo: 'Il rientro è 11 ore oltre i 3 giorni: si contano 4 giorni (rientrando entro le 9:29 sarebbero 3).',
+    });
+    expect(avvisoGiornoInPiu({ ...d, oraFine: '10:30' }, 29).testo).toMatch(/^Il rientro è 1 ora e 30 minuti oltre/);
+    expect(avvisoGiornoInPiu({ ...d, dataFine: '2026-10-12', oraFine: '18:00' }, 29)).toBeNull(); // stesso giorno
+  });
 });

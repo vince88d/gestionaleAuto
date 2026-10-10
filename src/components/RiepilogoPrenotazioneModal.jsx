@@ -5,7 +5,7 @@ import { FileText, Printer, Upload, X } from 'lucide-react';
 import '../components/riepilogoModal.css';
 import '../styles/Prenotazione.css';
 import { PassiConsegna } from './SchedaModalOpen';
-import { formattaData } from '../utils/scadenze';
+import { dataEOra } from '../utils/scadenze';
 import { registraConsegna, messaggioErrorePrenotazione } from '../lib/firestorePrenotazioni';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { salvaPdfConsegna } from '../utils/pdfConsegna';
@@ -113,7 +113,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
           `Gentile ${prenotazione.cliente},` +
           `\n\nIn allegato trovi il riepilogo della tua prenotazione.` +
           `${contrattoDaSalvare ? '\nSe necessario, allega anche il contratto personalizzato.' : ''}` +
-          `\n\nPeriodo: dal ${prenotazione.dataInizio} al ${prenotazione.dataFine}` +
+          `\n\nPeriodo: dal ${dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)} al ${dataEOra(prenotazione.dataFine, prenotazione.oraFine)}` +
           `\nVeicolo: ${prenotazione.veicolo} (${prenotazione.targa})` +
           `\nPrezzo totale: ${prezzoTotale} EUR` +
           `\n\nGrazie.` +
@@ -226,8 +226,8 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
                 <div><dt>Veicolo</dt><dd>{formData.veicolo || '—'}</dd></div>
                 <div><dt>Targa</dt><dd>{formData.targa || '—'}</dd></div>
                 <div><dt>Prezzo totale</dt><dd className="pz-prezzo">€ {prezzoTotale || '—'}</dd></div>
-                <div><dt>Ritiro</dt><dd>{formattaData(formData.dataInizio)}</dd></div>
-                <div><dt>Riconsegna</dt><dd>{formattaData(formData.dataFine)}</dd></div>
+                <div><dt>Ritiro</dt><dd>{dataEOra(formData.dataInizio, formData.oraInizio)}</dd></div>
+                <div><dt>Riconsegna</dt><dd>{dataEOra(formData.dataFine, formData.oraFine)}</dd></div>
               </dl>
             </section>
 

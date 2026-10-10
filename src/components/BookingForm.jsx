@@ -21,13 +21,15 @@ import { formattaData, giornoLocale } from '../utils/scadenze';
 import {
   DURATE_RAPIDE, dateRapide, giorniDelNoleggio, statoPassi, validaNuovaPrenotazione, datiDaCliente, documentiCompleti,
 } from '../utils/nuovaPrenotazione';
+import { useOrari } from '../lib/firestoreOrari';
+import { ORE_DEL_GIORNO, oraBreve, oraProposta, avvisoFuoriOrario, avvisoGiornoInPiu } from '../utils/orari';
 import './BookingForm.css';
 import '../styles/Prenotazione.css';
 import './NuovaPrenotazione.css';
 
 const CAMPI_VUOTI = {
   cliente: '', telefono: '', emailCliente: '', codiceFiscale: '', patente: '',
-  veicolo: '', targa: '', dataInizio: '', dataFine: '', prezzoGiornaliero: '',
+  veicolo: '', targa: '', dataInizio: '', dataFine: '', oraInizio: '', oraFine: '', prezzoGiornaliero: '',
 };
 const nomeVeicolo = (v) => [v?.marca, v?.modello].filter(Boolean).join(' ') || v?.targa || '';
 const euro = (valore) => `${Number(valore || 0).toFixed(2).replace('.', ',')} €`;
@@ -36,6 +38,21 @@ const dataLunga = (iso) => (iso
   : '');
 const versoData = (d) => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`) : null);
 const daData = (date) => (date ? giornoLocale(date) : '');
+const conOra = (iso, ora) => `${dataLunga(iso)}${ora ? ` alle ${oraBreve(ora)}` : ''}`;
+
+// Ora accanto alla data: ogni 30 minuti, anche fuori orario (al banco si
+// puo', con l'avviso sotto). "—" solo per le prenotazioni di prima, senza ora.
+function SceltaOra({ valore, onChange, etichetta }) {
+  return (
+    <label className="np-campo np-campo--ora">
+      <span className="np-etichetta">alle</span>
+      <select value={valore} onChange={(e) => onChange(e.target.value)} aria-label={etichetta}>
+        {!valore && <option value="">—</option>}
+        {ORE_DEL_GIORNO.map((o) => <option key={o} value={o}>{oraBreve(o)}</option>)}
+      </select>
+    </label>
+  );
+}
 // Nomi dei campi per "Manca ancora:" sotto il pulsante.
 const NOMI_ERRORI = {
   dataInizio: 'giorno di uscita', dataFine: 'giorno di rientro', targa: 'auto', prezzoGiornaliero: 'prezzo',
@@ -67,6 +84,9 @@ function BookingForm({
   const bookingId = initialValues?.id;
   const sito = pagataSulSito(initialValues);
   const oggi = giornoLocale();
+  const orari = useOrari();
+  // Tolleranza al rientro: quella salvata sulla prenotazione, altrimenti quella di Impostazioni.
+  const tolleranza = initialValues?.tolleranzaMinuti ?? orari?.tolleranzaMinuti ?? 0;
 
   const [dati, setDati] = useState(CAMPI_VUOTI);
   const datiIniziali = useRef(CAMPI_VUOTI);
@@ -114,6 +134,38 @@ function BookingForm({
 
   const aggiorna = (campi) => setDati((d) => ({ ...d, ...campi }));
 
+  // Nuova prenotazione arrivata con le date gia' scelte (calendario, Dashboard):
+  // appena ci sono gli orari si propone l'ora, senza contarla come modifica.
+  useEffect(() => {
+    if (!orari || bookingId) return;
+    setDati((d) => {
+      const ore = {};
+      if (d.dataInizio && !d.oraInizio) ore.oraInizio = oraProposta(orari, d.dataInizio);
+      if (d.dataFine && !d.oraFine) ore.oraFine = ore.oraInizio || d.oraInizio || oraProposta(orari, d.dataFine);
+      if (!Object.keys(ore).length) return d;
+      if (datiIniziali.current.dataInizio === d.dataInizio && datiIniziali.current.dataFine === d.dataFine) {
+        datiIniziali.current = { ...datiIniziali.current, ...ore };
+      }
+      return { ...d, ...ore };
+    });
+  }, [orari, bookingId, dati.dataInizio, dati.dataFine]);
+
+  // Scegliendo il giorno: se l'ora manca si propone (rientro alla stessa ora dell'uscita).
+  const scegliInizio = (data) => aggiorna({
+    dataInizio: data,
+    ...(dati.dataFine && data > dati.dataFine ? { dataFine: '' } : {}),
+    ...(data && !dati.oraInizio ? { oraInizio: oraProposta(orari, data) } : {}),
+  });
+  const scegliFine = (data) => aggiorna({
+    dataFine: data,
+    ...(data && !dati.oraFine ? { oraFine: dati.oraInizio || oraProposta(orari, data) } : {}),
+  });
+  const scegliRapida = (chiave) => {
+    const date = dateRapide(chiave, dati.dataInizio, oggi);
+    const oraInizio = dati.oraInizio || oraProposta(orari, date.dataInizio);
+    aggiorna({ ...date, oraInizio, oraFine: dati.oraFine || oraInizio });
+  };
+
   // Toccato qualcosa rispetto a come si e' aperto? (per chiedere conferma alla chiusura)
   const modificato = Object.keys(CAMPI_VUOTI).some((k) => dati[k] !== datiIniziali.current[k]) || cerca.trim() !== ''
     || JSON.stringify(scelte) !== JSON.stringify(scelteDiPartenza.current);
@@ -129,7 +181,10 @@ function BookingForm({
   }, [availableVehicles, veicoli, initialValues]);
 
   const veicoloScelto = veicoliSelezionabili.find((v) => v.targa === dati.targa);
-  const giorni = giorniDelNoleggio(dati);
+  const giorni = giorniDelNoleggio({ ...dati, tolleranzaMinuti: tolleranza });
+  const avvisoUscita = dati.dataInizio ? avvisoFuoriOrario(orari, dati.dataInizio, dati.oraInizio) : null;
+  const avvisoRientro = dati.dataFine ? avvisoFuoriOrario(orari, dati.dataFine, dati.oraFine) : null;
+  const giornoInPiu = orari ? avvisoGiornoInPiu(dati, tolleranza) : null;
   const passi = statoPassi(dati);
   const errori = validaNuovaPrenotazione(dati);
   const mostraErrore = (campo) => tentato && errori[campo];
@@ -268,6 +323,8 @@ function BookingForm({
       sceltaProtezione,
       sceltaOptional: scelte.sceltaOptional,
       ...dati,
+      // La tolleranza usata per contare i giorni resta sulla prenotazione (come il sito).
+      ...(dati.oraInizio && dati.oraFine ? { tolleranzaMinuti: tolleranza } : {}),
       cliente: dati.cliente.trim().replace(/\s+/g, ' '),
       telefono: dati.telefono.trim(),
       emailCliente: dati.emailCliente.trim(),
@@ -314,12 +371,13 @@ function BookingForm({
           <section className={`np-sezione ${passi.attivo === 1 ? 'np-sezione--attiva' : ''}`}>
             <h3 className="np-sezione-titolo"><span className="np-numero">1.</span> Quando?</h3>
             <div className="np-date">
+              <div className="np-ora">
               <label className={`np-campo ${mostraErrore('dataInizio') ? 'np-campo--errore' : ''}`}>
                 <span className="np-etichetta">Esce il</span>
                 <DatePicker
                   locale={it}
                   selected={versoData(dati.dataInizio)}
-                  onChange={(d) => aggiorna({ dataInizio: daData(d), ...(dati.dataFine && daData(d) > dati.dataFine ? { dataFine: '' } : {}) })}
+                  onChange={(d) => scegliInizio(daData(d))}
                   minDate={bookingId ? null : versoData(oggi)}
                   excludeDates={giorniBloccati}
                   dateFormat="dd/MM/yyyy"
@@ -327,12 +385,15 @@ function BookingForm({
                 />
                 {mostraErrore('dataInizio') && <span className="np-errore" role="alert">{errori.dataInizio}</span>}
               </label>
+              <SceltaOra valore={dati.oraInizio} onChange={(o) => aggiorna({ oraInizio: o })} etichetta="Ora di uscita" />
+              </div>
+              <div className="np-ora">
               <label className={`np-campo ${mostraErrore('dataFine') ? 'np-campo--errore' : ''}`}>
                 <span className="np-etichetta">Rientra il</span>
                 <DatePicker
                   locale={it}
                   selected={versoData(dati.dataFine)}
-                  onChange={(d) => aggiorna({ dataFine: daData(d) })}
+                  onChange={(d) => scegliFine(daData(d))}
                   minDate={versoData(dati.dataInizio) || (bookingId ? null : versoData(oggi))}
                   excludeDates={giorniBloccati}
                   openToDate={versoData(dati.dataFine) || versoData(dati.dataInizio) || undefined}
@@ -341,10 +402,29 @@ function BookingForm({
                 />
                 {mostraErrore('dataFine') && <span className="np-errore" role="alert">{errori.dataFine}</span>}
               </label>
+              <SceltaOra valore={dati.oraFine} onChange={(o) => aggiorna({ oraFine: o })} etichetta="Ora di rientro" />
+              </div>
               {giorni > 0 && (
                 <span className="np-giorni">{giorni} {giorni === 1 ? 'giorno' : 'giorni'}</span>
               )}
             </div>
+            {(avvisoUscita || avvisoRientro || giornoInPiu) && (
+              <div className="np-avviso-ora" role="status">
+                {[avvisoUscita, avvisoRientro].filter(Boolean).map((t) => (
+                  <p key={t}><b>{t}</b> Puoi lasciarlo se sei d'accordo con il cliente.</p>
+                ))}
+                {giornoInPiu && (
+                  <p>
+                    {giornoInPiu.testo}{' '}
+                    {!sito && (
+                      <button type="button" className="np-link" onClick={() => aggiorna({ oraFine: dati.oraInizio })}>
+                        Rientro alle {oraBreve(dati.oraInizio)}
+                      </button>
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="np-rapide">
               <span>Scelta rapida{dati.dataInizio ? ` dal ${formattaData(dati.dataInizio)}` : ' da oggi'}:</span>
               {DURATE_RAPIDE.map((d) => (
@@ -352,7 +432,7 @@ function BookingForm({
                   key={d.chiave}
                   type="button"
                   className="np-chip"
-                  onClick={() => aggiorna(dateRapide(d.chiave, dati.dataInizio, oggi))}
+                  onClick={() => scegliRapida(d.chiave)}
                 >
                   {d.etichetta}
                 </button>
@@ -553,7 +633,7 @@ function BookingForm({
           <dl className="np-dati">
             <div>
               <dt>Quando</dt>
-              <dd>{giorni > 0 ? `da ${dataLunga(dati.dataInizio)} a ${dataLunga(dati.dataFine)} · ${giorni} ${giorni === 1 ? 'giorno' : 'giorni'}` : <span className="np-vuoto">da scegliere</span>}</dd>
+              <dd>{giorni > 0 ? `da ${conOra(dati.dataInizio, dati.oraInizio)} a ${conOra(dati.dataFine, dati.oraFine)} · ${giorni} ${giorni === 1 ? 'giorno' : 'giorni'}` : <span className="np-vuoto">da scegliere</span>}</dd>
             </div>
             <div>
               <dt>Auto</dt>
