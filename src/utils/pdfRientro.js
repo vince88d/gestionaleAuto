@@ -1,9 +1,10 @@
 // Verbale di rientro (PDF), come quello di consegna: ora, km, carburante,
 // chiavi, cosa non e' tornato, danni, addebiti e cauzione, spazio per le firme.
 // Mockup approvato: formiarent-documenti/mockup/gestionale-rientro.html
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { dataEOra } from './scadenze';
-import { giorniInPiu, kmPercorsi } from './rientro';
+import { dataEOra, formattaData } from './scadenze';
+import { giorniInPiu, kmPercorsi, quartiCarburante } from './rientro';
+import { nuovoFoglio, COLORI } from './pdfLayout';
+import { riferimentoPrenotazione } from './pdfConsegna';
 
 const eur = (n) => `${Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' })} EUR`;
 const nKm = (n) => Number(n).toLocaleString('it-IT');
@@ -53,48 +54,87 @@ export function sezioniRientro(prenotazione = {}) {
   return sezioni;
 }
 
-export async function generaVerbaleRientroPdf(prenotazione) {
-  const doc = await PDFDocument.create();
-  const font = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const indent = 50;
-  let page = doc.addPage([595, 842]);
-  let y = 800;
-  const libero = (altezza) => {
-    if (y - altezza < 60) { page = doc.addPage([595, 842]); y = 800; }
-  };
-
-  page.drawText('Verbale di rientro', { x: indent, y, size: 20, font: bold, color: rgb(0.1, 0.2, 0.5) });
-  y -= 30;
-
-  sezioniRientro(prenotazione).forEach(({ titolo, righe }) => {
-    libero(40 + righe.length * 18);
-    page.drawText(titolo, { x: indent, y, size: 14, font: bold, color: rgb(0.1, 0.1, 0.1) });
-    y -= 20;
-    page.drawLine({ start: { x: indent, y }, end: { x: 545, y }, thickness: 0.8, color: rgb(0.8, 0.8, 0.8) });
-    y -= 10;
-    righe.forEach(([etichetta, valore]) => {
-      libero(18);
-      const ultima = etichetta === 'Totale';
-      page.drawText(`${etichetta}:`, { x: indent, y, size: 12, font: bold, color: rgb(0.2, 0.2, 0.2) });
-      page.drawText(String(valore || '-'), { x: indent + 150, y, size: 12, font: ultima ? bold : font, color: rgb(0, 0, 0) });
-      y -= 18;
-    });
-    y -= 8;
+// Verbale di rientro, con la stessa impaginazione di quello di consegna
+// (pdfLayout.js). `opzioni`: { azienda }.
+export async function generaVerbaleRientroPdf(prenotazione, opzioni = {}) {
+  const azienda = opzioni.azienda || {};
+  const r = prenotazione.rientro || {};
+  const rif = riferimentoPrenotazione(prenotazione);
+  const dataDoc = r.dataRientro ? formattaData(r.dataRientro) : new Date().toLocaleDateString('it-IT');
+  const foglio = await nuovoFoglio({
+    azienda,
+    titolo: 'Verbale di rientro',
+    sottotitolo: `${rif ? `Prenotazione n. ${rif} · ` : ''}${dataDoc}`,
+    piede: `${azienda.nome ? `${azienda.nome} · ` : ''}Verbale di rientro${rif ? ` · Prenotazione ${rif}` : ''}`,
   });
 
-  libero(80);
-  y -= 24;
-  [[indent, 'Firma del cliente'], [indent + 280, 'Firma per l\'azienda']].forEach(([x, testo]) => {
-    page.drawLine({ start: { x, y }, end: { x: x + 215, y }, thickness: 1, color: rgb(0, 0, 0) });
-    page.drawText(testo, { x, y: y - 15, size: 12, font, color: rgb(0, 0, 0) });
+  const extra = giorniInPiu({ prenotazione, dataRientro: r.dataRientro, oraRientro: r.oraRientro, tolleranza: prenotazione.tolleranzaMinuti });
+  const percorsi = kmPercorsi(r.kmConsegna, r.km);
+  const nonTornato = [...(r.dotazioneNonTornata || []), ...(r.extraNonTornati || [])];
+  const addebiti = Array.isArray(r.addebiti) ? r.addebiti : [];
+
+  foglio.colonne([
+    { titolo: 'Cliente', righe: [['Nome', prenotazione.cliente || '-'], ...(prenotazione.telefono ? [['Telefono', prenotazione.telefono]] : [])] },
+    {
+      titolo: 'Noleggio',
+      righe: [
+        ['Veicolo', `${prenotazione.veicolo || '-'}${prenotazione.targa ? ` · ${prenotazione.targa}` : ''}`],
+        ['Ritiro', dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)],
+        ['Riconsegna', dataEOra(prenotazione.dataFine, prenotazione.oraFine)],
+      ],
+    },
+  ]);
+
+  foglio.sezione("Com'è tornata");
+  foglio.riquadri([
+    {
+      etichetta: 'Rientrata', valore: dataEOra(r.dataRientro, r.oraRientro).replace(/\/\d{4}/, ''),
+      ...(extra > 0 ? { nota: `${extra} ${extra === 1 ? 'giorno' : 'giorni'} in più`, notaAllarme: true } : {}),
+    },
+    {
+      etichetta: 'Chilometri', valore: r.km != null ? `${nKm(r.km)} km` : '-',
+      ...(r.kmConsegna != null ? { nota: `dalla consegna: ${nKm(r.kmConsegna)}${percorsi !== null ? ` · percorsi ${nKm(percorsi)}` : ''}` } : {}),
+    },
+    { etichetta: 'Chiavi', valore: r.chiaviConsegnate ? `${r.chiaviTornate ?? '-'} di ${r.chiaviConsegnate}` : '-' },
+  ], [1, 1.2, 0.8]);
+  const quartiA = quartiCarburante(r.carburante);
+  foglio.riquadri([
+    {
+      etichetta: 'Carburante: consegna -> rientro', valore: `${r.carburanteConsegna ? `${r.carburanteConsegna} -> ` : ''}${r.carburante || '-'}`,
+      ...(quartiA ? { barra: { pieni: quartiA, totale: 4 } } : {}),
+    },
+    { etichetta: 'Non tornato', valore: nonTornato.length > 0 ? nonTornato.join(', ') : 'Niente', rosso: nonTornato.length > 0 },
+  ], [2, 1]);
+  foglio.riquadroTesto({
+    etichetta: 'Danni nuovi',
+    testo: prenotazione.descrizioneDanno ? `${prenotazione.descrizioneDanno}${prenotazione.daRiparare ? ' (da riparare)' : ''}` : 'Nessuno',
+    immagine: await foglio.immagine([].concat(prenotazione.fotoDanni || [])[0]),
   });
-  return doc.save();
+
+  foglio.sezione('Addebiti');
+  if (addebiti.length > 0) foglio.tabella(addebiti.map((a) => [a.nome, eur(a.importo)]), ['Totale addebiti', eur(r.totaleAddebiti)]);
+  else foglio.piccolo('Nessun addebito.');
+
+  if (r.cauzione) {
+    foglio.sezione('Cauzione');
+    foglio.riquadri([
+      { etichetta: 'Bloccata', valore: eur(r.cauzione.importo) },
+      { etichetta: 'Trattenuta', valore: eur(r.cauzione.trattenuta) },
+      { etichetta: 'Sbloccata', valore: eur(r.cauzione.sbloccata) },
+    ]);
+    if (r.cauzione.restano > 0) foglio.piccolo(`Restano da pagare: ${eur(r.cauzione.restano)}`, COLORI.allarme, 9.5);
+  } else if (r.totaleAddebiti > 0) {
+    foglio.spazio(6);
+    foglio.piccolo(`Restano da pagare: ${eur(r.restanoDaPagare)}`, COLORI.allarme, 9.5);
+  }
+
+  foglio.firme(`Data: ${dataDoc}`);
+  return foglio.chiudi();
 }
 
 // Chiede dove salvare e scrive il PDF (stesso salvataggio del riepilogo di consegna).
-export async function salvaVerbaleRientro(prenotazione) {
-  const pdf = await generaVerbaleRientroPdf(prenotazione);
+export async function salvaVerbaleRientro(prenotazione, azienda) {
+  const pdf = await generaVerbaleRientroPdf(prenotazione, { azienda });
   return window.electronAPI.salvaDocumentiPrenotazione({
     prenotazione,
     riepilogoPdf: Array.from(new Uint8Array(pdf)),

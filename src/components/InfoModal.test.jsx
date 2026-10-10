@@ -5,6 +5,7 @@ import InfoModal from './InfoModal';
 // Il modale non deve generare PDF in questo test.
 jest.mock('jspdf', () => jest.fn());
 jest.mock('html2canvas', () => jest.fn());
+jest.mock('../lib/firestoreAzienda', () => ({ useAzienda: () => ({ dati: { nome: 'Formia Rent' } }) }));
 
 const azioni = { onClose: jest.fn(), onModifica: jest.fn(), onElimina: jest.fn(), onConcludi: jest.fn() };
 

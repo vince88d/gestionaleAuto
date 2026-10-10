@@ -1,10 +1,12 @@
 // PDF del riepilogo di consegna (cliente, veicolo, scheda, spazio firma).
 // Usato alla consegna e, per riscaricarlo dopo, dai dettagli della prenotazione.
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { prezzoPrenotazione } from './dashboard';
 import { COPERTURE } from './protezioni';
 import { riassuntoDotazione } from './dotazione';
-import { dataEOra } from './scadenze';
+import { dataEOra, formattaData } from './scadenze';
+import { nuovoFoglio } from './pdfLayout';
+import { calcolaGiorniNoleggio } from './giorniNoleggio';
+import { quartiCarburante } from './rientro';
 
 // "1.200 EUR" / "36,00 EUR": nel PDF si scrive EUR come nel resto del riepilogo.
 const eur = (n, decimali = false) => `${Number(n || 0).toLocaleString('it-IT', {
@@ -42,121 +44,113 @@ export function righeDotazione(scheda = {}) {
   return righe;
 }
 
-export async function generaRiepilogoPdf(prenotazione, scheda = {}) {
-  const doc = await PDFDocument.create();
-  const page = doc.addPage([595, 842]);
-  const font = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+// Testo sopra le firme (da concordare con il cliente insieme alle condizioni di noleggio, file 03).
+export const DICHIARAZIONE_CONSEGNA = 'Il cliente dichiara di aver ricevuto il veicolo nello stato sopra descritto, con la dotazione indicata, '
+  + 'e di impegnarsi a riconsegnarlo entro i termini concordati. Valgono le condizioni di noleggio sottoscritte.';
 
-  let y = 800;
-  const lineSpacing = 18;
-  const indent = 50;
+const euroPdf = (n) => `${Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' })} EUR`;
 
-  const drawTitle = (text) => {
-    page.drawText(text, {
-      x: indent,
-      y,
-      size: 20,
-      font: bold,
-      color: rgb(0.1, 0.2, 0.5),
-    });
-    y -= 30;
-  };
+// "AB1234567 · scade 04/2031"
+const patenteTesto = (patente, scadenza) => {
+  if (!patente) return '';
+  const d = /^(\d{4})-(\d{2})/.exec(scadenza || '');
+  return d ? `${patente} · scade ${d[2]}/${d[1]}` : patente;
+};
 
-  const drawSection = (title) => {
-    page.drawText(title, {
-      x: indent,
-      y,
-      size: 14,
-      font: bold,
-      color: rgb(0.1, 0.1, 0.1),
-    });
-    y -= 20;
-    page.drawLine({
-      start: { x: indent, y },
-      end: { x: 545, y },
-      thickness: 0.8,
-      color: rgb(0.8, 0.8, 0.8),
-    });
-    y -= 10;
-  };
+// Riferimento breve della prenotazione per testata e piede.
+export const riferimentoPrenotazione = (p) => String(p?.id || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase();
 
-  const drawField = (label, value) => {
-    page.drawText(`${label}:`, {
-      x: indent,
-      y,
-      size: 12,
-      font: bold,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-    page.drawText(value || '-', {
-      x: indent + 130,
-      y,
-      size: 12,
-      font,
-      color: rgb(0, 0, 0),
-    });
-    y -= lineSpacing;
-  };
+// Verbale di consegna (pagina A4). `opzioni`: { azienda, scadenzaPatente }.
+// L'impaginazione sta in pdfLayout.js; mockup approvato in
+// formiarent-documenti/mockup/gestionale-pdf-consegna.html.
+export async function generaRiepilogoPdf(prenotazione, scheda = {}, opzioni = {}) {
+  const azienda = opzioni.azienda || {};
+  const rif = riferimentoPrenotazione(prenotazione);
+  const quando = prenotazione.consegnataIl ? new Date(prenotazione.consegnataIl) : new Date();
+  const dataDoc = quando.toLocaleDateString('it-IT');
+  const foglio = await nuovoFoglio({
+    azienda,
+    titolo: 'Verbale di consegna',
+    sottotitolo: `${rif ? `Prenotazione n. ${rif} · ` : ''}${dataDoc}`,
+    piede: `${azienda.nome ? `${azienda.nome} · ` : ''}Verbale di consegna${rif ? ` · Prenotazione ${rif}` : ''}`,
+  });
 
-  drawTitle('Riepilogo Prenotazione');
-  drawSection('Cliente');
-  drawField('Nome', prenotazione.cliente);
-  drawField('Codice Fiscale', prenotazione.codiceFiscale);
-  drawField('Patente', prenotazione.patente);
-  drawField('Email', prenotazione.emailCliente);
+  const giorni = calcolaGiorniNoleggio(prenotazione.dataInizio, prenotazione.dataFine, prenotazione.oraInizio, prenotazione.oraFine, prenotazione.tolleranzaMinuti);
+  const riconsegna = prenotazione.oraFine
+    ? `entro ${dataEOra(prenotazione.dataFine, prenotazione.oraFine)}`
+    : formattaData(prenotazione.dataFine);
+  const prezzo = prezzoPrenotazione(prenotazione);
+  const pieno = (r) => r.filter(([, v]) => v);
 
-  drawSection('Veicolo');
-  drawField('Modello', prenotazione.veicolo);
-  drawField('Targa', prenotazione.targa);
-  drawField('Periodo', `dal ${dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)} al ${dataEOra(prenotazione.dataFine, prenotazione.oraFine)}`);
-  drawField('Prezzo Totale', `${prezzoPrenotazione(prenotazione)} EUR`);
+  foglio.colonne([
+    {
+      titolo: 'Cliente',
+      righe: pieno([
+        ['Nome', prenotazione.cliente || '-'],
+        ['Codice fiscale', prenotazione.codiceFiscale],
+        ['Patente', patenteTesto(prenotazione.patente, opzioni.scadenzaPatente)],
+        ['Telefono', prenotazione.telefono],
+        ['Email', prenotazione.emailCliente],
+      ]),
+    },
+    {
+      titolo: 'Noleggio',
+      righe: pieno([
+        ['Veicolo', `${prenotazione.veicolo || '-'}${prenotazione.targa ? ` · ${prenotazione.targa}` : ''}`],
+        ['Ritiro', dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)],
+        ['Riconsegna', riconsegna],
+        ['Durata', giorni > 0 ? `${giorni} ${giorni === 1 ? 'giorno' : 'giorni'}` : ''],
+        ['Totale noleggio', prezzo > 0 ? euroPdf(prezzo) : ''],
+      ]),
+    },
+  ]);
 
-  const protezioneExtra = righeProtezioneExtra(prenotazione);
-  if (protezioneExtra.length > 0) {
-    drawSection('Protezione ed extra');
-    protezioneExtra.forEach(([etichetta, valore]) => {
-      if (etichetta) drawField(etichetta, valore);
-      else {
-        page.drawText(valore, { x: indent + 130, y, size: 12, font, color: rgb(0, 0, 0) });
-        y -= lineSpacing;
-      }
-    });
+  const dotazione = riassuntoDotazione(scheda);
+  const quarti = quartiCarburante(scheda.carburante);
+  foglio.sezione('Stato del veicolo alla consegna');
+  foglio.riquadri([
+    { etichetta: 'Chilometri', valore: scheda.kmIniziali ? `${Number(scheda.kmIniziali).toLocaleString('it-IT')} km` : '-' },
+    { etichetta: 'Carburante', valore: scheda.carburante || '-', ...(quarti ? { barra: { pieni: quarti, totale: 4 } } : {}) },
+    { etichetta: 'Chiavi consegnate', valore: dotazione.chiaviConsegnate ? String(dotazione.chiaviConsegnate) : '-' },
+  ], [1, 1.2, 0.8]);
+  foglio.riquadroTesto({
+    etichetta: 'Danni già presenti',
+    testo: scheda.danni || 'Nessuno',
+    immagine: await foglio.immagine(scheda.fotoDanni),
+  });
+
+  foglio.sezione('Dotazione a bordo');
+  const voci = [
+    ...dotazione.presenti.map((testo) => ({ testo, ok: true })),
+    ...dotazione.mancanti.map((testo) => ({ testo: `${testo}: mancante`, manca: true })),
+  ];
+  if (voci.length > 0) foglio.elencoCaselle(voci);
+  else foglio.piccolo('Dotazione non segnata alla consegna.');
+  if (dotazione.note) { foglio.spazio(4); foglio.piccolo(`Note: ${dotazione.note}`); }
+
+  const righe = righeProtezioneExtra(prenotazione);
+  if (righe.length > 0) {
+    foglio.sezione('Protezione, cauzione ed extra');
+    const CHIAVI_SINISTRA = ['Protezione', 'Danni (max)', 'Furto (max)', 'Copre anche'];
+    const sinistra = righe.filter(([e]) => CHIAVI_SINISTRA.includes(e));
+    const destra = righe.filter(([e]) => !CHIAVI_SINISTRA.includes(e));
+    foglio.datiADueColonne(sinistra, destra);
   }
 
-  drawSection('Scheda Veicolo');
-  drawField('Carburante', scheda.carburante);
-  drawField('Km alla consegna', scheda.kmIniziali);
-  drawField('Danni', scheda.danni || 'Nessuno');
-
-  // Dotazione: solo quello che c'era, e a parte cosa mancava (utils/dotazione.js).
-  righeDotazione(scheda).forEach(([etichetta, valore]) => drawField(etichetta, valore));
-
-  y -= 30;
-  page.drawLine({
-    start: { x: indent, y },
-    end: { x: indent + 250, y },
-    thickness: 1,
-    color: rgb(0, 0, 0),
-  });
-  page.drawText('Firma Cliente', {
-    x: indent,
-    y: y - 15,
-    size: 12,
-    font,
-    color: rgb(0, 0, 0),
-  });
-
-  return doc.save();
+  foglio.paragrafo(DICHIARAZIONE_CONSEGNA);
+  foglio.firme(`Data: ${dataDoc}`);
+  return foglio.chiudi();
 }
 
 // Chiede dove salvare e scrive il PDF (piu' l'eventuale contratto).
 // Restituisce { success, cancelled, paths, error } come l'API di Electron.
-export async function salvaPdfConsegna({ prenotazione, scheda, contrattoPdf = null, nomeContratto = '' }) {
-  const riepilogo = await generaRiepilogoPdf(prenotazione, scheda || prenotazione.schedaVeicolo || {});
+export async function salvaPdfConsegna({ prenotazione, scheda, contrattoPdf = null, nomeContratto = '', azienda, scadenzaPatente }) {
+  const riepilogo = await generaRiepilogoPdf(prenotazione, scheda || prenotazione.schedaVeicolo || {}, { azienda, scadenzaPatente });
   return window.electronAPI.salvaDocumentiPrenotazione({
     prenotazione,
     riepilogoPdf: Array.from(new Uint8Array(riepilogo)),
+    titolo: 'Salva verbale di consegna',
+    nomeBase: 'Verbale_consegna',
     contrattoPdf,
     nomeContratto,
   });

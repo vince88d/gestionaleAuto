@@ -9,6 +9,7 @@ import { dataEOra } from '../utils/scadenze';
 import { registraConsegna, messaggioErrorePrenotazione } from '../lib/firestorePrenotazioni';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { salvaPdfConsegna } from '../utils/pdfConsegna';
+import { useAzienda } from '../lib/firestoreAzienda';
 import { euro as euroTondo } from '../utils/protezioni';
 import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
 import DotazioneConsegnata from './DotazioneConsegnata';
@@ -18,6 +19,7 @@ import DotazioneConsegnata from './DotazioneConsegnata';
 // consegna" salva la scheda sulla prenotazione (la prenotazione esiste gia').
 function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, scadenzaPatente, onConsegnaSalvata }) {
   const prezzoTotale = prezzoPrenotazione(formData);
+  const { dati: azienda } = useAzienda();
   const [ipPubblico, setIpPubblico] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [scaricaPdf, setScaricaPdf] = useState(true);
@@ -90,6 +92,8 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
         scheda: datiScheda,
         contrattoPdf: contrattoDaSalvare,
         nomeContratto,
+        azienda,
+        scadenzaPatente,
       });
       if (saveResult.success) {
         documentiSalvati = saveResult.paths || [];
