@@ -46,6 +46,10 @@ const daMinuti = (n) => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String
 // Tutte le ore di un giorno, ogni PASSO_MINUTI: per i menu del gestionale.
 export const ORE_DEL_GIORNO = Array.from({ length: (24 * 60) / PASSO_MINUTI }, (_, i) => daMinuti(i * PASSO_MINUTI));
 
+// Ore per i menu di Impostazioni (apertura e chiusura della sede): dalle 6:00
+// alle 23:00, non tutte le 48 del giorno. Un'ora gia' salvata fuori c'e' sempre.
+export const oreImpostazioni = (scelta) => ORE_DEL_GIORNO.filter((o) => (o >= '06:00' && o <= '23:00') || o === scelta);
+
 // "08:30" -> "8:30"
 export const oraBreve = (o) => String(o || '').replace(/^0(\d)/, '$1');
 

@@ -1,7 +1,7 @@
 import {
   ORARI_PREDEFINITI, normalizzaOrari, validaOrari, preparaOrari, testoSettimana, testoChiusure,
   orarioDelGiorno, apertaAlle, oreSelezionabili, ORE_DEL_GIORNO, oraBreve,
-  oraPredefinita, oraProposta, avvisoFuoriOrario, avvisoGiornoInPiu, oraPerGiorno, oreDelMenu,
+  oraPredefinita, oraProposta, avvisoFuoriOrario, avvisoGiornoInPiu, oraPerGiorno, oreDelMenu, oreImpostazioni,
 } from './orari';
 
 const copia = () => JSON.parse(JSON.stringify(ORARI_PREDEFINITI));
@@ -135,4 +135,12 @@ test('menu delle ore corto: dalla prima apertura all\'ultima chiusura', () => {
   expect(fuori[fuori.length - 1]).toBe('21:30');
   expect(oreDelMenu(o, 0, '22:00')).toContain('22:00'); // ora gia' salvata
   expect(oreDelMenu(null)).toHaveLength(48);
+});
+
+test('menu di Impostazioni: dalle 6:00 alle 23:00', () => {
+  const ore = oreImpostazioni('08:30');
+  expect(ore[0]).toBe('06:00');
+  expect(ore[ore.length - 1]).toBe('23:00');
+  expect(ore).toHaveLength(35);
+  expect(oreImpostazioni('05:30')).toContain('05:30');
 });
