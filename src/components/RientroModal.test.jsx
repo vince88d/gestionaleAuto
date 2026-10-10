@@ -64,3 +64,8 @@ test('si puo\' sbloccare tutta la cauzione', async () => {
   await waitFor(() => expect(onConferma).toHaveBeenCalled());
   expect(onConferma.mock.calls[0][0].trattieni).toBe(0);
 });
+
+test('senza prenotazione (finestra chiusa) non si rompe', () => {
+  const { container } = render(<RientroModal isOpen={false} onClose={jest.fn()} onConferma={jest.fn()} prenotazione={null} prezzi={prezzi} />);
+  expect(container).toBeEmptyDOMElement();
+});

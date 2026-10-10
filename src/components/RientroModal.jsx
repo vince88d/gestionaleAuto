@@ -40,7 +40,7 @@ function Passi({ attivo }) {
 // e cauzione» (righe gia' compilate dal passo 1 e dai prezzi fissi). Solo
 // registrazione: l'addebito e lo sblocco veri si fanno sul POS o su Stripe.
 // `onConferma(dati)` salva; mockup: formiarent-documenti/mockup/gestionale-rientro.html
-function RientroModal({ isOpen, onClose, onConferma, prenotazione, veicolo, prezzi, tolleranza }) {
+function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tolleranza }) {
   const [passo, setPasso] = useState(1);
   const [tentato, setTentato] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -149,7 +149,6 @@ function RientroModal({ isOpen, onClose, onConferma, prenotazione, veicolo, prez
     });
   };
 
-  if (!prenotazione) return null;
   const nomiMancanti = nonTornati.length;
 
   return (
@@ -413,6 +412,12 @@ function RientroModal({ isOpen, onClose, onConferma, prenotazione, veicolo, prez
       </div>
     </Modal>
   );
+}
+
+// Senza una prenotazione (finestra chiusa) non c'e' niente da mostrare: il
+// contenuto sta a parte, cosi' i suoi hook partono sempre con i dati veri.
+function RientroModal(props) {
+  return props.prenotazione ? <RientroInterno key={props.prenotazione.id} {...props} /> : null;
 }
 
 export default RientroModal;

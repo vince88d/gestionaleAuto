@@ -163,7 +163,8 @@ export function esitoCauzione({ cauzione, totale, trattieni }) {
 }
 
 // Cosa e' stato dato al cliente alla consegna: da riportare indietro.
-export function daRiportare(prenotazione = {}) {
+export function daRiportare(prenotazione) {
+  prenotazione = prenotazione || {};
   const { presenti, chiaviConsegnate } = riassuntoDotazione(prenotazione.schedaVeicolo);
   const extra = (Array.isArray(prenotazione.optional) ? prenotazione.optional : []).filter((r) => r?.quantita > 0);
   return { dotazione: presenti, chiaviConsegnate: chiaviConsegnate ?? null, extra };
