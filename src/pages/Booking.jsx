@@ -18,7 +18,7 @@ import {
 import BookingModal from '../components/BookingModal';
 import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
-import ConcludiPrenotazioneModal from '../components/ConcludiPrenotazioneModal';
+import RientroModal from '../components/RientroModal';
 import PrenotazioniDaAssegnare from '../components/PrenotazioniDaAssegnare';
 import AnnullaConPenaleModal from '../components/AnnullaConPenaleModal';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
@@ -33,6 +33,9 @@ import { useHolds } from '../lib/firestoreHolds';
 import { useExtra } from '../lib/useExtra';
 import { dotazioneIniziale, dotazioneDaSalvare } from '../utils/dotazione';
 import { aggiornaDotazioneVeicolo } from '../lib/firestoreVeicoli';
+import { useAddebiti } from '../lib/firestoreAddebiti';
+import { useOrari } from '../lib/firestoreOrari';
+import { costruisciRientro, istanteRientro, dotazioneDopoRientro } from '../utils/rientro';
 import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
 import {
@@ -125,6 +128,8 @@ function Bookings() {
   const clienti = useSelector((state) => state.clienti);
   const [concludiModalOpen, setConcludiModalOpen] = useState(false);
   const [prenotazioneDaConcludere, setPrenotazioneDaConcludere] = useState(null);
+  const prezziAddebiti = useAddebiti();
+  const orariSede = useOrari();
   const [confermaInBlocco, setConfermaInBlocco] = useState(null);
   const [paginaPrenotazioni, setPaginaPrenotazioni] = useState(1);
   const [paginaClienti, setPaginaClienti] = useState(1);
@@ -595,31 +600,47 @@ useEffect(() => {
     }
   };
 
-// Conclude un noleggio con l'esito della riconsegna.
+// Conclude un noleggio con il rientro completo (finestra «Ricevi l'auto»).
 // - Le foto dei danni vanno su Storage (cartella danni/): prima finivano
 //   incorporate nei documenti di prenotazione e veicolo (limite di 1 MB).
 // - Il danno resta SOLO sulla prenotazione: la scheda del veicolo lo mostra in
-//   "Danni rilevati alle riconsegne" e da li' si segna riparato. Prima veniva
-//   copiato anche nei danni del veicolo (con la foto in un campo che la scheda
-//   non legge) e la Dashboard lo contava due volte.
-// - Si aggiornano solo la prenotazione e la voce nello storico del cliente,
-//   invece di riscrivere tutte le prenotazioni, tutti i clienti e la flotta.
-const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoDanni }) => {
-  const now = new Date().toISOString();
+//   "Danni rilevati alle riconsegne" e da li' si segna riparato.
+// - `rientro` sulla prenotazione tiene ora, km, carburante, chiavi, cosa non e'
+//   tornato, addebiti e cauzione (utils/rientro.js).
+// - Si aggiornano la prenotazione, la voce nello storico del cliente e, se
+//   serve, i km e la dotazione del veicolo.
+// Restituisce false se non e' riuscito (la finestra resta aperta).
+const confermaRientro = async (dati) => {
   const prenotazione = prenotazioneDaConcludere;
-  if (!prenotazione) return;
+  if (!prenotazione) return false;
+  const { descrizioneDanno, daRiparare, fotoDanni } = dati;
 
   try {
     const foto = fotoDanni ? await Promise.all([].concat(fotoDanni).map(fotoIncorporataSuStorage)) : null;
+    const rientro = costruisciRientro({ ...dati, prenotazione });
     const campi = {
       status: 'completata',
-      dataRientroEffettiva: now,
+      dataRientroEffettiva: istanteRientro(dati.dataRientro, dati.oraRientro),
       descrizioneDanno: descrizioneDanno || '',
       daRiparare: Boolean(daRiparare),
       fotoDanni: foto && foto.length > 0 ? foto : null,
+      rientro,
     };
     await aggiornaPrenotazione(prenotazione.id, campi, { statoAtteso: 'attiva' });
     dispatch(updatePrenotazione({ ...prenotazione, ...campi }));
+
+    // Km del veicolo dal contachilometri e dotazione senza le voci tolte.
+    const veicolo = availableVehicles.find((v) => v.targa === prenotazione.targa);
+    if (veicolo?.id) {
+      const daAggiornare = { km: rientro.km, ...(dotazioneDopoRientro(veicolo, rientro.dotazioneTolta) || {}) };
+      try {
+        await aggiornaDotazioneVeicolo(veicolo.id, daAggiornare);
+        setAvailableVehicles((elenco) => elenco.map((v) => (v.id === veicolo.id ? { ...v, ...daAggiornare } : v)));
+      } catch (error) {
+        console.error('Veicolo non aggiornato dopo il rientro:', error);
+        showFeedback('Noleggio concluso, ma non sono riuscito ad aggiornare i km e la dotazione del veicolo.', 'error');
+      }
+    }
 
     if (descrizioneDanno?.trim()) {
       const clienteDelNoleggio = clienti.find((c) =>
@@ -628,7 +649,7 @@ const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoD
       );
       if (clienteDelNoleggio?.id) {
         const voce = {
-          data: now,
+          data: campi.dataRientroEffettiva,
           descrizioneDanno,
           veicolo: prenotazione.veicolo || '',
           targa: prenotazione.targa || '',
@@ -645,13 +666,16 @@ const confermaConclusioneConDanni = async ({ descrizioneDanno, daRiparare, fotoD
       }
     }
 
-    showFeedback("Prenotazione conclusa con esito registrato.");
+    showFeedback("Auto ricevuta: noleggio concluso.");
     setConcludiModalOpen(false);
     setPrenotazioneDaConcludere(null);
-    fineFlusso();
+    // Si apre il riepilogo del noleggio concluso, da cui scaricare il verbale di rientro.
+    openInfoModal({ ...prenotazione, ...campi });
+    return true;
   } catch (error) {
     console.error("Errore conclusione prenotazione:", error);
     showFeedback(messaggioErrorePrenotazione(error, "Errore durante la conclusione del noleggio."), "error");
+    return false;
   }
 };
 
@@ -1037,11 +1061,14 @@ return (
     tone="danger"
   />
 
-  <ConcludiPrenotazioneModal
+  <RientroModal
   isOpen={concludiModalOpen}
   onClose={() => { setConcludiModalOpen(false); fineFlusso(); }}
-  onConferma={confermaConclusioneConDanni}
+  onConferma={confermaRientro}
   prenotazione={prenotazioneDaConcludere}
+  veicolo={availableVehicles.find((v) => v.targa === prenotazioneDaConcludere?.targa)}
+  prezzi={prezziAddebiti}
+  tolleranza={prenotazioneDaConcludere?.tolleranzaMinuti ?? orariSede?.tolleranzaMinuti ?? 0}
 />
 
   
