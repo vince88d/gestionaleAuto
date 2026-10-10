@@ -140,10 +140,14 @@
 
 /* 1. Quando */
 .np-date { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
-.np-date .np-campo { width: 180px; }
+.np-date .np-campo { width: 140px; }
 /* Data e ora una accanto all'altra (mockup gestionale-orari.html) */
 .np-ora { display: flex; align-items: flex-start; gap: 8px; }
-.np-date .np-campo--ora { width: 96px; }
+.np-date .np-campo--ora { width: 150px; }
+.np-ora-blocco { display: flex; flex-direction: column; gap: 4px; }
+.np-ora-nota { width: 0; min-width: 100%; margin: 0; font-size: 13px; color: #5d6b79; }
+.np-ora-nota b { color: #9a5b00; }
+.pz .np-link--piccolo { padding: 0; font-size: 13px; font-weight: 600; }
 .pz .np-campo select {
   width: 100%;
   min-height: 48px;
@@ -188,6 +192,7 @@
   font-weight: 700;
 }
 
+.np-rapide .np-giorni { align-self: center; min-height: 38px; margin-right: 8px; }
 .np-rapide {
   display: flex;
   flex-wrap: wrap;
@@ -455,7 +460,7 @@
   .np-riepilogo { position: static; }
   .np-griglia { grid-template-columns: 1fr; }
   .np-date .np-campo { width: 100%; }
-  .np-ora { width: 100%; }
+  .np-ora, .np-ora-blocco { width: 100%; }
   .np-date .np-ora .np-campo { flex: 1; }
-  .np-date .np-campo--ora { flex: 0 0 96px !important; }
+  .np-date .np-campo--ora { flex: 0 0 150px !important; }
 }

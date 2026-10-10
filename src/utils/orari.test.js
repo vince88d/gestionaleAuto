@@ -1,7 +1,7 @@
 import {
   ORARI_PREDEFINITI, normalizzaOrari, validaOrari, preparaOrari, testoSettimana, testoChiusure,
   orarioDelGiorno, apertaAlle, oreSelezionabili, ORE_DEL_GIORNO, oraBreve,
-  oraPredefinita, oraProposta, avvisoFuoriOrario, avvisoGiornoInPiu,
+  oraPredefinita, oraProposta, avvisoFuoriOrario, avvisoGiornoInPiu, oraPerGiorno,
 } from './orari';
 
 const copia = () => JSON.parse(JSON.stringify(ORARI_PREDEFINITI));
@@ -112,4 +112,14 @@ describe('avvisi di Nuova prenotazione', () => {
     expect(avvisoGiornoInPiu({ ...d, oraFine: '10:30' }, 29).testo).toMatch(/^Il rientro è 1 ora e 30 minuti oltre/);
     expect(avvisoGiornoInPiu({ ...d, dataFine: '2026-10-12', oraFine: '18:00' }, 29)).toBeNull(); // stesso giorno
   });
+});
+
+test('ora da tenere cambiando giorno', () => {
+  const o = normalizzaOrari(undefined);
+  expect(oraPerGiorno(o, '2026-10-12', '15:30')).toBe('15:30'); // aperta
+  expect(oraPerGiorno(o, '2026-10-12', '14:00')).toBe('09:00'); // chiusa a pranzo: si propone
+  expect(oraPerGiorno(o, '2026-10-12', '14:00', true)).toBe('14:00'); // fuori apertura voluto
+  expect(oraPerGiorno(o, '2026-10-12', '')).toBe('09:00');
+  expect(oraPerGiorno(o, '2026-10-11', '09:00')).toBe(''); // domenica chiusa
+  expect(oraPerGiorno(null, '2026-10-12', '')).toBe('09:00'); // orari non ancora arrivati
 });

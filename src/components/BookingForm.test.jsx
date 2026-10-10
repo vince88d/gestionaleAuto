@@ -85,6 +85,14 @@ test('ora di uscita e rientro: proposta alle 9:00, avvisi fuori orario e giorno 
   fireEvent.change(screen.getByLabelText('Ora di rientro'), { target: { value: '09:00' } });
   expect(screen.queryByRole('status')).toBeNull();
 
+  // Le ore di chiusura si vedono ma non si scelgono...
+  expect(screen.getAllByRole('option', { name: '20:00 · chiuso' })[1]).toBeDisabled();
+  expect(screen.getAllByRole('option', { name: '9:00' })[0]).toBeEnabled();
+  // ...finche' non si chiede "Orario fuori apertura" (per il rientro).
+  fireEvent.click(screen.getAllByRole('button', { name: 'Orario fuori apertura' })[1]);
+  expect(screen.getAllByRole('option', { name: '20:00 · chiuso' })[1]).toBeEnabled();
+  expect(screen.getAllByRole('option', { name: '20:00 · chiuso' })[0]).toBeDisabled(); // l'uscita no
+
   // Alle 20:00 la sede e' chiusa e si conta un giorno in piu'.
   fireEvent.change(screen.getByLabelText('Ora di rientro'), { target: { value: '20:00' } });
   expect(screen.getAllByText('4 giorni').length).toBeGreaterThan(0);
@@ -96,6 +104,18 @@ test('ora di uscita e rientro: proposta alle 9:00, avvisi fuori orario e giorno 
   fireEvent.click(screen.getByRole('button', { name: 'Rientro alle 9:00' }));
   expect(screen.getByLabelText('Ora di rientro')).toHaveValue('09:00');
   expect(screen.queryByRole('status')).toBeNull();
+
+  // Si torna alle sole ore di apertura.
+  fireEvent.click(screen.getByRole('button', { name: 'Solo orari di apertura' }));
+  expect(screen.getAllByRole('button', { name: 'Orario fuori apertura' })).toHaveLength(2);
+  expect(screen.getAllByRole('option', { name: '20:00 · chiuso' })[1]).toBeDisabled();
+});
+
+test('prenotazione salvata fuori apertura: l\'ora resta e si puo\' ancora scegliere', () => {
+  apri({ id: 'x2', dataInizio: '2099-03-10', dataFine: '2099-03-13', oraInizio: '09:00', oraFine: '20:00', targa: 'ABC004', cliente: 'Mario Rossi', telefono: '1' });
+  expect(screen.getByLabelText('Ora di rientro')).toHaveValue('20:00');
+  expect(screen.getByText(/Fuori apertura, d'accordo con il cliente/)).toBeInTheDocument();
+  expect(screen.getAllByText('4 giorni').length).toBeGreaterThan(0);
 });
 
 test('prenotazione di prima, senza ore: "—" e giorni contati per data', () => {

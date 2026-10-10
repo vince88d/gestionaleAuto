@@ -210,3 +210,13 @@ export function avvisoGiornoInPiu({ dataInizio, dataFine, oraInizio, oraFine }, 
     testo: `Il rientro è ${durataTesto(oltre)} oltre ${giorniData === 1 ? "l'ora del ritiro" : `i ${nome(giorniData)}`}: si contano ${nome(giorniData + 1)} (rientrando entro le ${riconsegnaEntro(oraInizio, tolleranza)} sarebbero ${giorniData}).`,
   };
 }
+
+// Ora da tenere per quel giorno in Nuova prenotazione: quella gia' scelta se
+// la sede e' aperta (o se lo staff ha chiesto "Orario fuori apertura"),
+// altrimenti quella proposta; '' se quel giorno la sede e' chiusa.
+export function oraPerGiorno(orari, dataISO, attuale, fuoriApertura = false) {
+  if (!orari) return attuale || '09:00';
+  const ore = oreSelezionabili(orari, dataISO);
+  if (attuale && (fuoriApertura || ore.includes(attuale))) return attuale;
+  return oraPredefinita(ore);
+}
