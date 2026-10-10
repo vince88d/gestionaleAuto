@@ -7,7 +7,7 @@ import { ADDEBITI_DI_PARTENZA } from './addebiti';
 const pren = {
   dataInizio: '2026-10-12', dataFine: '2026-10-15', oraInizio: '09:00', oraFine: '09:00', tolleranzaMinuti: 29,
   prezzoGiornaliero: '25', protezione: { tipo: 'base', danni: 1200, cauzione: 500 },
-  schedaVeicolo: { carburante: 'Pieno', dotazione: { chiaviConsegnate: 2 } },
+  schedaVeicolo: { carburante: 'Pieno', dotazione: { voci: [], presenti: [], chiaviConsegnate: 2 } },
 };
 
 describe('carburante e km', () => {
@@ -102,5 +102,49 @@ describe('totale e cauzione', () => {
   });
   it('senza cauzione tutto resta da pagare', () => {
     expect(esitoCauzione({ cauzione: undefined, totale: 100, trattieni: 100 }).restano).toBe(100);
+  });
+});
+
+describe('costruzione del rientro', () => {
+  const { erroriRientro, costruisciRientro, istanteRientro, dotazioneDopoRientro, daRiportare } = require('./rientro');
+  const consegnata = {
+    ...pren,
+    optional: [{ id: 's', nome: 'Seggiolino', quantita: 1 }],
+    schedaVeicolo: { kmIniziali: '48318', carburante: 'Pieno', dotazione: { voci: ['Cric', 'Triangolo'], presenti: ['Cric', 'Triangolo'], impostata: true, chiaviConsegnate: 2 } },
+  };
+  it('cosa riportare', () => {
+    expect(daRiportare(consegnata)).toEqual({ dotazione: ['Cric', 'Triangolo'], chiaviConsegnate: 2, extra: consegnata.optional });
+  });
+  it('errori del passo 1', () => {
+    expect(erroriRientro({ prenotazione: consegnata, dataRientro: '2026-10-15', oraRientro: '10:00', km: '48000', carburante: '1/2', chiaviTornate: 2 }))
+      .toEqual({ km: expect.any(String) });
+    expect(Object.keys(erroriRientro({ prenotazione: consegnata, dataRientro: '', oraRientro: '', km: '', carburante: '', chiaviTornate: null })).sort())
+      .toEqual(['carburante', 'chiavi', 'dataRientro', 'km', 'oraRientro']);
+    expect(erroriRientro({ prenotazione: consegnata, dataRientro: '2026-10-11', oraRientro: '10:00', km: '48500', carburante: 'Pieno', chiaviTornate: 2 }).dataRientro).toBeTruthy();
+  });
+  it('campi da salvare, con cauzione trattenuta', () => {
+    const r = costruisciRientro({
+      prenotazione: consegnata, dataRientro: '2026-10-15', oraRientro: '11:30', km: '48730', carburante: '1/2', chiaviTornate: 2,
+      dotazioneNonTornata: ['Triangolo'], dotazioneTolta: [],
+      righe: [{ id: 'ritardo', nome: 'Ritardo', importo: 25, attiva: true }, { id: 'danno', nome: 'Danno', importo: '350', attiva: true }],
+      trattieni: 375,
+    });
+    expect(r).toMatchObject({ km: 48730, kmConsegna: 48318, giorniInPiu: 1, totaleAddebiti: 375, restanoDaPagare: 0 });
+    expect(r.cauzione).toEqual({ importo: 500, trattenuta: 375, sbloccata: 125, restano: 0 });
+    expect(JSON.stringify(r)).not.toContain('undefined');
+  });
+  it('senza cauzione restano da pagare gli addebiti', () => {
+    const senza = { ...consegnata, protezione: undefined };
+    const r = costruisciRientro({ prenotazione: senza, dataRientro: '2026-10-15', oraRientro: '09:00', km: '48400', carburante: 'Pieno', righe: [{ id: 'pulizia', nome: 'Pulizia', importo: 30, attiva: true }] });
+    expect(r.cauzione).toBeNull();
+    expect(r.restanoDaPagare).toBe(30);
+  });
+  it('istante del rientro', () => {
+    expect(new Date(istanteRientro('2026-10-15', '11:30')).getHours()).toBe(11);
+  });
+  it('toglie dalla dotazione del veicolo', () => {
+    expect(dotazioneDopoRientro({ dotazione: ['Cric', 'Triangolo'] }, ['triangolo'])).toEqual({ dotazione: ['Cric'] });
+    expect(dotazioneDopoRientro({ dotazione: ['Cric'] }, ['Triangolo'])).toBeNull();
+    expect(dotazioneDopoRientro({}, ['Cric'])).toBeNull();
   });
 });

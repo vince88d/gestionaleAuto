@@ -6,6 +6,7 @@
 // totaleAddebiti, cauzione: { importo, trattenuta, sbloccata, restano } }.
 import { calcolaGiorniNoleggio } from './giorniNoleggio';
 import { leggiEuro } from './protezioni';
+import { riassuntoDotazione, normalizzaVoci } from './dotazione';
 
 export const LIVELLI = ['1/4', '1/2', '3/4', 'Pieno'];
 const arrotonda = (n) => Math.round(n * 100) / 100;
@@ -102,7 +103,7 @@ export function proponiAddebiti({
   nonTornati.filter((n) => n.addebita).forEach((n) => {
     righe.push({ id: `mancante:${n.nome}`, nome: `${n.nome} non tornato`, dettaglio: 'Oggetto della dotazione mancante', importo: prezzi.oggettoMancante, attiva: true });
   });
-  const consegnate = Number(prenotazione.schedaVeicolo?.dotazione?.chiaviConsegnate) || 0;
+  const consegnate = Number(riassuntoDotazione(prenotazione.schedaVeicolo).chiaviConsegnate) || 0;
   const mancanoChiavi = consegnate > 0 && chiaviTornate != null ? Math.max(0, consegnate - Number(chiaviTornate)) : 0;
   if (mancanoChiavi > 0) {
     righe.push({
@@ -159,4 +160,73 @@ export function esitoCauzione({ cauzione, totale, trattieni }) {
     sbloccata: arrotonda(c - trattenuta),
     restano: arrotonda(Math.max(0, totale - trattenuta)),
   };
+}
+
+// Cosa e' stato dato al cliente alla consegna: da riportare indietro.
+export function daRiportare(prenotazione = {}) {
+  const { presenti, chiaviConsegnate } = riassuntoDotazione(prenotazione.schedaVeicolo);
+  const extra = (Array.isArray(prenotazione.optional) ? prenotazione.optional : []).filter((r) => r?.quantita > 0);
+  return { dotazione: presenti, chiaviConsegnate: chiaviConsegnate ?? null, extra };
+}
+
+// Orario del rientro come istante (ISO) per `dataRientroEffettiva`.
+export function istanteRientro(data, ora) {
+  const d = new Date(`${giorno(data)}T${/^\d{2}:\d{2}$/.test(ora || '') ? ora : '00:00'}:00`);
+  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
+// Errori del passo 1 ({} se si puo' andare avanti).
+export function erroriRientro({ prenotazione = {}, dataRientro, oraRientro, km, carburante, chiaviTornate }) {
+  const errori = {};
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataRientro || '')) errori.dataRientro = 'Scrivi la data del rientro.';
+  else if (giorno(prenotazione.dataInizio) && dataRientro < giorno(prenotazione.dataInizio)) errori.dataRientro = 'Il rientro non può essere prima del ritiro.';
+  if (!/^\d{2}:\d{2}$/.test(oraRientro || '')) errori.oraRientro = "Scrivi l'ora del rientro.";
+  const kmN = Number(km);
+  if (km === '' || km == null || !Number.isFinite(kmN) || kmN < 0) errori.km = 'Scrivi i km del contachilometri.';
+  else if (prenotazione.schedaVeicolo?.kmIniziali !== '' && prenotazione.schedaVeicolo?.kmIniziali != null
+    && kmN < Number(prenotazione.schedaVeicolo.kmIniziali)) errori.km = 'Sono meno dei km alla consegna.';
+  if (!carburante) errori.carburante = 'Scegli il livello del carburante.';
+  if (daRiportare(prenotazione).chiaviConsegnate && chiaviTornate == null) errori.chiavi = 'Scegli quante chiavi sono tornate.';
+  return errori;
+}
+
+// Campi `rientro` da salvare sulla prenotazione (nessun undefined: Firestore
+// non li accetta). `righe` sono quelle del passo 2; `trattieni` l'importo
+// della cauzione che si trattiene (se la prenotazione ha una cauzione).
+export function costruisciRientro({
+  prenotazione = {}, dataRientro, oraRientro, km, carburante, chiaviTornate,
+  dotazioneNonTornata = [], extraNonTornati = [], dotazioneTolta = [], righe = [], trattieni, tolleranza,
+}) {
+  const tetto = tettoDanno(prenotazione);
+  const addebiti = addebitiAttivi(righe, tetto);
+  const totale = totaleAddebiti(righe, tetto);
+  const cauzione = typeof prenotazione.protezione?.cauzione === 'number' ? prenotazione.protezione.cauzione : null;
+  const esito = cauzione === null ? null : esitoCauzione({ cauzione, totale, trattieni });
+  const consegna = prenotazione.schedaVeicolo || {};
+  return {
+    dataRientro,
+    oraRientro,
+    km: Number(km),
+    kmConsegna: consegna.kmIniziali !== '' && consegna.kmIniziali != null ? Number(consegna.kmIniziali) : null,
+    carburante,
+    carburanteConsegna: consegna.carburante || null,
+    chiaviConsegnate: daRiportare(prenotazione).chiaviConsegnate,
+    chiaviTornate: chiaviTornate ?? null,
+    dotazioneNonTornata: normalizzaVoci(dotazioneNonTornata),
+    extraNonTornati: normalizzaVoci(extraNonTornati),
+    dotazioneTolta: normalizzaVoci(dotazioneTolta),
+    giorniInPiu: giorniInPiu({ prenotazione, dataRientro, oraRientro, tolleranza }),
+    addebiti,
+    totaleAddebiti: totale,
+    cauzione: esito,
+    restanoDaPagare: esito ? esito.restano : totale,
+  };
+}
+
+// Dotazione del veicolo senza le voci tolte al rientro, o null se non c'e' niente da cambiare.
+export function dotazioneDopoRientro(veicolo, tolte = []) {
+  if (!Array.isArray(veicolo?.dotazione) || tolte.length === 0) return null;
+  const via = new Set(tolte.map((v) => v.toLowerCase()));
+  const nuova = normalizzaVoci(veicolo.dotazione).filter((v) => !via.has(v.toLowerCase()));
+  return nuova.length === veicolo.dotazione.length ? null : { dotazione: nuova };
 }
