@@ -53,3 +53,12 @@ describe('aziendeUguali / aziendaVuota', () => {
     expect(aziendaVuota({ telefono: '0771' })).toBe(false);
   });
 });
+
+describe('email per gli avvisi del sito', () => {
+  it('si normalizza in minuscolo e si controlla solo se scritta', () => {
+    expect(normalizzaAzienda({ emailNotifiche: ' Avvisi@X.it ' }).emailNotifiche).toBe('avvisi@x.it');
+    expect(validaAzienda({ nome: 'A', emailNotifiche: 'rotta@' }).emailNotifiche).toBeDefined();
+    expect(validaAzienda({ nome: 'A', emailNotifiche: 'avvisi@x.it' })).toEqual({});
+    expect(validaAzienda({ nome: 'A' })).toEqual({});
+  });
+});

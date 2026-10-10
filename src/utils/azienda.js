@@ -1,7 +1,9 @@
 // Regole dei dati dell'azienda (funzioni pure, testate). I dati stanno su
 // Firestore in impostazioni/azienda, uguali per tutte le postazioni.
+// `emailNotifiche`: dove arriva l'avviso quando un cliente prenota e paga dal
+// sito (lo legge la Cloud Function del sito); se vuota si usa `email`.
 
-export const CAMPI_AZIENDA = ['nome', 'partitaIva', 'email', 'pec', 'telefono', 'indirizzo'];
+export const CAMPI_AZIENDA = ['nome', 'partitaIva', 'email', 'emailNotifiche', 'pec', 'telefono', 'indirizzo'];
 
 export const AZIENDA_VUOTA = Object.freeze(
   Object.fromEntries(CAMPI_AZIENDA.map((campo) => [campo, '']))
@@ -17,6 +19,7 @@ export function normalizzaAzienda(dati = {}) {
   );
   pulita.partitaIva = pulita.partitaIva.replace(/\s+/g, '').toUpperCase();
   pulita.email = pulita.email.toLowerCase();
+  pulita.emailNotifiche = pulita.emailNotifiche.toLowerCase();
   pulita.pec = pulita.pec.toLowerCase();
   return pulita;
 }
@@ -32,6 +35,7 @@ export function validaAzienda(dati) {
   }
   if (a.email && !EMAIL.test(a.email)) errori.email = 'Email non valida.';
   if (a.pec && !EMAIL.test(a.pec)) errori.pec = 'PEC non valida.';
+  if (a.emailNotifiche && !EMAIL.test(a.emailNotifiche)) errori.emailNotifiche = 'Email non valida.';
   return errori;
 }
 
