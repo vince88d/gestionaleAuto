@@ -693,8 +693,8 @@ ipcMain.handle('salva-documenti-prenotazione', async (_, data) => {
     const contrattoBuffer = data.contrattoPdf ? Buffer.from(data.contrattoPdf) : null;
 
     const { canceled, filePath } = await dialog.showSaveDialog({
-      title: 'Salva riepilogo prenotazione',
-      defaultPath: `Riepilogo_${cliente}_${targa}.pdf`,
+      title: data.titolo || 'Salva riepilogo prenotazione',
+      defaultPath: `${sanitizeFileName(data.nomeBase || 'Riepilogo')}_${cliente}_${targa}.pdf`,
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     });
 

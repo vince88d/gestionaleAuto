@@ -669,7 +669,8 @@ const confermaRientro = async (dati) => {
     showFeedback("Auto ricevuta: noleggio concluso.");
     setConcludiModalOpen(false);
     setPrenotazioneDaConcludere(null);
-    fineFlusso();
+    // Si apre il riepilogo del noleggio concluso, da cui scaricare il verbale di rientro.
+    openInfoModal({ ...prenotazione, ...campi });
     return true;
   } catch (error) {
     console.error("Errore conclusione prenotazione:", error);

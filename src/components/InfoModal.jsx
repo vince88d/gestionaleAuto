@@ -14,6 +14,8 @@ import { salvaPdfConsegna } from '../utils/pdfConsegna';
 import { toast } from 'react-toastify';
 import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
 import DotazioneConsegnata from './DotazioneConsegnata';
+import RientroDettagli from './RientroDettagli';
+import { salvaVerbaleRientro } from '../utils/pdfRientro';
 
 
 
@@ -57,6 +59,17 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
     } catch (error) {
       console.error('Errore PDF consegna:', error);
       toast.error('PDF non salvato.');
+    }
+  };
+
+  const scaricaVerbaleRientro = async () => {
+    try {
+      const esito = await salvaVerbaleRientro(prenotazione);
+      if (esito.success) toast.success('Verbale di rientro salvato.');
+      else if (!esito.cancelled) toast.error(esito.error || 'Verbale non salvato.');
+    } catch (error) {
+      console.error('Errore verbale di rientro:', error);
+      toast.error('Verbale non salvato.');
     }
   };
 
@@ -151,6 +164,8 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
             )}
           </section>
 
+          <RientroDettagli prenotazione={prenotazione} />
+
           {(prenotazione.descrizioneDanno || fotoRiconsegna.length > 0) && (
             <section className="pz-sezione">
               <h3 className="pz-titolo-sezione">Danni alla riconsegna</h3>
@@ -172,6 +187,11 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
           {consegnata && window.electronAPI?.salvaDocumentiPrenotazione && (
             <button type="button" className="vd-btn" onClick={scaricaPdfConsegna}>
               <FileText size={16} aria-hidden="true" /> PDF della consegna
+            </button>
+          )}
+          {prenotazione.rientro && window.electronAPI?.salvaDocumentiPrenotazione && (
+            <button type="button" className="vd-btn" onClick={scaricaVerbaleRientro}>
+              <FileText size={16} aria-hidden="true" /> Verbale di rientro (PDF)
             </button>
           )}
           <span className="pz-piede-nota" />

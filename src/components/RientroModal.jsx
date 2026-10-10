@@ -204,7 +204,7 @@ function RientroModal({ isOpen, onClose, onConferma, prenotazione, veicolo, prez
               </div>
               {giorniExtra > 0 && (
                 <p className="pz-avviso pz-avviso--attenzione" style={{ marginTop: 12 }}>
-                  <b>Rientrata in ritardo</b>{entro ? ` rispetto alle ${prenotazione.oraFine} concordate (oltre la tolleranza)` : ''}: si conta{' '}
+                  <b>Rientrata in ritardo</b>{entro ? ` rispetto alle ${String(prenotazione.oraFine).replace(/^0(\d)/, '$1')} concordate (oltre la tolleranza)` : ''}: si conta{' '}
                   <b>{giorniExtra} {giorniExtra === 1 ? 'giorno' : 'giorni'} in più</b>. Lo trovi già nel passo 2, puoi toglierlo.
                 </p>
               )}
