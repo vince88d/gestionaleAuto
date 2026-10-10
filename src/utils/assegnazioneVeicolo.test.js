@@ -82,3 +82,28 @@ describe('veicoli sospesi', () => {
     expect(liberi.map((v) => v.targa)).toEqual(['BB222BB']);
   });
 });
+
+describe('veicoliLiberiPerPrenotazione: stesso giorno con le ore', () => {
+  const nuova = { ...richiesta, dataInizio: '2026-10-10', dataFine: '2026-10-11', oraInizio: '15:30', oraFine: '12:30' };
+  const liberi = (prenotazioni, r = nuova) => veicoliLiberiPerPrenotazione(r, veicoli, prenotazioni).map((v) => v.targa);
+  const rientrato = (iso) => ({ id: 'c', targa: 'AA111AA', status: 'completata', dataInizio: '2026-10-10', dataFine: '2026-10-10', oraInizio: '09:00', oraFine: '15:00', dataRientroEffettiva: iso });
+
+  test('un noleggio rientrato prima dell\'uscita libera l\'auto lo stesso giorno', () => {
+    expect(liberi([rientrato(new Date(2026, 9, 10, 14, 24).toISOString())])).toEqual(['AA111AA', 'BB222BB']);
+  });
+
+  test('un noleggio rientrato dopo l\'uscita la tiene occupata', () => {
+    expect(liberi([rientrato(new Date(2026, 9, 10, 16, 0).toISOString())])).toEqual(['BB222BB']);
+  });
+
+  test('un noleggio che finisce prima delle 15:30 non blocca, uno che finisce dopo si', () => {
+    const attivo = (oraFine) => ({ id: 'a', targa: 'AA111AA', status: 'attiva', dataInizio: '2026-10-09', dataFine: '2026-10-10', oraInizio: '09:00', oraFine });
+    expect(liberi([attivo('15:00')])).toEqual(['AA111AA', 'BB222BB']);
+    expect(liberi([attivo('18:00')])).toEqual(['BB222BB']);
+  });
+
+  test('senza ore si confronta per giorno intero come prima', () => {
+    const senzaOre = { ...richiesta, dataInizio: '2026-10-10', dataFine: '2026-10-11' };
+    expect(liberi([rientrato(new Date(2026, 9, 10, 14, 24).toISOString())], senzaOre)).toEqual(['BB222BB']);
+  });
+});
