@@ -1,0 +1,25 @@
+/* Ricevi l'auto: si appoggia alle classi pz-* di Prenotazione.css. */
+.rn-riga { display: flex; gap: 8px; }
+.rn-riga input { flex: 1; min-width: 0; }
+.rn-leggero { font-weight: 400; color: #6b7886; }
+.rn-lista { display: flex; flex-direction: column; gap: 8px; }
+
+.rn-voce { border: 1px solid #e3e8ee; border-radius: 8px; background: #fff; padding: 9px 12px; }
+.rn-voce--manca { border-color: #e5a29b; background: #fdf1ef; }
+.rn-voce-riga { display: flex; align-items: center; gap: 10px; margin: 0; cursor: pointer; font-size: 14px; }
+.rn-voce-nome { flex: 1; font-weight: 600; }
+.rn-stato { font-size: 12px; font-weight: 700; color: #1b7a4a; }
+.rn-voce--manca .rn-stato { color: #c0392b; }
+.rn-voce-opzioni { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 0 28px; font-size: 13px; }
+.rn-voce-opzioni label { display: flex; align-items: flex-start; gap: 8px; margin: 0; }
+
+.rn-addebito { display: flex; align-items: center; gap: 12px; border: 1px solid #e3e8ee; border-radius: 8px; background: #fff; padding: 10px 12px; }
+.rn-addebito--spento { opacity: 0.6; }
+.rn-addebito-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.rn-nome-libero { width: 100%; }
+.rn-importo { position: relative; width: 130px; flex: none; }
+.rn-importo input { width: 100%; box-sizing: border-box; padding-right: 26px; text-align: right; }
+.rn-importo span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #6b7886; pointer-events: none; }
+.rn-importo--corto { display: inline-block; margin: 0 8px; width: 110px; }
+.rn-scelta { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; cursor: pointer; }
+.rn-totale { display: flex; justify-content: space-between; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #e3e8ee; font-size: 16px; }
