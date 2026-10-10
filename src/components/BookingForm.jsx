@@ -22,7 +22,7 @@ import {
   DURATE_RAPIDE, dateRapide, giorniDelNoleggio, statoPassi, validaNuovaPrenotazione, datiDaCliente, documentiCompleti,
 } from '../utils/nuovaPrenotazione';
 import { useOrari } from '../lib/firestoreOrari';
-import { ORE_DEL_GIORNO, oraBreve, oraPerGiorno, oreSelezionabili, avvisoFuoriOrario, avvisoGiornoInPiu } from '../utils/orari';
+import { oreDelMenu, oraBreve, oraPerGiorno, oreSelezionabili, avvisoFuoriOrario, avvisoGiornoInPiu } from '../utils/orari';
 import './BookingForm.css';
 import '../styles/Prenotazione.css';
 import './NuovaPrenotazione.css';
@@ -40,18 +40,19 @@ const versoData = (d) => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`) : n
 const daData = (date) => (date ? giornoLocale(date) : '');
 const conOra = (iso, ora) => `${dataLunga(iso)}${ora ? ` alle ${oraBreve(ora)}` : ''}`;
 
-// Ora accanto alla data, ogni 30 minuti. Le ore in cui la sede e' chiusa
+// Ora accanto alla data, ogni 30 minuti, solo nell'arco della giornata di
+// lavoro (vedi oreDelMenu). Le ore in cui la sede e' chiusa
 // si vedono grigie con "chiuso" e non si scelgono, a meno che lo staff non
 // chieda "Orario fuori apertura" (accordo con il cliente: compare l'avviso).
 // `aperte`: ore di apertura di quel giorno (null = orari non ancora arrivati).
 // "—" solo per le prenotazioni di prima, senza ora.
-function SceltaOra({ valore, onChange, etichetta, aperte, fuori }) {
+function SceltaOra({ valore, onChange, etichetta, aperte, fuori, orari }) {
   return (
     <label className="np-campo np-campo--ora">
       <span className="np-etichetta">alle</span>
       <select value={valore} onChange={(e) => onChange(e.target.value)} aria-label={etichetta}>
         {!valore && <option value="">—</option>}
-        {ORE_DEL_GIORNO.map((o) => {
+        {oreDelMenu(orari, fuori ? 120 : 0, valore).map((o) => {
           const chiusa = Boolean(aperte) && !aperte.includes(o);
           return (
             <option key={o} value={o} disabled={chiusa && !fuori}>
@@ -435,7 +436,7 @@ function BookingForm({
                 />
                 {mostraErrore('dataInizio') && <span className="np-errore" role="alert">{errori.dataInizio}</span>}
               </label>
-              <SceltaOra valore={dati.oraInizio} onChange={(o) => aggiorna({ oraInizio: o })} etichetta="Ora di uscita" aperte={aperteInizio} fuori={fuoriInizio} />
+              <SceltaOra valore={dati.oraInizio} onChange={(o) => aggiorna({ oraInizio: o })} etichetta="Ora di uscita" aperte={aperteInizio} fuori={fuoriInizio} orari={orari} />
               </div>
               <NotaOra data={dati.dataInizio} aperte={aperteInizio} fuori={fuoriInizio} onFuori={() => setFuori((f) => ({ ...f, inizio: true }))} onSoloApertura={() => soloApertura('inizio')} />
               </div>
@@ -455,7 +456,7 @@ function BookingForm({
                 />
                 {mostraErrore('dataFine') && <span className="np-errore" role="alert">{errori.dataFine}</span>}
               </label>
-              <SceltaOra valore={dati.oraFine} onChange={(o) => aggiorna({ oraFine: o })} etichetta="Ora di rientro" aperte={aperteFine} fuori={fuoriFine} />
+              <SceltaOra valore={dati.oraFine} onChange={(o) => aggiorna({ oraFine: o })} etichetta="Ora di rientro" aperte={aperteFine} fuori={fuoriFine} orari={orari} />
               </div>
               <NotaOra data={dati.dataFine} aperte={aperteFine} fuori={fuoriFine} onFuori={() => setFuori((f) => ({ ...f, fine: true }))} onSoloApertura={() => soloApertura('fine')} />
               </div>

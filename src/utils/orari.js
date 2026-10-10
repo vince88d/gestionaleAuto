@@ -220,3 +220,15 @@ export function oraPerGiorno(orari, dataISO, attuale, fuoriApertura = false) {
   if (attuale && (fuoriApertura || ore.includes(attuale))) return attuale;
   return oraPredefinita(ore);
 }
+
+// Ore del menu di Nuova prenotazione, per non mostrarne 48: dalla prima
+// apertura all'ultima chiusura della settimana (le pause restano, grigie).
+// Con "Orario fuori apertura" `margine` minuti in piu' prima e dopo.
+// L'ora gia' scelta c'e' sempre.
+export function oreDelMenu(orari, margine = 0, scelta = '') {
+  const fasce = orari ? GIORNI.flatMap(([k]) => (orari.settimana[k].aperto ? orari.settimana[k].fasce : [])) : [];
+  if (fasce.length === 0) return ORE_DEL_GIORNO;
+  const da = Math.min(...fasce.map((f) => minuti(f.da))) - margine;
+  const a = Math.max(...fasce.map((f) => minuti(f.a))) + margine;
+  return ORE_DEL_GIORNO.filter((o) => (minuti(o) >= da && minuti(o) <= a) || o === scelta);
+}

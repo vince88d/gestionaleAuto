@@ -1,7 +1,7 @@
 import {
   ORARI_PREDEFINITI, normalizzaOrari, validaOrari, preparaOrari, testoSettimana, testoChiusure,
   orarioDelGiorno, apertaAlle, oreSelezionabili, ORE_DEL_GIORNO, oraBreve,
-  oraPredefinita, oraProposta, avvisoFuoriOrario, avvisoGiornoInPiu, oraPerGiorno,
+  oraPredefinita, oraProposta, avvisoFuoriOrario, avvisoGiornoInPiu, oraPerGiorno, oreDelMenu,
 } from './orari';
 
 const copia = () => JSON.parse(JSON.stringify(ORARI_PREDEFINITI));
@@ -122,4 +122,17 @@ test('ora da tenere cambiando giorno', () => {
   expect(oraPerGiorno(o, '2026-10-12', '')).toBe('09:00');
   expect(oraPerGiorno(o, '2026-10-11', '09:00')).toBe(''); // domenica chiusa
   expect(oraPerGiorno(null, '2026-10-12', '')).toBe('09:00'); // orari non ancora arrivati
+});
+
+test('menu delle ore corto: dalla prima apertura all\'ultima chiusura', () => {
+  const o = normalizzaOrari(undefined); // 8:30 - 19:30
+  const ore = oreDelMenu(o);
+  expect(ore[0]).toBe('08:30');
+  expect(ore[ore.length - 1]).toBe('19:30');
+  expect(ore).toContain('14:00'); // la pausa resta (grigia nel menu)
+  const fuori = oreDelMenu(o, 120);
+  expect(fuori[0]).toBe('06:30');
+  expect(fuori[fuori.length - 1]).toBe('21:30');
+  expect(oreDelMenu(o, 0, '22:00')).toContain('22:00'); // ora gia' salvata
+  expect(oreDelMenu(null)).toHaveLength(48);
 });

@@ -85,13 +85,13 @@ test('ora di uscita e rientro: proposta alle 9:00, avvisi fuori orario e giorno 
   fireEvent.change(screen.getByLabelText('Ora di rientro'), { target: { value: '09:00' } });
   expect(screen.queryByRole('status')).toBeNull();
 
-  // Le ore di chiusura si vedono ma non si scelgono...
-  expect(screen.getAllByRole('option', { name: '20:00 · chiuso' })[1]).toBeDisabled();
-  expect(screen.getAllByRole('option', { name: '9:00' })[0]).toBeEnabled();
+  // Menu corto (8:30-19:30): la pausa si vede grigia e non si sceglie, le 20:00 non ci sono...
+  expect(screen.getAllByRole('option', { name: '14:00 · chiuso' })[1]).toBeDisabled();
+  expect(screen.queryByRole('option', { name: '20:00 · chiuso' })).toBeNull();
   // ...finche' non si chiede "Orario fuori apertura" (per il rientro).
   fireEvent.click(screen.getAllByRole('button', { name: 'Orario fuori apertura' })[1]);
-  expect(screen.getAllByRole('option', { name: '20:00 · chiuso' })[1]).toBeEnabled();
-  expect(screen.getAllByRole('option', { name: '20:00 · chiuso' })[0]).toBeDisabled(); // l'uscita no
+  expect(screen.getByRole('option', { name: '20:00 · chiuso' })).toBeEnabled();
+  expect(screen.getAllByRole('option', { name: '14:00 · chiuso' })[0]).toBeDisabled(); // l'uscita no
 
   // Alle 20:00 la sede e' chiusa e si conta un giorno in piu'.
   fireEvent.change(screen.getByLabelText('Ora di rientro'), { target: { value: '20:00' } });
@@ -108,7 +108,7 @@ test('ora di uscita e rientro: proposta alle 9:00, avvisi fuori orario e giorno 
   // Si torna alle sole ore di apertura.
   fireEvent.click(screen.getByRole('button', { name: 'Solo orari di apertura' }));
   expect(screen.getAllByRole('button', { name: 'Orario fuori apertura' })).toHaveLength(2);
-  expect(screen.getAllByRole('option', { name: '20:00 · chiuso' })[1]).toBeDisabled();
+  expect(screen.getAllByRole('option', { name: '14:00 · chiuso' })[1]).toBeDisabled();
 });
 
 test('prenotazione salvata fuori apertura: l\'ora resta e si puo\' ancora scegliere', () => {
