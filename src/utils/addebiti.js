@@ -43,3 +43,6 @@ export function addebitiPerForm(dati) {
   const n = normalizzaAddebiti(dati);
   return Object.fromEntries(ADDEBITI.map(({ chiave }) => [chiave, n[chiave].toLocaleString('it-IT', { maximumFractionDigits: 2 })]));
 }
+
+// Dal form ai numeri da salvare.
+export const preparaAddebiti = (form) => normalizzaAddebiti(form);

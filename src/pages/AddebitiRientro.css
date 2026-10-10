@@ -1,0 +1,16 @@
+/* Scheda "Addebiti al rientro": usa la grafica di Optional (CatalogoOptional.css). */
+.add-box { max-width: 640px; }
+.add-campi { display: flex; flex-direction: column; gap: 18px; padding: 4px 20px 8px; }
+.add-riga { display: flex; align-items: center; gap: 10px; }
+.add-riga .opt-euro { width: 160px; }
+.add-unita { font-size: 15px; color: #55616d; }
+.add-auto {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #eef1f5;
+  color: #4d5b69;
+  font-size: 15px;
+  font-weight: 700;
+}
+.add-piede { padding: 16px 20px 20px; display: flex; justify-content: flex-end; }
