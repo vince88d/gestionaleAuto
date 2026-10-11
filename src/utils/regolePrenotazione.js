@@ -18,6 +18,7 @@ export const pagataSulSito = (p) => Boolean(p && (p.paymentIntentId || p.origine
 // optional. Le scelte arrivano in dati.sceltaProtezione e dati.sceltaOptional.
 export function controllaPrenotazione({
   dati, originale = null, veicoli = [], prenotazioni = [], holds = [], oggi, protezioni = {}, catalogo = [], adesso,
+  etaConducenti,
 }) {
   const inizio = giorno(dati.dataInizio);
   const fine = giorno(dati.dataFine);
@@ -78,6 +79,8 @@ export function controllaPrenotazione({
       (Array.isArray(originale?.optional) ? originale.optional : []).filter((r) => r?.id).map((r) => [r.id, r.quantita]),
     ),
     optionalSalvati: originale?.optional,
+    etaConducenti,
+    etaConducente: dati.etaConducente !== undefined ? dati.etaConducente : originale?.etaConducente,
     occupati: pezziOccupati({
       occupanti: occupantiTranne(prenotazioni, originale?.id, oggi),
       holds,

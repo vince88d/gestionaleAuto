@@ -6,6 +6,8 @@ import { caricaFotoDanno } from '../lib/storageFoto';
 import { formattaData, giornoLocale } from '../utils/scadenze';
 import { controllaPatente } from '../utils/validaCliente';
 import { codiceFiscaleValido } from '../utils/nuovaPrenotazione';
+import { controlloEtaConsegna } from '../utils/etaConducenti';
+import { pagataSulSito } from '../utils/regolePrenotazione';
 import ControlloDotazione from './ControlloDotazione';
 import '../components/schedaModal.css';
 import '../styles/Prenotazione.css';
@@ -46,6 +48,8 @@ function SchedaVeicoloModal({
   onSave,
   // Il veicolo da consegnare: dotazione, chiavi, gomme invernali.
   veicolo,
+  // Regole sull'eta' (lib/firestoreEtaConducenti.js): promemoria sull'eta' dichiarata.
+  etaConducenti = null,
 }) {
   const [uploading, setUploading] = useState(false);
   const [mancaCarburante, setMancaCarburante] = useState(false);
@@ -67,6 +71,14 @@ function SchedaVeicoloModal({
       })
     : {};
   const documentoScaduto = cliente?.scadenzaDocumento && cliente.scadenzaDocumento < giornoLocale();
+  // Eta' dichiarata: con il codice fiscale si controlla da sola.
+  const avvisoEta = prenotazione && etaConducenti ? controlloEtaConsegna({
+    prenotazione,
+    etaConducenti,
+    codiceFiscale: codiceFiscaleValido(prenotazione.codiceFiscale) ? prenotazione.codiceFiscale : documenti.codiceFiscale,
+    oggi: giornoLocale(),
+    pagataSulSito: pagataSulSito(prenotazione),
+  }) : null;
   const aggiornaDocumento = (campo, valore) => onDocumentiChange({ ...documenti, [campo]: valore });
 
   const aggiorna = (campo, valore) => setSchedaVeicolo((prev) => ({ ...prev, [campo]: valore }));
@@ -203,6 +215,11 @@ function SchedaVeicoloModal({
             )}
             {esitoPatente.blocca && <p className="pz-avviso pz-avviso--errore" role="alert" style={{ marginTop: 12 }}>{esitoPatente.blocca}</p>}
             {esitoPatente.avviso && <p className="pz-avviso pz-avviso--attenzione" style={{ marginTop: 12 }}>{esitoPatente.avviso}</p>}
+            {avvisoEta && (
+              <p className={`pz-avviso pz-avviso--${avvisoEta.livello}`} role={avvisoEta.livello === 'errore' ? 'alert' : undefined} style={{ marginTop: 12 }}>
+                {avvisoEta.testo}
+              </p>
+            )}
             {documentoScaduto && (
               <p className="pz-avviso pz-avviso--attenzione" style={{ marginTop: 12 }}>
                 Il documento d'identità del cliente è scaduto il {formattaData(cliente.scadenzaDocumento)}: fattene mostrare uno valido e aggiornalo nei Clienti.

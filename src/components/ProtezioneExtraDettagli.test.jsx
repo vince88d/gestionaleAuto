@@ -18,3 +18,16 @@ test('prenotazione di prima, senza protezione ne\' extra: niente', () => {
   const { container } = render(<ProtezioneExtraDettagli prenotazione={{ cliente: 'Mario' }} />);
   expect(container).toBeEmptyDOMElement();
 });
+
+test('giovane conducente: riga con eta\', importo e promemoria della patente', () => {
+  render(<ProtezioneExtraDettagli prenotazione={{ etaConducente: 22, giovaneConducente: { eta: 22, euroGiorno: 15, giorni: 3, importo: 45, alMassimo: false } }} />);
+  expect(screen.getByText('Giovane conducente')).toBeInTheDocument();
+  expect(screen.getByText(/22 anni · 15 € × 3 giorni/)).toBeInTheDocument();
+  expect(screen.getByText('45,00 €')).toBeInTheDocument();
+  expect(screen.getByText(/controlla la patente/)).toBeInTheDocument();
+});
+
+test('eta\' dichiarata senza supplemento', () => {
+  render(<ProtezioneExtraDettagli prenotazione={{ etaConducente: 30, giovaneConducente: null }} />);
+  expect(screen.getByText('30 anni (nessun supplemento)', { exact: false })).toBeInTheDocument();
+});

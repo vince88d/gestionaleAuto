@@ -41,3 +41,11 @@ test('righe della dotazione: chiavi, a bordo, mancante con la nota; vecchi acces
   expect(righeDotazione({ accessori: { cric: true, ruotaScorta: false, altro: '' } })).toEqual([['A bordo', 'Cric']]);
   expect(righeDotazione({})).toEqual([]);
 });
+
+test('giovane conducente nel PDF (senza caratteri che Helvetica non ha)', () => {
+  expect(righeProtezioneExtra({ giovaneConducente: { eta: 22, euroGiorno: 15, giorni: 3, importo: 45, alMassimo: false } }))
+    .toEqual([['Giovane conducente', '22 anni - 15,00 EUR x 3 giorni (45,00 EUR)']]);
+  expect(righeProtezioneExtra({ giovaneConducente: { eta: 19, euroGiorno: 25, giorni: 20, importo: 300, alMassimo: true } }))
+    .toEqual([['Giovane conducente', '19 anni - massimo 300,00 EUR']]);
+  expect(righeProtezioneExtra({ etaConducente: 30, giovaneConducente: null })).toEqual([['Eta del conducente', '30 anni']]);
+});

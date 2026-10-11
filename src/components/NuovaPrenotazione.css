@@ -464,3 +464,9 @@
   .np-date .np-ora .np-campo { flex: 1; }
   .np-date .np-campo--ora { flex: 0 0 150px !important; }
 }
+
+/* Eta' del conducente (domanda 3), mockup gestionale-giovane-conducente.html */
+.np-eta { display: flex; flex-direction: column; gap: 8px; max-width: 460px; margin-top: 18px; }
+.np-eta .np-avviso-ora { margin: 0; }
+.np-riga-dettaglio { display: block; font-size: 13px; color: #5d6b79; }
+.np-importo { white-space: nowrap; }

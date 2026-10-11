@@ -114,7 +114,7 @@ const dataIt = (valore) => (giorno(valore) ? giorno(valore).split('-').reverse()
 
 // Protezione, cauzione ed extra di una prenotazione per il CSV: tre colonne,
 // vuote per le prenotazioni fatte prima (vedi utils/sceltaExtra.js).
-export const INTESTAZIONI_PROTEZIONE_EXTRA = ['Protezione', 'Cauzione', 'Extra'];
+export const INTESTAZIONI_PROTEZIONE_EXTRA = ['Protezione', 'Cauzione', 'Extra', 'Giovane conducente'];
 export function colonneProtezioneExtra(p = {}) {
   const prot = p.protezione;
   const protezione = !prot ? '' : prot.tipo === 'totale' ? `Totale (${numeroIt(prot.prezzo)})` : 'Base';
@@ -123,7 +123,9 @@ export function colonneProtezioneExtra(p = {}) {
     .filter((r) => r?.quantita > 0)
     .map((r) => `${r.nome} x${r.quantita} (${numeroIt(r.totale)})`)
     .join(', ');
-  return [protezione, cauzione, extra];
+  const g = p.giovaneConducente;
+  const giovane = g ? `${g.eta} anni (${numeroIt(g.importo)})` : '';
+  return [protezione, cauzione, extra, giovane];
 }
 
 // Righe per il CSV (prima riga = intestazioni). Numeri con la virgola e date
