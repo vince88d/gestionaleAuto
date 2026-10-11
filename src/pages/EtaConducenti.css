@@ -1,0 +1,76 @@
+/* Scheda "Età dei conducenti" di Tariffe e optional: usa la grafica di
+   Optional e Addebiti (CatalogoOptional.css, AddebitiRientro.css). Prefisso eta-.
+   Mockup: formiarent-documenti/mockup/gestionale-giovane-conducente.html */
+
+.eta-box { max-width: 760px; }
+.opt-nota.eta-intro { border-top: none; padding-bottom: 10px; font-size: 15px; }
+
+.eta-avviso {
+  margin: 8px 20px 4px;
+  padding: 10px 12px;
+  border: 1px solid #f0c75e;
+  border-radius: 10px;
+  background: #fff6e5;
+  color: #6b4a00;
+  font-size: 14px;
+}
+
+.eta-riga { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; font-size: 15px; color: #26323d; }
+.opt-input.eta-select { width: auto; min-width: 84px; padding-right: 8px; background: #fff; }
+.eta-box .opt-input[aria-invalid='true'] { border-color: #c0392b; }
+.eta-aiuto-riga { margin: 0; }
+
+.eta-fasce { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+
+.eta-fascia {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 10px 12px;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+}
+
+.eta-q { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; color: #26323d; }
+.eta-euro .opt-euro { width: 140px; }
+.eta-fascia--errore { border-color: #f1b4ab; background: #fdf6f5; }
+.eta-errore-fascia { grid-column: 1 / -1; }
+
+.eta-togli {
+  justify-self: end;
+  display: inline-flex;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: #8a96a3;
+  cursor: pointer;
+}
+
+.eta-togli:hover { background: #fdecea; color: #c0392b; }
+
+.eta-link {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 6px 0;
+  border: none;
+  background: none;
+  color: #1f6fb2;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.eta-link:hover { text-decoration: underline; }
+.eta-togli:focus-visible, .eta-link:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
+
+.eta-anteprima { line-height: 1.6; }
+.eta-piede { align-items: center; gap: 10px; }
+.eta-piede-errore { margin-right: auto; font-size: 14px; }
+
+@media (max-width: 720px) {
+  .eta-fascia { grid-template-columns: 1fr auto; }
+  .eta-fascia .eta-q:nth-child(2) { grid-row: 2; }
+}

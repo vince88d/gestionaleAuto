@@ -8,7 +8,6 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAzienda, salvaAzienda } from '../lib/firestoreAzienda';
 import OrariSede from '../components/OrariSede';
-import EtaConducenti from '../components/EtaConducenti';
 import { leggiDatiPerBackup } from '../lib/backupDati';
 import {
   AZIENDA_VUOTA, validaAzienda, aziendeUguali, normalizzaAzienda, campiCambiati,
@@ -229,7 +228,6 @@ function ImpostazioniAzienda() {
       </section>
 
       <OrariSede />
-      <EtaConducenti />
 
       <section className="imp-sezione">
         <header className="imp-sezione-testa">

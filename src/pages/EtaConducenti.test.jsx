@@ -35,7 +35,8 @@ test('impostate: fasce, tetto e anteprima del sito', () => {
   expect(screen.getByRole('button', { name: /^Salva$/ })).toBeDisabled();
   expect(screen.getByText(/«Età del conducente compresa tra 25 - 70»/)).toBeInTheDocument();
   expect(screen.getByText(/20 anni = 75 € · 24 anni = 45 €/)).toBeInTheDocument();
-  expect(screen.getByRole('textbox', { name: 'Massimo a noleggio in euro' })).toHaveValue('300,00');
+  expect(document.getElementById('eta-massimo')).toHaveValue('300,00');
+  expect(document.getElementById('eta-fascia-0')).toHaveValue('25,00');
 });
 
 test('fascia senza importo: errore e non salva; poi si corregge e salva', async () => {
@@ -46,7 +47,7 @@ test('fascia senza importo: errore e non salva; poi si corregge e salva', async 
   expect(screen.getByText('Scrivi l\'importo.')).toBeInTheDocument();
   expect(mockSalva).not.toHaveBeenCalled();
 
-  fireEvent.change(screen.getByRole('textbox', { name: 'Fascia 3: euro al giorno' }), { target: { value: '8' } });
+  fireEvent.change(document.getElementById('eta-fascia-2'), { target: { value: '8' } });
   fireEvent.click(screen.getByRole('button', { name: /^Salva$/ }));
   await waitFor(() => expect(mockSalva).toHaveBeenCalled());
   expect(mockSalva.mock.calls[0][0].fasce[2]).toEqual({ finoA: '25', euroGiorno: '8' });

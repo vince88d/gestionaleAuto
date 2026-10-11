@@ -4,12 +4,14 @@ import Tariffe from './Tariffe';
 import CatalogoOptional from './CatalogoOptional';
 import ProtezioniCategorie from './ProtezioniCategorie';
 import AddebitiRientro from './AddebitiRientro';
+import EtaConducenti from './EtaConducenti';
 import './TariffeEOptional.css';
 
 const SCHEDE = [
   { id: 'tariffe', etichetta: 'Prezzo per categoria' },
   { id: 'optional', etichetta: 'Optional' },
   { id: 'protezioni', etichetta: 'Protezioni e cauzione' },
+  { id: 'eta', etichetta: 'Età dei conducenti' },
   { id: 'addebiti', etichetta: 'Addebiti al rientro' },
 ];
 
@@ -49,6 +51,7 @@ function TariffeEOptional() {
         {scheda === 'tariffe' && <Tariffe incorporata onModifiche={setPrezziNonSalvati} />}
         {scheda === 'optional' && <CatalogoOptional />}
         {scheda === 'protezioni' && <ProtezioniCategorie />}
+        {scheda === 'eta' && <EtaConducenti />}
         {scheda === 'addebiti' && <AddebitiRientro />}
       </div>
       <ConfirmDialog
