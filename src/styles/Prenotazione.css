@@ -804,3 +804,67 @@
   from { opacity: 0; transform: translate(-50%, -48%); }
   to { opacity: 1; transform: translate(-50%, -50%); }
 }
+
+/* ---------- Dettagli: riquadro "Prossimo passo" ---------- */
+.pz .pp {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 12px;
+}
+.pz .pp--scegli { border: 1px solid #fdba74; border-left: 6px solid #b45309; background: #fff7ed; }
+.pz .pp--consegna { border: 1px solid #bfdbfe; border-left: 6px solid #1f6fb2; background: #eff6ff; }
+.pz .pp--ricevi { border: 1px solid #bbf7d0; border-left: 6px solid #1b7a4a; background: #f0fdf4; }
+.pz .pp-testi { flex: 1; min-width: 220px; }
+.pz .pp-etichetta { margin: 0 0 2px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #9a3412; }
+.pz .pp--consegna .pp-etichetta { color: #1e40af; }
+.pz .pp--ricevi .pp-etichetta { color: #166534; }
+.pz .pp-titolo { margin: 0; font-size: 18px; font-weight: 800; color: #1e2a36; }
+.pz .pp-spiega { margin: 2px 0 0; font-size: 15px; color: #4d5b69; }
+.pz .pp .vd-btn { min-height: 46px; padding: 0 18px; font-size: 16px; }
+.pz .vd-btn--scegli { border-color: #b45309; background: #b45309; color: #fff; }
+.pz .vd-btn--scegli:hover:not(:disabled) { background: #92400e; }
+.pz .pz-da-scegliere { color: #9a3412; font-weight: 700; }
+
+/* ---------- Finestra "Scegli l'auto" (SceltaAutoModal) ---------- */
+.Modal.pz-modal.sa-modal { max-width: 640px; }
+.sa-lista { display: flex; flex-direction: column; gap: 8px; }
+.sa-voce {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #d5dde6;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+.sa-voce:hover { border-color: #9fc3e6; }
+.sa-voce input { width: 20px; height: 20px; margin: 0; flex-shrink: 0; accent-color: #1f6fb2; }
+.sa-voce--scelta { padding: 13px 15px; border: 2px solid #1f6fb2; background: #eaf4fc; }
+.sa-voce:has(input:focus-visible) { outline: 3px solid #5fb0f0; outline-offset: 2px; }
+.sa-testi { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sa-nome { font-size: 16px; font-weight: 700; color: #1e2a36; }
+.sa-det { font-size: 14px; color: #5d6b79; }
+.sa-targa {
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid #cdd5de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e2a36;
+}
+.sa-vuoto {
+  padding: 14px 16px;
+  border: 1px solid #fca5a5;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 15px;
+  line-height: 1.5;
+}

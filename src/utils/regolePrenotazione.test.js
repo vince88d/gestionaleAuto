@@ -1,6 +1,6 @@
 import {
   controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, senzaUndefined, pagataSulSito,
-  eConsegnata, faseLavoro, promemoria,
+  eConsegnata, faseLavoro, promemoria, prossimoPasso, ritiroEntroOggi,
 } from './regolePrenotazione';
 
 jest.mock('../lib/firestorePrenotazioni', () => ({
@@ -248,5 +248,31 @@ describe('auto non ancora rientrata', () => {
       { id: 'd', targa: 'BB222BB', dataInizio: '2026-09-10', dataFine: '2026-09-12', ...consegnata },
     ];
     expect(rientroInRitardo('AA111AA', lista, OGGI)).toBeNull();
+  });
+});
+
+describe('prossimoPasso', () => {
+  test('prenotazione del sito pagata senza targa: scegliere l\'auto', () => {
+    expect(prossimoPasso({ origine: 'sito', status: 'attiva', categoria: 'Furgone' })).toBe('scegli');
+  });
+  test('con auto e non consegnata: consegnare', () => {
+    expect(prossimoPasso({ status: 'attiva', targa: 'AA111AA' })).toBe('consegna');
+  });
+  test('consegnata: ricevere l\'auto', () => {
+    expect(prossimoPasso({ status: 'attiva', targa: 'AA111AA', consegnataIl: '2026-09-20T09:00:00Z' })).toBe('ricevi');
+  });
+  test('conclusa o annullata: niente', () => {
+    expect(prossimoPasso({ status: 'completata', targa: 'AA111AA', consegnataIl: 'x' })).toBeNull();
+    expect(prossimoPasso({ status: 'annullata', origine: 'sito' })).toBeNull();
+    expect(prossimoPasso(null)).toBeNull();
+  });
+});
+
+describe('ritiroEntroOggi', () => {
+  test('ritiro oggi o passato si, futuro no', () => {
+    expect(ritiroEntroOggi({ dataInizio: '2026-09-23' }, OGGI)).toBe(true);
+    expect(ritiroEntroOggi({ dataInizio: '2026-09-20T00:00:00.000Z' }, OGGI)).toBe(true);
+    expect(ritiroEntroOggi({ dataInizio: '2026-09-24' }, OGGI)).toBe(false);
+    expect(ritiroEntroOggi({}, OGGI)).toBe(false);
   });
 });
