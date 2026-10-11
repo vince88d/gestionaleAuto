@@ -23,3 +23,5 @@
 .rn-importo--corto { display: inline-block; margin: 0 8px; width: 110px; }
 .rn-scelta { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; cursor: pointer; }
 .rn-totale { display: flex; justify-content: space-between; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #e3e8ee; font-size: 16px; }
+
+.rn-gruppo { margin: 10px 0 0; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7886; }

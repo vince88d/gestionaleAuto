@@ -7,6 +7,7 @@
 import { calcolaGiorniNoleggio } from './giorniNoleggio';
 import { leggiEuro } from './protezioni';
 import { riassuntoDotazione, normalizzaVoci } from './dotazione';
+import { vociLibereListino } from './addebiti';
 
 export const LIVELLI = ['1/4', '1/2', '3/4', 'Pieno'];
 const arrotonda = (n) => Math.round(n * 100) / 100;
@@ -63,7 +64,7 @@ export const tettoDanno = (prenotazione) => (typeof prenotazione?.protezione?.da
 
 // Righe di addebito proposte dal passo 1. Ogni riga: { id, nome, dettaglio,
 // importo (numero o null), attiva }. Il costo del danno non si sa: resta vuoto.
-// `prezzi` sono quelli di «Addebiti al rientro» (normalizzati).
+// `prezzi` sono quelli di «Penali e addebiti» (normalizzati).
 export function proponiAddebiti({
   prenotazione = {}, prezzi, dataRientro, oraRientro, carburante, chiaviTornate,
   nonTornati = [], danno = '', tolleranza,
@@ -114,7 +115,15 @@ export function proponiAddebiti({
       attiva: true,
     });
   }
-  righe.push({ id: 'pulizia', nome: 'Pulizia straordinaria', dettaglio: "Spunta se l'auto è tornata molto sporca", importo: prezzi.pulizia, attiva: false });
+  // «Altri addebiti dal listino»: da spuntare solo se servono.
+  righe.push({ id: 'pulizia', nome: 'Pulizia straordinaria', dettaglio: "Spunta se l'auto è tornata molto sporca", importo: prezzi.pulizia, attiva: false, gruppo: 'listino' });
+  if (prezzi.gestioneMulta > 0) {
+    righe.push({ id: 'multa', nome: 'Gestione multa', dettaglio: 'Spese per ogni verbale ricevuto', importo: prezzi.gestioneMulta, attiva: false, gruppo: 'listino' });
+  }
+  const giorniNoleggio = calcolaGiorniNoleggio(
+    giorno(prenotazione.dataInizio), giorno(prenotazione.dataFine), prenotazione.oraInizio, prenotazione.oraFine, prenotazione.tolleranzaMinuti ?? tolleranza,
+  ) || 1;
+  righe.push(...vociLibereListino(prezzi, giorniNoleggio));
   return righe;
 }
 

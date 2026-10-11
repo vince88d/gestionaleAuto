@@ -12,7 +12,7 @@ const SCHEDE = [
   { id: 'optional', etichetta: 'Optional' },
   { id: 'protezioni', etichetta: 'Protezioni e cauzione' },
   { id: 'eta', etichetta: 'Età dei conducenti' },
-  { id: 'addebiti', etichetta: 'Addebiti al rientro' },
+  { id: 'addebiti', etichetta: 'Penali e addebiti' },
 ];
 
 // Pagina "Tariffe e optional": tutto quello che il cliente paga, deciso dallo

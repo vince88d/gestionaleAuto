@@ -3,8 +3,9 @@ import { db, auth } from '../components/firebase';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { normalizzaAddebiti, preparaAddebiti } from '../utils/addebiti';
 
-// Prezzi fissi degli addebiti al rientro (impostazioni/addebiti), solo staff.
-// Il sito non li legge.
+// Listino «Penali e addebiti» (impostazioni/addebiti): importi fissi del
+// rientro, voci libere e quali mostrare sul sito. Il sito lo legge (lettura
+// pubblica, scrittura solo staff: formiarent firestore.rules).
 const ADDEBITI_DOC = ['impostazioni', 'addebiti'];
 
 export function ascoltaAddebiti(onDati, onErrore) {
