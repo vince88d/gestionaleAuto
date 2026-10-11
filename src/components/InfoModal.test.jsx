@@ -55,22 +55,38 @@ test('dotazione alla consegna: presenti, mancanti, chiavi e nota', () => {
   expect(screen.getAllByText(/in officina/).length).toBeGreaterThan(0);
 });
 
-test('veicolo assegnato ma non consegnato: c\'e\' "Consegna", non "Concludi"', () => {
+test('veicolo assegnato ma non consegnato: prossimo passo "Consegna l\'auto", non "Ricevi"', () => {
   const onConsegna = jest.fn();
   const assegnata = { ...prenotazioneDalSito, targa: 'AA111AA', veicolo: 'Fiat Panda' };
   render(<InfoModal isOpen prenotazione={assegnata} {...azioni} onConsegna={onConsegna} />);
-  screen.getByText('Consegna', { selector: 'button' }).click();
+  expect(screen.getByText('Prossimo passo')).toBeTruthy();
+  screen.getByRole('button', { name: /Consegna l'auto/ }).click();
   expect(onConsegna).toHaveBeenCalledWith(assegnata);
-  expect(screen.queryByText('Concludi')).toBeNull();
+  expect(screen.queryByRole('button', { name: /Ricevi l'auto/ })).toBeNull();
 });
 
-test('dopo la consegna: "Concludi" e i km alla consegna', () => {
+test('prenotazione del sito senza auto: prossimo passo "Scegli l\'auto", categoria pagata', () => {
+  const onScegliAuto = jest.fn();
+  render(<InfoModal isOpen prenotazione={prenotazioneDalSito} {...azioni} onConsegna={jest.fn()} onScegliAuto={onScegliAuto} />);
+  expect(screen.getByText('Categoria pagata')).toBeTruthy();
+  expect(screen.getAllByText('Auto da scegliere').length).toBeGreaterThan(0);
+  screen.getByRole('button', { name: /Scegli l'auto/ }).click();
+  expect(onScegliAuto).toHaveBeenCalledWith(prenotazioneDalSito);
+  expect(screen.queryByRole('button', { name: /Consegna l'auto/ })).toBeNull();
+});
+
+test('in sola lettura (archivio) nessun prossimo passo', () => {
+  render(<InfoModal isOpen prenotazione={prenotazioneDalSito} onClose={jest.fn()} soloLettura />);
+  expect(screen.queryByText('Prossimo passo')).toBeNull();
+});
+
+test('dopo la consegna: "Ricevi l\'auto" e i km alla consegna', () => {
   const consegnata = {
     ...prenotazioneDalSito, targa: 'AA111AA', veicolo: 'Fiat Panda',
     consegnataIl: '2026-10-10T09:00:00.000Z', schedaVeicolo: { kmIniziali: '45000', carburante: 'Pieno' },
   };
   render(<InfoModal isOpen prenotazione={consegnata} {...azioni} onConsegna={jest.fn()} />);
-  expect(screen.getByText('Concludi')).toBeTruthy();
-  expect(screen.queryByText('Consegna', { selector: 'button' })).toBeNull();
+  expect(screen.getByRole('button', { name: /Ricevi l'auto/ })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /Consegna l'auto/ })).toBeNull();
   expect(screen.getByText('45.000')).toBeTruthy();
 });

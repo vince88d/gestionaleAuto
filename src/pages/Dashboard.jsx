@@ -59,12 +59,13 @@ function TitoloGruppo({ tono, children, conto, allerta = false }) {
 
 // Riga con testo a sinistra (cliccabile per aprire i dettagli) e un pulsante
 // d'azione a destra.
-function Riga({ tono, principale, secondaria, secondariaAllerta, onApri, azione, nome = false }) {
+function Riga({ tono, principale, secondaria, secondariaAllerta, nota, onApri, azione, nome = false }) {
   return (
     <li className={`dash-riga dash-riga--${tono}`}>
       <button type="button" className="dash-riga-testi" onClick={onApri}>
         <span className={`dash-riga-principale ${nome ? 'dash-riga-principale--nome' : ''}`}>{principale}</span>
         <span className={`dash-riga-secondaria ${secondariaAllerta ? 'dash-scaduta' : ''}`}>{secondaria}</span>
+        {nota && <span className="dash-riga-secondaria dash-scaduta">{nota}</span>}
       </button>
       {azione}
     </li>
@@ -334,29 +335,33 @@ function Dashboard() {
 
           {daSistemare === 0 && (
             <p className="dash-tutto-ok">
-              <CheckCircle2 size={18} aria-hidden="true" /> Tutto in ordine: niente da assegnare, riparare o rinnovare.
+              <CheckCircle2 size={18} aria-hidden="true" /> Tutto in ordine: nessuna auto da scegliere, riparare o rinnovare.
             </p>
           )}
 
           {r.daAssegnare.length > 0 && (
             <div className="dash-gruppo">
-              <TitoloGruppo tono="rosso" conto={r.daAssegnare.length} allerta>Prenotazioni del sito senza auto</TitoloGruppo>
+              <TitoloGruppo tono="scegli" conto={r.daAssegnare.length} allerta>Auto da scegliere</TitoloGruppo>
               <ul className="dash-lista">
-                {visibili('assegnare', r.daAssegnare).map((p) => (
-                  <Riga
-                    key={p.id}
-                    tono="rosso"
-                    nome
-                    principale={p.cliente || 'Cliente non indicato'}
-                    secondaria={`${p.categoria || '—'} · dal ${dataEOra(p.dataInizio, p.oraInizio)} al ${dataEOra(p.dataFine, p.oraFine)}`}
-                    onApri={() => vaiAPrenotazioni({ azione: 'dettagli', id: p.id })}
-                    azione={
-                      <button type="button" className="dash-azione" onClick={() => vaiAPrenotazioni({ filtro: 'tutte', vista: 'elenco' })}>
-                        Scegli l&apos;auto
-                      </button>
-                    }
-                  />
-                ))}
+                {visibili('assegnare', r.daAssegnare).map((p) => {
+                  const passati = giorniTra(p.dataInizio, oggi);
+                  return (
+                    <Riga
+                      key={p.id}
+                      tono="scegli"
+                      nome
+                      principale={p.cliente || 'Cliente non indicato'}
+                      secondaria={<>Ha pagato dal sito: <b>{p.categoria || 'categoria non indicata'}</b> · ritiro {dataEOra(p.dataInizio, p.oraInizio)}</>}
+                      nota={passati > 0 ? `Il ritiro è già passato da ${passati} ${passati === 1 ? 'giorno' : 'giorni'}` : null}
+                      onApri={() => vaiAPrenotazioni({ azione: 'dettagli', id: p.id })}
+                      azione={
+                        <button type="button" className="dash-azione dash-azione--scegli" onClick={() => vaiAPrenotazioni({ azione: 'assegna', id: p.id })}>
+                          <Car size={16} aria-hidden="true" /> Scegli l&apos;auto
+                        </button>
+                      }
+                    />
+                  );
+                })}
               </ul>
               <MostraAltre nome="assegnare" elenco={r.daAssegnare} />
             </div>

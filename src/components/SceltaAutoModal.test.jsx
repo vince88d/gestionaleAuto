@@ -1,0 +1,36 @@
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import SceltaAutoModal from './SceltaAutoModal';
+
+const prenotazione = {
+  id: 'p1', origine: 'sito', status: 'attiva', categoria: 'Furgone', cliente: 'Mario Rossi',
+  dataInizio: '2026-10-10', oraInizio: '16:00', dataFine: '2026-10-12', oraFine: '16:00',
+};
+const ducato = { marca: 'Fiat', modello: 'Ducato', targa: 'AB123TR', categoria: 'Furgone', km: 84300 };
+const transit = { marca: 'Ford', modello: 'Transit', targa: 'CD456EF', categoria: 'Furgone' };
+
+test('nessuna auto libera: lo dice e non si puo\' confermare', () => {
+  render(<SceltaAutoModal prenotazione={prenotazione} veicoliLiberi={[]} onClose={jest.fn()} onConferma={jest.fn()} />);
+  expect(screen.getByRole('alert').textContent).toMatch(/Nessuna auto «Furgone» è libera/);
+  expect(screen.queryByRole('button', { name: /Scegli/ })).toBeNull();
+});
+
+test('ritiro oggi: "Scegli e consegna ora" passa l\'auto scelta e consegna=true', async () => {
+  const onConferma = jest.fn().mockResolvedValue();
+  render(<SceltaAutoModal prenotazione={prenotazione} veicoliLiberi={[ducato, transit]} consegnaSubito onClose={jest.fn()} onConferma={onConferma} />);
+  const principale = screen.getByRole('button', { name: 'Scegli e consegna ora' });
+  expect(principale.disabled).toBe(true); // prima si sceglie l'auto
+  fireEvent.click(screen.getByRole('radio', { name: /CD456EF/ }));
+  fireEvent.click(principale);
+  await waitFor(() => expect(onConferma).toHaveBeenCalledWith({ veicolo: transit, consegna: true }));
+  expect(screen.getByRole('button', { name: 'Solo scegli' })).toBeTruthy();
+});
+
+test('ritiro in un altro giorno, una sola auto: gia\' scelta, solo "Scegli questa auto"', async () => {
+  const onConferma = jest.fn().mockResolvedValue();
+  render(<SceltaAutoModal prenotazione={prenotazione} veicoliLiberi={[ducato]} onClose={jest.fn()} onConferma={onConferma} />);
+  expect(screen.queryByRole('button', { name: /consegna ora/ })).toBeNull();
+  expect(screen.getByText('84.300 km')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Scegli questa auto' }));
+  await waitFor(() => expect(onConferma).toHaveBeenCalledWith({ veicolo: ducato, consegna: false }));
+});

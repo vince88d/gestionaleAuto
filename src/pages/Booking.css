@@ -1457,3 +1457,48 @@ gap: 0.3rem;
   font-size: 12px;
   font-weight: 700;
 }
+
+/* Prenotazioni del sito che aspettano l'auto (PrenotazioniDaAssegnare). */
+.ads {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 16px 18px;
+  border: 1px solid #fdba74;
+  border-left: 6px solid #b45309;
+  border-radius: 12px;
+  background: #fff7ed;
+}
+.ads-testa { display: flex; align-items: flex-start; gap: 12px; }
+.ads-icona {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #ffedd5;
+  color: #b45309;
+}
+.main-content .ads-titolo { margin: 0; font-size: 18px; font-weight: 800; color: #7c2d12; }
+.main-content .ads-spiega { margin: 2px 0 0; font-size: 15px; color: #7c3a12; }
+.ads-riga {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #fde3c7;
+  border-radius: 10px;
+  background: #fff;
+}
+.ads-riga-testi { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ads-nome { font-size: 16px; font-weight: 700; color: #1e2a36; text-transform: capitalize; }
+.ads-det { font-size: 14px; color: #4d5b69; }
+.ads-urgente { color: #b0321f; font-weight: 600; }
+
+.fase-badge--scegli { background: #ffedd5; color: #9a3412; }
+.bk-btn--scegli { border-color: #b45309; background: #b45309; color: #fff; }
+.bk-btn--scegli:hover:not(:disabled) { background: #92400e; }

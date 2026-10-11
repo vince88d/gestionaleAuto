@@ -1,14 +1,15 @@
 import React, { useRef } from 'react';
 import Modal from 'react-modal';
 import './InfoModal.css';
-import { Pencil, Trash2, CheckCircle, KeyRound, X, Download, FileText } from 'lucide-react';
+import { Pencil, Trash2, KeyRound, X, Download, FileText, Car, LogIn } from 'lucide-react';
 import '../styles/Prenotazione.css';
 import { dataEOra, formattaData } from '../utils/scadenze';
 import { oraBreve } from '../utils/orari';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { isPagataOnline } from '../utils/pagamentoOnline';
-import { puoConcludere, puoConsegnare, eConsegnata } from '../utils/regolePrenotazione';
+import { eConsegnata, prossimoPasso } from '../utils/regolePrenotazione';
+import { daAssegnare } from '../utils/assegnazioneVeicolo';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { salvaPdfConsegna } from '../utils/pdfConsegna';
 import { toast } from 'react-toastify';
@@ -19,7 +20,58 @@ import { salvaVerbaleRientro } from '../utils/pdfRientro';
 
 
 
-function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, onConsegna, soloLettura = false }) {
+// Riquadro in cima ai dettagli: la cosa da fare adesso, con il pulsante
+// grande. Modifica e annullamento restano in basso come azioni secondarie.
+function ProssimoPasso({ prenotazione, onScegliAuto, onConsegna, onConcludi }) {
+  const passo = prossimoPasso(prenotazione);
+  const auto = [prenotazione.veicolo, prenotazione.targa].filter(Boolean).join(' ');
+  const riconsegna = prenotazione.oraFine
+    ? `${formattaData(prenotazione.dataFine)} entro le ${oraBreve(prenotazione.oraFine)}`
+    : formattaData(prenotazione.dataFine);
+
+  const pezzi = {
+    scegli: onScegliAuto && {
+      tono: 'scegli',
+      titolo: "Scegli quale auto dare al cliente",
+      spiega: `Ha pagato dal sito la categoria «${prenotazione.categoria || '—'}». Dopo aver scelto l'auto potrai consegnarla.`,
+      pulsante: <><Car size={18} aria-hidden="true" /> Scegli l&apos;auto</>,
+      classe: 'vd-btn--scegli',
+      azione: onScegliAuto,
+    },
+    consegna: onConsegna && {
+      tono: 'consegna',
+      titolo: "Consegna l'auto al cliente",
+      spiega: `${auto} · ritiro ${dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)}. Segnerai km, carburante, dotazione e firma.`,
+      pulsante: <><KeyRound size={18} aria-hidden="true" /> Consegna l&apos;auto</>,
+      classe: 'vd-btn--primario',
+      azione: onConsegna,
+    },
+    ricevi: onConcludi && {
+      tono: 'ricevi',
+      titolo: "Ricevi l'auto quando torna",
+      spiega: `${auto} · rientro ${riconsegna}. Segnerai km, carburante, dotazione, danni e cauzione.`,
+      pulsante: <><LogIn size={18} aria-hidden="true" /> Ricevi l&apos;auto</>,
+      classe: 'vd-btn--successo',
+      azione: onConcludi,
+    },
+  }[passo];
+
+  if (!pezzi) return null;
+  return (
+    <div className={`pp pp--${pezzi.tono}`}>
+      <div className="pp-testi">
+        <p className="pp-etichetta">Prossimo passo</p>
+        <p className="pp-titolo">{pezzi.titolo}</p>
+        <p className="pp-spiega">{pezzi.spiega}</p>
+      </div>
+      <button type="button" className={`vd-btn ${pezzi.classe}`} onClick={() => pezzi.azione(prenotazione)}>
+        {pezzi.pulsante}
+      </button>
+    </div>
+  );
+}
+
+function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, onConsegna, onScegliAuto, soloLettura = false }) {
   const printRef = useRef();
   
 
@@ -77,11 +129,12 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
 
   const scheda = prenotazione.schedaVeicolo || {};
   const consegnata = eConsegnata(prenotazione);
+  const senzaAuto = daAssegnare(prenotazione);
   const fotoRiconsegna = [].concat(prenotazione.fotoDanni || []).filter(Boolean);
   const statoTesto = {
     completata: 'Conclusa',
     annullata: 'Annullata',
-  }[prenotazione.status] || (consegnata ? 'Consegnata' : 'Da consegnare');
+  }[prenotazione.status] || (senzaAuto ? 'Auto da scegliere' : consegnata ? 'Consegnata' : 'Da consegnare');
 
   return (
     <Modal
@@ -97,7 +150,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
           <div>
             <h2 className="pz-titolo">{prenotazione.cliente || 'Prenotazione'}</h2>
             <span className="pz-sottotitolo">
-              {prenotazione.veicolo || prenotazione.categoria}{prenotazione.targa ? ` · ${prenotazione.targa}` : ''}
+              {(senzaAuto ? prenotazione.categoria : prenotazione.veicolo) || prenotazione.categoria}{prenotazione.targa ? ` · ${prenotazione.targa}` : ''}
               {' · '}{dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)} → {dataEOra(prenotazione.dataFine, prenotazione.oraFine)}
               {prenotazione.origine === 'sito' ? ' · dal sito' : ''}
             </span>
@@ -108,6 +161,15 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
         </header>
 
         <div className="pz-corpo">
+          {!soloLettura && (
+            <ProssimoPasso
+              prenotazione={prenotazione}
+              onScegliAuto={onScegliAuto}
+              onConsegna={onConsegna}
+              onConcludi={onConcludi}
+            />
+          )}
+
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Cliente</h3>
             <dl className="pz-dati">
@@ -121,8 +183,17 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Noleggio</h3>
             <dl className="pz-dati">
-              <div><dt>Veicolo</dt><dd>{prenotazione.veicolo || '—'}</dd></div>
-              <div><dt>Targa</dt><dd>{prenotazione.targa || 'Da assegnare'}</dd></div>
+              {senzaAuto ? (
+                <>
+                  <div><dt>Categoria pagata</dt><dd>{prenotazione.categoria || '—'}</dd></div>
+                  <div><dt>Auto</dt><dd className="pz-da-scegliere">Da scegliere</dd></div>
+                </>
+              ) : (
+                <>
+                  <div><dt>Veicolo</dt><dd>{prenotazione.veicolo || '—'}</dd></div>
+                  <div><dt>Targa</dt><dd>{prenotazione.targa || '—'}</dd></div>
+                </>
+              )}
               <div><dt>Prezzo</dt><dd className="pz-prezzo">€ {prezzoPrenotazione(prenotazione) || '—'}</dd></div>
               <div><dt>Ritiro</dt><dd>{dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)}</dd></div>
               <div><dt>Riconsegna</dt><dd>{prenotazione.oraFine ? `${formattaData(prenotazione.dataFine)} entro le ${oraBreve(prenotazione.oraFine)}` : formattaData(prenotazione.dataFine)}</dd></div>
@@ -159,7 +230,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
               </>
             ) : (
               <p className="pz-aiuto" style={{ fontSize: 14 }}>
-                Non ancora consegnata: il giorno del ritiro usa «Consegna» per km, carburante, dotazione e contratto.
+                Non ancora consegnata: il giorno del ritiro usa «Consegna l'auto» per km, carburante, dotazione e contratto.
               </p>
             )}
           </section>
@@ -201,12 +272,6 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
                 <Trash2 size={16} /> {isPagataOnline(prenotazione) ? 'Annulla e rimborsa' : 'Elimina'}
               </button>
               <button type="button" className="vd-btn" onClick={() => onModifica(prenotazione)}><Pencil size={16} /> Modifica</button>
-              {puoConsegnare(prenotazione) && onConsegna && (
-                <button type="button" className="vd-btn vd-btn--primario" onClick={() => onConsegna(prenotazione)}><KeyRound size={16} /> Consegna</button>
-              )}
-              {puoConcludere(prenotazione) && (
-                <button type="button" className="vd-btn vd-btn--successo" onClick={() => onConcludi(prenotazione)}><CheckCircle size={16} /> Concludi</button>
-              )}
             </>
           )}
         </footer>

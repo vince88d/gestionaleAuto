@@ -150,6 +150,20 @@ export const puoConsegnare = (p) => conVeicolo(p) && !eConsegnata(p);
 // Si conclude (riconsegna) solo un noleggio gia' consegnato.
 export const puoConcludere = (p) => conVeicolo(p) && eConsegnata(p);
 
+// La cosa da fare adesso su una prenotazione (riquadro "Prossimo passo" dei
+// dettagli): scegliere l'auto per una prenotazione del sito, consegnarla o
+// riceverla indietro. null se non c'e' niente da fare (conclusa, annullata...).
+export function prossimoPasso(p) {
+  if (daAssegnare(p)) return 'scegli';
+  if (puoConsegnare(p)) return 'consegna';
+  if (puoConcludere(p)) return 'ricevi';
+  return null;
+}
+
+// Il ritiro e' oggi o e' gia' passato: dopo aver scelto l'auto conviene
+// consegnarla subito.
+export const ritiroEntroOggi = (p, oggi) => Boolean(p?.dataInizio && oggi && giorno(p.dataInizio) <= oggi);
+
 // A che punto e' una prenotazione attiva, per i filtri della pagina.
 export function faseLavoro(p, oggi) {
   if (!eConsegnata(p)) return 'da-consegnare';

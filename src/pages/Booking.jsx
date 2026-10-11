@@ -13,19 +13,20 @@ import 'react-toastify/dist/ReactToastify.css';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { setClienti } from '../store/clientiSlice';
 import {
-  Search, Info, CheckCircle, AlertCircle, KeyRound, List, CalendarDays, Download,
+  Search, Info, CheckCircle, AlertCircle, KeyRound, List, CalendarDays, Download, Car,
 } from 'lucide-react';
 import BookingModal from '../components/BookingModal';
 import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
 import RientroModal from '../components/RientroModal';
 import PrenotazioniDaAssegnare from '../components/PrenotazioniDaAssegnare';
+import SceltaAutoModal from '../components/SceltaAutoModal';
 import AnnullaConPenaleModal from '../components/AnnullaConPenaleModal';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   isPrenotazioneVisibile, isPagataOnline,
-  aggiornaPrenotazione, eliminaPrenotazione, messaggioErrorePrenotazione, salvaPrenotazione,
+  aggiornaPrenotazione, eliminaPrenotazione, messaggioErrorePrenotazione, salvaPrenotazione, assegnaVeicolo,
 } from '../lib/firestorePrenotazioni';
 import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento';
 import { readVeicoli } from '../lib/firestoreVeicoli';
@@ -39,11 +40,11 @@ import { costruisciRientro, istanteRientro, dotazioneDopoRientro } from '../util
 import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
 import {
-  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, promemoria,
+  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, promemoria, ritiroEntroOggi,
 } from '../utils/regolePrenotazione';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { colonneProtezioneExtra, INTESTAZIONI_PROTEZIONE_EXTRA } from '../utils/archivio';
-import { daAssegnare } from '../utils/assegnazioneVeicolo';
+import { daAssegnare, veicoliLiberiPerPrenotazione } from '../utils/assegnazioneVeicolo';
 import { prenotazioniSuVeicoloSospeso } from '../utils/disponibilitaCategoria';
 import { giornoLocale, formattaData, dataEOra } from '../utils/scadenze';
 import{
@@ -248,7 +249,7 @@ useEffect(() => {
     let prenotazione = null;
     if (id) {
       prenotazione = prenotazioni.find((p) => p.id === id);
-      if (!prenotazione || (azione === 'consegna' && availableVehicles.length === 0)) return; // dati in arrivo
+      if (!prenotazione || ((azione === 'consegna' || azione === 'assegna') && availableVehicles.length === 0)) return; // dati in arrivo
     }
     azioneEseguita.current = location.key;
     ricordaProvenienza(azione ? da : null);
@@ -258,6 +259,7 @@ useEffect(() => {
     if (azione === 'nuova') apriNuovaPrenotazione();
     if (azione === 'consegna') avviaConsegna(prenotazione);
     if (azione === 'dettagli') openInfoModal(prenotazione);
+    if (azione === 'assegna') apriSceltaAuto(prenotazione);
     if (azione === 'concludi') {
       setInfoModalOpen(false);
       setModalIsOpen(false);
@@ -524,6 +526,45 @@ useEffect(() => {
     setInfoModalOpen(false);
     setModalIsOpen(false);
     setSchedaModalOpen(true);
+  };
+
+  // Scelta dell'auto per una prenotazione del sito (ha pagato solo la
+  // categoria). Aperta dai dettagli: chiudendo si torna ai dettagli.
+  const [sceltaAutoDi, setSceltaAutoDi] = useState(null);
+  const sceltaDaDettagli = useRef(false);
+
+  const apriSceltaAuto = (prenotazione, { daDettagli = false } = {}) => {
+    if (!daAssegnare(prenotazione)) {
+      openInfoModal(prenotazione); // l'auto e' gia' stata scelta (anche da un'altra postazione)
+      return;
+    }
+    sceltaDaDettagli.current = daDettagli;
+    setInfoModalOpen(false);
+    setModalIsOpen(false);
+    setSceltaAutoDi(prenotazione);
+  };
+
+  const fineSceltaAuto = (prenotazione) => {
+    setSceltaAutoDi(null);
+    if (sceltaDaDettagli.current) openInfoModal(prenotazione);
+    else fineFlusso();
+  };
+
+  const confermaSceltaAuto = async ({ veicolo, consegna }) => {
+    try {
+      const aggiornata = await assegnaVeicolo({ prenotazione: sceltaAutoDi, veicolo });
+      dispatch(updatePrenotazione(aggiornata));
+      toast.success(`Auto scelta: ${[veicolo.marca, veicolo.modello].filter(Boolean).join(' ')} (${veicolo.targa})`);
+      if (consegna) {
+        setSceltaAutoDi(null);
+        avviaConsegna(aggiornata);
+      } else {
+        fineSceltaAuto(aggiornata);
+      }
+    } catch (err) {
+      console.error('Errore scelta auto:', err);
+      toast.error("Impossibile salvare l'auto scelta, riprova.");
+    }
   };
 
   const chiudiConsegna = () => {
@@ -798,7 +839,7 @@ return (
     </div>
   </div>
 
-  <PrenotazioniDaAssegnare prenotazioni={prenotazioni} veicoli={availableVehicles} />
+  <PrenotazioniDaAssegnare prenotazioni={prenotazioni} oggi={oggi} onScegli={apriSceltaAuto} />
 
   <div className="bk-barra">
     <div className="bookings-filtri" role="tablist" aria-label="Filtra per stato">
@@ -885,7 +926,8 @@ return (
                       {p.emailCliente && <span className="bk-secondario">{p.emailCliente}</span>}
                     </td>
                     <td>
-                      <span className="bk-principale">{p.veicolo || p.categoria || '—'}</span>
+                      <span className="bk-principale">{(daAssegnare(p) ? p.categoria : p.veicolo) || p.categoria || '—'}</span>
+                      {daAssegnare(p) && <span className="bk-secondario">auto non ancora scelta</span>}
                       {p.targa && <span className="bk-targa">{p.targa}</span>}
                       {idSuVeicoloSospeso.has(p.id) && (
                         <span className="bk-sospeso">Auto sospesa, da riassegnare</span>
@@ -903,12 +945,17 @@ return (
                       </span>
                     </td>
                     <td>
-                      <span className={`fase-badge fase-badge--${fase}`}>
-                        {daAssegnare(p) ? 'Veicolo da assegnare' : ETICHETTA_FASE[fase]}
+                      <span className={`fase-badge fase-badge--${daAssegnare(p) ? 'scegli' : fase}`}>
+                        {daAssegnare(p) ? 'Auto da scegliere' : ETICHETTA_FASE[fase]}
                       </span>
                       <span className={`bk-promemoria bk-promemoria--${nota.livello || 'normale'}`}>{nota.testo}</span>
                     </td>
                     <td className="bk-azioni-riga" onClick={(e) => e.stopPropagation()}>
+                      {daAssegnare(p) && (
+                        <button type="button" className="bk-btn bk-btn--piccolo bk-btn--scegli" onClick={() => apriSceltaAuto(p)} title="Scegli quale auto dare al cliente">
+                          <Car size={15} aria-hidden="true" /> <span className="bk-btn-testo">Scegli l&apos;auto</span>
+                        </button>
+                      )}
                       {puoConsegnare(p) && (
                         <button type="button" className="bk-btn bk-btn--piccolo bk-btn--consegna" onClick={() => avviaConsegna(p)} title="Consegna il veicolo">
                           <KeyRound size={15} aria-hidden="true" /> <span className="bk-btn-testo">Consegna</span>
@@ -985,6 +1032,7 @@ return (
       setInfoModalOpen(false);
     }}
     onConsegna={avviaConsegna}
+    onScegliAuto={(p) => apriSceltaAuto(p, { daDettagli: true })}
     onConcludi={(p) => {
      setInfoModalOpen(false);          
     setModalIsOpen(false);            
@@ -993,6 +1041,16 @@ return (
     setForceRenderKey(prev => prev + 1); 
     }}
       />
+    {sceltaAutoDi && (
+      <SceltaAutoModal
+        key={sceltaAutoDi.id}
+        prenotazione={sceltaAutoDi}
+        veicoliLiberi={veicoliLiberiPerPrenotazione(sceltaAutoDi, availableVehicles, prenotazioni)}
+        consegnaSubito={ritiroEntroOggi(sceltaAutoDi, giornoLocale())}
+        onClose={() => fineSceltaAuto(sceltaAutoDi)}
+        onConferma={confermaSceltaAuto}
+      />
+    )}
     <SchedaVeicoloModal
     isOpen={schedaModalOpen}
     onRequestClose={chiudiConsegna}

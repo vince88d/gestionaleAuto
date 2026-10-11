@@ -420,3 +420,10 @@
 }
 
 .dash-veicolo-meta { font-size: 12px; color: #7f8c9a; }
+
+/* Prenotazioni del sito che aspettano l'auto: arancio scuro (testo bianco AA),
+   diverso dal rosso dei problemi e dal blu delle consegne. */
+.dash-pallino--scegli { background: #b45309; }
+.dash-riga--scegli { background: #fff7ed; border: 1px solid #fed7aa; }
+.dash-azione--scegli { border-color: #b45309; background: #b45309; color: #fff; }
+.dash-azione--scegli:hover { background: #92400e; }
