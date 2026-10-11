@@ -173,6 +173,9 @@ export const CAMPI_PRENOTAZIONE = [
   'oraInizio', 'oraFine', 'tolleranzaMinuti',
   // Protezione ed extra (stessi campi delle prenotazioni del sito, vedi utils/sceltaExtra.js).
   'totaleNoleggio', 'protezione', 'cauzione', 'optional',
+  // Eta' dichiarata del conducente (null = senza supplemento) e supplemento
+  // giovane conducente calcolato (vedi utils/etaConducenti.js), come il sito.
+  'etaConducente', 'giovaneConducente',
 ];
 
 const soloCampiPrenotazione = (dati) =>

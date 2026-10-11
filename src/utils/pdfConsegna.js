@@ -13,6 +13,8 @@ const eur = (n, decimali = false) => `${Number(n || 0).toLocaleString('it-IT', {
 
 // Righe [etichetta, valore] della sezione "Protezione ed extra" del PDF.
 // Vuoto per le prenotazioni senza protezione ne' extra (quelle di prima).
+// In fondo il supplemento giovane conducente (o l'eta' dichiarata).
+// Helvetica standard non ha tutte le lettere accentate: "Eta" senza accento.
 export function righeProtezioneExtra(prenotazione = {}) {
   const p = prenotazione.protezione;
   const extra = (Array.isArray(prenotazione.optional) ? prenotazione.optional : []).filter((r) => r?.quantita > 0);
@@ -28,6 +30,14 @@ export function righeProtezioneExtra(prenotazione = {}) {
     if (coperte.length > 0) righe.push(['Copre anche', coperte.join(', ')]);
   }
   extra.forEach((r, i) => righe.push([i === 0 ? 'Extra' : '', `${r.nome} x ${r.quantita} (${eur(r.totale, true)})`]));
+  const g = prenotazione.giovaneConducente;
+  if (g) {
+    righe.push(['Giovane conducente', g.alMassimo
+      ? `${g.eta} anni - massimo ${eur(g.importo, true)}`
+      : `${g.eta} anni - ${eur(g.euroGiorno, true)} x ${g.giorni} ${g.giorni === 1 ? 'giorno' : 'giorni'} (${eur(g.importo, true)})`]);
+  } else if (typeof prenotazione.etaConducente === 'number') {
+    righe.push(['Eta del conducente', `${prenotazione.etaConducente} anni`]);
+  }
   return righe;
 }
 

@@ -122,6 +122,93 @@ export function testoSupplemento(s) {
     : `Giovane conducente · ${s.eta} anni · ${euro(s.euroGiorno)} × ${s.giorni} ${s.giorni === 1 ? 'giorno' : 'giorni'}`;
 }
 
+// Scelte dell'eta' nella Nuova prenotazione del gestionale: per prima la
+// fascia senza supplemento (valore ''), poi le eta' una per una con il loro
+// supplemento, e «Oltre N anni» (valore 'oltre': decide lo staff). Un'eta'
+// gia' salvata che non e' nell'elenco (es. 30 dal sito) si aggiunge.
+export function opzioniEtaGestionale(dati, salvata) {
+  const n = normalizzaEtaConducenti(dati);
+  const { da, a } = etaSenzaSupplemento(n);
+  const opzioni = [{
+    valore: '',
+    testo: a === null ? `${da} anni o più (nessun supplemento)` : `Dai ${da} ai ${a} anni (nessun supplemento)`,
+  }];
+  for (let eta = n.etaMinima; eta < da; eta += 1) {
+    opzioni.push({ valore: String(eta), testo: `${eta} anni (+${euro(valutaEta(n, eta).euroGiorno)} al giorno)` });
+  }
+  const s = salvata === null || salvata === undefined || salvata === '' ? null : Number(salvata);
+  if (Number.isInteger(s) && !opzioni.some((o) => o.valore === String(s))) {
+    const { euroGiorno } = valutaEta(n, s);
+    opzioni.push({ valore: String(s), testo: `${s} anni${euroGiorno > 0 ? ` (+${euro(euroGiorno)} al giorno)` : ''}` });
+  }
+  if (a !== null) opzioni.push({ valore: 'oltre', testo: `Oltre ${a} anni` });
+  return opzioni;
+}
+
+// Eta' dal codice fiscale (data di nascita nei caratteri 7-11), anche con le
+// lettere dell'omocodia. null se il codice non si legge.
+const OMOCODIA = 'LMNPQRSTUV';
+const MESI_CF = 'ABCDEHLMPRST';
+export function etaDaCodiceFiscale(codiceFiscale, oggi) {
+  const c = String(codiceFiscale || '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{16}$/.test(c) || !/^\d{4}-\d{2}-\d{2}/.test(String(oggi || ''))) return null;
+  const cifra = (ch) => (/\d/.test(ch) ? Number(ch) : OMOCODIA.indexOf(ch));
+  const [aa1, aa2, g1, g2] = [c[6], c[7], c[9], c[10]].map(cifra);
+  const mese = MESI_CF.indexOf(c[8]) + 1;
+  if ([aa1, aa2, g1, g2].some((n) => n < 0) || mese === 0) return null;
+  let giorno = g1 * 10 + g2;
+  if (giorno > 40) giorno -= 40; // donne
+  if (giorno < 1 || giorno > 31) return null;
+  const [anno, m, g] = String(oggi).slice(0, 10).split('-').map(Number);
+  const aa = aa1 * 10 + aa2;
+  const nascita = 2000 + aa > anno ? 1900 + aa : 2000 + aa;
+  return anno - nascita - (m < mese || (m === mese && g < giorno) ? 1 : 0);
+}
+
+// Promemoria alla consegna sull'eta' dichiarata. Con il codice fiscale
+// (se guida il cliente) l'eta' si controlla da sola: avvisa solo se non
+// torna. Senza, ricorda di guardare la patente.
+// Restituisce null oppure { livello: 'errore' | 'attenzione' | 'info', testo }.
+export function controlloEtaConsegna({ prenotazione, etaConducenti, codiceFiscale, oggi, pagataSulSito = false }) {
+  const n = normalizzaEtaConducenti(etaConducenti);
+  const dichiarata = typeof prenotazione?.etaConducente === 'number' ? prenotazione.etaConducente : null;
+  const g = prenotazione?.giovaneConducente || null;
+  if (!chiedeEta(n) && dichiarata === null && !g) return null;
+
+  const x = etaDaCodiceFiscale(codiceFiscale, oggi);
+  if (x !== null) {
+    const v = valutaEta(n, x);
+    if (v.motivo === 'sotto') {
+      return { livello: 'errore', testo: `Dal codice fiscale il cliente ha ${x} anni: si noleggia dai ${n.etaMinima} anni. Se guida lui, non consegnare.` };
+    }
+    if (v.motivo === 'oltre') {
+      return { livello: 'attenzione', testo: `Dal codice fiscale il cliente ha ${x} anni, oltre l'età massima (${n.etaMassima}). Consegna solo se l'hai deciso tu.` };
+    }
+    const pagato = g?.euroGiorno || 0;
+    if (v.euroGiorno === pagato) return null;
+    const giusto = v.euroGiorno > 0 ? `il supplemento giusto è ${euro(v.euroGiorno)} al giorno` : 'non deve pagare il supplemento';
+    const come = pagataSulSito
+      ? 'La prenotazione è pagata sul sito: sistema la differenza al banco.'
+      : 'Se guida lui, prima di consegnare correggi l\'età con «Modifica».';
+    return {
+      livello: 'attenzione',
+      testo: `Dal codice fiscale il cliente ha ${x} anni${dichiarata !== null ? `, ma ha dichiarato ${dichiarata}` : ''}: ${giusto}${pagato > 0 ? ` (ne paga ${euro(pagato)})` : ''}. ${come}`,
+    };
+  }
+
+  if (dichiarata !== null) {
+    return {
+      livello: 'info',
+      testo: `Il cliente ha dichiarato ${dichiarata} anni${g ? ` (supplemento ${euro(g.importo)})` : ''}. Controlla la data di nascita sulla patente: se non corrisponde, correggi l'età nella prenotazione prima di consegnare.`,
+    };
+  }
+  const { da, a } = etaSenzaSupplemento(n);
+  return {
+    livello: 'info',
+    testo: `Il cliente ha dichiarato ${a === null ? `almeno ${da} anni` : `un'età tra ${da} e ${a} anni`}: controlla la data di nascita sulla patente.`,
+  };
+}
+
 // ---------- Form delle Impostazioni ----------
 
 const testoEuro = (n) => (n === null || n === undefined ? '' : n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));

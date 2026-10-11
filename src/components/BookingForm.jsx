@@ -22,6 +22,7 @@ import {
   DURATE_RAPIDE, dateRapide, giorniDelNoleggio, statoPassi, validaNuovaPrenotazione, datiDaCliente, documentiCompleti,
 } from '../utils/nuovaPrenotazione';
 import { useOrari } from '../lib/firestoreOrari';
+import { chiedeEta, opzioniEtaGestionale, normalizzaEtaConducenti, testoSupplemento } from '../utils/etaConducenti';
 import { oreDelMenu, oraBreve, oraPerGiorno, oreSelezionabili, avvisoFuoriOrario, avvisoGiornoInPiu } from '../utils/orari';
 import './BookingForm.css';
 import '../styles/Prenotazione.css';
@@ -30,6 +31,8 @@ import './NuovaPrenotazione.css';
 const CAMPI_VUOTI = {
   cliente: '', telefono: '', emailCliente: '', codiceFiscale: '', patente: '',
   veicolo: '', targa: '', dataInizio: '', dataFine: '', oraInizio: '', oraFine: '', prezzoGiornaliero: '',
+  // '' = nella fascia senza supplemento, 'oltre' = oltre l'eta' massima.
+  etaConducente: '',
 };
 const nomeVeicolo = (v) => [v?.marca, v?.modello].filter(Boolean).join(' ') || v?.targa || '';
 const euro = (valore) => `${Number(valore || 0).toFixed(2).replace('.', ',')} €`;
@@ -112,6 +115,8 @@ function BookingForm({
   // Protezioni per categoria e catalogo degli optional (vedi lib/useExtra.js).
   protezioni = {},
   catalogo = [],
+  // Eta' minima/massima e supplemento giovane conducente (lib/firestoreEtaConducenti.js).
+  etaConducenti = null,
 }) {
   const dispatch = useDispatch();
   const bookingId = initialValues?.id;
@@ -266,7 +271,12 @@ function BookingForm({
     sceltaOptional: scelte.sceltaOptional,
     optionalSalvati: initialValues?.optional,
     occupati,
+    etaConducenti,
+    etaConducente: dati.etaConducente === 'oltre' ? null : dati.etaConducente,
   });
+  // Domanda sull'eta': solo se il titolare ha messo delle regole (o se e' gia' salvata).
+  const conEta = Boolean(etaConducenti) && (chiedeEta(etaConducenti) || initialValues?.etaConducente != null);
+  const etaMassima = etaConducenti ? normalizzaEtaConducenti(etaConducenti).etaMassima : null;
   const cambiaQuantita = (id, q) => setScelte((x) => {
     const sceltaOptional = { ...x.sceltaOptional };
     if (q > 0) sceltaOptional[id] = q; else delete sceltaOptional[id];
@@ -373,6 +383,8 @@ function BookingForm({
       sceltaProtezione,
       sceltaOptional: scelte.sceltaOptional,
       ...dati,
+      // Prenotazione del sito: l'eta' e il supplemento pagati non si toccano.
+      etaConducente: sito ? undefined : (dati.etaConducente === 'oltre' ? '' : dati.etaConducente),
       // La tolleranza usata per contare i giorni resta sulla prenotazione (come il sito).
       ...(dati.oraInizio && dati.oraFine ? { tolleranzaMinuti: tolleranza } : {}),
       cliente: dati.cliente.trim().replace(/\s+/g, ' '),
@@ -664,6 +676,33 @@ function BookingForm({
                 </div>
               </div>
             )}
+
+            {conEta && (
+              <div className="np-eta">
+                <label className="np-campo" htmlFor="np-eta">
+                  <span className="np-etichetta">Età del conducente</span>
+                  <select
+                    id="np-eta"
+                    value={dati.etaConducente}
+                    onChange={(e) => aggiorna({ etaConducente: e.target.value })}
+                    disabled={sito}
+                  >
+                    {opzioniEtaGestionale(etaConducenti, initialValues?.etaConducente).map((o) => (
+                      <option key={o.valore} value={o.valore}>{o.testo}</option>
+                    ))}
+                  </select>
+                </label>
+                {sito ? (
+                  <p className="np-aiuto">Dichiarata dal cliente sul sito: il supplemento è già pagato.</p>
+                ) : dati.etaConducente === 'oltre' ? (
+                  <div className="np-avviso-ora" role="status">
+                    <p>Oltre l&apos;età massima che hai impostato ({etaMassima} anni): sul sito non potrebbe prenotare. Conferma solo se hai deciso tu di noleggiare.</p>
+                  </div>
+                ) : dati.etaConducente !== '' && (
+                  <p className="np-aiuto">Alla consegna controlla la data di nascita sulla patente.</p>
+                )}
+              </div>
+            )}
           </section>
 
           {/* 4. Protezione ed extra */}
@@ -737,6 +776,15 @@ function BookingForm({
               <div className="np-riga-prezzo">
                 <span>Protezione {preventivo.protezione.tipo === 'totale' ? 'Totale' : 'Base'}</span>
                 <span>{preventivo.protezione.tipo === 'totale' ? euro(preventivo.protezione.prezzo) : 'inclusa'}</span>
+              </div>
+            )}
+            {!sito && preventivo?.giovaneConducente && (
+              <div className="np-riga-prezzo">
+                <span>
+                  Giovane conducente
+                  <span className="np-riga-dettaglio">{testoSupplemento(preventivo.giovaneConducente).replace('Giovane conducente · ', '')}</span>
+                </span>
+                <span className="np-importo">{euro(preventivo.giovaneConducente.importo)}</span>
               </div>
             )}
             {!sito && (preventivo?.optional || []).map((o) => (

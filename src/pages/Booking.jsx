@@ -36,6 +36,7 @@ import { dotazioneIniziale, dotazioneDaSalvare } from '../utils/dotazione';
 import { aggiornaDotazioneVeicolo } from '../lib/firestoreVeicoli';
 import { useAddebiti } from '../lib/firestoreAddebiti';
 import { useOrari } from '../lib/firestoreOrari';
+import { useEtaConducenti } from '../lib/firestoreEtaConducenti';
 import { costruisciRientro, istanteRientro, dotazioneDopoRientro } from '../utils/rientro';
 import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
@@ -131,6 +132,7 @@ function Bookings() {
   const [prenotazioneDaConcludere, setPrenotazioneDaConcludere] = useState(null);
   const prezziAddebiti = useAddebiti();
   const orariSede = useOrari();
+  const etaConducenti = useEtaConducenti();
   const [confermaInBlocco, setConfermaInBlocco] = useState(null);
   const [paginaPrenotazioni, setPaginaPrenotazioni] = useState(1);
   const [paginaClienti, setPaginaClienti] = useState(1);
@@ -444,7 +446,7 @@ useEffect(() => {
   const handleBookingSubmit = async (data) => {
     if (salvandoPrenotazione) return;
     // Senza protezioni e optional la prenotazione resterebbe senza cauzione.
-    if (!extra.pronti) {
+    if (!extra.pronti || !etaConducenti) {
       showFeedback('Sto ancora caricando protezioni ed extra: riprova tra un attimo.', 'error');
       return;
     }
@@ -462,6 +464,7 @@ useEffect(() => {
       oggi: giornoLocale(),
       protezioni: extra.protezioni,
       catalogo: extra.catalogo,
+      etaConducenti,
     });
     if (esito.errore) {
       showFeedback(esito.errore, "error");
@@ -1017,6 +1020,7 @@ return (
         onModificato={(si) => { moduloModificato.current = si; }}
         protezioni={extra.protezioni}
         catalogo={extra.catalogo}
+        etaConducenti={etaConducenti}
       />
     </BookingModal>
 
@@ -1062,6 +1066,7 @@ return (
     onDocumentiChange={setDocumentiConsegna}
     onSave={handleSaveSchedaVeicolo}
     veicolo={consegnaDi ? availableVehicles.find((v) => v.targa === consegnaDi.targa) : null}
+    etaConducenti={etaConducenti}
   />
 
   {consegnaDi && (

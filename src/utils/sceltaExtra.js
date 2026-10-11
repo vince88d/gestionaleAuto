@@ -8,6 +8,7 @@
 // cambia prezzi o franchigie, le prenotazioni gia' fatte non cambiano.
 import { COPERTURE, normalizzaProtezione, protezioneImpostata, prezzoProtezione } from './protezioni';
 import { normalizzaOptional, prezzoOptional } from './optional';
+import { normalizzaEtaConducenti, supplementoGiovane, valutaEta } from './etaConducenti';
 
 const giorno = (valore) => (valore ? String(valore).slice(0, 10) : '');
 const arrotonda = (n) => Math.round(n * 100) / 100;
@@ -60,12 +61,27 @@ export const pezziLiberi = (o, occupati) => (o.pezzi === null ? null : Math.max(
 // puo' prenotare lo stesso, ma senza protezione ne' cauzione salvate.
 // `catalogo`: optional normalizzati con id. Le righe gia' salvate di extra
 // tolti dal catalogo si tengono con il loro prezzo.
+// `etaConducenti`: impostazioni dell'eta' (utils/etaConducenti.js);
+// `etaConducente`: eta' dichiarata (null = nella fascia senza supplemento).
+// Sotto l'eta' minima non si prenota; oltre la massima decide lo staff (si
+// prenota, senza supplemento).
 // Restituisce { errore } oppure i campi da salvare.
 export function preventivoPrenotazione({
   prezzoGiornaliero, giorni, protezione, sceltaProtezione = 'base', catalogo = [],
   sceltaOptional = {}, optionalSalvati = [], occupati = new Map(),
+  etaConducenti, etaConducente = null,
 }) {
   const totaleNoleggio = arrotonda((parseFloat(prezzoGiornaliero) || 0) * giorni);
+
+  const eta = etaConducente === null || etaConducente === undefined || etaConducente === '' ? null : Number(etaConducente);
+  if (eta !== null) {
+    const v = valutaEta(etaConducenti, eta);
+    if (v.motivo === 'eta') return { errore: 'Età del conducente non valida.' };
+    if (v.motivo === 'sotto') {
+      return { errore: `Il conducente ha ${eta} anni: si noleggia dai ${normalizzaEtaConducenti(etaConducenti).etaMinima} anni.` };
+    }
+  }
+  const giovaneConducente = eta === null ? null : supplementoGiovane(etaConducenti, eta, giorni);
 
   let protezioneScelta = null;
   if (protezioneImpostata(protezione)) {
@@ -116,13 +132,16 @@ export function preventivoPrenotazione({
   }
 
   const prezzoTotale = arrotonda(
-    totaleNoleggio + (protezioneScelta?.prezzo || 0) + optional.reduce((s, o) => s + o.totale, 0),
+    totaleNoleggio + (protezioneScelta?.prezzo || 0) + optional.reduce((s, o) => s + o.totale, 0)
+    + (giovaneConducente?.importo || 0),
   );
   return {
     totaleNoleggio,
     protezione: protezioneScelta,
     cauzione: protezioneScelta ? protezioneScelta.cauzione : null,
     optional,
+    etaConducente: eta,
+    giovaneConducente,
     prezzoTotale,
   };
 }

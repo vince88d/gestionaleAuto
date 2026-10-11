@@ -242,3 +242,56 @@ describe('domanda 4: protezione ed extra', () => {
     expect(screen.getByText('Cauzione da bloccare al ritiro').closest('.px-cauzione')).toHaveTextContent('500 €');
   });
 });
+
+describe('eta\' del conducente', () => {
+  const etaConducenti = {
+    attivo: true, etaMinima: 18, etaMassima: 70, fasce: [{ finoA: 20, euroGiorno: 25 }, { finoA: 24, euroGiorno: 15 }], massimo: 300,
+  };
+  const scelta = { dataInizio: '2099-03-10', dataFine: '2099-03-13', targa: 'ABC004', cliente: 'Mario Rossi', telefono: '333 1111111' };
+  const apriCon = (initialValues, eta = etaConducenti) => {
+    const onSubmit = jest.fn();
+    render(
+      <BookingForm onSubmit={onSubmit} initialValues={initialValues} availableVehicles={veicoli} veicoli={veicoli}
+        clienti={clienti} prenotazioni={[]} etaConducenti={eta} />,
+    );
+    return onSubmit;
+  };
+
+  test('22 anni: riga «Giovane conducente» nel riepilogo, totale ed eta\' inviata', () => {
+    const onSubmit = apriCon(scelta);
+    const campo = screen.getByLabelText('Età del conducente');
+    expect(campo).toHaveValue('');
+    expect(screen.getByRole('option', { name: 'Dai 25 ai 70 anni (nessun supplemento)' })).toBeInTheDocument();
+    fireEvent.change(campo, { target: { value: '22' } });
+    expect(screen.getByText('22 anni · 15 € × 3 giorni')).toBeInTheDocument();
+    // 3 giorni x 35 + 45
+    expect(screen.getByText('150,00 €')).toBeInTheDocument();
+    expect(screen.getByText(/controlla la data di nascita sulla patente/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma prenotazione' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ etaConducente: '22' }));
+  });
+
+  test('oltre l\'eta\' massima: avviso, si prenota senza eta\'', () => {
+    const onSubmit = apriCon(scelta);
+    fireEvent.change(screen.getByLabelText('Età del conducente'), { target: { value: 'oltre' } });
+    expect(screen.getByText(/Oltre l'età massima che hai impostato \(70 anni\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma prenotazione' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ etaConducente: '' }));
+  });
+
+  test('nessuna regola sull\'eta\': la domanda non c\'e\'', () => {
+    apriCon(scelta, { attivo: false, etaMinima: 18, etaMassima: null, fasce: [], massimo: null });
+    expect(screen.queryByLabelText('Età del conducente')).toBeNull();
+  });
+
+  test('pagata sul sito: eta\' bloccata e non inviata', () => {
+    const onSubmit = apriCon({
+      ...scelta, id: 'w1', origine: 'sito', paymentIntentId: 'pi_1', status: 'attiva', totale: 150,
+      etaConducente: 22, giovaneConducente: { eta: 22, euroGiorno: 15, giorni: 3, importo: 45, alMassimo: false },
+    });
+    expect(screen.getByLabelText('Età del conducente')).toBeDisabled();
+    expect(screen.getByLabelText('Età del conducente')).toHaveValue('22');
+    fireEvent.click(screen.getByRole('button', { name: 'Salva modifiche' }));
+    expect(onSubmit.mock.calls[0][0].etaConducente).toBeUndefined();
+  });
+});

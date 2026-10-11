@@ -1,5 +1,6 @@
 import React from 'react';
 import { COPERTURE, euro as euroTondo } from '../utils/protezioni';
+import { testoSupplemento } from '../utils/etaConducenti';
 
 const euro = (valore) => `${Number(valore || 0).toFixed(2).replace('.', ',')} €`;
 const importo = (n) => (typeof n === 'number' ? euroTondo(n) : '—');
@@ -11,7 +12,9 @@ const importo = (n) => (typeof n === 'number' ? euroTondo(n) : '—');
 function ProtezioneExtraDettagli({ prenotazione }) {
   const p = prenotazione?.protezione;
   const extra = (Array.isArray(prenotazione?.optional) ? prenotazione.optional : []).filter((r) => r?.quantita > 0);
-  if (!p && extra.length === 0) return null;
+  const giovane = prenotazione?.giovaneConducente;
+  const eta = typeof prenotazione?.etaConducente === 'number' ? prenotazione.etaConducente : null;
+  if (!p && extra.length === 0 && !giovane && eta === null) return null;
   const coperture = p?.copre ? COPERTURE.filter(([k]) => p.copre[k]).map(([, nome]) => nome) : [];
 
   return (
@@ -41,6 +44,19 @@ function ProtezioneExtraDettagli({ prenotazione }) {
                   <li key={r.id} className="pz-chip">{r.nome} × {r.quantita} · {euro(r.totale)}</li>
                 ))}
               </ul>
+            </dd>
+          </div>
+        </dl>
+      )}
+      {(giovane || eta !== null) && (
+        <dl className="pz-dati" style={p || extra.length > 0 ? { marginTop: 12 } : undefined}>
+          <div className="pz-intera">
+            <dt>{giovane ? 'Giovane conducente' : 'Età del conducente'}</dt>
+            <dd>
+              {giovane
+                ? <>{testoSupplemento(giovane).replace('Giovane conducente · ', '')} · <b>{euro(giovane.importo)}</b></>
+                : `${eta} anni (nessun supplemento)`}
+              {' '}<span className="pz-aiuto-riga">Dichiarata dal cliente: controlla la patente alla consegna.</span>
             </dd>
           </div>
         </dl>

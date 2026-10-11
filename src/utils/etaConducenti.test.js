@@ -1,7 +1,8 @@
 import {
   normalizzaEtaConducenti, chiedeEta, etaSenzaSupplemento, testoSpuntaEta, etaSelezionabili,
   valutaEta, supplementoGiovane, testoSupplemento, etaConducentiPerForm, validaEtaConducenti,
-  preparaEtaConducenti, ETA_CONDUCENTI_DI_PARTENZA,
+  preparaEtaConducenti, ETA_CONDUCENTI_DI_PARTENZA, opzioniEtaGestionale,
+  etaDaCodiceFiscale, controlloEtaConsegna,
 } from './etaConducenti';
 
 // Esempio del mockup: 18-20 anni +25 €/giorno, 21-24 +15 €/giorno, tetto 300 €, massimo 70 anni.
@@ -148,5 +149,79 @@ describe('form delle Impostazioni', () => {
     expect(salvato.attivo).toBe(false);
     expect(salvato.fasce).toHaveLength(2);
     expect(supplementoGiovane(salvato, 19, 3)).toBeNull();
+  });
+});
+
+describe('opzioniEtaGestionale', () => {
+  test('fascia senza supplemento, eta\' con supplemento, oltre il massimo', () => {
+    const o = opzioniEtaGestionale(ESEMPIO);
+    expect(o[0]).toEqual({ valore: '', testo: 'Dai 25 ai 70 anni (nessun supplemento)' });
+    expect(o[1]).toEqual({ valore: '18', testo: '18 anni (+25 € al giorno)' });
+    expect(o[5]).toEqual({ valore: '22', testo: '22 anni (+15 € al giorno)' });
+    expect(o).toHaveLength(1 + 7 + 1);
+    expect(o[o.length - 1]).toEqual({ valore: 'oltre', testo: 'Oltre 70 anni' });
+  });
+  test('eta\' gia\' salvata fuori elenco e nessuna eta\' massima', () => {
+    const o = opzioniEtaGestionale({ ...ESEMPIO, etaMassima: null }, 30);
+    expect(o[0].testo).toBe('25 anni o più (nessun supplemento)');
+    expect(o[o.length - 1]).toEqual({ valore: '30', testo: '30 anni' });
+  });
+});
+
+describe('etaDaCodiceFiscale', () => {
+  test('uomo e donna, prima e dopo il compleanno', () => {
+    // RSSMRA04C15H501? : 15 marzo 2004
+    expect(etaDaCodiceFiscale('RSSMRA04C15H501X', '2026-03-14')).toBe(21);
+    expect(etaDaCodiceFiscale('RSSMRA04C15H501X', '2026-03-15')).toBe(22);
+    // donna: giorno + 40
+    expect(etaDaCodiceFiscale('BNCLRA80A55H501X', '2026-10-11')).toBe(46);
+  });
+  test('omocodia e secolo', () => {
+    expect(etaDaCodiceFiscale('RSSMRAL4C15H501X', '2026-10-11')).toBe(22); // L = 0 nell'omocodia
+    expect(etaDaCodiceFiscale('RSSMRAQ4C15H501X', '2026-10-11')).toBe(82); // Q = 4: 1944
+    expect(etaDaCodiceFiscale('rssmra30a01h501x', '2026-10-11')).toBe(96);
+  });
+  test('codice non leggibile', () => {
+    expect(etaDaCodiceFiscale('', '2026-10-11')).toBeNull();
+    expect(etaDaCodiceFiscale('RSSMRA04Z15H501X', '2026-10-11')).toBeNull();
+    expect(etaDaCodiceFiscale('RSSMRA04C35H501X', '2026-10-11')).toBeNull();
+  });
+});
+
+describe('controlloEtaConsegna', () => {
+  const OGGI = '2026-10-11';
+  const CF22 = 'RSSMRA04C15H501X'; // 22 anni
+  const CF30 = 'RSSMRA96C15H501X'; // 30 anni
+  const pren = (etaConducente, giorni = 3) => ({
+    etaConducente, giovaneConducente: supplementoGiovane(ESEMPIO, etaConducente, giorni),
+  });
+
+  test('senza regole e senza eta\': niente', () => {
+    expect(controlloEtaConsegna({ prenotazione: {}, etaConducenti: undefined, codiceFiscale: CF22, oggi: OGGI })).toBeNull();
+  });
+  test('codice fiscale che torna: niente avviso', () => {
+    expect(controlloEtaConsegna({ prenotazione: pren(22), etaConducenti: ESEMPIO, codiceFiscale: CF22, oggi: OGGI })).toBeNull();
+    expect(controlloEtaConsegna({ prenotazione: pren(null), etaConducenti: ESEMPIO, codiceFiscale: CF30, oggi: OGGI })).toBeNull();
+  });
+  test('ha dichiarato la fascia senza supplemento ma ha 22 anni', () => {
+    const r = controlloEtaConsegna({ prenotazione: pren(null), etaConducenti: ESEMPIO, codiceFiscale: CF22, oggi: OGGI });
+    expect(r.livello).toBe('attenzione');
+    expect(r.testo).toMatch(/ha 22 anni: il supplemento giusto è 15 € al giorno/);
+    expect(r.testo).toMatch(/«Modifica»/);
+  });
+  test('pagata sul sito: differenza al banco', () => {
+    const r = controlloEtaConsegna({ prenotazione: pren(19), etaConducenti: ESEMPIO, codiceFiscale: CF22, oggi: OGGI, pagataSulSito: true });
+    expect(r.testo).toMatch(/ma ha dichiarato 19: il supplemento giusto è 15 € al giorno \(ne paga 25 €\)/);
+    expect(r.testo).toMatch(/differenza al banco/);
+  });
+  test('senza codice fiscale: ricorda la patente', () => {
+    expect(controlloEtaConsegna({ prenotazione: pren(22), etaConducenti: ESEMPIO, codiceFiscale: '', oggi: OGGI }))
+      .toEqual({ livello: 'info', testo: 'Il cliente ha dichiarato 22 anni (supplemento 45 €). Controlla la data di nascita sulla patente: se non corrisponde, correggi l\'età nella prenotazione prima di consegnare.' });
+    expect(controlloEtaConsegna({ prenotazione: pren(null), etaConducenti: ESEMPIO, codiceFiscale: '', oggi: OGGI }).testo)
+      .toMatch(/un'età tra 25 e 70 anni/);
+  });
+  test('troppo giovane o oltre il massimo', () => {
+    expect(controlloEtaConsegna({ prenotazione: pren(null), etaConducenti: { ...ESEMPIO, etaMinima: 23 }, codiceFiscale: CF22, oggi: OGGI }).livello).toBe('errore');
+    expect(controlloEtaConsegna({ prenotazione: pren(null), etaConducenti: { ...ESEMPIO, etaMassima: 28 }, codiceFiscale: CF30, oggi: OGGI }).livello).toBe('attenzione');
   });
 });

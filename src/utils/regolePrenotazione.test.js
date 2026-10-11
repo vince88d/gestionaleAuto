@@ -19,6 +19,7 @@ describe('controllaPrenotazione', () => {
   test('prenotazione nuova valida: prezzo giorni x prezzo al giorno', () => {
     expect(controllaPrenotazione({ dati: base, veicoli, prenotazioni: [], oggi: OGGI })).toEqual({
       prezzoTotale: 60, totaleNoleggio: 60, protezione: null, cauzione: null, optional: [],
+      etaConducente: null, giovaneConducente: null,
     });
   });
 
@@ -274,5 +275,43 @@ describe('ritiroEntroOggi', () => {
     expect(ritiroEntroOggi({ dataInizio: '2026-09-20T00:00:00.000Z' }, OGGI)).toBe(true);
     expect(ritiroEntroOggi({ dataInizio: '2026-09-24' }, OGGI)).toBe(false);
     expect(ritiroEntroOggi({}, OGGI)).toBe(false);
+  });
+});
+
+describe('controllaPrenotazione con l\'eta\' del conducente', () => {
+  const etaConducenti = {
+    attivo: true, etaMinima: 18, etaMassima: 70, fasce: [{ finoA: 20, euroGiorno: 25 }, { finoA: 24, euroGiorno: 15 }], massimo: 40,
+  };
+  const prova = (etaConducente, extra = {}) => controllaPrenotazione({
+    dati: { ...base, etaConducente, ...extra }, veicoli, prenotazioni: [], oggi: OGGI, etaConducenti,
+  });
+
+  test('22 anni per 2 giorni: supplemento 30 € nel totale', () => {
+    const r = prova('22');
+    expect(r.etaConducente).toBe(22);
+    expect(r.giovaneConducente).toEqual({ eta: 22, euroGiorno: 15, giorni: 2, importo: 30, alMassimo: false });
+    expect(r.prezzoTotale).toBe(90);
+  });
+  test('tetto a noleggio', () => {
+    expect(prova(19).giovaneConducente).toMatchObject({ importo: 40, alMassimo: true });
+    expect(prova(19).prezzoTotale).toBe(100);
+  });
+  test('senza eta\' (fascia senza supplemento) o 30 anni: niente supplemento', () => {
+    expect(prova('').giovaneConducente).toBeNull();
+    expect(prova(30)).toMatchObject({ etaConducente: 30, giovaneConducente: null, prezzoTotale: 60 });
+  });
+  test('sotto l\'eta\' minima: errore; oltre la massima: si prenota (decide lo staff)', () => {
+    expect(prova(17).errore).toMatch(/si noleggia dai 18 anni/);
+    expect(prova(75)).toMatchObject({ etaConducente: 75, giovaneConducente: null });
+  });
+  test('in modifica senza toccare l\'eta\': resta quella salvata', () => {
+    const originale = { id: 'x', ...base, status: 'attiva', etaConducente: 20 };
+    const r = controllaPrenotazione({ dati: { ...base }, originale, veicoli, prenotazioni: [originale], oggi: OGGI, etaConducenti });
+    expect(r.giovaneConducente).toMatchObject({ eta: 20, importo: 40 });
+  });
+  test('pagata sul sito: il supplemento pagato non si ricalcola', () => {
+    const originale = { id: 'x', ...base, status: 'attiva', origine: 'sito', totale: 200, etaConducente: 19 };
+    expect(controllaPrenotazione({ dati: { ...base, etaConducente: '' }, originale, veicoli, prenotazioni: [originale], oggi: OGGI, etaConducenti }))
+      .toEqual({ prezzoTotale: 200 });
   });
 });
