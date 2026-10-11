@@ -7,6 +7,7 @@
 import { calcolaGiorniNoleggio } from './giorniNoleggio';
 import { leggiEuro } from './protezioni';
 import { riassuntoDotazione, normalizzaVoci } from './dotazione';
+import { vociLibereListino } from './addebiti';
 
 export const LIVELLI = ['1/4', '1/2', '3/4', 'Pieno'];
 const arrotonda = (n) => Math.round(n * 100) / 100;
@@ -114,7 +115,15 @@ export function proponiAddebiti({
       attiva: true,
     });
   }
-  righe.push({ id: 'pulizia', nome: 'Pulizia straordinaria', dettaglio: "Spunta se l'auto è tornata molto sporca", importo: prezzi.pulizia, attiva: false });
+  // «Altri addebiti dal listino»: da spuntare solo se servono.
+  righe.push({ id: 'pulizia', nome: 'Pulizia straordinaria', dettaglio: "Spunta se l'auto è tornata molto sporca", importo: prezzi.pulizia, attiva: false, gruppo: 'listino' });
+  if (prezzi.gestioneMulta > 0) {
+    righe.push({ id: 'multa', nome: 'Gestione multa', dettaglio: 'Spese per ogni verbale ricevuto', importo: prezzi.gestioneMulta, attiva: false, gruppo: 'listino' });
+  }
+  const giorniNoleggio = calcolaGiorniNoleggio(
+    giorno(prenotazione.dataInizio), giorno(prenotazione.dataFine), prenotazione.oraInizio, prenotazione.oraFine, prenotazione.tolleranzaMinuti ?? tolleranza,
+  ) || 1;
+  righe.push(...vociLibereListino(prezzi, giorniNoleggio));
   return righe;
 }
 

@@ -1,3 +1,4 @@
+import { normalizzaAddebiti } from './addebiti';
 import {
   quartiMancanti, kmPercorsi, giorniInPiu, rientroEntro, proponiAddebiti, addebitiAttivi,
   totaleAddebiti, erroriAddebiti, esitoCauzione, tettoDanno,
@@ -56,7 +57,7 @@ describe('addebiti proposti', () => {
   };
   it('propone ritardo, rifornimento, danno, oggetto, pulizia spenta', () => {
     const r = proponiAddebiti(base);
-    expect(r.map((x) => x.id)).toEqual(['ritardo', 'rifornimento', 'danno', 'mancante:Triangolo', 'pulizia']);
+    expect(r.map((x) => x.id)).toEqual(['ritardo', 'rifornimento', 'danno', 'mancante:Triangolo', 'pulizia', 'multa']);
     expect(r[0].importo).toBe(25);
     expect(r[1].importo).toBe(40);
     expect(r[2].importo).toBeNull();
@@ -65,6 +66,18 @@ describe('addebiti proposti', () => {
   });
   it('niente riga se tutto in ordine', () => {
     const r = proponiAddebiti({ ...base, oraRientro: '09:00', carburante: 'Pieno', danno: '', nonTornati: [] });
+    expect(r.map((x) => x.id)).toEqual(['pulizia', 'multa']);
+  });
+  it('le voci libere del listino si propongono spente, dopo pulizia e multa', () => {
+    const prezzi = normalizzaAddebiti({ voci: [{ id: 'a', nome: 'Fumo', importo: 80 }] });
+    const r = proponiAddebiti({ ...base, prezzi, oraRientro: '09:00', carburante: 'Pieno', danno: '', nonTornati: [] });
+    expect(r.map((x) => x.id)).toEqual(['pulizia', 'multa', 'listino:a']);
+    expect(r.every((x) => !x.attiva && x.gruppo === 'listino')).toBe(true);
+    expect(r[2].importo).toBe(80);
+  });
+  it('la multa non si propone se costa 0', () => {
+    const prezzi = normalizzaAddebiti({ gestioneMulta: 0 });
+    const r = proponiAddebiti({ ...base, prezzi, oraRientro: '09:00', carburante: 'Pieno', danno: '', nonTornati: [] });
     expect(r.map((x) => x.id)).toEqual(['pulizia']);
   });
   it('chiave non restituita', () => {
