@@ -316,11 +316,13 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
             <section className="pz-sezione">
               <h3 className="pz-titolo-sezione">Addebiti</h3>
               <p className="pz-aiuto" style={{ margin: '0 0 10px' }}>
-                Le righe sono già compilate da quello che hai segnato e dai prezzi di «Addebiti al rientro». Ogni importo si cambia; la spunta decide se conta.
+                Le righe sono già compilate da quello che hai segnato e dal listino «Penali e addebiti». Ogni importo si cambia; la spunta decide se conta.
               </p>
               <div className="rn-lista">
-                {righe.map((r) => (
-                  <div key={r.id} className={`rn-addebito ${r.attiva ? '' : 'rn-addebito--spento'}`}>
+                {[...righe.filter((r) => r.gruppo !== 'listino'), ...righe.filter((r) => r.gruppo === 'listino')].map((r, i, ordinate) => (
+                  <React.Fragment key={r.id}>
+                    {r.gruppo === 'listino' && ordinate[i - 1]?.gruppo !== 'listino' && <p className="rn-gruppo">Altri addebiti dal listino</p>}
+                  <div className={`rn-addebito ${r.attiva ? '' : 'rn-addebito--spento'}`}>
                     <input type="checkbox" checked={r.attiva} onChange={(e) => cambiaRiga(r.id, { attiva: e.target.checked })}
                       aria-label={`Conta: ${r.nome || 'altro addebito'}`} />
                     <div className="rn-addebito-testo">
@@ -340,6 +342,7 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
                     </div>
                     {r.libera && <button type="button" className="pz-link" onClick={() => eliminaRiga(r.id)} aria-label="Togli questa riga">Togli</button>}
                   </div>
+                  </React.Fragment>
                 ))}
               </div>
               <button type="button" className="vd-btn" style={{ marginTop: 10 }} onClick={aggiungiAltro}>+ Altro addebito</button>

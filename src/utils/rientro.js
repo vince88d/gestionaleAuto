@@ -64,7 +64,7 @@ export const tettoDanno = (prenotazione) => (typeof prenotazione?.protezione?.da
 
 // Righe di addebito proposte dal passo 1. Ogni riga: { id, nome, dettaglio,
 // importo (numero o null), attiva }. Il costo del danno non si sa: resta vuoto.
-// `prezzi` sono quelli di «Addebiti al rientro» (normalizzati).
+// `prezzi` sono quelli di «Penali e addebiti» (normalizzati).
 export function proponiAddebiti({
   prenotazione = {}, prezzi, dataRientro, oraRientro, carburante, chiaviTornate,
   nonTornati = [], danno = '', tolleranza,
