@@ -41,7 +41,7 @@ export function disponibiliPerCategoria(categoria, dataInizio, dataFine, veicoli
   const ora = Date.now();
 
   (prenotazioni || []).forEach((p) => {
-    if (p.status !== 'attiva') return;
+    if (p.status !== 'attiva' || p.eliminato) return; // nel Cestino non occupa nulla
     if (escludiPrenotazioneId && p.id === escludiPrenotazioneId) return;
     if (!p.dataInizio || !p.dataFine) return;
     if (!siSovrappongono(dataInizio, dataFine, p.dataInizio, p.dataFine)) return;
@@ -100,7 +100,7 @@ export function sovraprenotazioniCategoria(categoria, veicoli, prenotazioni, hol
 
   const impegni = [];
   (prenotazioni || []).forEach((p) => {
-    if (p.status !== 'attiva' || !p.dataInizio || !p.dataFine) return;
+    if (p.status !== 'attiva' || p.eliminato || !p.dataInizio || !p.dataFine) return;
     if (risolviCategoria(p, veicoliPerTarga) !== categoria) return;
     impegni.push([giornoDi(p.dataInizio), giornoDi(p.dataRientroEffettiva || p.dataFine)]);
   });
@@ -137,7 +137,7 @@ export function prenotazioniSuVeicoloSospeso(veicoli, prenotazioni, oggi) {
   const sospese = new Set((veicoli || []).filter((v) => v.sospeso && v.targa).map((v) => v.targa));
   if (sospese.size === 0) return [];
   return (prenotazioni || []).filter(
-    (p) => p.status === 'attiva' && p.targa && sospese.has(p.targa) && !giaConsegnata(p) &&
+    (p) => p.status === 'attiva' && !p.eliminato && p.targa && sospese.has(p.targa) && !giaConsegnata(p) &&
       giornoDi(p.dataRientroEffettiva || p.dataFine) >= oggi
   );
 }

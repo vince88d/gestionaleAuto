@@ -91,13 +91,13 @@ export function controllaPrenotazione({
   });
 }
 
-// Prenotazioni che occupano davvero un veicolo (niente annullate, pagamenti
+// Prenotazioni che occupano davvero un veicolo (niente annullate, eliminate (Cestino), pagamenti
 // del sito falliti o scaduti, noleggi conclusi), tolta quella in modifica.
 // Con `oggi`, un'auto consegnata e non ancora riportata resta occupata fino a
 // oggi anche se la data di fine e' passata (e' ancora dal cliente).
 export const occupantiTranne = (prenotazioni, idEscluso, oggi) =>
   (prenotazioni || [])
-    .filter((p) => !STATI_NON_OCCUPANTI.includes(p.status) && (!idEscluso || p.id !== idEscluso))
+    .filter((p) => !p.eliminato && !STATI_NON_OCCUPANTI.includes(p.status) && (!idEscluso || p.id !== idEscluso))
     .map((p) => (oggi && eConsegnata(p) && giorno(p.dataFine) < oggi ? { ...p, dataFine: oggi } : p));
 
 // Per la scelta del veicolo nel form: 'libero', 'occupato' (la sua targa ha

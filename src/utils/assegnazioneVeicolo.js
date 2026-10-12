@@ -58,7 +58,7 @@ export function veicoliLiberiPerPrenotazione(prenotazione, veicoli, prenotazioni
     if (!veicolo.targa || veicolo.sospeso || veicolo.categoria !== prenotazione.categoria) return false;
 
     const occupato = (prenotazioni || []).some((p) => {
-      if (p.id === prenotazione.id || p.targa !== veicolo.targa) return false;
+      if (p.id === prenotazione.id || p.targa !== veicolo.targa || p.eliminato) return false;
       if (p.status === 'annullata' || STATI_PRENOTAZIONE_NON_CONFERMATE.includes(p.status)) {
         return false;
       }
