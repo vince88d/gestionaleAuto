@@ -17,6 +17,7 @@ import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
 import DotazioneConsegnata from './DotazioneConsegnata';
 import RientroDettagli from './RientroDettagli';
 import { salvaVerbaleRientro } from '../utils/pdfRientro';
+import { useAzienda } from '../lib/firestoreAzienda';
 
 
 
@@ -73,7 +74,7 @@ function ProssimoPasso({ prenotazione, onScegliAuto, onConsegna, onConcludi }) {
 
 function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, onConsegna, onScegliAuto, soloLettura = false }) {
   const printRef = useRef();
-  
+  const { dati: azienda } = useAzienda();
 
   // Qui c'era una sezione "Danni attivi sul veicolo" che leggeva il campo
   // `danniAttivi`, che nessuno scrive piu' (non mostrava mai nulla) e che per
@@ -105,7 +106,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
   // Lo stesso PDF della consegna, da riscaricare quando serve.
   const scaricaPdfConsegna = async () => {
     try {
-      const esito = await salvaPdfConsegna({ prenotazione });
+      const esito = await salvaPdfConsegna({ prenotazione, azienda });
       if (esito.success) toast.success('PDF della consegna salvato.');
       else if (!esito.cancelled) toast.error(esito.error || 'PDF non salvato.');
     } catch (error) {
@@ -116,7 +117,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
 
   const scaricaVerbaleRientro = async () => {
     try {
-      const esito = await salvaVerbaleRientro(prenotazione);
+      const esito = await salvaVerbaleRientro(prenotazione, azienda);
       if (esito.success) toast.success('Verbale di rientro salvato.');
       else if (!esito.cancelled) toast.error(esito.error || 'Verbale non salvato.');
     } catch (error) {

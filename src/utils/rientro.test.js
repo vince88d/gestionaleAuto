@@ -152,6 +152,12 @@ describe('costruzione del rientro', () => {
     expect(r.cauzione).toBeNull();
     expect(r.restanoDaPagare).toBe(30);
   });
+  it('la firma (rifiuto) si salva nel rientro solo se c\'e\'', () => {
+    const base = { prenotazione: consegnata, dataRientro: '2026-10-15', oraRientro: '09:00', km: '48400', carburante: 'Pieno', righe: [] };
+    expect(costruisciRientro(base)).not.toHaveProperty('firma');
+    const firma = { stato: 'rifiuta', osservazioni: '', registrataIl: '2026-10-15T09:00:00.000Z' };
+    expect(costruisciRientro({ ...base, firma }).firma).toEqual(firma);
+  });
   it('istante del rientro', () => {
     expect(new Date(istanteRientro('2026-10-15', '11:30')).getHours()).toBe(11);
   });

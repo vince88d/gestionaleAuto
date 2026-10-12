@@ -614,6 +614,25 @@ ipcMain.handle('apri-documento-online', async (_, url) => {
   return { success: true };
 });
 
+// Scarica una foto da Firebase Storage per metterla nel PDF. Si fa qui e non
+// nella pagina perche' il browser dell'app non puo' leggere i file di Storage
+// da un altro dominio (CORS). Solo indirizzi di Storage, solo immagini, al
+// massimo 8 MB. Restituisce { ok, byte } oppure { ok: false }.
+ipcMain.handle('scarica-immagine', async (_, url) => {
+  if (typeof url !== 'string' || !url.startsWith('https://firebasestorage.googleapis.com/')) return { ok: false };
+  try {
+    const risposta = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const tipo = risposta.headers.get('content-type') || '';
+    if (!risposta.ok || !tipo.startsWith('image/')) return { ok: false };
+    const byte = Buffer.from(await risposta.arrayBuffer());
+    if (byte.length > 8 * 1024 * 1024) return { ok: false };
+    return { ok: true, byte: Array.from(byte) };
+  } catch (errore) {
+    console.error('Foto non scaricata:', errore.message);
+    return { ok: false };
+  }
+});
+
 // Salva su file il backup dei dati (preparato dall'app leggendo Firestore)
 // o un resoconto di testo (.txt).
 ipcMain.handle('salva-backup', async (_, { nomeFile, contenuto }) => {

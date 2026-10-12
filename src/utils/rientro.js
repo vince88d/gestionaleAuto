@@ -205,7 +205,7 @@ export function erroriRientro({ prenotazione = {}, dataRientro, oraRientro, km, 
 // della cauzione che si trattiene (se la prenotazione ha una cauzione).
 export function costruisciRientro({
   prenotazione = {}, dataRientro, oraRientro, km, carburante, chiaviTornate,
-  dotazioneNonTornata = [], extraNonTornati = [], dotazioneTolta = [], righe = [], trattieni, tolleranza,
+  dotazioneNonTornata = [], extraNonTornati = [], dotazioneTolta = [], righe = [], trattieni, tolleranza, firma = null,
 }) {
   const tetto = tettoDanno(prenotazione);
   const addebiti = addebitiAttivi(righe, tetto);
@@ -230,6 +230,7 @@ export function costruisciRientro({
     totaleAddebiti: totale,
     cauzione: esito,
     restanoDaPagare: esito ? esito.restano : totale,
+    ...(firma ? { firma } : {}),
   };
 }
 

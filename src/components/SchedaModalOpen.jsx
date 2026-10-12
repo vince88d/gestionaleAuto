@@ -3,6 +3,7 @@ import Modal from 'react-modal';
 import { toast } from 'react-toastify';
 import { Upload, X } from 'lucide-react';
 import { caricaFotoDanno } from '../lib/storageFoto';
+import FotoDalTelefono from './FotoDalTelefono';
 import { formattaData, giornoLocale } from '../utils/scadenze';
 import { controllaPatente } from '../utils/validaCliente';
 import { codiceFiscaleValido } from '../utils/nuovaPrenotazione';
@@ -273,6 +274,8 @@ function SchedaVeicoloModal({
             dataRitiro={prenotazione?.dataInizio}
             extra={(Array.isArray(prenotazione?.optional) ? prenotazione.optional : []).filter((r) => r?.quantita > 0)}
           />
+
+          {prenotazione?.id && <FotoDalTelefono prenotazioneId={prenotazione.id} fase="consegna" />}
 
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Danni già presenti</h3>
