@@ -1,6 +1,8 @@
 import React from 'react';
 import { Minus, Plus } from 'lucide-react';
-import { COPERTURE, euro as euroTondo, prezzoProtezione, protezioneImpostata } from '../utils/protezioni';
+import {
+  COPERTURE, euro as euroTondo, prezzoProtezione, protezioneImpostata, SPIEGA_FRANCHIGIA, SPIEGA_CAUZIONE,
+} from '../utils/protezioni';
 import { MODI_PREZZO } from '../utils/optional';
 import { pezziLiberi, totaleSceglibile } from '../utils/sceltaExtra';
 import './SceltaProtezioneExtra.css';
@@ -8,13 +10,13 @@ import './SceltaProtezioneExtra.css';
 const euro = (valore) => `${Number(valore || 0).toFixed(2).replace('.', ',')} €`;
 const giorniTesto = (g) => `${g} ${g === 1 ? 'giorno' : 'giorni'}`;
 
-// "Danni max 1.200 € · Furto max 1.500 € · Cauzione 500 €"
+// "Franchigia danni 1.200 € · Franchigia furto 1.500 € · Cauzione bloccata 500 €"
 function Cifre({ f }) {
   return (
     <p className="px-cifre">
-      <span>Danni max <b>{euroTondo(f.danni)}</b></span>
-      <span>Furto max <b>{euroTondo(f.furto)}</b></span>
-      <span>Cauzione <b>{euroTondo(f.cauzione)}</b></span>
+      <span>Franchigia danni <b>{euroTondo(f.danni)}</b></span>
+      <span>Franchigia furto <b>{euroTondo(f.furto)}</b></span>
+      <span>Cauzione bloccata <b>{euroTondo(f.cauzione)}</b></span>
     </p>
   );
 }
@@ -110,6 +112,7 @@ function SceltaProtezioneExtra({
               </label>
             )}
           </div>
+          <p className="px-spiega">{SPIEGA_FRANCHIGIA} {SPIEGA_CAUZIONE}</p>
         </>
       )}
 

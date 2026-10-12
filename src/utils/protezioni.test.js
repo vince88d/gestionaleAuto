@@ -100,3 +100,40 @@ test('esempio per il form', () => {
   f.totale.offerta = false;
   expect(esempioProtezione(f)).toBe('');
 });
+
+describe('cauzione della Totale «uguale alla Base»', () => {
+  test('la cifra segue la Base e il flag si conserva', () => {
+    const n = normalizzaProtezione({ base: { danni: 1500, furto: 1500, cauzione: 1500 }, totale: { offerta: true, prezzoGiorno: 12, danni: 0, furto: 300, cauzione: 200, cauzioneUgualeBase: true } });
+    expect(n.totale.cauzione).toBe(1500);
+    expect(n.totale.cauzioneUgualeBase).toBe(true);
+    // Cambiando la Base, la Totale la segue.
+    expect(normalizzaProtezione({ base: { danni: 1500, furto: 1500, cauzione: 900 }, totale: { cauzione: 200, cauzioneUgualeBase: true } }).totale.cauzione).toBe(900);
+  });
+  test('senza flag resta la cifra scritta (come prima)', () => {
+    const n = normalizzaProtezione({ base: { danni: 1500, furto: 1500, cauzione: 1500 }, totale: { cauzione: 200 } });
+    expect(n.totale.cauzione).toBe(200);
+    expect(n.totale.cauzioneUgualeBase).toBe(false);
+  });
+  test('il form non chiede la cifra se e\' uguale alla Base, e si salva la cifra della Base', () => {
+    const form = formOk();
+    form.totale.cauzione = '';
+    form.totale.cauzioneUgualeBase = true;
+    expect(validaProtezione(form)).toEqual({});
+    expect(preparaProtezione(form).totale).toMatchObject({ cauzione: 500, cauzioneUgualeBase: true });
+    // Ridotta e vuota: errore come prima.
+    expect(validaProtezione({ ...form, totale: { ...form.totale, cauzioneUgualeBase: false } })['totale.cauzione']).toBeTruthy();
+  });
+  test('perForm riporta il flag', () => {
+    expect(perForm({ base: { danni: 1, furto: 1, cauzione: 1 }, totale: { cauzioneUgualeBase: true } }).totale.cauzioneUgualeBase).toBe(true);
+    expect(perForm(undefined).totale.cauzioneUgualeBase).toBe(false);
+  });
+});
+
+test('le spiegazioni di franchigia e cauzione', () => {
+  const { SPIEGA_FRANCHIGIA, SPIEGA_CAUZIONE, fraseFranchigiaDanni } = require('./protezioni');
+  expect(SPIEGA_FRANCHIGIA).toMatch(/paga in caso di danno/);
+  expect(SPIEGA_CAUZIONE).toMatch(/non è un costo/);
+  expect(fraseFranchigiaDanni(0)).toBe('Nessuna franchigia sui danni: il cliente non paga nulla per i danni coperti.');
+  expect(fraseFranchigiaDanni(1200)).toBe('Franchigia sui danni 1.200 €: in caso di danno il cliente paga al massimo questa cifra.');
+  expect(fraseFranchigiaDanni(null)).toBe('');
+});

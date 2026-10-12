@@ -389,6 +389,14 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
                 </p>
               ) : (
                 <>
+                  {prenotazione.protezione?.tipo === 'totale' && (
+                    <p className="pz-avviso pz-avviso--info" style={{ margin: '0 0 12px' }}>
+                      <b>Protezione Totale:</b> {tetto === 0
+                        ? 'i danni coperti non si addebitano al cliente.'
+                        : <>per i danni il cliente paga al massimo <b>{euro(tetto)}</b> (la franchigia).</>}
+                      {' '}Gli altri addebiti (ritardo, carburante, dotazione mancante) restano. La cauzione è una garanzia: si sblocca se non ci sono addebiti.
+                    </p>
+                  )}
                   <p className="pz-aiuto" style={{ margin: '0 0 10px' }}>
                     <b>{euro(cauzione)}</b> {prenotazione.cauzioneBloccata ? 'bloccati sulla carta alla consegna.' : 'di cauzione (alla consegna non è stato segnato il blocco).'}
                   </p>

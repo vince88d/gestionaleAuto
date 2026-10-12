@@ -8,7 +8,7 @@ test('voci di protezione, cauzione ed extra per la tabella del PDF', () => {
     optional: [{ nome: 'Seggiolino', quantita: 1, totale: 24 }, { nome: 'GPS', quantita: 2, totale: 30 }],
   });
   expect(righe).toEqual([
-    ['Protezione Totale', 'A carico del cliente: danni max 0 €, furto max 1.500 €. Copre anche cristalli, gomme', '36,00 €'],
+    ['Protezione Totale', 'Franchigia a carico del cliente: danni 0 €, furto 1.500 €. Copre anche cristalli, gomme', '36,00 €'],
     ['Seggiolino', '1 pezzo', '24,00 €'],
     ['GPS', '2 pezzi', '30,00 €'],
   ]);

@@ -143,3 +143,7 @@
 @media (max-width: 900px) {
   .px-protezioni { grid-template-columns: 1fr; }
 }
+
+/* Franchigia e cauzione spiegate in due righe sotto le protezioni */
+.pz .px-spiega { margin: 4px 0 0; font-size: 14px; line-height: 1.45; color: #5d6b79; }
+.px-cauzione-testo { display: block; margin-top: 6px; font-size: 14px; line-height: 1.45; }

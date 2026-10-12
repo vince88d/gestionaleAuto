@@ -94,3 +94,23 @@ test('copia gli stessi valori su altre categorie, avvisando se ne sostituisce', 
     expect.objectContaining({ base: { danni: 1200, furto: 1500, cauzione: 500 } }),
   ));
 });
+
+test('Totale: la cauzione si sceglie tra «Ridotta» e «Uguale alla Base»; uguale non chiede la cifra e salva quella della Base', async () => {
+  render(<ProtezioniCategorie />);
+  fireEvent.click(within(riga('City Car')).getByRole('button', { name: /Modifica/ }));
+  const form = screen.getByRole('form', { name: 'Protezioni City Car' });
+  expect(within(form).getByRole('radio', { name: /Ridotta/ })).toBeChecked();
+  fireEvent.click(within(form).getByRole('radio', { name: /Uguale alla Base/ }));
+  expect(within(form).getByText('500 €')).toBeInTheDocument();
+  expect(within(form).getByText(/Franchigia e cauzione sono due cose diverse/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Salva' }));
+  await waitFor(() => expect(salvaProtezioni).toHaveBeenCalledWith(['City Car'], expect.objectContaining({
+    totale: expect.objectContaining({ cauzione: 500, cauzioneUgualeBase: true }),
+  })));
+});
+
+test('nell\'elenco la Totale con cauzione uguale alla Base lo dice', () => {
+  salvate.perCategoria.Furgone = { base: { danni: 2500, furto: 3000, cauzione: 1000 }, totale: { offerta: true, prezzoGiorno: 15, danni: 0, furto: 0, cauzione: 1, cauzioneUgualeBase: true } };
+  render(<ProtezioniCategorie />);
+  expect(riga('Furgone').textContent).toContain('Cauzione 1.000 €come la Base');
+});

@@ -27,11 +27,11 @@ export function vociProtezioneExtra(prenotazione = {}) {
   let cauzione = null;
   if (p) {
     const limiti = [
-      typeof p.danni === 'number' ? `danni max ${eur(p.danni)}` : '',
-      typeof p.furto === 'number' ? `furto max ${eur(p.furto)}` : '',
+      typeof p.danni === 'number' ? `danni ${eur(p.danni)}` : '',
+      typeof p.furto === 'number' ? `furto ${eur(p.furto)}` : '',
     ].filter(Boolean).join(', ');
     const coperte = COPERTURE.filter(([k]) => p.copre?.[k]).map(([, nome]) => nome.toLowerCase());
-    const dettaglio = [limiti && `A carico del cliente: ${limiti}`, coperte.length > 0 && `Copre anche ${coperte.join(', ')}`].filter(Boolean).join('. ');
+    const dettaglio = [limiti && `Franchigia a carico del cliente: ${limiti}`, coperte.length > 0 && `Copre anche ${coperte.join(', ')}`].filter(Boolean).join('. ');
     righe.push([p.tipo === 'totale' ? 'Protezione Totale' : 'Protezione Base', dettaglio || '-', p.tipo === 'totale' ? eur(p.prezzo, true) : 'Inclusa']);
     if (typeof p.cauzione === 'number') cauzione = { importo: p.cauzione, bloccata: Boolean(prenotazione.cauzioneBloccata) };
   }
@@ -171,7 +171,7 @@ export async function generaRiepilogoPdf(prenotazione, scheda = {}, opzioni = {}
       foglio.riquadroDati({
         etichetta: 'Cauzione',
         righe: [['Importo', eur(cauzione.importo, true)]],
-        nota: `${cauzione.bloccata ? 'Bloccata sulla carta del cliente. ' : ''}Viene restituita al rientro, salvo gli addebiti indicati nel verbale di rientro.`,
+        nota: `${cauzione.bloccata ? 'Bloccata sulla carta del cliente. ' : ''}È una garanzia, non un costo: viene sbloccata al rientro, salvo gli addebiti indicati nel verbale di rientro.`,
       });
     }
   }

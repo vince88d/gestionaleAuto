@@ -20,10 +20,10 @@ export function Campo({ id, titolo, aiuto, errore, children }) {
 }
 
 // Importo in euro: il simbolo sta dentro la casella, si scrive a mano (anche i centesimi).
-export function CampoEuro({ id, valore, onChange, placeholder, invalido }) {
+export function CampoEuro({ id, valore, onChange, placeholder, invalido, disabled }) {
   return (
     <div className="opt-euro">
-      <input id={id} className="opt-input" type="text" inputMode="decimal" value={valore} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-describedby={`${id}-aiuto`} aria-invalid={invalido || undefined} />
+      <input id={id} className="opt-input" type="text" inputMode="decimal" value={valore} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-describedby={`${id}-aiuto`} aria-invalid={invalido || undefined} disabled={disabled} />
       <span className="opt-euro-simbolo" aria-hidden="true">€</span>
     </div>
   );
