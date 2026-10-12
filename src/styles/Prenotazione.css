@@ -877,7 +877,7 @@
 .pz-menu-freccia { transition: transform .12s; }
 .pz-menu-freccia--su { transform: rotate(180deg); }
 .pz-menu-lista {
-  position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 20; width: 310px; padding: 6px;
+  position: absolute; bottom: calc(100% + 6px); z-index: 20; max-width: calc(100vw - 32px); padding: 6px;
   background: #fff; border: 1px solid #d5dde6; border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
 }
 .pz-menu-titolo { margin: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #95a3b1; }
@@ -890,4 +890,5 @@
 .pz .pz-menu-voce:hover:not(:disabled), .pz .pz-menu-voce:focus-visible { background: #eaf3fb; outline: none; }
 .pz .pz-menu-voce:disabled { color: #b6c0ca; font-weight: 500; cursor: not-allowed; }
 .pz-menu-voce small { display: block; font-size: 12px; font-weight: 400; }
+.pz-piede--menu { justify-content: flex-start; }
 .pz-piede .pz-menu-spazio { margin-left: auto; }

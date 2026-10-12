@@ -293,7 +293,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
           )}
         </div>
 
-        <footer className="pz-piede no-print">
+        <footer className="pz-piede pz-piede--menu no-print">
           <MenuPulsante
             etichetta="Documenti" icona={<FileText size={16} aria-hidden="true" />}
             sezioni={[{
