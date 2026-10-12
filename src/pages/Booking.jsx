@@ -657,7 +657,7 @@ useEffect(() => {
 const confermaRientro = async (dati) => {
   const prenotazione = prenotazioneDaConcludere;
   if (!prenotazione) return false;
-  const { descrizioneDanno, daRiparare, fotoDanni } = dati;
+  const { descrizioneDanno, segniDanni, daRiparare, fotoDanni } = dati;
 
   try {
     const foto = fotoDanni ? await Promise.all([].concat(fotoDanni).map(fotoIncorporataSuStorage)) : null;
@@ -666,6 +666,7 @@ const confermaRientro = async (dati) => {
       status: 'completata',
       dataRientroEffettiva: istanteRientro(dati.dataRientro, dati.oraRientro),
       descrizioneDanno: descrizioneDanno || '',
+      segniDanni: segniDanni || null,
       daRiparare: Boolean(daRiparare),
       fotoDanni: foto && foto.length > 0 ? foto : null,
       rientro,

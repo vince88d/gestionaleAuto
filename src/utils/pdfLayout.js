@@ -406,9 +406,9 @@ export async function nuovoFoglio({
   };
 
   // ---- Danni: elenco numerato [{ numero, titolo, dettaglio, nuovo }]. Vuoto = «Nessun danno».
-  // `schema`, se c'e', e' { disegna(page, x, yAlto, larghezza) -> altezza } messo a sinistra.
+  // `schema`, se c'e', e' { larghezza, altezza, disegna({ page, x, alto, larghezza, helper }) } messo a sinistra.
   const danni = (voci, { vuoto = 'Nessun danno segnato', schema = null, nota = '' } = {}) => {
-    const wSchema = schema ? 190 : 0;
+    const wSchema = schema ? schema.larghezza || 190 : 0;
     const xLista = PAG_L + (schema ? wSchema + 14 : 0);
     const wLista = PAG_R - xLista;
     let altezzaLista = 0;

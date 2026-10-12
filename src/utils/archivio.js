@@ -28,6 +28,7 @@ export const CAMPI_RIPRISTINO = {
   status: 'attiva',
   dataRientroEffettiva: null,
   descrizioneDanno: '',
+  segniDanni: null,
   fotoDanni: null,
   daRiparare: false,
   riparatoIn: null,

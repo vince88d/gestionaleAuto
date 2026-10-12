@@ -186,7 +186,7 @@ export function istanteRientro(data, ora) {
 }
 
 // Errori del passo 1 ({} se si puo' andare avanti).
-export function erroriRientro({ prenotazione = {}, dataRientro, oraRientro, km, carburante, chiaviTornate }) {
+export function erroriRientro({ prenotazione = {}, dataRientro, oraRientro, km, carburante, chiaviTornate, danniSenzaDescrizione = 0 }) {
   const errori = {};
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataRientro || '')) errori.dataRientro = 'Scrivi la data del rientro.';
   else if (giorno(prenotazione.dataInizio) && dataRientro < giorno(prenotazione.dataInizio)) errori.dataRientro = 'Il rientro non può essere prima del ritiro.';
@@ -197,6 +197,7 @@ export function erroriRientro({ prenotazione = {}, dataRientro, oraRientro, km, 
     && kmN < Number(prenotazione.schedaVeicolo.kmIniziali)) errori.km = 'Sono meno dei km alla consegna.';
   if (!carburante) errori.carburante = 'Scegli il livello del carburante.';
   if (daRiportare(prenotazione).chiaviConsegnate && chiaviTornate == null) errori.chiavi = 'Scegli quante chiavi sono tornate.';
+  if (danniSenzaDescrizione > 0) errori.danni = 'Scrivi cos\'è ogni danno segnato sullo schema.';
   return errori;
 }
 

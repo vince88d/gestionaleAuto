@@ -1,0 +1,35 @@
+.sd-corpo { display: grid; grid-template-columns: minmax(260px, 400px) 1fr; gap: 20px; align-items: start; }
+@media (max-width: 760px) { .sd-corpo { grid-template-columns: 1fr; } }
+.sd-aiuto { margin: 0 0 12px; }
+.sd-suggerimento { margin: 8px 0 0; }
+.sd-schema { border: 1px solid #d5dde6; border-radius: 10px; background: #f4f6f8; padding: 8px; }
+.sd-schema svg { display: block; width: 100%; height: auto; user-select: none; cursor: crosshair; }
+.sd-zona { fill: transparent; stroke: none; outline: none; }
+.sd-zona:hover { fill: rgba(52, 152, 219, .08); }
+.sd-zona:focus-visible { stroke: #3498db; stroke-width: 2; stroke-dasharray: 5 3; }
+.sd-scritta { font-size: 9px; fill: #5b6672; letter-spacing: .6px; pointer-events: none; }
+.sd-pin { cursor: pointer; }
+.sd-pin circle { fill: #a4372b; stroke: #fff; stroke-width: 1.5; }
+.sd-pin text { font-size: 10px; font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; }
+.sd-pin--vecchio { cursor: default; }
+.sd-pin--vecchio circle { fill: #5b6672; }
+.sd-pin--scelto circle { stroke: #1a1f26; stroke-width: 2; }
+
+.sd-elenco { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sd-vuoto { padding: 14px; border: 1px dashed #d5dde6; border-radius: 10px; color: #5b6672; font-size: 14px; }
+.sd-voce { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px 10px; align-items: start; padding: 10px; border: 1px solid #d5dde6; border-radius: 10px; }
+.sd-voce--vecchio { background: #f4f6f8; }
+.sd-voce--scelto { border-color: #3498db; box-shadow: 0 0 0 2px #cfe6f8; }
+.sd-numero { width: 24px; height: 24px; border-radius: 50%; background: #a4372b; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.sd-numero--vecchio { background: #5b6672; }
+.sd-campi { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.sd-riga { display: flex; gap: 6px; flex-wrap: wrap; }
+.sd-riga select, .sd-riga input { font: inherit; font-size: 14px; padding: 7px 9px; border: 1px solid #d5dde6; border-radius: 8px; background: #fff; color: #2c3e50; }
+.sd-riga input { flex: 1; min-width: 140px; }
+.sd-riga input.sd-errore { border-color: #a4372b; background: #fdecea; }
+.sd-testo { font-size: 14px; font-weight: 600; color: #2c3e50; }
+.sd-dove { font-size: 12px; color: #5b6672; }
+.sd-dove--errore { color: #a4372b; font-weight: 600; }
+.sd-badge { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 9px; border: 1px solid #5b6672; color: #5b6672; white-space: nowrap; }
+.sd-togli { border: 0; background: none; color: #c0392b; font: inherit; font-size: 13px; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+.sd-togli:hover { background: #fdecea; }

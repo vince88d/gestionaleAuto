@@ -55,3 +55,18 @@ test('porta lo sguardo sul primo campo mancante (carburante)', () => {
   expect(scorri).toHaveBeenCalled();
   expect(document.activeElement).toBe(screen.getByRole('radio', { name: '1/4' }));
 });
+
+test('un danno segnato sullo schema senza descrizione blocca; scrivendola si va avanti e il testo riassuntivo si aggiorna', () => {
+  const onSave = jest.fn();
+  render(<Prova onSave={onSave} scheda={{
+    carburante: '3/4', kmIniziali: '45000', danni: '',
+    segniDanni: [{ id: 'a', vista: 'sx', x: 300, y: 56, tipo: 'Graffio', testo: '' }],
+  }} />);
+  avanti();
+  expect(onSave).not.toHaveBeenCalled();
+  expect(screen.getByText('Manca: descrizione dei danni')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Descrizione del danno 1'), { target: { value: 'portiera sinistra' } });
+  expect(screen.queryByText(/^Manca:/)).toBeNull();
+  avanti();
+  expect(onSave).toHaveBeenCalledTimes(1);
+});

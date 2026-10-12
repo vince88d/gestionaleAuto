@@ -3,11 +3,13 @@
 // errori nell'ordine in cui i campi stanno nella finestra, cosi' la finestra
 // sa dove portare lo sguardo e cosa scrivere vicino al pulsante.
 //   chiedi*: il campo e' richiesto (la prenotazione non ce l'ha gia')
+//   danniSenzaDescrizione: punti segnati sullo schema senza scrivere cos'e'
 export function erroriConsegna({
   chiediCodiceFiscale = false, codiceFiscaleValido = true,
   chiediPatente = false, patente = '',
   chiediScadenza = false, scadenzaPatente = '',
   carburante = '', km = '',
+  danniSenzaDescrizione = 0,
 } = {}) {
   const errori = [];
   if (chiediCodiceFiscale && !codiceFiscaleValido) {
@@ -25,6 +27,9 @@ export function erroriConsegna({
   const numero = Number(km);
   if (km === '' || km === null || km === undefined || Number.isNaN(numero) || numero < 0) {
     errori.push({ campo: 'km', nome: 'km', messaggio: 'Scrivi i km del contachilometri.' });
+  }
+  if (danniSenzaDescrizione > 0) {
+    errori.push({ campo: 'danni', nome: 'descrizione dei danni', messaggio: 'Scrivi cos\'è ogni danno segnato sullo schema.' });
   }
   return errori;
 }

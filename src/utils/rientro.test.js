@@ -135,6 +135,11 @@ describe('costruzione del rientro', () => {
       .toEqual(['carburante', 'chiavi', 'dataRientro', 'km', 'oraRientro']);
     expect(erroriRientro({ prenotazione: consegnata, dataRientro: '2026-10-11', oraRientro: '10:00', km: '48500', carburante: 'Pieno', chiaviTornate: 2 }).dataRientro).toBeTruthy();
   });
+  it('un danno segnato senza descrizione blocca il passo 1', () => {
+    const ok = { prenotazione: consegnata, dataRientro: '2026-10-15', oraRientro: '10:00', km: '48500', carburante: '1/2', chiaviTornate: 2 };
+    expect(erroriRientro({ ...ok, danniSenzaDescrizione: 1 }).danni).toBeTruthy();
+    expect(erroriRientro({ ...ok, danniSenzaDescrizione: 0 }).danni).toBeUndefined();
+  });
   it('campi da salvare, con cauzione trattenuta', () => {
     const r = costruisciRientro({
       prenotazione: consegnata, dataRientro: '2026-10-15', oraRientro: '11:30', km: '48730', carburante: '1/2', chiaviTornate: 2,
