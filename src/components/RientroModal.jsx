@@ -9,6 +9,8 @@ import {
 } from '../utils/rientro';
 import '../styles/Prenotazione.css';
 import './RientroModal.css';
+import FirmaVerbale from './FirmaVerbale';
+import { FIRMA_NORMALE, normalizzaFirma } from '../utils/firmaVerbale';
 
 const oraAdesso = () => {
   const d = new Date();
@@ -54,6 +56,7 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
   const [danno, setDanno] = useState('');
   const [daRiparare, setDaRiparare] = useState(false);
   const [foto, setFoto] = useState([]);
+  const [firma, setFirma] = useState(FIRMA_NORMALE);
   const [righe, setRighe] = useState([]);
   const [scelta, setScelta] = useState('trattieni'); // 'trattieni' | 'sblocca'
   const [trattieniScritto, setTrattieniScritto] = useState(null); // null = automatico
@@ -67,7 +70,7 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
   const svuota = () => {
     setPasso(1); setTentato(false); setDataRientro(giornoLocale()); setOraRientro(oraAdesso());
     setKm(''); setCarburante(''); setChiaviTornate(null); setMancanti({}); setExtraMancanti({});
-    setDanno(''); setDaRiparare(false); setFoto([]); setRighe([]); setScelta('trattieni'); setTrattieniScritto(null);
+    setDanno(''); setDaRiparare(false); setFoto([]); setFirma(FIRMA_NORMALE); setRighe([]); setScelta('trattieni'); setTrattieniScritto(null);
   };
 
   // Una volta per prenotazione: km proposti dal veicolo non servono, si legge il contachilometri.
@@ -130,6 +133,7 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
         extraNonTornati: riportare.extra.filter((r) => extraMancanti[r.nome]).map((r) => r.nome),
         descrizioneDanno: danno.trim(), daRiparare, fotoDanni: foto.length > 0 ? foto : null,
         righe, trattieni: cauzione === null ? undefined : trattieni, tolleranza,
+        firma: normalizzaFirma(firma),
       });
       if (ok !== false) svuota();
     } finally {
@@ -392,6 +396,8 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
                 Il gestionale registra e scrive nel verbale: l'addebito e lo sblocco veri si fanno sul POS (o su Stripe per i pagamenti online).
               </p>
             </section>
+
+            <FirmaVerbale valore={firma} onChange={setFirma} />
           </div>
         )}
 

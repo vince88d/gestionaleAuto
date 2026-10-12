@@ -63,6 +63,13 @@ describe('verbale di rientro', () => {
     expect(esitoRientro({ rientro: { totaleAddebiti: 0 } })).toBe('Tutto in ordine');
   });
 
+  it('con firma non apposta il PDF si genera lo stesso, con le osservazioni', async () => {
+    const p = { ...prenotazione, rientro: { ...prenotazione.rientro, firma: { stato: 'rifiuta', osservazioni: 'Dice che il graffio c\'era gia\'', registrataIl: '2026-10-15T11:40:00' } } };
+    const bytes = await generaVerbaleRientroPdf(p, { azienda: { nome: 'Formia Rent' } });
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBeGreaterThanOrEqual(1);
+    if (process.env.PDF_PROVA) require('fs').writeFileSync(`${process.env.PDF_PROVA}-rifiuto.pdf`, Buffer.from(bytes));
+  });
+
   it('genera un PDF con titolo, lingua e autore', async () => {
     const bytes = await generaVerbaleRientroPdf(prenotazione, { azienda: { nome: 'Formia Rent', partitaIva: '01234567890' } });
     const doc = await PDFDocument.load(bytes);

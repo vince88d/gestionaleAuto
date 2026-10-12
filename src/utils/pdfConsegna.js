@@ -8,6 +8,7 @@ import { nuovoFoglio } from './pdfLayout';
 import { calcolaGiorniNoleggio } from './giorniNoleggio';
 import { quartiCarburante } from './rientro';
 import { danniConsegna, elencoFoto } from './danni';
+import { testoFirmaMancante } from './firmaVerbale';
 
 // "1.200 €" / "36,00 €" (il font standard scrive il simbolo dell'euro).
 const eur = (n, decimali = false) => `${Number(n || 0).toLocaleString('it-IT', {
@@ -156,7 +157,8 @@ export async function generaRiepilogoPdf(prenotazione, scheda = {}, opzioni = {}
   }
 
   foglio.dichiarazione(DICHIARAZIONE_CONSEGNA);
-  foglio.firme(`Il cliente${prenotazione.cliente ? ` · ${prenotazione.cliente}` : ''}`, `Per ${azienda.nome || "l'azienda"} · operatore`);
+  foglio.osservazioni(scheda.firma?.osservazioni || '');
+  foglio.firme(`Il cliente${prenotazione.cliente ? ` · ${prenotazione.cliente}` : ''}`, `Per ${azienda.nome || "l'azienda"} · operatore`, testoFirmaMancante(scheda.firma));
   foglio.spazio(8);
   foglio.piccolo(`Data: ${dataDoc}. ${NOTA_PRIVACY}`);
   return foglio.chiudi();

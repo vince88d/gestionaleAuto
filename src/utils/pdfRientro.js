@@ -8,6 +8,7 @@ import { nuovoFoglio } from './pdfLayout';
 import { dataBreve, riferimentoPrenotazione, NOTA_PRIVACY } from './pdfConsegna';
 import { riassuntoDotazione } from './dotazione';
 import { danniRientro, elencoFoto } from './danni';
+import { testoFirmaMancante } from './firmaVerbale';
 
 const eur = (n) => `${Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' })} €`;
 const eurTesto = (n) => `${Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' })} EUR`;
@@ -216,7 +217,8 @@ export async function generaVerbaleRientroPdf(prenotazione, opzioni = {}) {
   }
 
   foglio.dichiarazione(DICHIARAZIONE_RIENTRO);
-  foglio.firme(`Il cliente${prenotazione.cliente ? ` · ${prenotazione.cliente}` : ''}`, `Per ${azienda.nome || "l'azienda"} · operatore`);
+  foglio.osservazioni(r.firma?.osservazioni || '');
+  foglio.firme(`Il cliente${prenotazione.cliente ? ` · ${prenotazione.cliente}` : ''}`, `Per ${azienda.nome || "l'azienda"} · operatore`, testoFirmaMancante(r.firma));
   foglio.spazio(8);
   foglio.piccolo(`Data: ${dataDoc}. ${NOTA_PRIVACY}`);
   return foglio.chiudi();

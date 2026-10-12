@@ -13,6 +13,8 @@ import { useAzienda } from '../lib/firestoreAzienda';
 import { euro as euroTondo } from '../utils/protezioni';
 import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
 import DotazioneConsegnata from './DotazioneConsegnata';
+import FirmaVerbale from './FirmaVerbale';
+import { FIRMA_NORMALE, normalizzaFirma } from '../utils/firmaVerbale';
 
 
 // Secondo passo della consegna: riepilogo, contratto, PDF ed email. "Conferma
@@ -32,15 +34,19 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
   // Promemoria della consegna: cauzione da bloccare ed extra da dare.
   const [cauzioneBloccata, setCauzioneBloccata] = useState(false);
   const [extraConsegnati, setExtraConsegnati] = useState(false);
+  const [firma, setFirma] = useState(FIRMA_NORMALE);
   const cauzione = typeof formData.cauzione === 'number' ? formData.cauzione : formData.protezione?.cauzione;
   const extraDaDare = (Array.isArray(formData.optional) ? formData.optional : []).filter((r) => r?.quantita > 0);
   const inputContratto = useRef(null);
 
-  const datiScheda = schedaVeicolo || {
+  const schedaBase = schedaVeicolo || {
     carburante: '',
     kmIniziali: '',
     danni: '',
   };
+  // La firma (o il rifiuto) si salva insieme alla scheda della consegna.
+  const firmaDaSalvare = normalizzaFirma(firma);
+  const datiScheda = firmaDaSalvare ? { ...schedaBase, firma: firmaDaSalvare } : schedaBase;
 
   useEffect(() => {
     fetch('https://api.ipify.org?format=json')
@@ -323,6 +329,8 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
               </label>
             )}
           </section>
+
+          {!consegnaSalvata && <FirmaVerbale valore={firma} onChange={setFirma} />}
 
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Documenti</h3>

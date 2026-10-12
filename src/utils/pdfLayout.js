@@ -538,14 +538,34 @@ export async function nuovoFoglio({
     righeDi(testo, LARG, size, font).forEach((r) => { serve(12); scrivi(r, PAG_L, y - size - 1, size, font, col); y -= size + 3; });
   };
 
-  // ---- Due spazi firma: [nome cliente, ruolo] come scritte sotto le linee.
-  const firme = (sinistra = 'Il cliente', destra = "Per l'azienda") => {
-    serve(70);
-    y -= 38;
+  // ---- Osservazioni del cliente: testo scritto dallo staff, oppure righe vuote da
+  // riempire a mano (cosi' il cliente puo' dire «firmo con riserva» sul foglio).
+  const osservazioni = (testo = '') => {
+    const righe = testo ? righeDi(testo, LARG - 20, 9) : [];
+    const altezza = Math.max(righe.length, 3) * 13 + 22;
+    serve(altezza + 10);
+    y -= 10;
+    riquadro(PAG_L, y, LARG, altezza, { bordo: C.linea });
+    spaziato('OSSERVAZIONI DEL CLIENTE', PAG_L + 10, y - 13, 6.8, font, C.grigio, 0.7);
+    if (righe.length > 0) righe.forEach((r, i) => scrivi(r, PAG_L + 10, y - 27 - i * 13, 9));
+    else for (let i = 0; i < 3; i += 1) linea(PAG_L + 10, PAG_R - 10, y - 32 - i * 13, 0.5, C.linea);
+    y -= altezza;
+  };
+
+  // ---- Due spazi firma. `mancante`: testo scritto al posto della firma del cliente
+  // (rifiuto o assenza): resta visibile che la firma non c'e'.
+  const firme = (sinistra = 'Il cliente', destra = "Per l'azienda", mancante = '') => {
     const w = (LARG - 26) / 2;
+    const righeMancante = mancante ? righeDi(mancante, w - 14, 8.5, grassetto) : [];
+    const altezzaBox = righeMancante.length * 11 + 10;
+    serve((mancante ? altezzaBox + 14 : 38) + 34);
+    y -= mancante ? altezzaBox + 14 : 38;
     [sinistra, destra].forEach((t, i) => {
       const x = PAG_L + i * (w + 26);
-      linea(x, x + w, y, 0.9, C.scuro);
+      if (i === 0 && mancante) {
+        riquadro(x, y + 4 + altezzaBox, w, altezzaBox, { fondo: C.rossoChiaro, bordo: C.rosso, raggio: 3 });
+        righeMancante.forEach((r, k) => scrivi(r, x + 7, y + 4 + altezzaBox - 13 - k * 11, 8.5, grassetto, C.rosso));
+      } else linea(x, x + w, y, 0.9, C.scuro);
       scrivi(t, x, y - 11, 8, font, C.grigio);
     });
     y -= 20;
@@ -564,7 +584,7 @@ export async function nuovoFoglio({
   };
 
   return {
-    doc, fascia, sezione, coppie, riquadri, tabella, danni, caselle, riquadroDati, foto, nota, dichiarazione, piccolo, firme, spazio, chiudi,
+    doc, fascia, sezione, coppie, riquadri, tabella, danni, caselle, riquadroDati, foto, nota, dichiarazione, piccolo, osservazioni, firme, spazio, chiudi,
     immagine: (src) => immagineDaUrl(doc, src),
   };
 }
