@@ -26,6 +26,8 @@ test('il passo 1 non va avanti senza km, carburante e chiavi', () => {
   expect(screen.getByText('Scrivi i km del contachilometri.')).toBeInTheDocument();
   expect(screen.getByText('Scegli il livello del carburante.')).toBeInTheDocument();
   expect(screen.getByText('Scegli quante chiavi sono tornate.')).toBeInTheDocument();
+  // E lo dice anche accanto al pulsante, dove si guarda.
+  expect(screen.getByText('Manca: km, carburante e chiavi tornate')).toBeInTheDocument();
 });
 
 test('rientro in ritardo, carburante basso e triangolo mancante: addebiti e cauzione trattenuta', async () => {

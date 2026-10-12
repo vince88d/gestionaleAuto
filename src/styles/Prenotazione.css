@@ -233,6 +233,8 @@
   background: #fffafa;
 }
 
+.pz .pz-scelte--errore .pz-scelta { border-color: #e74c3c; }
+
 .pz .pz-errore {
   margin: 0;
   font-size: 12px;
@@ -869,3 +871,26 @@
   line-height: 1.5;
 }
 .pz .pz-aiuto-riga { display: block; margin-top: 2px; font-size: 13px; color: #6b7886; }
+
+/* ---------- Pulsante con menu (barra in fondo ai dettagli) ---------- */
+.pz-menu { position: relative; display: inline-block; }
+.pz .pz-menu-btn--aperto { background: #eaf3fb; }
+.pz .vd-btn--primario.pz-menu-btn--aperto { background: #2980b9; }
+.pz-menu-freccia { transition: transform .12s; }
+.pz-menu-freccia--su { transform: rotate(180deg); }
+.pz-menu-lista {
+  position: absolute; bottom: calc(100% + 6px); z-index: 20; max-width: calc(100vw - 32px); padding: 6px;
+  background: #fff; border: 1px solid #d5dde6; border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
+}
+.pz-menu-titolo { margin: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #95a3b1; }
+.pz-menu-linea { margin: 6px 0; border: 0; border-top: 1px solid #e3e8ee; }
+.pz-menu-nota { margin: 2px 10px 6px; font-size: 12px; color: #95a3b1; line-height: 1.35; }
+.pz .pz-menu-voce {
+  display: flex; align-items: center; gap: 9px; width: 100%; margin: 0; padding: 8px 10px; border: 0; border-radius: 7px;
+  background: none; color: #2c3e50; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; transform: none;
+}
+.pz .pz-menu-voce:hover:not(:disabled), .pz .pz-menu-voce:focus-visible { background: #eaf3fb; outline: none; }
+.pz .pz-menu-voce:disabled { color: #b6c0ca; font-weight: 500; cursor: not-allowed; }
+.pz-menu-voce small { display: block; font-size: 12px; font-weight: 400; }
+.pz-piede--menu { justify-content: flex-start; }
+.pz-piede .pz-menu-spazio { margin-left: auto; }
