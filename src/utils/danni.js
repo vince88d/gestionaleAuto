@@ -15,7 +15,7 @@ const voce = (segno, numero, { nuovo, daRiparare = false }) => {
     dettaglio = [nuovo ? '' : 'Già presente', segno.tipo, VISTE[segno.vista], nuovo && daRiparare ? 'Da riparare' : '']
       .filter(Boolean).join(' · ');
   }
-  return { numero, titolo: segno.testo || segno.tipo, dettaglio, nuovo, ...punto };
+  return { numero, titolo: segno.testo.trim() || segno.tipo, dettaglio, nuovo, ...punto };
 };
 
 // Danni gia' presenti alla consegna.

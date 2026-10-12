@@ -70,3 +70,12 @@ test('un vecchio danno scritto a mano resta in elenco senza punto', () => {
   expect(screen.getByDisplayValue('Graffio portiera')).toBeInTheDocument();
   expect(screen.getByText('Scritto a mano')).toBeInTheDocument();
 });
+
+test('nella descrizione si possono scrivere piu\' parole (gli spazi non si perdono mentre si digita)', () => {
+  render(<Prova iniziali={[{ id: 'a', vista: 'alto', x: 75, y: 140, tipo: 'Graffio', testo: '' }]} />);
+  const campo = screen.getByLabelText('Descrizione del danno 1');
+  fireEvent.change(campo, { target: { value: 'portiera ' } });
+  expect(campo).toHaveValue('portiera ');
+  fireEvent.change(campo, { target: { value: 'portiera anteriore destra' } });
+  expect(campo).toHaveValue('portiera anteriore destra');
+});

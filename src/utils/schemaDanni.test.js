@@ -19,7 +19,7 @@ test('un nuovo segno parte come graffio senza descrizione, a coordinate intere',
 test('segniValidi scarta il non valido e sistema i campi', () => {
   expect(segniValidi(null)).toEqual([]);
   expect(segniValidi([null, 4, { id: 'a', vista: 'dx', x: '10', y: 5, tipo: 'Rottura', testo: ' lunotto ' }, { vista: 'boh', tipo: 'xx' }])).toEqual([
-    { id: 'a', vista: 'dx', x: 10, y: 5, tipo: 'Rottura', testo: 'lunotto' },
+    { id: 'a', vista: 'dx', x: 10, y: 5, tipo: 'Rottura', testo: ' lunotto ' },
     { id: 'd1', vista: null, x: 0, y: 0, tipo: 'Altro', testo: '' },
   ]);
 });

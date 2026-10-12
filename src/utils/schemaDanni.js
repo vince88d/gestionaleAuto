@@ -72,7 +72,7 @@ export function segniValidi(valore) {
     x: Number.isFinite(Number(s.x)) ? Number(s.x) : 0,
     y: Number.isFinite(Number(s.y)) ? Number(s.y) : 0,
     tipo: TIPI_DANNO.includes(s.tipo) ? s.tipo : 'Altro',
-    testo: String(s.testo || '').trim(),
+    testo: String(s.testo || ''), // senza trim: chi scrive deve poter digitare gli spazi
   }));
 }
 
@@ -89,8 +89,11 @@ export const segniDi = (salvati, testoVecchio) => (Array.isArray(salvati) ? segn
 // Testo riassuntivo (resta nei campi `danni` / `descrizioneDanno`, che leggono
 // email, dettagli, archivio e dashboard): «Graffio - portiera destra; …».
 export function testoDanni(segni = []) {
-  return segniValidi(segni).map((s) => (s.testo ? `${s.tipo === 'Altro' ? '' : `${s.tipo} - `}${s.testo}` : s.tipo)).join('; ');
+  return segniValidi(segni).map((s) => {
+    const testo = s.testo.trim();
+    return testo ? `${s.tipo === 'Altro' ? '' : `${s.tipo} - `}${testo}` : s.tipo;
+  }).join('; ');
 }
 
 // Punti senza descrizione: nel PDF non si capirebbe di cosa si tratta.
-export const senzaDescrizione = (segni = []) => segniValidi(segni).filter((s) => !s.testo);
+export const senzaDescrizione = (segni = []) => segniValidi(segni).filter((s) => !s.testo.trim());
