@@ -71,3 +71,24 @@ test('senza prenotazione (finestra chiusa) non si rompe', () => {
   const { container } = render(<RientroModal isOpen={false} onClose={jest.fn()} onConferma={jest.fn()} prenotazione={null} prezzi={prezzi} />);
   expect(container).toBeEmptyDOMElement();
 });
+
+test('un danno nuovo segnato sullo schema finisce nel salvataggio con il testo riassuntivo; senza descrizione non si va avanti', async () => {
+  const onConferma = apri();
+  fireEvent.change(screen.getByLabelText('Data del rientro'), { target: { value: '2026-10-15' } });
+  fireEvent.change(screen.getByLabelText('Ora del rientro'), { target: { value: '09:00' } });
+  fireEvent.change(screen.getByLabelText(/Km al rientro/), { target: { value: '48730' } });
+  fireEvent.click(screen.getByRole('radio', { name: 'Pieno' }));
+  fireEvent.click(screen.getByRole('radio', { name: '2' }));
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Dall’alto: aggiungi un danno' }), { key: 'Enter' });
+  fireEvent.click(screen.getByRole('button', { name: /Avanti/ }));
+  expect(screen.getByText(/Manca: descrizione dei danni/)).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Descrizione del danno 1'), { target: { value: 'paraurti anteriore' } });
+  fireEvent.click(screen.getByRole('button', { name: /Avanti/ }));
+  fireEvent.change(await screen.findByLabelText(/^Importo: Danno/), { target: { value: '120' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Concludi il noleggio' }));
+  await waitFor(() => expect(onConferma).toHaveBeenCalled());
+  const dati = onConferma.mock.calls[0][0];
+  expect(dati.descrizioneDanno).toBe('Graffio - paraurti anteriore');
+  expect(dati.segniDanni).toHaveLength(1);
+  expect(dati.segniDanni[0]).toMatchObject({ vista: 'alto', tipo: 'Graffio', testo: 'paraurti anteriore' });
+});

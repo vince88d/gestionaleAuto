@@ -11,6 +11,8 @@ import '../styles/Prenotazione.css';
 import './RientroModal.css';
 import FirmaVerbale from './FirmaVerbale';
 import FotoDalTelefono from './FotoDalTelefono';
+import SchemaDanni from './SchemaDanni';
+import { segniDi, senzaDescrizione, testoDanni } from '../utils/schemaDanni';
 import { FIRMA_NORMALE, normalizzaFirma } from '../utils/firmaVerbale';
 
 const oraAdesso = () => {
@@ -44,7 +46,7 @@ function Passi({ attivo }) {
 // registrazione: l'addebito e lo sblocco veri si fanno sul POS o su Stripe.
 // `onConferma(dati)` salva; mockup: formiarent-documenti/mockup/gestionale-rientro.html
 // «data o ora del rientro, km e carburante» dagli errori del passo 1.
-const NOMI_CAMPI = { dataRientro: 'data del rientro', oraRientro: 'ora del rientro', km: 'km', carburante: 'carburante', chiavi: 'chiavi tornate' };
+const NOMI_CAMPI = { dataRientro: 'data del rientro', oraRientro: 'ora del rientro', km: 'km', carburante: 'carburante', chiavi: 'chiavi tornate', danni: 'descrizione dei danni' };
 function elencoCampi(errori) {
   const nomi = Object.keys(errori).map((k) => NOMI_CAMPI[k]).filter(Boolean);
   return nomi.length <= 1 ? (nomi[0] || '') : `${nomi.slice(0, -1).join(', ')} e ${nomi[nomi.length - 1]}`;
@@ -61,7 +63,7 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
   const [chiaviTornate, setChiaviTornate] = useState(null);
   const [mancanti, setMancanti] = useState({}); // nome -> { addebita, togli }
   const [extraMancanti, setExtraMancanti] = useState({}); // nome -> true
-  const [danno, setDanno] = useState('');
+  const [segniNuovi, setSegniNuovi] = useState([]);
   const [daRiparare, setDaRiparare] = useState(false);
   const [foto, setFoto] = useState([]);
   const [firma, setFirma] = useState(FIRMA_NORMALE);
@@ -78,12 +80,17 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
   const svuota = () => {
     setPasso(1); setTentato(false); setDataRientro(giornoLocale()); setOraRientro(oraAdesso());
     setKm(''); setCarburante(''); setChiaviTornate(null); setMancanti({}); setExtraMancanti({});
-    setDanno(''); setDaRiparare(false); setFoto([]); setFirma(FIRMA_NORMALE); setRighe([]); setScelta('trattieni'); setTrattieniScritto(null);
+    setSegniNuovi([]); setDaRiparare(false); setFoto([]); setFirma(FIRMA_NORMALE); setRighe([]); setScelta('trattieni'); setTrattieniScritto(null);
   };
 
   // Una volta per prenotazione: km proposti dal veicolo non servono, si legge il contachilometri.
   const chiavi = chiaviTornate ?? (riportare.chiaviConsegnate ? undefined : null);
-  const datiPasso1 = { prenotazione, dataRientro, oraRientro, km, carburante, chiaviTornate: chiavi === undefined ? null : chiavi };
+  const segniConsegna = segniDi(consegna.segniDanni, consegna.danni);
+  const danno = testoDanni(segniNuovi);
+  const datiPasso1 = {
+    prenotazione, dataRientro, oraRientro, km, carburante, chiaviTornate: chiavi === undefined ? null : chiavi,
+    danniSenzaDescrizione: senzaDescrizione(segniNuovi).length,
+  };
   const errori = tentato ? erroriRientro(datiPasso1) : {};
   const percorsi = kmPercorsi(consegna.kmIniziali, km);
   const giorniExtra = giorniInPiu({ prenotazione, dataRientro, oraRientro, tolleranza });
@@ -104,9 +111,9 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
     if (Object.keys(erroriRientro(datiPasso1)).length > 0) {
       // Dopo il disegno degli errori, porta lo sguardo sul primo campo da correggere.
       setTimeout(() => {
-        const campo = document.querySelector('.pz-campo--errore');
+        const campo = document.querySelector('.pz-campo--errore, .sd-errore');
         campo?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
-        campo?.querySelector('input, button')?.focus?.({ preventScroll: true });
+        (campo?.matches?.('input') ? campo : campo?.querySelector('input, button'))?.focus?.({ preventScroll: true });
       }, 0);
       return;
     }
@@ -147,7 +154,7 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
         dotazioneNonTornata: nonTornati,
         dotazioneTolta: nonTornati.filter((v) => statoMancante(v).togli),
         extraNonTornati: riportare.extra.filter((r) => extraMancanti[r.nome]).map((r) => r.nome),
-        descrizioneDanno: danno.trim(), daRiparare, fotoDanni: foto.length > 0 ? foto : null,
+        descrizioneDanno: danno, segniDanni: segniNuovi.length > 0 ? segniNuovi : null, daRiparare, fotoDanni: foto.length > 0 ? foto : null,
         righe, trattieni: cauzione === null ? undefined : trattieni, tolleranza,
         firma: normalizzaFirma(firma),
       });
@@ -304,16 +311,14 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
 
             <section className="pz-sezione">
               <h3 className="pz-titolo-sezione">Danni nuovi</h3>
-              {consegna.danni && (
-                <p className="pz-aiuto" style={{ margin: '0 0 10px' }}>
-                  Alla consegna c'era già: <b>{consegna.danni}</b>{consegna.fotoDanni ? ' (1 foto)' : ''}
-                </p>
-              )}
-              <label className="pz-campo">
-                <span className="pz-etichetta">Descrizione</span>
-                <textarea value={danno} onChange={(e) => setDanno(e.target.value)} rows={3}
-                  placeholder="Es. graffio sul paraurti posteriore. Lascia vuoto se è rientrata senza danni." />
-              </label>
+              <SchemaDanni
+                vecchi={segniConsegna}
+                segni={segniNuovi}
+                onChange={setSegniNuovi}
+                provato={tentato}
+                aiuto="I segni grigi sono i danni già presenti alla consegna e non si modificano. Segna qui solo quelli nuovi."
+                vuoto="Nessun danno nuovo: l'auto è rientrata in ordine."
+              />
               <label className="pz-opzione" style={{ marginTop: 12 }}>
                 <input type="checkbox" checked={daRiparare} onChange={(e) => setDaRiparare(e.target.checked)} />
                 <span>

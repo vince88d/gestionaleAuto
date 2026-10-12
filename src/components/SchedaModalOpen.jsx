@@ -11,6 +11,8 @@ import { erroriConsegna, riassuntoErrori } from '../utils/controlloConsegna';
 import { controlloEtaConsegna } from '../utils/etaConducenti';
 import { pagataSulSito } from '../utils/regolePrenotazione';
 import ControlloDotazione from './ControlloDotazione';
+import SchemaDanni from './SchemaDanni';
+import { segniDi, senzaDescrizione, testoDanni } from '../utils/schemaDanni';
 import '../components/schedaModal.css';
 import '../styles/Prenotazione.css';
 
@@ -73,11 +75,15 @@ function SchedaVeicoloModal({
         riconsegna: prenotazione.dataFine,
       })
     : {};
+  // Danni segnati sullo schema (o il vecchio testo, per le prenotazioni di prima).
+  const segniConsegna = segniDi(schedaVeicolo.segniDanni, schedaVeicolo.danni);
+  const cambiaDanni = (segni) => setSchedaVeicolo((prev) => ({ ...prev, segniDanni: segni, danni: testoDanni(segni) }));
   const errori = provato ? erroriConsegna({
     chiediCodiceFiscale, codiceFiscaleValido: codiceFiscaleValido(documenti.codiceFiscale),
     chiediPatente, patente: documenti.patente,
     chiediScadenza, scadenzaPatente: documenti.scadenzaPatente,
     carburante: schedaVeicolo.carburante, km: schedaVeicolo.kmIniziali,
+    danniSenzaDescrizione: senzaDescrizione(segniConsegna).length,
   }) : [];
   const erroreDi = (campo) => errori.find((e) => e.campo === campo)?.messaggio;
   const documentoScaduto = cliente?.scadenzaDocumento && cliente.scadenzaDocumento < giornoLocale();
@@ -116,7 +122,9 @@ function SchedaVeicoloModal({
     const id = { codiceFiscale: 'consegna-codice-fiscale', patente: 'consegna-patente', scadenzaPatente: 'consegna-scadenza-patente', km: 'consegna-km' }[campo];
     const elemento = campo === 'carburante'
       ? document.querySelector('#consegna-carburante-scelte button')
-      : document.getElementById(id);
+      : campo === 'danni'
+        ? document.querySelector('.sd-errore')
+        : document.getElementById(id);
     if (!elemento) return;
     elemento.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
     elemento.focus?.({ preventScroll: true });
@@ -130,6 +138,7 @@ function SchedaVeicoloModal({
       chiediPatente, patente: documenti.patente,
       chiediScadenza, scadenzaPatente: documenti.scadenzaPatente,
       carburante: schedaVeicolo.carburante, km: schedaVeicolo.kmIniziali,
+    danniSenzaDescrizione: senzaDescrizione(segniConsegna).length,
     });
     if (mancanti.length > 0) {
       vaiAlCampo(mancanti[0].campo);
@@ -310,15 +319,13 @@ function SchedaVeicoloModal({
 
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Danni già presenti</h3>
-            <label className="pz-campo">
-              <span className="pz-etichetta">Descrizione</span>
-              <textarea
-                value={schedaVeicolo.danni}
-                onChange={(e) => aggiorna('danni', e.target.value)}
-                rows={3}
-                placeholder="Es. graffio sul paraurti posteriore. Lascia vuoto se non ce ne sono."
-              />
-            </label>
+            <SchemaDanni
+              segni={segniConsegna}
+              onChange={cambiaDanni}
+              provato={provato}
+              aiuto="Tocca sullo schema il punto del danno: compare un numero. Scrivi cos'è. Se l'auto è in ordine non segnare nulla."
+              vuoto="Nessun danno segnato: l'auto risulta in ordine."
+            />
             <div className="pz-foto">
               {schedaVeicolo.fotoDanni && <img src={schedaVeicolo.fotoDanni} alt="Danni alla consegna" />}
               <input ref={inputFoto} type="file" accept="image/*" hidden onChange={handleImageUpload} />

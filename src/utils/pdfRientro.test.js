@@ -70,6 +70,19 @@ describe('verbale di rientro', () => {
     if (process.env.PDF_PROVA) require('fs').writeFileSync(`${process.env.PDF_PROVA}-rifiuto.pdf`, Buffer.from(bytes));
   });
 
+  it('con lo schema il PDF si genera, e l\'esito dice «Con danni» anche senza testo riassuntivo', async () => {
+    const p = {
+      ...prenotazione, descrizioneDanno: '',
+      segniDanni: [{ id: 'a', vista: 'sx', x: 300, y: 56, tipo: 'Ammaccatura', testo: 'Portiera anteriore sinistra' }],
+      schedaVeicolo: { ...prenotazione.schedaVeicolo, segniDanni: [{ id: 'b', vista: 'dx', x: 262, y: 186, tipo: 'Graffio', testo: 'Portiera destra' }, { id: 'c', vista: 'alto', x: 44, y: 262, tipo: 'Altro', testo: 'Paraurti posteriore' }] },
+      rientro: { ...prenotazione.rientro, totaleAddebiti: 0 },
+    };
+    expect(esitoRientro(p)).toBe('Con danni');
+    const bytes = await generaVerbaleRientroPdf(p, { azienda: { nome: 'Formia Rent' } });
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBeGreaterThanOrEqual(1);
+    if (process.env.PDF_PROVA) require('fs').writeFileSync(`${process.env.PDF_PROVA}-schema.pdf`, Buffer.from(bytes));
+  });
+
   it('genera un PDF con titolo, lingua e autore', async () => {
     const bytes = await generaVerbaleRientroPdf(prenotazione, { azienda: { nome: 'Formia Rent', partitaIva: '01234567890' } });
     const doc = await PDFDocument.load(bytes);

@@ -8,6 +8,7 @@ import { nuovoFoglio } from './pdfLayout';
 import { dataBreve, riferimentoPrenotazione, sezioneFoto, NOTA_PRIVACY } from './pdfConsegna';
 import { leggiFotoVerbale } from '../lib/fotoVerbale';
 import { riassuntoDotazione } from './dotazione';
+import { schemaPdf } from './pdfSchemaDanni';
 import { danniRientro, elencoFoto } from './danni';
 import { testoFirmaMancante } from './firmaVerbale';
 
@@ -20,7 +21,7 @@ const giorni = (n) => `${n} ${n === 1 ? 'giorno' : 'giorni'}`;
 export function esitoRientro(prenotazione = {}) {
   const r = prenotazione.rientro || {};
   if (r.totaleAddebiti > 0) return 'Con addebiti';
-  if (String(prenotazione.descrizioneDanno || '').trim()) return 'Con danni';
+  if (String(prenotazione.descrizioneDanno || '').trim() || (Array.isArray(prenotazione.segniDanni) && prenotazione.segniDanni.length > 0)) return 'Con danni';
   if ((r.dotazioneNonTornata || []).length + (r.extraNonTornati || []).length > 0) return 'Con mancanze';
   return 'Tutto in ordine';
 }
@@ -166,7 +167,8 @@ export async function generaVerbaleRientroPdf(prenotazione, opzioni = {}) {
   });
 
   foglio.sezione('Danni');
-  foglio.danni(danniRientro(prenotazione), { vuoto: 'Nessun danno' });
+  const voceDanni = danniRientro(prenotazione);
+  foglio.danni(voceDanni, { vuoto: 'Nessun danno', schema: schemaPdf(voceDanni) });
 
   const consegna = prenotazione.schedaVeicolo || {};
   const dot = riassuntoDotazione(consegna);

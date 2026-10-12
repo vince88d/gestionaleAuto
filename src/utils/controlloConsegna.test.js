@@ -29,3 +29,9 @@ test('km negativi o non numerici non vanno bene', () => {
 test('riassunto vuoto senza errori', () => {
   expect(riassuntoErrori([])).toBe('');
 });
+
+test('i danni segnati senza descrizione si chiedono per ultimi', () => {
+  const errori = erroriConsegna({ carburante: '1/2', km: 10, danniSenzaDescrizione: 2 });
+  expect(errori.map((e) => e.campo)).toEqual(['danni']);
+  expect(riassuntoErrori(errori)).toBe('Manca: descrizione dei danni');
+});

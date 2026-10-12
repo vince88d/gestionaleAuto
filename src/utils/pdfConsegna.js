@@ -7,6 +7,7 @@ import { dataEOra, formattaData } from './scadenze';
 import { nuovoFoglio } from './pdfLayout';
 import { calcolaGiorniNoleggio } from './giorniNoleggio';
 import { quartiCarburante } from './rientro';
+import { schemaPdf } from './pdfSchemaDanni';
 import { danniConsegna, elencoFoto } from './danni';
 import { leggiFotoVerbale } from '../lib/fotoVerbale';
 import { testoFirmaMancante } from './firmaVerbale';
@@ -141,7 +142,9 @@ export async function generaRiepilogoPdf(prenotazione, scheda = {}, opzioni = {}
     { etichetta: 'Carburante', valore: scheda.carburante || '-', ...(quarti ? { barra: { pieni: quarti, totale: 4 } } : {}) },
     { etichetta: 'Chiavi consegnate', valore: dotazione.chiaviConsegnate ? String(dotazione.chiaviConsegnate) : '-' },
   ], [1, 1.2, 1]);
-  foglio.danni(danniConsegna(scheda), {
+  const voceDanni = danniConsegna(scheda);
+  foglio.danni(voceDanni, {
+    schema: schemaPdf(voceDanni),
     vuoto: 'Nessun danno segnato alla consegna',
     nota: 'Il cliente può far annotare qui anche danni minori prima di firmare.',
   });
