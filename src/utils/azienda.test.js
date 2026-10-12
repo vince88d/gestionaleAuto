@@ -62,3 +62,30 @@ describe('email per gli avvisi del sito', () => {
     expect(validaAzienda({ nome: 'A' })).toEqual({});
   });
 });
+
+describe('logo e colore dei documenti', () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+
+  it('colore: «#rrggbb» in minuscolo, anche senza #; altrimenti vuoto', () => {
+    expect(normalizzaAzienda({ coloreAccento: ' 1F4E79 ' }).coloreAccento).toBe('#1f4e79');
+    expect(normalizzaAzienda({ coloreAccento: '#ABCDEF' }).coloreAccento).toBe('#abcdef');
+    expect(normalizzaAzienda({ coloreAccento: 'rosso' }).coloreAccento).toBe('');
+    expect(normalizzaAzienda({ coloreAccento: '#fff' }).coloreAccento).toBe('');
+  });
+
+  it('logo: solo PNG o JPEG in base64 e non troppo grande', () => {
+    expect(normalizzaAzienda({ logo: PNG }).logo).toBe(PNG);
+    expect(normalizzaAzienda({ logo: 'data:image/jpeg;base64,/9j/4AAQ' }).logo).toBe('data:image/jpeg;base64,/9j/4AAQ');
+    expect(normalizzaAzienda({ logo: 'data:image/svg+xml;base64,PHN2Zz4=' }).logo).toBe('');
+    expect(normalizzaAzienda({ logo: 'https://esempio.it/logo.png' }).logo).toBe('');
+    expect(normalizzaAzienda({ logo: `data:image/png;base64,${'A'.repeat(300001)}` }).logo).toBe('');
+    expect(normalizzaAzienda({ logo: 42 }).logo).toBe('');
+  });
+
+  it('vuoti di serie, e contano come dati cambiati', () => {
+    expect(AZIENDA_VUOTA.logo).toBe('');
+    expect(AZIENDA_VUOTA.coloreAccento).toBe('');
+    expect(campiCambiati({ nome: 'A' }, { nome: 'A', logo: PNG, coloreAccento: '#8b2e2e' })).toEqual(['coloreAccento', 'logo']);
+    expect(aziendaVuota({ logo: PNG })).toBe(false);
+  });
+});

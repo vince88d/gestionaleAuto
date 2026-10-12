@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { auth } from './firebase';
 import { useAzienda } from '../lib/firestoreAzienda';
+import { dimensioniDaDataUrl, quasiQuadrato } from '../utils/logoAzienda';
 import './Sidebar.css';
 
 // Nome del prodotto, mostrato in piccolo sotto il nome dell'azienda cliente.
@@ -44,12 +45,20 @@ function Sidebar({ collapsed, toggleSidebar }) {
 
   const titolo = nomeAzienda || 'La tua azienda';
   const IconaToggle = collapsed ? PanelLeftOpen : PanelLeftClose;
+  // Il logo prende il posto del quadratino solo se e' quasi quadrato: una scritta
+  // larga in 34 pixel non si leggerebbe.
+  const misure = azienda.logo ? dimensioniDaDataUrl(azienda.logo) : null;
+  const logoNelMenu = misure && quasiQuadrato(misure.larghezza, misure.altezza) ? azienda.logo : '';
 
   return (
     <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="top-section">
         <div className="brand" title={titolo}>
-          <span className="brand-badge" aria-hidden="true">{iniziali(titolo)}</span>
+          {logoNelMenu ? (
+            <span className="brand-badge brand-badge--logo" aria-hidden="true"><img src={logoNelMenu} alt="" /></span>
+          ) : (
+            <span className="brand-badge" aria-hidden="true">{iniziali(titolo)}</span>
+          )}
           {!collapsed && (
             <span className="brand-testi">
               <span className="brand-nome">{titolo}</span>

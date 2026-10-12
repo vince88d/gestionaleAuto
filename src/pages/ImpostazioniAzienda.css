@@ -363,3 +363,6 @@
 }
 .rec-documenti li:last-child { border-bottom: none; }
 .rec-documenti small { color: #7f8c9a; }
+
+/* «Apri tutte / Chiudi tutte» accanto al titolo */
+.imp-btn--testo { min-height: 40px; }

@@ -3,7 +3,23 @@
 // `emailNotifiche`: dove arriva l'avviso quando un cliente prenota e paga dal
 // sito (lo legge la Cloud Function del sito); se vuota si usa `email`.
 
-export const CAMPI_AZIENDA = ['nome', 'partitaIva', 'email', 'emailNotifiche', 'pec', 'telefono', 'indirizzo'];
+// `logo` (immagine ridotta come testo «data:image/png;base64,…») e
+// `coloreAccento` («#1f4e79») servono ai verbali PDF e al menu: vedi logoAzienda.js.
+export const CAMPI_AZIENDA = ['nome', 'partitaIva', 'email', 'emailNotifiche', 'pec', 'telefono', 'indirizzo', 'coloreAccento', 'logo'];
+
+// Il logo sta dentro il documento dell'azienda (limite di Firestore 1 MB): oltre
+// questa lunghezza non lo si accetta, cosi' non si rompe il salvataggio dei dati.
+export const LOGO_MAX_CARATTERI = 300000;
+const LOGO_VALIDO = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+=*$/;
+
+// Logo valido o stringa vuota.
+export const logoValido = (valore) => (typeof valore === 'string' && valore.length <= LOGO_MAX_CARATTERI && LOGO_VALIDO.test(valore.trim()) ? valore.trim() : '');
+
+// Colore «#rrggbb» in minuscolo, o stringa vuota se non si legge.
+export function coloreValido(valore) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(valore ?? '').trim());
+  return m ? `#${m[1].toLowerCase()}` : '';
+}
 
 export const AZIENDA_VUOTA = Object.freeze(
   Object.fromEntries(CAMPI_AZIENDA.map((campo) => [campo, '']))
@@ -21,6 +37,8 @@ export function normalizzaAzienda(dati = {}) {
   pulita.email = pulita.email.toLowerCase();
   pulita.emailNotifiche = pulita.emailNotifiche.toLowerCase();
   pulita.pec = pulita.pec.toLowerCase();
+  pulita.coloreAccento = coloreValido(dati.coloreAccento);
+  pulita.logo = logoValido(dati.logo);
   return pulita;
 }
 

@@ -123,6 +123,20 @@ const PAG_ALTEZZA = 842;
 const LIMITE_BASSO = 62; // sopra il piede
 const GAP_COLONNE = 22;
 
+// Logo dell'azienda («data:image/png|jpeg;base64,…») incorporato nel PDF; null se
+// manca o non si legge (si ripiega sul quadratino con le iniziali).
+async function incorporaLogo(doc, dataUrl) {
+  const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+=*)$/.exec(String(dataUrl || '').trim());
+  if (!m) return null;
+  try {
+    const binario = typeof atob === 'function' ? atob(m[2]) : Buffer.from(m[2], 'base64').toString('binary');
+    const byte = Uint8Array.from(binario, (c) => c.charCodeAt(0));
+    return m[1] === 'png' ? await doc.embedPng(byte) : await doc.embedJpg(byte);
+  } catch {
+    return null;
+  }
+}
+
 // Iniziali per il marchio quando non c'e' un logo: "Formia Rent" -> "FR".
 export function iniziali(nome) {
   const parole = String(nome || '').trim().split(/\s+/).filter(Boolean);
@@ -142,6 +156,7 @@ export async function nuovoFoglio({
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const grassetto = await doc.embedFont(StandardFonts.HelveticaBold);
   const caratteri = new Set(font.getCharacterSet());
+  const logo = await incorporaLogo(doc, azienda.logo);
   const s = (t) => sicuro(t, caratteri);
   const larghezza = (t, f, size) => f.widthOfTextAtSize(s(t), size);
 
@@ -202,17 +217,27 @@ export async function nuovoFoglio({
   };
   const triangolo = (x, yy, su, col) => page.drawSvgPath(su ? 'M 0 5 L 5 5 L 2.5 0 Z' : 'M 0 0 L 5 0 L 2.5 5 Z', { x, y: yy + 5.5, color: col });
 
+  // Marchio in alto a sinistra: il logo (alto al massimo `lato`, largo al massimo
+  // 3,5 volte) oppure il quadratino con le iniziali. Restituisce la larghezza usata.
   const marchio = (x, alto, lato) => {
+    if (logo) {
+      const fattore = Math.min(lato / logo.height, (lato * 3.5) / logo.width);
+      const w = logo.width * fattore;
+      const h = logo.height * fattore;
+      page.drawImage(logo, { x, y: alto - (lato + h) / 2, width: w, height: h });
+      return w;
+    }
     riquadro(x, alto, lato, lato, { fondo: C.accento, raggio: lato / 4.5 });
     const sigla = iniziali(azienda.nome);
     if (sigla) scriviCentro(sigla, x + lato / 2, alto - lato / 2 - lato * 0.17, lato * 0.44, grassetto, C.bianco);
+    return lato;
   };
 
   const testata = () => {
     y = PAG_ALTEZZA - 44;
     const alto = y;
-    marchio(PAG_L, alto, 34);
-    const xTesto = PAG_L + 44;
+    const wMarchio = marchio(PAG_L, alto, 34);
+    const xTesto = PAG_L + wMarchio + 10;
     if (azienda.nome) scrivi(azienda.nome, xTesto, alto - 13, 14, grassetto);
     const contatti = [
       [azienda.indirizzo, azienda.partitaIva && `P.IVA ${azienda.partitaIva}`].filter(Boolean).join(' · '),
@@ -236,9 +261,9 @@ export async function nuovoFoglio({
     pagine.push(page);
     if (prima) { testata(); return; }
     y = PAG_ALTEZZA - 44;
-    marchio(PAG_L, y, 24);
-    if (azienda.nome) scrivi(azienda.nome, PAG_L + 32, y - 11, 11, grassetto);
-    scrivi([titolo, numero && `N. ${numero}`].filter(Boolean).join(' · '), PAG_L + 32, y - 21, 7.5, font, C.grigio);
+    const xTesto = PAG_L + marchio(PAG_L, y, 24) + 8;
+    if (azienda.nome) scrivi(azienda.nome, xTesto, y - 11, 11, grassetto);
+    scrivi([titolo, numero && `N. ${numero}`].filter(Boolean).join(' · '), xTesto, y - 21, 7.5, font, C.grigio);
     if (riepilogo) scriviDestra(riepilogo, PAG_R, y - 11, 8, font, C.grigio);
     y -= 38;
   };

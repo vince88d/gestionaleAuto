@@ -23,6 +23,14 @@ export async function salvaAzienda(dati) {
   return true;
 }
 
+// Logo e colore dei documenti: si salvano da soli (merge), senza toccare gli
+// altri dati dell'azienda che qualcuno potrebbe stare modificando.
+export async function salvaAspettoAzienda({ logo, coloreAccento }) {
+  const { logo: l, coloreAccento: c } = normalizzaAzienda({ logo, coloreAccento });
+  await setDoc(doc(db, ...AZIENDA_DOC), { logo: l, coloreAccento: c, aggiornatoIl: serverTimestamp() }, { merge: true });
+  return true;
+}
+
 // Copia una sola volta su Firestore i dati che la vecchia versione salvava sul
 // computer. In transazione: se due postazioni la fanno insieme, o se qualcuno
 // ha gia' salvato dei dati, vince quello che c'e' gia' e niente viene
