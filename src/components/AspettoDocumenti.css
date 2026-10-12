@@ -1,48 +1,72 @@
-/* Aspetto dei documenti (mockup gestionale-logo-colore.html) */
-.asp-griglia { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
-@media (max-width: 860px) { .asp-griglia { grid-template-columns: 1fr; } }
-.asp-campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
-.asp-titolo-campo { font-size: 14px; font-weight: 700; color: #2c3e50; }
-.asp-aiuto { margin: 0; font-size: 13px; line-height: 1.4; color: #5d6d7e; }
-.asp-logo-riquadro { display: flex; align-items: center; gap: 14px; margin-top: 6px; padding: 12px; border: 1px dashed #b8c3cf; border-radius: 12px; background: #f8fafc; }
-.asp-logo-anteprima { flex: none; display: flex; align-items: center; justify-content: center; width: 150px; height: 64px; border: 1px solid #e3e8ee; border-radius: 8px; background: #fff; overflow: hidden; }
+/* Aspetto dei documenti: una colonna, come le altre sezioni delle Impostazioni.
+   Spaziatura a multipli di 4/8, controlli alti almeno 44 px, il colore non e'
+   mai l'unico segnale (spunta e nome sul colore scelto). */
+.asp-blocco { padding: 20px 0; border-top: 1px solid #eef1f5; }
+.asp-blocco:first-of-type { padding-top: 0; border-top: 0; }
+.asp-h3 { margin: 0 0 4px; font-size: 14px; font-weight: 700; color: #2c3e50; }
+.asp-aiuto { margin: 0 0 12px; font-size: 13px; line-height: 1.45; color: #55616d; }
+.asp-blocco > .asp-h3 + .asp-cornice { margin-top: 8px; }
+
+/* Anteprima: proporzioni della testata del PDF; scritte e margini seguono la larghezza (cqw) */
+.asp-cornice { container-type: inline-size; padding: 20px; border-radius: 12px; background: #eef1f5; }
+.asp-doc {
+  --u: calc(100cqw / 56);
+  padding: calc(var(--u) * 2.2) calc(var(--u) * 2.4) calc(var(--u) * 1.8);
+  border-radius: 6px; background: #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.14);
+  font-size: var(--u); line-height: 1.35; color: #1a1f26;
+}
+.asp-doc-testa { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.2em; }
+.asp-doc-marchio { display: flex; align-items: center; gap: 1em; min-width: 0; }
+.asp-doc-sigla { display: flex; align-items: center; justify-content: center; flex: none; width: 3.4em; height: 3.4em; border-radius: 0.8em; background: var(--asp-acc); color: #fff; font-size: 1.4em; font-weight: 700; }
+.asp-doc-logo { flex: none; height: 3.4em; max-width: 12em; width: auto; object-fit: contain; }
+.asp-doc-nome b { display: block; font-size: 1.4em; line-height: 1.25; }
+.asp-doc-nome span { display: block; font-size: 0.8em; color: #55616d; }
+.asp-doc-titolo { text-align: right; flex: none; }
+.asp-doc-titolo h4 { margin: 0; font-size: 1.9em; line-height: 1.15; color: var(--asp-acc); white-space: nowrap; }
+.asp-doc-titolo span { display: block; font-size: 0.8em; color: #55616d; }
+.asp-doc-titolo .asp-doc-copia { display: inline-block; margin-top: 0.4em; padding: 0.1em 0.9em; border: 1px solid var(--asp-acc); border-radius: 1em; font-size: 0.7em; font-weight: 700; letter-spacing: 0.08em; color: var(--asp-acc); }
+.asp-doc-fascia { display: grid; grid-template-columns: 1fr 1.4fr 1fr; margin-top: 1.4em; border-radius: 0.6em; background: var(--asp-acc-chiaro); }
+.asp-doc-fascia div { padding: 0.7em 1em; border-right: 1px solid #fff; min-width: 0; }
+.asp-doc-fascia div:last-child { border-right: 0; }
+.asp-doc-fascia small { display: block; font-size: 0.68em; letter-spacing: 0.1em; color: #55616d; }
+.asp-doc-fascia b { display: block; font-size: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.asp-doc-sezione { display: flex; align-items: center; gap: 0.6em; margin: 1.4em 0 0; font-size: 1.1em; font-weight: 700; }
+.asp-doc-sezione i { display: flex; align-items: center; justify-content: center; width: 1.4em; height: 1.4em; border-radius: 50%; background: var(--asp-acc); color: #fff; font-size: 0.8em; font-style: normal; }
+.asp-doc-sezione::after { content: ''; flex: 1; height: 1px; background: #e3e8ee; }
+
+/* Logo: anteprima a sinistra, dati e pulsanti a destra, sulla stessa riga */
+.asp-logo { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.asp-logo-anteprima { display: flex; align-items: center; justify-content: center; flex: none; width: 176px; height: 88px; border: 1px solid #d5dde6; border-radius: 10px; background: #fff; overflow: hidden; }
 .asp-logo-anteprima img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.asp-logo-vuoto { font-size: 13px; color: #5d6d7e; }
-.asp-logo-testi { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.asp-logo-dettaglio { font-size: 13px; color: #5d6d7e; overflow-wrap: anywhere; }
+.asp-logo-vuoto { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border: 1px dashed #b8c3cf; border-radius: 8px; width: calc(100% - 16px); height: calc(100% - 16px); justify-content: center; font-size: 13px; color: #55616d; }
+.asp-logo-testi { display: flex; flex-direction: column; gap: 8px; flex: 1 1 260px; min-width: 0; }
+.asp-logo-dettaglio { font-size: 13px; line-height: 1.4; color: #55616d; overflow-wrap: anywhere; }
 .asp-azioni { display: flex; gap: 8px; flex-wrap: wrap; }
-.asp-togli { color: #c0392b; }
-.asp-errore { margin: 6px 0 0; font-size: 13.5px; font-weight: 600; color: #b0321f; }
-.asp-tinte { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
-.asp-tinta { width: 40px; height: 40px; padding: 0; border: 3px solid #fff; border-radius: 10px; box-shadow: 0 0 0 1px #b8c3cf; cursor: pointer; }
+.imp-btn.asp-btn { min-height: 44px; }
+.imp-btn.asp-togli { color: #b0321f; }
+
+/* Colore: otto campioni su una riga, poi codice e controllo */
+.asp-tinte { display: flex; flex-wrap: wrap; gap: 8px; }
+.asp-tinta { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 3px solid #fff; border-radius: 10px; box-shadow: 0 0 0 1px #b8c3cf; color: #fff; cursor: pointer; }
 .asp-tinta--scelta { box-shadow: 0 0 0 3px #1a6fb0; }
 .asp-tinta:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
-.asp-hex { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.asp-campione { width: 40px; height: 40px; border: 1px solid #b8c3cf; border-radius: 8px; flex: none; }
-.asp-hex-input { width: 130px; font-family: Menlo, Consolas, monospace; }
-.asp-verdetto { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0 0; padding: 9px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.4; }
-.asp-verdetto svg { flex: none; margin-top: 2px; }
+.asp-hex { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+.asp-hex-campo { display: flex; align-items: flex-end; gap: 8px; }
+.asp-campione { flex: none; width: 44px; height: 44px; border: 1px solid #b8c3cf; border-radius: 8px; }
+.asp-hex-testi { display: flex; flex-direction: column; gap: 4px; }
+.asp-hex-etichetta { font-size: 13px; font-weight: 600; color: #4b5563; }
+.asp-hex-input { width: 140px; height: 44px; font-family: Menlo, Consolas, monospace; }
+.asp-verdetto, .asp-errore { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.4; }
+.asp-verdetto svg, .asp-errore svg { flex: none; margin-top: 2px; }
 .asp-verdetto--ok { background: #f1faf5; border: 1px solid #bfe3cd; color: #14532d; }
 .asp-verdetto--no { background: #fff9ec; border: 1px solid #f1d9a8; color: #7a4a0a; }
-.asp-piede { margin-top: 4px; }
+.asp-errore { background: #fdf0ee; border: 1px solid #f3c8c2; color: #8f2a1c; font-weight: 600; }
 
-.asp-etichetta { display: inline-block; margin: 0 0 6px; padding: 2px 10px; border-radius: 10px; background: #eef1f5; font-size: 12px; font-weight: 700; color: #5d6d7e; }
-.asp-doc { padding: 16px 18px; border: 1px solid #e3e8ee; border-radius: 10px; background: #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12); font-size: 10px; color: #1a1f26; }
-.asp-doc-testa { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.asp-doc-marchio { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.asp-doc-sigla { display: flex; align-items: center; justify-content: center; flex: none; width: 34px; height: 34px; border-radius: 8px; background: var(--asp-acc); color: #fff; font-size: 14px; font-weight: 700; }
-.asp-doc-logo { flex: none; height: 34px; max-width: 120px; width: auto; object-fit: contain; }
-.asp-doc-nome b { display: block; font-size: 13px; }
-.asp-doc-nome span { display: block; color: #5d6d7e; font-size: 8px; }
-.asp-doc-titolo { text-align: right; }
-.asp-doc-titolo h3 { margin: 0; font-size: 18px; color: var(--asp-acc); }
-.asp-doc-titolo span { display: block; color: #5d6d7e; font-size: 8px; }
-.asp-doc-titolo .asp-doc-copia { display: inline-block; margin-top: 3px; padding: 1px 8px; border: 1px solid var(--asp-acc); border-radius: 9px; color: var(--asp-acc); font-size: 7px; font-weight: 700; letter-spacing: 0.6px; }
-.asp-doc-fascia { display: grid; grid-template-columns: 1fr 1.4fr 1fr; margin-top: 12px; border-radius: 6px; background: var(--asp-acc-chiaro); }
-.asp-doc-fascia div { padding: 6px 9px; border-right: 1px solid #fff; }
-.asp-doc-fascia div:last-child { border-right: 0; }
-.asp-doc-fascia small { display: block; font-size: 6.5px; letter-spacing: 0.8px; color: #5d6d7e; }
-.asp-doc-fascia b { font-size: 10.5px; }
-.asp-doc-sezione { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; font-size: 10.5px; }
-.asp-doc-sezione i { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: var(--asp-acc); color: #fff; font-size: 8px; font-style: normal; }
-.asp-doc-sezione::after { content: ''; flex: 1; height: 1px; background: #e3e8ee; }
+/* Piede: stato a sinistra, azioni a destra */
+.asp-piede { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 16px; border-top: 1px solid #eef1f5; }
+.asp-stato { margin-right: auto; font-size: 13px; font-weight: 600; color: #7a4a0a; }
+
+@media (max-width: 560px) {
+  .asp-cornice { padding: 12px; }
+  .asp-logo-anteprima { width: 100%; }
+}
