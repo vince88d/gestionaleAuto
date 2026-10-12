@@ -739,8 +739,14 @@ ipcMain.handle('salva-documenti-prenotazione', async (_, data) => {
   }
 });
 
+// Apre la bozza nel programma di posta (mailto:). Se c'e' `mostraFile`, prima
+// mostra quel file (il PDF appena salvato) selezionato nella sua cartella, cosi'
+// basta trascinarlo nell'email.
 ipcMain.handle('apri-bozza-email', async (_, data) => {
   try {
+    if (typeof data?.mostraFile === 'string' && path.isAbsolute(data.mostraFile) && fs.existsSync(data.mostraFile)) {
+      shell.showItemInFolder(data.mostraFile);
+    }
     const to = encodeURIComponent(data?.to || '');
     const subject = encodeURIComponent(data?.subject || '');
     const body = encodeURIComponent(data?.body || '');

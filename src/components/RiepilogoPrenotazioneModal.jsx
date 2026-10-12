@@ -9,6 +9,7 @@ import { dataEOra } from '../utils/scadenze';
 import { registraConsegna, messaggioErrorePrenotazione } from '../lib/firestorePrenotazioni';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { salvaPdfConsegna } from '../utils/pdfConsegna';
+import { bozzaEmail } from '../utils/emailRiepilogo';
 import { useAzienda } from '../lib/firestoreAzienda';
 import { euro as euroTondo } from '../utils/protezioni';
 import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
@@ -112,26 +113,15 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
     }
 
     if (apriEmail) {
-      const allegatiText = documentiSalvati.length > 0
-        ? `\n\nDocumenti salvati:\n${documentiSalvati.join('\n')}\n\nAllega questi file prima di inviare l'email.`
-        : '\n\nSe vuoi allegare il riepilogo o il contratto, salvali prima dal gestionale.';
-
       const emailResult = await window.electronAPI.apriBozzaEmail({
-        to: prenotazione.emailCliente || '',
-        subject: `Riepilogo prenotazione veicolo - ${prenotazione.targa}`,
-        body:
-          `Gentile ${prenotazione.cliente},` +
-          `\n\nIn allegato trovi il riepilogo della tua prenotazione.` +
-          `${contrattoDaSalvare ? '\nSe necessario, allega anche il contratto personalizzato.' : ''}` +
-          `\n\nPeriodo: dal ${dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)} al ${dataEOra(prenotazione.dataFine, prenotazione.oraFine)}` +
-          `\nVeicolo: ${prenotazione.veicolo} (${prenotazione.targa})` +
-          `\nPrezzo totale: ${prezzoTotale} EUR` +
-          `\n\nGrazie.` +
-          allegatiText,
+        ...bozzaEmail({ fase: 'consegna', prenotazione, scheda: datiScheda, azienda, conContratto: Boolean(contrattoDaSalvare) }),
+        mostraFile: documentiSalvati[0],
       });
 
       if (!emailResult.success) {
         toast.error(emailResult.error || 'Impossibile aprire il client email');
+      } else if (documentiSalvati.length > 0) {
+        toast.info("Il PDF è selezionato nella cartella: trascinalo nell'email.");
       }
     }
     return pdfOk;
@@ -343,7 +333,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
               <span>
                 Apri l&apos;email per il cliente
                 <span className="pz-aiuto" style={{ display: 'block' }}>
-                  Il gestionale compila destinatario, oggetto e testo; gli allegati li aggiungi dal programma di posta.
+                  Il gestionale scrive il riepilogo e ti mostra il PDF salvato: lo trascini nell&apos;email e invii.
                 </span>
               </span>
             </label>

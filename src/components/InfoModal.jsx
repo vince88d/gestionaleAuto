@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import Modal from 'react-modal';
 import './InfoModal.css';
-import { Pencil, Trash2, KeyRound, X, Download, FileText, Car, LogIn } from 'lucide-react';
+import { Pencil, Trash2, KeyRound, X, Download, FileText, Car, LogIn, Mail } from 'lucide-react';
 import '../styles/Prenotazione.css';
 import { dataEOra, formattaData } from '../utils/scadenze';
 import { oraBreve } from '../utils/orari';
@@ -17,6 +17,7 @@ import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
 import DotazioneConsegnata from './DotazioneConsegnata';
 import RientroDettagli from './RientroDettagli';
 import { salvaVerbaleRientro } from '../utils/pdfRientro';
+import { bozzaEmail } from '../utils/emailRiepilogo';
 import { useAzienda } from '../lib/firestoreAzienda';
 
 
@@ -123,6 +124,29 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
     } catch (error) {
       console.error('Errore verbale di rientro:', error);
       toast.error('Verbale non salvato.');
+    }
+  };
+
+  // Salva il PDF, mostra il file nella cartella e apre l'email di riepilogo al
+  // cliente: l'allegato si trascina a mano (nessun servizio di invio).
+  const inviaEmail = async (fase) => {
+    try {
+      const esito = fase === 'rientro'
+        ? await salvaVerbaleRientro(prenotazione, azienda)
+        : await salvaPdfConsegna({ prenotazione, azienda });
+      if (!esito.success) {
+        if (!esito.cancelled) toast.error(esito.error || 'PDF non salvato.');
+        return;
+      }
+      const risposta = await window.electronAPI.apriBozzaEmail({
+        ...bozzaEmail({ fase, prenotazione, azienda }),
+        mostraFile: esito.paths?.[0],
+      });
+      if (risposta?.success) toast.info("Il PDF è selezionato nella cartella: trascinalo nell'email.");
+      else toast.error(risposta?.error || 'Impossibile aprire il programma di posta.');
+    } catch (error) {
+      console.error('Errore email di riepilogo:', error);
+      toast.error('Email non preparata.');
     }
   };
 
@@ -261,9 +285,19 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
               <FileText size={16} aria-hidden="true" /> PDF della consegna
             </button>
           )}
+          {consegnata && window.electronAPI?.apriBozzaEmail && (
+            <button type="button" className="vd-btn" onClick={() => inviaEmail('consegna')}>
+              <Mail size={16} aria-hidden="true" /> Email consegna
+            </button>
+          )}
           {prenotazione.rientro && window.electronAPI?.salvaDocumentiPrenotazione && (
             <button type="button" className="vd-btn" onClick={scaricaVerbaleRientro}>
               <FileText size={16} aria-hidden="true" /> Verbale di rientro (PDF)
+            </button>
+          )}
+          {prenotazione.rientro && window.electronAPI?.apriBozzaEmail && (
+            <button type="button" className="vd-btn" onClick={() => inviaEmail('rientro')}>
+              <Mail size={16} aria-hidden="true" /> Email rientro
             </button>
           )}
           <span className="pz-piede-nota" />
