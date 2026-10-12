@@ -79,3 +79,18 @@ describe('prenotazioniSuVeicoloSospeso', () => {
     expect(prenotazioniSuVeicoloSospeso(flotta, prenotazioni, '2026-10-01').map((p) => p.id)).toEqual(['p1']);
   });
 });
+
+describe('prenotazioni nel Cestino', () => {
+  const { disponibiliPerCategoria, sovraprenotazioniCategoria, prenotazioniSuVeicoloSospeso } = require('./disponibilitaCategoria');
+  const veicoli = [{ targa: 'FU111RG', categoria: 'Furgoni' }];
+  const nelCestino = { id: 'x', status: 'attiva', eliminato: true, targa: 'FU111RG', categoria: 'Furgoni', dataInizio: '2099-10-12', dataFine: '2099-10-15' };
+
+  it('non tolgono unita\' alla categoria', () => {
+    expect(disponibiliPerCategoria('Furgoni', '2099-10-13', '2099-10-14', veicoli, [nelCestino], [])).toBe(1);
+    expect(disponibiliPerCategoria('Furgoni', '2099-10-13', '2099-10-14', veicoli, [{ ...nelCestino, eliminato: false }], [])).toBe(0);
+  });
+  it('non contano come sovraprenotazioni ne come impegni su un veicolo sospeso', () => {
+    expect(sovraprenotazioniCategoria('Furgoni', [], [nelCestino], [], '2099-10-01')).toEqual([]);
+    expect(prenotazioniSuVeicoloSospeso([{ targa: 'FU111RG', sospeso: true }], [nelCestino], '2099-10-01')).toEqual([]);
+  });
+});

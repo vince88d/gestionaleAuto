@@ -315,3 +315,24 @@ describe('controllaPrenotazione con l\'eta\' del conducente', () => {
       .toEqual({ prezzoTotale: 200 });
   });
 });
+
+describe('prenotazioni nel Cestino (eliminate)', () => {
+  const { occupantiTranne, statoVeicoloNelPeriodo, giorniOccupati } = require('./regolePrenotazione');
+  const furgone = { targa: 'FU111RG', categoria: 'Furgoni' };
+  const eliminata = { id: 'x', status: 'attiva', eliminato: true, targa: 'FU111RG', categoria: 'Furgoni', dataInizio: '2099-10-12', dataFine: '2099-10-15' };
+
+  it('non occupano il veicolo: il furgone risulta libero', () => {
+    expect(occupantiTranne([eliminata])).toEqual([]);
+    expect(statoVeicoloNelPeriodo({
+      veicolo: furgone, inizio: '2099-10-13', fine: '2099-10-14', veicoli: [furgone], prenotazioni: [eliminata], holds: [], oggi: '2099-01-01',
+    })).toBe('libero');
+    expect(giorniOccupati({ targa: 'FU111RG', prenotazioni: [eliminata] })).toEqual([]);
+  });
+
+  it('una non eliminata sulla stessa targa continua a occuparlo', () => {
+    const viva = { ...eliminata, id: 'y', eliminato: undefined };
+    expect(statoVeicoloNelPeriodo({
+      veicolo: furgone, inizio: '2099-10-13', fine: '2099-10-14', veicoli: [furgone], prenotazioni: [eliminata, viva], holds: [], oggi: '2099-01-01',
+    })).toBe('occupato');
+  });
+});
