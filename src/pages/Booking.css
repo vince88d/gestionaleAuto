@@ -1502,3 +1502,48 @@ gap: 0.3rem;
 .fase-badge--scegli { background: #ffedd5; color: #9a3412; }
 .bk-btn--scegli { border-color: #b45309; background: #b45309; color: #fff; }
 .bk-btn--scegli:hover:not(:disabled) { background: #92400e; }
+
+/* ---------- Elenco di lavoro (mockup gestionale-prenotazioni-form-elenco.html) ----------
+   Larghezze fisse in percentuale: la tabella sta sempre nella finestra e i
+   pulsanti di riga non escono mai. Una barra colorata a sinistra dice la fase
+   (la fase e' scritta anche a parole nel badge). */
+.bk-tabella--lavoro { table-layout: fixed; }
+.bk-tabella--lavoro th:nth-child(1) { width: 6px; }
+.bk-tabella--lavoro th:nth-child(2) { width: 17%; }
+.bk-tabella--lavoro th:nth-child(3) { width: 15%; }
+.bk-tabella--lavoro th:nth-child(4) { width: 20%; }
+.bk-tabella--lavoro th:nth-child(5) { width: 13%; }
+.bk-tabella--lavoro th:nth-child(6) { width: 8%; }
+.bk-tabella--lavoro th:nth-child(7) { width: 27%; }
+.bk-tabella--lavoro .bk-fase-cella { width: 6px; padding: 0 !important; }
+.bk-tabella--lavoro th { color: #5d6d7e; }
+.bk-riga--da-consegnare > .bk-fase-cella { background: #3b82f6; }
+.bk-riga--in-corso > .bk-fase-cella { background: #22c55e; }
+.bk-riga--da-concludere > .bk-fase-cella { background: #ef4444; }
+.bk-riga--scegli > .bk-fase-cella { background: #b45309; }
+
+.bk-tabella--lavoro .bk-secondario { color: #5d6d7e; }
+.bk-tabella--lavoro td:nth-child(2) .bk-principale,
+.bk-tabella--lavoro td:nth-child(2) .bk-secondario,
+.bk-tabella--lavoro td:nth-child(3) .bk-principale { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-tabella--lavoro td:nth-child(4) .bk-principale { white-space: normal; }
+.bk-quando--urgente { color: #c0392b; }
+.bk-quando--domani { color: #c2410c; }
+.bk-quando--prossima { color: #b45309; }
+.bk-tabella--lavoro .fase-badge { white-space: normal; text-align: center; line-height: 1.25; }
+
+/* Azione principale a tinta piena (contrasto del testo bianco almeno 4,5:1); «Dettagli» resta un'icona. */
+.bk-tabella--lavoro .bk-btn--consegna { border-color: #1a6fb0; background: #1a6fb0; color: #fff; }
+.bk-tabella--lavoro .bk-btn--consegna:hover:not(:disabled) { background: #145a91; }
+.bk-tabella--lavoro .bk-btn--concludi { border-color: #1e8449; background: #1e8449; color: #fff; }
+.bk-tabella--lavoro .bk-btn--concludi:hover:not(:disabled) { background: #176a3b; }
+.bk-tabella--lavoro .bk-btn--icona { color: #5d6d7e; }
+/* Il nome del pulsante si vede finche' c'e' posto (prima spariva sotto i 1180 px). */
+@media (max-width: 1180px) {
+  .bk-tabella--lavoro .bk-btn-testo { display: inline; }
+  .bk-tabella--lavoro .bk-azioni-riga .bk-btn--piccolo { padding: 6px 10px; }
+}
+@media (max-width: 860px) {
+  .bk-tabella--lavoro .bk-btn-testo { display: none; }
+  .bk-tabella--lavoro .bk-azioni-riga .bk-btn--piccolo { padding: 6px 8px; }
+}

@@ -41,13 +41,14 @@ import { costruisciRientro, istanteRientro, dotazioneDopoRientro } from '../util
 import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
 import {
-  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, promemoria, ritiroEntroOggi,
+  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, ritiroEntroOggi,
 } from '../utils/regolePrenotazione';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { colonneProtezioneExtra, INTESTAZIONI_PROTEZIONE_EXTRA } from '../utils/archivio';
 import { daAssegnare, veicoliLiberiPerPrenotazione } from '../utils/assegnazioneVeicolo';
 import { prenotazioniSuVeicoloSospeso } from '../utils/disponibilitaCategoria';
-import { giornoLocale, formattaData, dataEOra } from '../utils/scadenze';
+import { giornoLocale, formattaData } from '../utils/scadenze';
+import { quandoPrenotazione } from '../utils/quandoPrenotazione';
 import{
   addPrenotazione,
   updatePrenotazione,
@@ -866,7 +867,7 @@ return (
       disabled={prenotazioniDaConcludereOggi.length === 0}
       title="Conclude i noleggi consegnati e finiti da ieri o prima"
     >
-      <CheckCircle size={16} aria-hidden="true" /> Concludi i noleggi finiti
+      <CheckCircle size={16} aria-hidden="true" /> Concludi i noleggi finiti{prenotazioniDaConcludereOggi.length > 0 ? ` (${prenotazioniDaConcludereOggi.length})` : ''}
     </button>
   </div>
 
@@ -897,21 +898,22 @@ return (
     </div>
   ) : (
     <div className="bk-elenco" ref={listaRef}>
-      <table className="bk-tabella">
+      <table className="bk-tabella bk-tabella--lavoro">
         <thead>
           <tr>
+            <th className="bk-fase-cella" aria-hidden="true" />
             <th>Cliente</th>
-            <th>Veicolo</th>
-            <th>Periodo</th>
-            <th className="bk-destra">Prezzo</th>
+            <th>Auto</th>
+            <th>Quando</th>
             <th>Stato</th>
-            <th aria-label="Azioni" />
+            <th className="bk-destra">Prezzo</th>
+            <th aria-label="Cosa fare" />
           </tr>
         </thead>
         <tbody>
           {prenotazioniAttiveFiltrate.length === 0 ? (
             <tr>
-              <td colSpan="6" className="bk-vuoto">
+              <td colSpan="7" className="bk-vuoto">
                 {ricercaAttiva ? `Nessuna prenotazione trovata per “${ricercaAttiva}”.` : 'Nessuna prenotazione in questo elenco.'}
               </td>
             </tr>
@@ -920,10 +922,11 @@ return (
               .slice((paginaPrenotazioni - 1) * righePerPagina, paginaPrenotazioni * righePerPagina)
               .map((p) => {
                 const fase = faseLavoro(p, oggi);
-                const nota = promemoria(p, oggi);
                 const giorniNoleggio = calcGiorni(p.dataInizio, p.dataFine, p.oraInizio, p.oraFine, p.tolleranzaMinuti);
+                const quando = quandoPrenotazione(p, oggi, giorniNoleggio);
                 return (
-                  <tr key={p.id} onClick={() => openInfoModal(p)} className="bk-riga">
+                  <tr key={p.id} onClick={() => openInfoModal(p)} className={`bk-riga bk-riga--${daAssegnare(p) ? 'scegli' : fase}`}>
+                    <td className="bk-fase-cella" aria-hidden="true" />
                     <td>
                       <span className="bk-principale">{p.cliente || '—'}</span>
                       {p.emailCliente && <span className="bk-secondario">{p.emailCliente}</span>}
@@ -937,21 +940,18 @@ return (
                       )}
                     </td>
                     <td>
-                      <span className="bk-principale">{dataEOra(p.dataInizio, p.oraInizio)} → {dataEOra(p.dataFine, p.oraFine)}</span>
-                      {giorniNoleggio > 0 && (
-                        <span className="bk-secondario">{giorniNoleggio} {giorniNoleggio === 1 ? 'giorno' : 'giorni'}</span>
-                      )}
-                    </td>
-                    <td className="bk-destra">
-                      <span className="bk-principale">
-                        {prezzoPrenotazione(p) ? `€ ${Number(prezzoPrenotazione(p)).toLocaleString('it-IT')}` : '—'}
-                      </span>
+                      <span className={`bk-principale bk-quando bk-quando--${quando.livello || 'normale'}`}>{quando.principale}</span>
+                      <span className="bk-secondario">{quando.secondaria}</span>
                     </td>
                     <td>
                       <span className={`fase-badge fase-badge--${daAssegnare(p) ? 'scegli' : fase}`}>
                         {daAssegnare(p) ? 'Auto da scegliere' : ETICHETTA_FASE[fase]}
                       </span>
-                      <span className={`bk-promemoria bk-promemoria--${nota.livello || 'normale'}`}>{nota.testo}</span>
+                    </td>
+                    <td className="bk-destra">
+                      <span className="bk-principale">
+                        {prezzoPrenotazione(p) ? `€ ${Number(prezzoPrenotazione(p)).toLocaleString('it-IT')}` : '—'}
+                      </span>
                     </td>
                     <td className="bk-azioni-riga" onClick={(e) => e.stopPropagation()}>
                       {daAssegnare(p) && (
