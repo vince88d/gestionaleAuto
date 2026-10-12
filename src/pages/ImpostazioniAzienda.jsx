@@ -6,7 +6,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { useAzienda, salvaAzienda } from '../lib/firestoreAzienda';
+import { useAzienda, salvaAzienda, salvaAspettoAzienda } from '../lib/firestoreAzienda';
+import AspettoDocumenti from '../components/AspettoDocumenti';
 import OrariSede from '../components/OrariSede';
 import { leggiDatiPerBackup } from '../lib/backupDati';
 import {
@@ -26,7 +27,7 @@ const CAMPI = [
   },
   { nome: 'indirizzo', etichetta: 'Indirizzo', largo: true },
 ];
-const ETICHETTE = Object.fromEntries(CAMPI.map((c) => [c.nome, c.etichetta]));
+const ETICHETTE = { ...Object.fromEntries(CAMPI.map((c) => [c.nome, c.etichetta])), coloreAccento: 'Colore dei documenti', logo: 'Logo' };
 
 function ImpostazioniAzienda() {
   const navigate = useNavigate();
@@ -226,6 +227,8 @@ function ImpostazioniAzienda() {
           </button>
         </div>
       </section>
+
+      <AspettoDocumenti dati={datiSalvati} caricato={caricato} onSalva={salvaAspettoAzienda} />
 
       <OrariSede />
 

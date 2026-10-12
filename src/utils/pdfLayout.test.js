@@ -104,3 +104,36 @@ describe('foglio', () => {
     expect(doc.catalog.get(PDFName.of('Lang')).toString()).toContain('it-IT');
   });
 });
+
+describe('logo dell\'azienda nel PDF', () => {
+  const { PDFName, PDFRawStream } = require('pdf-lib');
+  const immagini = (doc) => doc.context.enumerateIndirectObjects()
+    .filter(([, o]) => o instanceof PDFRawStream && o.dict.get(PDFName.of('Subtype')) === PDFName.of('Image')).length;
+  const genera = async (azienda, pagine = 1) => {
+    const foglio = await nuovoFoglio({ azienda, titolo: 'Verbale di consegna', numero: 'ABC123', copia: 'Copia per il cliente' });
+    foglio.sezione('Uno');
+    if (pagine > 1) {
+      foglio.tabella({ colonne: [{ titolo: 'Voce' }, { titolo: 'Importo', destra: true }], righe: Array.from({ length: 80 }, (_, i) => [`Voce ${i}`, '1,00 €']) });
+    }
+    return PDFDocument.load(await foglio.chiudi());
+  };
+
+  it('senza logo non ci sono immagini (resta il quadratino con le iniziali)', async () => {
+    expect(immagini(await genera({ nome: 'Formia Rent' }))).toBe(0);
+  });
+
+  it('con il logo l\'immagine e\' nel PDF, una volta sola anche con piu\' pagine', async () => {
+    // Un PNG con trasparenza diventa due oggetti (immagine e maschera): lo stesso numero con una o piu' pagine.
+    const una = await genera({ nome: 'Formia Rent', logo: PNG_1X1 });
+    const molte = await genera({ nome: 'Formia Rent', logo: PNG_1X1 }, 2);
+    expect(immagini(una)).toBeGreaterThanOrEqual(1);
+    expect(molte.getPageCount()).toBeGreaterThan(1);
+    expect(immagini(molte)).toBe(immagini(una));
+  });
+
+  it('un logo che non si legge non rompe il PDF: si torna alle iniziali', async () => {
+    const doc = await genera({ nome: 'Formia Rent', logo: 'data:image/png;base64,AAAA' });
+    expect(doc.getPageCount()).toBe(1);
+    expect(immagini(doc)).toBe(0);
+  });
+});
