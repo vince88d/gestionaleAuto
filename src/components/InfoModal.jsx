@@ -74,7 +74,7 @@ function ProssimoPasso({ prenotazione, onScegliAuto, onConsegna, onConcludi }) {
 
 function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, onConsegna, onScegliAuto, soloLettura = false }) {
   const printRef = useRef();
-  
+  const { dati: azienda } = useAzienda();
 
   // Qui c'era una sezione "Danni attivi sul veicolo" che leggeva il campo
   // `danniAttivi`, che nessuno scrive piu' (non mostrava mai nulla) e che per
