@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import DatePicker from 'react-datepicker';
 import { it } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
-import { Check, Search, UserPlus, Phone, Mail, ShieldCheck, FileWarning } from 'lucide-react';
+import { Check, Search, UserPlus, Phone, Mail, ShieldCheck, FileWarning, ArrowDown, AlertTriangle } from 'lucide-react';
 import ClienteFormModal from './ClienteFormModal';
 import SceltaVeicolo from './SceltaVeicolo';
 import SceltaProtezioneExtra from './SceltaProtezioneExtra';
@@ -14,6 +14,7 @@ import { giorniOccupati, occupantiTranne, pagataSulSito } from '../utils/regoleP
 import { pezziOccupati, preventivoPrenotazione, scelteIniziali, totaleSceglibile } from '../utils/sceltaExtra';
 import { protezioneImpostata, euro as euroTondo } from '../utils/protezioni';
 import { normalizzaOptional } from '../utils/optional';
+import { haScelteDaFare, testoScelte } from '../utils/riepilogoScelte';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { confrontaConListino } from '../utils/prezzoListino';
 import { cercaClienti } from '../utils/validaCliente';
@@ -304,6 +305,8 @@ function BookingForm({
     setConDocumenti(false);
     setCerca('');
     setAperta(false);
+    // Scelto il cliente, si va a protezione ed extra (se ce n'e' da scegliere).
+    if (passi.quando && passi.auto && haScelte4) setTimeout(() => vaiA(4), 150);
   };
 
   const clientiTrovati = useMemo(
@@ -378,6 +381,12 @@ function BookingForm({
     e.preventDefault();
     setTentato(true);
     if (Object.keys(errori).length > 0 || preventivo?.errore) return;
+    // Mai guardata la sezione 4: un avviso breve, senza bloccare (una sola volta).
+    if (haScelte4 && !guardato4) { setChiediConferma(true); return; }
+    eseguiInvio();
+  };
+
+  const eseguiInvio = () => {
     onSubmit({
       // Domanda 4: le scelte (il prezzo lo ricalcola controllaPrenotazione).
       sceltaProtezione,
@@ -395,13 +404,42 @@ function BookingForm({
     });
   };
 
+  // Protezione ed extra stanno in fondo alla pagina: si segna se l'operatore li
+  // ha guardati (o toccati), cosi' il Riepilogo e il pulsante lo ricordano.
+  const corpoRef = useRef(null);
+  const sez4Ref = useRef(null);
+  const [visto4, setVisto4] = useState(Boolean(bookingId)); // in modifica le scelte ci sono gia'
+  const [in4, setIn4] = useState(false);
+  const [chiediConferma, setChiediConferma] = useState(false);
+  const haScelte4 = !sito && haScelteDaFare({ categoria, protezione, numeroExtra: elencoExtra.length });
+  const scelteToccate = JSON.stringify(scelte) !== JSON.stringify(scelteDiPartenza.current);
+  const guardato4 = visto4 || scelteToccate;
+  useEffect(() => {
+    const el = sez4Ref.current;
+    if (!el || !haScelte4) return undefined;
+    if (typeof IntersectionObserver === 'undefined') { setVisto4(true); return undefined; }
+    const osserva = new IntersectionObserver(([voce]) => {
+      const altezza = voce.intersectionRect.height;
+      setIn4(altezza >= 60);
+      if (altezza >= 100) setVisto4(true);
+    }, { root: corpoRef.current, threshold: Array.from({ length: 21 }, (_, i) => i / 20) });
+    osserva.observe(el);
+    return () => osserva.disconnect();
+  }, [haScelte4]);
+  const vaiA = (numero) => {
+    corpoRef.current?.querySelector(`#np-sezione-${numero}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  };
+  const sceltoTesto = testoScelte({ protezione, sceltaProtezione, preventivo });
+
   const Passo = ({ numero, fatto, testo }) => {
     const attivo = passi.attivo === numero && !fatto;
     return (
       <li className={`np-passo ${fatto ? 'np-passo--fatto' : ''} ${attivo ? 'np-passo--attivo' : ''}`}>
-        <span className="np-passo-numero" aria-hidden="true">{fatto ? <Check size={15} strokeWidth={3} /> : numero}</span>
-        {testo}
-        {fatto && <span className="np-nascosto"> (fatto)</span>}
+        <button type="button" className="np-passo-vai" onClick={() => vaiA(numero)}>
+          <span className="np-passo-numero" aria-hidden="true">{fatto ? <Check size={15} strokeWidth={3} /> : numero}</span>
+          {testo}
+          {fatto && <span className="np-nascosto"> (fatto)</span>}
+        </button>
       </li>
     );
   };
@@ -419,18 +457,21 @@ function BookingForm({
           <li className="np-passi-linea" aria-hidden="true" />
           <Passo numero={3} fatto={passi.chi && !errori.telefono} testo="Chi la prende" />
           <li className="np-passi-linea" aria-hidden="true" />
-          {/* Facoltativa: e' "da fare" solo dopo le prime tre. */}
-          <li className={`np-passo ${passi.quando && passi.auto && passi.chi ? 'np-passo--attivo' : ''}`}>
-            <span className="np-passo-numero" aria-hidden="true">4</span>
-            Protezione ed extra
+          {/* Facoltativa: e' "da fare" solo dopo le prime tre; «da controllare» finche' non la si guarda. */}
+          <li className={`np-passo ${passi.quando && passi.auto && passi.chi ? (haScelte4 && !guardato4 ? 'np-passo--attenzione' : guardato4 && haScelte4 ? 'np-passo--fatto' : 'np-passo--attivo') : ''}`}>
+            <button type="button" className="np-passo-vai" onClick={() => vaiA(4)}>
+              <span className="np-passo-numero" aria-hidden="true">{haScelte4 && guardato4 && passi.chi ? <Check size={15} strokeWidth={3} /> : 4}</span>
+              Protezione ed extra
+              {haScelte4 && !guardato4 && passi.quando && passi.auto && passi.chi && <span className="np-passo-nota"> · da controllare</span>}
+            </button>
           </li>
         </ol>
       </header>
 
-      <div className="np-corpo">
+      <div className="np-corpo" ref={corpoRef}>
         <div className="np-colonna">
           {/* 1. Quando */}
-          <section className={`np-sezione ${passi.attivo === 1 ? 'np-sezione--attiva' : ''}`}>
+          <section id="np-sezione-1" className={`np-sezione ${passi.attivo === 1 ? 'np-sezione--attiva' : ''}`}>
             <h3 className="np-sezione-titolo"><span className="np-numero">1.</span> Quando?</h3>
             <div className="np-date">
               <div className="np-ora-blocco">
@@ -510,7 +551,7 @@ function BookingForm({
           </section>
 
           {/* 2. Quale auto */}
-          <section className={`np-sezione ${passi.attivo === 2 ? 'np-sezione--attiva' : ''} ${mostraErrore('targa') ? 'np-sezione--errore' : ''}`}>
+          <section id="np-sezione-2" className={`np-sezione ${passi.attivo === 2 ? 'np-sezione--attiva' : ''} ${mostraErrore('targa') ? 'np-sezione--errore' : ''}`}>
             <h3 className="np-sezione-titolo"><span className="np-numero">2.</span> Quale auto?</h3>
             <SceltaVeicolo
               veicoli={veicoliSelezionabili}
@@ -528,7 +569,7 @@ function BookingForm({
           </section>
 
           {/* 3. Chi la prende */}
-          <section className={`np-sezione ${passi.attivo === 3 && !passi.chi ? 'np-sezione--attiva' : ''} ${mostraErrore('cliente') ? 'np-sezione--errore' : ''}`}>
+          <section id="np-sezione-3" className={`np-sezione ${passi.attivo === 3 && !passi.chi ? 'np-sezione--attiva' : ''} ${mostraErrore('cliente') ? 'np-sezione--errore' : ''}`}>
             <h3 className="np-sezione-titolo"><span className="np-numero">3.</span> Chi la prende?</h3>
 
             {modoCliente === 'cerca' && (
@@ -706,21 +747,28 @@ function BookingForm({
           </section>
 
           {/* 4. Protezione ed extra */}
-          <SceltaProtezioneExtra
-            categoria={categoria}
-            protezione={protezione}
-            sceltaProtezione={sceltaProtezione}
-            onProtezione={(tipo) => setScelte((x) => ({ ...x, sceltaProtezione: tipo }))}
-            catalogo={elencoExtra}
-            quantita={scelte.sceltaOptional}
-            onQuantita={cambiaQuantita}
-            giorni={giorni}
-            occupati={occupati}
-            conDate={conDate}
-            sito={sito}
-            salvata={initialValues}
-            attiva={passi.quando && passi.auto && passi.chi}
-          />
+          <div id="np-sezione-4" ref={sez4Ref}>
+            <SceltaProtezioneExtra
+              categoria={categoria}
+              protezione={protezione}
+              sceltaProtezione={sceltaProtezione}
+              onProtezione={(tipo) => setScelte((x) => ({ ...x, sceltaProtezione: tipo }))}
+              catalogo={elencoExtra}
+              quantita={scelte.sceltaOptional}
+              onQuantita={cambiaQuantita}
+              giorni={giorni}
+              occupati={occupati}
+              conDate={conDate}
+              sito={sito}
+              salvata={initialValues}
+              attiva={passi.quando && passi.auto && passi.chi}
+            />
+          </div>
+          {haScelte4 && passi.quando && passi.auto && passi.chi && !guardato4 && !in4 && (
+            <button type="button" className="np-pillola" onClick={() => vaiA(4)}>
+              <ArrowDown size={16} strokeWidth={2.5} aria-hidden="true" /> Passo 4: protezione ed extra <small>da controllare</small>
+            </button>
+          )}
         </div>
 
         {/* Riepilogo sempre visibile */}
@@ -740,6 +788,23 @@ function BookingForm({
               <dd className="np-capitalizza">{dati.cliente.trim() || <span className="np-vuoto">da scegliere</span>}</dd>
             </div>
           </dl>
+
+          {haScelte4 && (
+            <div className={`np-scelte ${guardato4 ? 'np-scelte--ok' : ''}`}>
+              <p className="np-scelte-titolo">
+                <span>{guardato4 ? <Check size={14} strokeWidth={3} aria-hidden="true" /> : <AlertTriangle size={14} aria-hidden="true" />} Protezione ed extra</span>
+                <span>{guardato4 ? 'scelti' : 'da controllare'}</span>
+              </p>
+              <div className="np-scelte-riga">
+                <span><b>Protezione</b><em>{sceltoTesto.protezione}</em></span>
+                <button type="button" className="np-link np-link--piccolo" onClick={() => vaiA(4)}>Cambia</button>
+              </div>
+              <div className="np-scelte-riga">
+                <span><b>Extra</b><em>{sceltoTesto.extra}</em></span>
+                <button type="button" className="np-link np-link--piccolo" onClick={() => vaiA(4)}>{sceltoTesto.extra === 'nessuno' ? 'Aggiungi' : 'Cambia'}</button>
+              </div>
+            </div>
+          )}
 
           <div className="np-prezzi">
             {sito ? (
@@ -816,6 +881,20 @@ function BookingForm({
           <button type="submit" className="np-conferma" disabled={salvando}>
             {salvando ? 'Salvataggio…' : bookingId ? 'Salva modifiche' : 'Conferma prenotazione'}
           </button>
+          {chiediConferma && !guardato4 && (
+            <div className="np-chiedi" role="status">
+              <b>Confermi così?</b>
+              <span>
+                Protezione {sceltoTesto.protezione.split(' · ')[0]}
+                {typeof protezioneMostrata?.cauzione === 'number' ? ` (cauzione ${euroTondo(protezioneMostrata.cauzione)})` : ''}
+                {sceltoTesto.extra === 'nessuno' ? ' e nessun extra' : ` ed extra: ${sceltoTesto.extra}`}. Non hai guardato la sezione 4.
+              </span>
+              <span className="np-chiedi-pulsanti">
+                <button type="button" className="np-chiedi-controlla" onClick={() => { setChiediConferma(false); vaiA(4); }}>Controlla</button>
+                <button type="button" className="np-chiedi-si" onClick={eseguiInvio} disabled={salvando}>Sì, conferma</button>
+              </span>
+            </div>
+          )}
           {tentato && erroriElenco.length > 0 ? (
             <p className="np-manca" role="alert">Manca ancora: {erroriElenco.join(', ')}.</p>
           ) : (

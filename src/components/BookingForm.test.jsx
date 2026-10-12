@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import BookingForm from './BookingForm';
 
 jest.mock('react-redux', () => ({ useDispatch: () => jest.fn() }));
@@ -208,7 +208,7 @@ describe('domanda 4: protezione ed extra', () => {
     expect(screen.getByText('Cauzione da bloccare al ritiro').closest('.px-cauzione')).toHaveTextContent('500 €');
     fireEvent.click(screen.getByRole('radio', { name: /Totale/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Aggiungi Seggiolino' }));
-    expect(screen.getByText('Seggiolino × 1')).toBeInTheDocument();
+    expect(screen.getAllByText('Seggiolino × 1').length).toBeGreaterThan(0); // riga prezzo e riquadro «Protezione ed extra»
     // 3 giorni x 35 + Totale 36 + seggiolino 24
     expect(screen.getByText('165,00 €')).toBeInTheDocument();
     expect(screen.getByText(/non paga nulla/)).toBeInTheDocument();
@@ -293,5 +293,107 @@ describe('eta\' del conducente', () => {
     expect(screen.getByLabelText('Età del conducente')).toHaveValue('22');
     fireEvent.click(screen.getByRole('button', { name: 'Salva modifiche' }));
     expect(onSubmit.mock.calls[0][0].etaConducente).toBeUndefined();
+  });
+});
+
+describe('protezione ed extra: non dimenticarli', () => {
+  const protezioni = {
+    Utilitaria: {
+      base: { danni: 1200, furto: 1500, cauzione: 500 },
+      totale: { offerta: true, prezzoGiorno: 12, massimo: 120, danni: 0, furto: 300, cauzione: 200, copre: { cristalli: true, gomme: true, sottoscocca: false } },
+    },
+  };
+  const catalogo = [{ id: 's', nome: 'Seggiolino', descrizione: '', modo: 'giorno', prezzo: 8, massimo: 60, maxPerNoleggio: 2, pezzi: 3, sulSito: true }];
+  const scelta = { dataInizio: '2099-03-10', dataFine: '2099-03-13', targa: 'ABC004', cliente: 'Mario Rossi', telefono: '333 1111111' };
+  let osservatore;
+  const vistaSezione4 = (altezza) => osservatore({ intersectionRect: { height: altezza } });
+  const apri = (initialValues = scelta, extra = {}) => {
+    const onSubmit = jest.fn();
+    render(
+      <BookingForm onSubmit={onSubmit} initialValues={initialValues} availableVehicles={veicoli} veicoli={veicoli}
+        clienti={clienti} prenotazioni={[]} protezioni={protezioni} catalogo={catalogo} {...extra} />,
+    );
+    return onSubmit;
+  };
+
+  beforeEach(() => {
+    global.IntersectionObserver = class {
+      constructor(callback) { osservatore = (voce) => act(() => callback([voce])); }
+      observe() {}
+      disconnect() {}
+    };
+    Element.prototype.scrollIntoView = jest.fn();
+  });
+  afterEach(() => { delete global.IntersectionObserver; delete Element.prototype.scrollIntoView; });
+
+  test('finche\' non e\' guardata, il Riepilogo dice «da controllare» e compare la pillola', () => {
+    apri();
+    const riquadro = screen.getByText('da controllare', { selector: '.np-scelte-titolo span' }).closest('.np-scelte');
+    expect(riquadro).toHaveTextContent('Base · inclusa');
+    expect(riquadro).toHaveTextContent('nessuno');
+    expect(screen.getByRole('button', { name: /Passo 4: protezione ed extra/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Protezione ed extra · da controllare/ })).toBeInTheDocument();
+  });
+
+  test('quando la sezione 4 entra nello schermo la pillola sparisce e le scelte risultano viste', () => {
+    apri();
+    vistaSezione4(300);
+    expect(screen.queryByRole('button', { name: /Passo 4: protezione ed extra/ })).toBeNull();
+    expect(screen.getByText('scelti', { selector: '.np-scelte-titolo span' })).toBeInTheDocument();
+  });
+
+  test('«Cambia» e la pillola portano alla sezione 4', () => {
+    apri();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cambia' })[0]);
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /Passo 4: protezione ed extra/ }));
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(2);
+  });
+
+  test('«Conferma» senza aver guardato la sezione 4 chiede una volta, con il testo delle scelte', () => {
+    const onSubmit = apri();
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma prenotazione' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('Confermi così?')).toBeInTheDocument();
+    expect(screen.getByText(/Protezione Base \(cauzione 500 €\) e nessun extra/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Sì, conferma' }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  test('«Controlla» chiude l\'avviso e porta alla sezione 4', () => {
+    const onSubmit = apri();
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma prenotazione' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Controlla' }));
+    expect(screen.queryByText('Confermi così?')).toBeNull();
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  test('se la sezione 4 e\' stata vista, «Conferma» salva subito', () => {
+    const onSubmit = apri();
+    vistaSezione4(300);
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma prenotazione' }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  test('toccando una scelta (Totale) vale come vista', () => {
+    const onSubmit = apri();
+    fireEvent.click(screen.getByRole('radio', { name: /Totale/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma prenotazione' }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  test('in modifica le scelte ci sono gia\': niente avviso', () => {
+    const onSubmit = apri({ ...scelta, id: 'p1' });
+    fireEvent.click(screen.getByRole('button', { name: 'Salva modifiche' }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  test('senza nulla da scegliere (categoria senza protezione e senza extra) non c\'e\' riquadro ne\' avviso', () => {
+    const onSubmit = jest.fn();
+    render(<BookingForm onSubmit={onSubmit} initialValues={scelta} availableVehicles={veicoli} veicoli={veicoli} clienti={clienti} prenotazioni={[]} protezioni={{}} catalogo={[]} />);
+    expect(screen.queryByText('Protezione ed extra', { selector: '.np-scelte-titolo span' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma prenotazione' }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });
