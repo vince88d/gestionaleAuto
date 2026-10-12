@@ -8,7 +8,9 @@ import { nuovoFoglio } from './pdfLayout';
 import { calcolaGiorniNoleggio } from './giorniNoleggio';
 import { quartiCarburante } from './rientro';
 import { danniConsegna, elencoFoto } from './danni';
+import { leggiFotoVerbale } from '../lib/fotoVerbale';
 import { testoFirmaMancante } from './firmaVerbale';
+import { didascaliaPdf, nomeFoto, testoOrari } from './fotoVerbale';
 
 // "1.200 €" / "36,00 €" (il font standard scrive il simbolo dell'euro).
 const eur = (n, decimali = false) => `${Number(n || 0).toLocaleString('it-IT', {
@@ -61,7 +63,30 @@ export const riferimentoPrenotazione = (p) => String(p?.id || '').replace(/[^A-Z
 // "12/10" da una data.
 export const dataBreve = (valore) => formattaData(valore).split('/').slice(0, 2).join('/');
 
-// Verbale di consegna. `opzioni`: { azienda, scadenzaPatente }.
+// Foto in piu' del verbale oltre le quali il PDF diventerebbe troppo pesante da inviare.
+const MAX_FOTO_NEL_PDF = 24;
+
+// Sezione «Foto»: quelle caricate dal telefono (con etichetta e orari) e, in
+// coda, la vecchia foto singola dei danni. Niente se non ce n'e'. Si usa anche
+// per il verbale di rientro.
+export async function sezioneFoto(foglio, titolo, caricate = [], vecchie = []) {
+  const tutte = [
+    ...caricate.map((f, i) => ({ url: f.url, etichetta: nomeFoto(f, i), didascalia: didascaliaPdf(f) })),
+    ...vecchie.map((url, i) => ({ url, etichetta: `Danni ${i + 1}`, didascalia: '' })),
+  ];
+  if (tutte.length === 0) return;
+  const mostrate = tutte.slice(0, MAX_FOTO_NEL_PDF);
+  const immagini = await Promise.all(mostrate.map((f) => foglio.immagine(f.url)));
+  const items = mostrate.map((f, i) => ({ ...f, immagine: immagini[i] })).filter((it) => it.immagine);
+  if (items.length === 0) return;
+  foglio.sezione(titolo);
+  const orari = testoOrari(caricate);
+  if (orari) { foglio.piccolo(orari); foglio.spazio(2); }
+  foglio.foto(items);
+  if (tutte.length > mostrate.length) foglio.piccolo(`Altre ${tutte.length - mostrate.length} foto sono conservate nel gestionale.`);
+}
+
+// Verbale di consegna. `opzioni`: { azienda, scadenzaPatente, foto }.
 // Mockup approvato: formiarent-documenti/mockup/gestionale-pdf-verbali-v2.html
 export async function generaRiepilogoPdf(prenotazione, scheda = {}, opzioni = {}) {
   const azienda = opzioni.azienda || {};
@@ -148,13 +173,7 @@ export async function generaRiepilogoPdf(prenotazione, scheda = {}, opzioni = {}
     }
   }
 
-  const fotoDanni = elencoFoto(scheda.fotoDanni);
-  if (fotoDanni.length > 0) {
-    foglio.sezione('Foto alla consegna');
-    const immagini = await Promise.all(fotoDanni.map((f) => foglio.immagine(f)));
-    const items = immagini.map((immagine, i) => ({ immagine, etichetta: `Danni ${i + 1}` })).filter((it) => it.immagine);
-    if (items.length > 0) foglio.foto(items);
-  }
+  await sezioneFoto(foglio, 'Foto alla consegna', opzioni.foto, elencoFoto(scheda.fotoDanni));
 
   foglio.dichiarazione(DICHIARAZIONE_CONSEGNA);
   foglio.osservazioni(scheda.firma?.osservazioni || '');
@@ -167,7 +186,8 @@ export async function generaRiepilogoPdf(prenotazione, scheda = {}, opzioni = {}
 // Chiede dove salvare e scrive il PDF (piu' l'eventuale contratto).
 // Restituisce { success, cancelled, paths, error } come l'API di Electron.
 export async function salvaPdfConsegna({ prenotazione, scheda, contrattoPdf = null, nomeContratto = '', azienda, scadenzaPatente }) {
-  const riepilogo = await generaRiepilogoPdf(prenotazione, scheda || prenotazione.schedaVeicolo || {}, { azienda, scadenzaPatente });
+  const foto = await leggiFotoVerbale(prenotazione.id, 'consegna');
+  const riepilogo = await generaRiepilogoPdf(prenotazione, scheda || prenotazione.schedaVeicolo || {}, { azienda, scadenzaPatente, foto });
   return window.electronAPI.salvaDocumentiPrenotazione({
     prenotazione,
     riepilogoPdf: Array.from(new Uint8Array(riepilogo)),

@@ -5,7 +5,8 @@
 import { dataEOra, formattaData } from './scadenze';
 import { giorniInPiu, kmPercorsi, quartiCarburante, quartiMancanti } from './rientro';
 import { nuovoFoglio } from './pdfLayout';
-import { dataBreve, riferimentoPrenotazione, NOTA_PRIVACY } from './pdfConsegna';
+import { dataBreve, riferimentoPrenotazione, sezioneFoto, NOTA_PRIVACY } from './pdfConsegna';
+import { leggiFotoVerbale } from '../lib/fotoVerbale';
 import { riassuntoDotazione } from './dotazione';
 import { danniRientro, elencoFoto } from './danni';
 import { testoFirmaMancante } from './firmaVerbale';
@@ -133,7 +134,7 @@ export function sezioniRientro(prenotazione = {}) {
   return sezioni;
 }
 
-// Verbale di rientro. `opzioni`: { azienda }.
+// Verbale di rientro. `opzioni`: { azienda, foto }.
 export async function generaVerbaleRientroPdf(prenotazione, opzioni = {}) {
   const azienda = opzioni.azienda || {};
   const r = prenotazione.rientro || {};
@@ -208,13 +209,7 @@ export async function generaVerbaleRientroPdf(prenotazione, opzioni = {}) {
     foglio.riquadroDati({ etichetta: 'Pagamento', totale: ['Restano da pagare', eur(r.restanoDaPagare)] });
   }
 
-  const fotoDanni = elencoFoto(prenotazione.fotoDanni);
-  if (fotoDanni.length > 0) {
-    foglio.sezione('Foto al rientro');
-    const immagini = await Promise.all(fotoDanni.map((f) => foglio.immagine(f)));
-    const items = immagini.map((immagine, i) => ({ immagine, etichetta: `Danni ${i + 1}` })).filter((it) => it.immagine);
-    if (items.length > 0) foglio.foto(items);
-  }
+  await sezioneFoto(foglio, 'Foto al rientro', opzioni.foto, elencoFoto(prenotazione.fotoDanni));
 
   foglio.dichiarazione(DICHIARAZIONE_RIENTRO);
   foglio.osservazioni(r.firma?.osservazioni || '');
@@ -230,7 +225,8 @@ export const DICHIARAZIONE_RIENTRO = 'Il cliente ha riconsegnato il veicolo e pr
 
 // Chiede dove salvare e scrive il PDF (stesso salvataggio del riepilogo di consegna).
 export async function salvaVerbaleRientro(prenotazione, azienda) {
-  const pdf = await generaVerbaleRientroPdf(prenotazione, { azienda });
+  const foto = await leggiFotoVerbale(prenotazione.id, 'rientro');
+  const pdf = await generaVerbaleRientroPdf(prenotazione, { azienda, foto });
   return window.electronAPI.salvaDocumentiPrenotazione({
     prenotazione,
     riepilogoPdf: Array.from(new Uint8Array(pdf)),

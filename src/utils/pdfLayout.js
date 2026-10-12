@@ -91,6 +91,11 @@ export async function immagineDaUrl(doc, sorgente) {
     if (sorgente.startsWith('data:')) {
       const base64 = sorgente.split(',')[1] || '';
       byte = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    } else if (typeof window !== 'undefined' && typeof window.electronAPI?.scaricaImmagine === 'function') {
+      // Nell'app: lo scarica il programma stesso (la pagina non puo' leggere Storage da un altro dominio).
+      const esito = await window.electronAPI.scaricaImmagine(sorgente);
+      if (!esito?.ok) return null;
+      byte = Uint8Array.from(esito.byte);
     } else {
       if (typeof fetch !== 'function') return null;
       const controllo = typeof AbortController === 'function' ? new AbortController() : null;
@@ -491,12 +496,13 @@ export async function nuovoFoglio({
     y -= altezza + 8;
   };
 
-  // ---- Foto: griglia da 4. items: [{ immagine, etichetta }].
+  // ---- Foto: griglia da 4. items: [{ immagine, etichetta, didascalia }]; sotto
+  // ogni foto il nome e (piu' piccolo) quando e' stata scattata e caricata.
   const foto = (items, { colonneN = 4, altezzaCella = 62 } = {}) => {
     const gap = 6;
     const w = (LARG - gap * (colonneN - 1)) / colonneN;
     for (let i = 0; i < items.length; i += colonneN) {
-      serve(altezzaCella + 18);
+      serve(altezzaCella + 38);
       items.slice(i, i + colonneN).forEach((it, k) => {
         const x = PAG_L + k * (w + gap);
         page.drawRectangle({ x, y: y - altezzaCella, width: w, height: altezzaCella, color: C.fondo });
@@ -506,9 +512,10 @@ export async function nuovoFoglio({
           const ih = it.immagine.height * scala;
           page.drawImage(it.immagine, { x: x + (w - iw) / 2, y: y - altezzaCella + (altezzaCella - ih) / 2, width: iw, height: ih });
         }
-        if (it.etichetta) scrivi(it.etichetta, x, y - altezzaCella - 8.5, 7, font, C.grigio);
+        if (it.etichetta) righeDi(it.etichetta, w, 7.5, grassetto).slice(0, 1).forEach((r) => scrivi(r, x, y - altezzaCella - 9, 7.5, grassetto));
+        if (it.didascalia) righeDi(it.didascalia, w, 6.3).slice(0, 2).forEach((r, j) => scrivi(r, x, y - altezzaCella - 17.5 - j * 7.5, 6.3, font, C.grigio));
       });
-      y -= altezzaCella + 14;
+      y -= altezzaCella + 36;
     }
   };
 

@@ -10,6 +10,7 @@ import {
 import '../styles/Prenotazione.css';
 import './RientroModal.css';
 import FirmaVerbale from './FirmaVerbale';
+import FotoDalTelefono from './FotoDalTelefono';
 import { FIRMA_NORMALE, normalizzaFirma } from '../utils/firmaVerbale';
 
 const oraAdesso = () => {
@@ -283,6 +284,8 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
                 </div>
               )}
             </section>
+
+            {prenotazione?.id && <FotoDalTelefono prenotazioneId={prenotazione.id} fase="rientro" />}
 
             <section className="pz-sezione">
               <h3 className="pz-titolo-sezione">Danni nuovi</h3>

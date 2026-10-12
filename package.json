@@ -33,6 +33,7 @@
     "nodemailer": "^6.10.1",
     "papaparse": "^5.5.2",
     "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4",
     "reacharts": "^0.4.5",
     "react": "^19.1.0",
     "react-calendar": "^5.1.0",

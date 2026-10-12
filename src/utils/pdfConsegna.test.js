@@ -42,3 +42,19 @@ test('il PDF di consegna si genera, con titolo e lingua', async () => {
   expect(doc.getPageCount()).toBeGreaterThanOrEqual(1);
   if (process.env.PDF_PROVA) require('fs').writeFileSync(`${process.env.PDF_PROVA}-consegna.pdf`, Buffer.from(pdf));
 });
+
+test('il PDF con foto dal telefono: etichette, didascalia e foto che non si scaricano vengono saltate', async () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const t = new Date(2026, 9, 12, 9, 2).getTime();
+  const pdf = await generaRiepilogoPdf({ id: 'abc', cliente: 'Mario Rossi', veicolo: 'Panda', targa: 'AA111AA', dataInizio: '2099-10-12', dataFine: '2099-10-15' }, { carburante: '3/4' }, {
+    azienda: { nome: 'Formia Rent' },
+    foto: [
+      { id: '1', url: PNG, etichetta: 'Angolo anteriore sinistro', scattataIl: t, caricataIl: t + 1000 },
+      { id: '2', url: PNG, etichetta: '', scattataIl: null, caricataIl: t + 2000 },
+      { id: '3', url: 'data:text/plain;base64,QUJD', etichetta: 'Interni', scattataIl: t, caricataIl: t },
+    ],
+  });
+  const doc = await PDFDocument.load(pdf);
+  expect(doc.getPageCount()).toBeGreaterThanOrEqual(1);
+  if (process.env.PDF_PROVA) require('fs').writeFileSync(`${process.env.PDF_PROVA}-foto.pdf`, Buffer.from(pdf));
+});
