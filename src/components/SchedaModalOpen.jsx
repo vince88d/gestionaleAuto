@@ -7,6 +7,7 @@ import FotoDalTelefono from './FotoDalTelefono';
 import { formattaData, giornoLocale } from '../utils/scadenze';
 import { controllaPatente } from '../utils/validaCliente';
 import { codiceFiscaleValido } from '../utils/nuovaPrenotazione';
+import { erroriConsegna, riassuntoErrori } from '../utils/controlloConsegna';
 import { controlloEtaConsegna } from '../utils/etaConducenti';
 import { pagataSulSito } from '../utils/regolePrenotazione';
 import ControlloDotazione from './ControlloDotazione';
@@ -53,7 +54,8 @@ function SchedaVeicoloModal({
   etaConducenti = null,
 }) {
   const [uploading, setUploading] = useState(false);
-  const [mancaCarburante, setMancaCarburante] = useState(false);
+  // Dopo il primo «Avanti» i campi mancanti si segnano e si aggiornano mentre si compilano.
+  const [provato, setProvato] = useState(false);
   const inputFoto = useRef(null);
   // La patente si chiede solo se la prenotazione non ce l'ha (es. arrivata dal
   // sito); la scadenza se il cliente in anagrafica non ce l'ha.
@@ -71,6 +73,13 @@ function SchedaVeicoloModal({
         riconsegna: prenotazione.dataFine,
       })
     : {};
+  const errori = provato ? erroriConsegna({
+    chiediCodiceFiscale, codiceFiscaleValido: codiceFiscaleValido(documenti.codiceFiscale),
+    chiediPatente, patente: documenti.patente,
+    chiediScadenza, scadenzaPatente: documenti.scadenzaPatente,
+    carburante: schedaVeicolo.carburante, km: schedaVeicolo.kmIniziali,
+  }) : [];
+  const erroreDi = (campo) => errori.find((e) => e.campo === campo)?.messaggio;
   const documentoScaduto = cliente?.scadenzaDocumento && cliente.scadenzaDocumento < giornoLocale();
   // Eta' dichiarata: con il codice fiscale si controlla da sola.
   const avvisoEta = prenotazione && etaConducenti ? controlloEtaConsegna({
@@ -102,19 +111,32 @@ function SchedaVeicoloModal({
     }
   };
 
+  // Porta lo sguardo sul primo campo mancante: scorre fin li' e lo seleziona.
+  const vaiAlCampo = (campo) => {
+    const id = { codiceFiscale: 'consegna-codice-fiscale', patente: 'consegna-patente', scadenzaPatente: 'consegna-scadenza-patente', km: 'consegna-km' }[campo];
+    const elemento = campo === 'carburante'
+      ? document.querySelector('#consegna-carburante-scelte button')
+      : document.getElementById(id);
+    if (!elemento) return;
+    elemento.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    elemento.focus?.({ preventScroll: true });
+  };
+
   const invia = (e) => {
     e.preventDefault();
-    // Il carburante e' a pulsanti: il browser non lo controlla da solo.
+    setProvato(true);
+    const mancanti = erroriConsegna({
+      chiediCodiceFiscale, codiceFiscaleValido: codiceFiscaleValido(documenti.codiceFiscale),
+      chiediPatente, patente: documenti.patente,
+      chiediScadenza, scadenzaPatente: documenti.scadenzaPatente,
+      carburante: schedaVeicolo.carburante, km: schedaVeicolo.kmIniziali,
+    });
+    if (mancanti.length > 0) {
+      vaiAlCampo(mancanti[0].campo);
+      return;
+    }
     if (esitoPatente.blocca) {
       toast.error(esitoPatente.blocca);
-      return;
-    }
-    if (chiediCodiceFiscale && !codiceFiscaleValido(documenti.codiceFiscale)) {
-      toast.error('Scrivi il codice fiscale del cliente: 16 lettere e numeri.');
-      return;
-    }
-    if (!schedaVeicolo.carburante) {
-      setMancaCarburante(true);
       return;
     }
     onSave();
@@ -129,7 +151,7 @@ function SchedaVeicoloModal({
       className={{ base: 'Modal pz-modal', afterOpen: 'Modal--after-open', beforeClose: 'Modal--before-close' }}
       overlayClassName={{ base: 'Overlay', afterOpen: 'Overlay--after-open', beforeClose: 'Overlay--before-close' }}
     >
-      <form className="pz pz-form" onSubmit={invia}>
+      <form className="pz pz-form" onSubmit={invia} noValidate>
         <header className="pz-testa">
           <div>
             <h2 className="pz-titolo">Consegna del veicolo</h2>
@@ -152,7 +174,7 @@ function SchedaVeicoloModal({
             {(chiediPatente || chiediScadenza || chiediCodiceFiscale) ? (
               <div className="pz-griglia pz-griglia--2">
                 {chiediCodiceFiscale && (
-                  <label className="pz-campo pz-intera" htmlFor="consegna-codice-fiscale">
+                  <label className={`pz-campo pz-intera ${erroreDi('codiceFiscale') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-codice-fiscale">
                     <span className="pz-etichetta">Codice fiscale <span className="pz-obbligatorio">*</span></span>
                     <input
                       id="consegna-codice-fiscale"
@@ -163,11 +185,13 @@ function SchedaVeicoloModal({
                       maxLength={16}
                       style={{ textTransform: 'uppercase' }}
                       required
+                      aria-invalid={Boolean(erroreDi('codiceFiscale'))}
                     />
+                    {erroreDi('codiceFiscale') && <p className="pz-errore" role="alert">{erroreDi('codiceFiscale')}</p>}
                   </label>
                 )}
                 {chiediPatente ? (
-                  <label className="pz-campo" htmlFor="consegna-patente">
+                  <label className={`pz-campo ${erroreDi('patente') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-patente">
                     <span className="pz-etichetta">Numero patente <span className="pz-obbligatorio">*</span></span>
                     <input
                       id="consegna-patente"
@@ -177,7 +201,9 @@ function SchedaVeicoloModal({
                       placeholder="Es. AB1234567"
                       style={{ textTransform: 'uppercase' }}
                       required
+                      aria-invalid={Boolean(erroreDi('patente'))}
                     />
+                    {erroreDi('patente') && <p className="pz-errore" role="alert">{erroreDi('patente')}</p>}
                   </label>
                 ) : (
                   <div className="pz-campo">
@@ -186,7 +212,7 @@ function SchedaVeicoloModal({
                   </div>
                 )}
                 {chiediScadenza ? (
-                  <label className="pz-campo" htmlFor="consegna-scadenza-patente">
+                  <label className={`pz-campo ${erroreDi('scadenzaPatente') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-scadenza-patente">
                     <span className="pz-etichetta">Scadenza patente <span className="pz-obbligatorio">*</span></span>
                     <input
                       id="consegna-scadenza-patente"
@@ -194,7 +220,9 @@ function SchedaVeicoloModal({
                       value={documenti.scadenzaPatente || ''}
                       onChange={(e) => aggiornaDocumento('scadenzaPatente', e.target.value)}
                       required
+                      aria-invalid={Boolean(erroreDi('scadenzaPatente'))}
                     />
+                    {erroreDi('scadenzaPatente') && <p className="pz-errore" role="alert">{erroreDi('scadenzaPatente')}</p>}
                   </label>
                 ) : (
                   <div className="pz-campo">
@@ -231,11 +259,11 @@ function SchedaVeicoloModal({
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Stato del veicolo</h3>
             <div className="pz-griglia pz-griglia--2">
-              <div className={`pz-campo ${mancaCarburante ? 'pz-campo--errore' : ''}`}>
+              <div className={`pz-campo ${erroreDi('carburante') ? 'pz-campo--errore' : ''}`}>
                 <span className="pz-etichetta" id="consegna-carburante">
                   Carburante <span className="pz-obbligatorio">*</span>
                 </span>
-                <div className="pz-scelte" role="radiogroup" aria-labelledby="consegna-carburante">
+                <div className={`pz-scelte ${erroreDi('carburante') ? 'pz-scelte--errore' : ''}`} id="consegna-carburante-scelte" role="radiogroup" aria-labelledby="consegna-carburante">
                   {LIVELLI_CARBURANTE.map((livello) => (
                     <button
                       key={livello}
@@ -243,15 +271,15 @@ function SchedaVeicoloModal({
                       role="radio"
                       aria-checked={schedaVeicolo.carburante === livello}
                       className={`pz-scelta ${schedaVeicolo.carburante === livello ? 'pz-scelta--attiva' : ''}`}
-                      onClick={() => { aggiorna('carburante', livello); setMancaCarburante(false); }}
+                      onClick={() => aggiorna('carburante', livello)}
                     >
                       {livello}
                     </button>
                   ))}
                 </div>
-                {mancaCarburante && <p className="pz-errore" role="alert">Scegli il livello del carburante.</p>}
+                {erroreDi('carburante') && <p className="pz-errore" role="alert">{erroreDi('carburante')}</p>}
               </div>
-              <label className="pz-campo" htmlFor="consegna-km">
+              <label className={`pz-campo ${erroreDi('km') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-km">
                 <span className="pz-etichetta">Km alla consegna <span className="pz-obbligatorio">*</span></span>
                 <input
                   id="consegna-km"
@@ -261,8 +289,11 @@ function SchedaVeicoloModal({
                   onChange={(e) => aggiorna('kmIniziali', e.target.value)}
                   placeholder="Es. 45000"
                   required
+                  aria-invalid={Boolean(erroreDi('km'))}
                 />
-                <p className="pz-aiuto">Proposti dal veicolo: correggili se il contachilometri dice altro.</p>
+                {erroreDi('km')
+                  ? <p className="pz-errore" role="alert">{erroreDi('km')}</p>
+                  : <p className="pz-aiuto">Proposti dal veicolo: correggili se il contachilometri dice altro.</p>}
               </label>
             </div>
           </section>
@@ -300,6 +331,7 @@ function SchedaVeicoloModal({
         </div>
 
         <footer className="pz-piede">
+          {errori.length > 0 && <span className="pz-piede-nota pz-piede-nota--errore" role="alert">{riassuntoErrori(errori)}</span>}
           <button type="button" className="vd-btn" onClick={onRequestClose}>Annulla</button>
           <button type="submit" className="vd-btn vd-btn--primario" disabled={uploading || Boolean(esitoPatente.blocca)}>
             {uploading ? 'Attendi…' : 'Avanti: riepilogo e contratto'}

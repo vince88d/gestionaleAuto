@@ -233,6 +233,8 @@
   background: #fffafa;
 }
 
+.pz .pz-scelte--errore .pz-scelta { border-color: #e74c3c; }
+
 .pz .pz-errore {
   margin: 0;
   font-size: 12px;

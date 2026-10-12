@@ -43,6 +43,13 @@ function Passi({ attivo }) {
 // e cauzione» (righe gia' compilate dal passo 1 e dai prezzi fissi). Solo
 // registrazione: l'addebito e lo sblocco veri si fanno sul POS o su Stripe.
 // `onConferma(dati)` salva; mockup: formiarent-documenti/mockup/gestionale-rientro.html
+// «data o ora del rientro, km e carburante» dagli errori del passo 1.
+const NOMI_CAMPI = { dataRientro: 'data del rientro', oraRientro: 'ora del rientro', km: 'km', carburante: 'carburante', chiavi: 'chiavi tornate' };
+function elencoCampi(errori) {
+  const nomi = Object.keys(errori).map((k) => NOMI_CAMPI[k]).filter(Boolean);
+  return nomi.length <= 1 ? (nomi[0] || '') : `${nomi.slice(0, -1).join(', ')} e ${nomi[nomi.length - 1]}`;
+}
+
 function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tolleranza }) {
   const [passo, setPasso] = useState(1);
   const [tentato, setTentato] = useState(false);
@@ -94,7 +101,15 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
 
   const avanti = () => {
     setTentato(true);
-    if (Object.keys(erroriRientro(datiPasso1)).length > 0) return;
+    if (Object.keys(erroriRientro(datiPasso1)).length > 0) {
+      // Dopo il disegno degli errori, porta lo sguardo sul primo campo da correggere.
+      setTimeout(() => {
+        const campo = document.querySelector('.pz-campo--errore');
+        campo?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+        campo?.querySelector('input, button')?.focus?.({ preventScroll: true });
+      }, 0);
+      return;
+    }
     const proposte = proponiAddebiti({
       prenotazione, prezzi, dataRientro, oraRientro, carburante, chiaviTornate: datiPasso1.chiaviTornate,
       nonTornati: nonTornati.map((nome) => ({ nome, addebita: statoMancante(nome).addebita })), danno, tolleranza,
@@ -407,7 +422,9 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
         <footer className="pz-piede">
           {passo === 1 ? (
             <>
-              <span className="pz-piede-nota">{nomiMancanti > 0 ? `${nomiMancanti} ${nomiMancanti === 1 ? 'voce non tornata' : 'voci non tornate'}` : ''}</span>
+              {Object.keys(errori).length > 0
+                ? <span className="pz-piede-nota pz-piede-nota--errore" role="alert">{`Manca: ${elencoCampi(errori)}`}</span>
+                : <span className="pz-piede-nota">{nomiMancanti > 0 ? `${nomiMancanti} ${nomiMancanti === 1 ? 'voce non tornata' : 'voci non tornate'}` : ''}</span>}
               <button type="button" className="vd-btn" onClick={chiudi}>Annulla</button>
               <button type="button" className="vd-btn vd-btn--primario" onClick={avanti}>Avanti: addebiti e cauzione</button>
             </>
