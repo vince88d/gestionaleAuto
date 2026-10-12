@@ -26,9 +26,9 @@ function ProtezioneExtraDettagli({ prenotazione }) {
             <dt>Protezione</dt>
             <dd>{p.tipo === 'totale' ? `Totale · ${euro(p.prezzo)}` : 'Base (inclusa)'}</dd>
           </div>
-          <div><dt>Danni, paga al massimo</dt><dd>{importo(p.danni)}</dd></div>
-          <div><dt>Furto, paga al massimo</dt><dd>{importo(p.furto)}</dd></div>
-          <div><dt>Cauzione da bloccare</dt><dd className="pz-prezzo">{importo(p.cauzione)}</dd></div>
+          <div><dt>Franchigia danni (paga al massimo)</dt><dd>{importo(p.danni)}</dd></div>
+          <div><dt>Franchigia furto (paga al massimo)</dt><dd>{importo(p.furto)}</dd></div>
+          <div><dt>Cauzione da bloccare (garanzia)</dt><dd className="pz-prezzo">{importo(p.cauzione)}</dd></div>
           {coperture.length > 0 && (
             <div className="pz-intera"><dt>Copre anche</dt><dd>{coperture.map((n, i) => (i === 0 ? n : n.toLowerCase())).join(', ')}</dd></div>
           )}

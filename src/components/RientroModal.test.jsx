@@ -92,3 +92,28 @@ test('un danno nuovo segnato sullo schema finisce nel salvataggio con il testo r
   expect(dati.segniDanni).toHaveLength(1);
   expect(dati.segniDanni[0]).toMatchObject({ vista: 'alto', tipo: 'Graffio', testo: 'paraurti anteriore' });
 });
+
+test('con la protezione Totale il passo Cauzione ricorda che i danni coperti non si addebitano e che la cauzione e\' una garanzia', async () => {
+  const totale = { ...prenotazione, protezione: { tipo: 'totale', prezzo: 36, danni: 0, furto: 300, cauzione: 500 } };
+  render(<RientroModal isOpen onClose={jest.fn()} onConferma={jest.fn()} prenotazione={totale} prezzi={prezzi} tolleranza={29} />);
+  fireEvent.change(screen.getByLabelText('Data del rientro'), { target: { value: '2026-10-15' } });
+  fireEvent.change(screen.getByLabelText('Ora del rientro'), { target: { value: '09:00' } });
+  fireEvent.change(screen.getByLabelText(/Km al rientro/), { target: { value: '48730' } });
+  fireEvent.click(screen.getByRole('radio', { name: 'Pieno' }));
+  fireEvent.click(screen.getByRole('radio', { name: '2' }));
+  fireEvent.click(screen.getByRole('button', { name: /Avanti/ }));
+  expect(await screen.findByText(/i danni coperti non si addebitano al cliente/)).toBeInTheDocument();
+  expect(screen.getByText(/La cauzione è una garanzia/)).toBeInTheDocument();
+});
+
+test('con la Base non compare il promemoria della Totale', async () => {
+  apri();
+  fireEvent.change(screen.getByLabelText('Data del rientro'), { target: { value: '2026-10-15' } });
+  fireEvent.change(screen.getByLabelText('Ora del rientro'), { target: { value: '09:00' } });
+  fireEvent.change(screen.getByLabelText(/Km al rientro/), { target: { value: '48730' } });
+  fireEvent.click(screen.getByRole('radio', { name: 'Pieno' }));
+  fireEvent.click(screen.getByRole('radio', { name: '2' }));
+  fireEvent.click(screen.getByRole('button', { name: /Avanti/ }));
+  await screen.findByText('Totale addebiti');
+  expect(screen.queryByText(/Protezione Totale:/)).toBeNull();
+});

@@ -18,10 +18,10 @@ const conta = (n, uno, tanti) => `${n} ${n === 1 ? uno : tanti}`;
 
 // Tre importi affiancati (danni, furto, cauzione): titoli di una parola,
 // quindi le caselle restano allineate anche su una riga sola.
-function TreImporti({ prefisso, valori, errori, onChange }) {
+function TreImporti({ prefisso, valori, errori, onChange, chiavi }) {
   return (
-    <div className="pro-tre">
-      {IMPORTI.map(([k, titolo]) => (
+    <div className={chiavi && chiavi.length === 2 ? 'pro-tre pro-due' : 'pro-tre'}>
+      {IMPORTI.filter(([k]) => !chiavi || chiavi.includes(k)).map(([k, titolo]) => (
         <Campo key={k} id={`${prefisso}-${k}`} titolo={titolo} errore={errori[`${prefisso}.${k}`]}>
           <CampoEuro id={`${prefisso}-${k}`} valore={valori[k]} onChange={(v) => onChange(k, v)} invalido={Boolean(errori[`${prefisso}.${k}`])} />
         </Campo>
@@ -174,6 +174,7 @@ function ProtezioniCategorie() {
                               <span className="pro-cifre">
                                 <b>+{euro(p.totale.prezzoGiorno)}</b> al giorno{p.totale.massimo ? ` · max ${euro(p.totale.massimo)}` : ''}<br />
                                 Danni <b>{euro(p.totale.danni)}</b> · Cauzione <b>{euro(p.totale.cauzione)}</b>
+                                {p.totale.cauzioneUgualeBase && <span className="pro-come-base">come la Base</span>}
                               </span>
                             ) : (
                               <span className="opt-etichetta">Non offerta</span>
@@ -271,9 +272,37 @@ function ProtezioniCategorie() {
                 </Campo>
                 <div className="opt-campo">
                   <span className="opt-titolo-campo">Con questa protezione paga al massimo</span>
-                  <span className="opt-aiuto">Meno della Base (o uguale).</span>
+                  <span className="opt-aiuto">È la franchigia: la parte che il cliente paga in caso di danno o furto. Meno della Base (o uguale); 0 = non paga nulla.</span>
                 </div>
-                <TreImporti prefisso="totale" valori={form.totale} errori={mostra} onChange={(k, v) => aggiornaTotale({ [k]: v })} />
+                <TreImporti prefisso="totale" valori={form.totale} errori={mostra} onChange={(k, v) => aggiornaTotale({ [k]: v })} chiavi={['danni', 'furto']} />
+
+                <fieldset className="pro-cauzione">
+                  <legend className="opt-titolo-campo">Cauzione con la Totale</legend>
+                  <span className="opt-aiuto">È il blocco sulla carta, non un addebito: si sblocca alla riconsegna se non ci sono addebiti.</span>
+                  <label className={`pro-scelta ${form.totale.cauzioneUgualeBase ? '' : 'pro-scelta--si'}`}>
+                    <input type="radio" name="tot-cauzione" checked={!form.totale.cauzioneUgualeBase} onChange={() => aggiornaTotale({ cauzioneUgualeBase: false })} />
+                    <span>
+                      <b>Ridotta</b>
+                      <span className="opt-aiuto">Scrivi tu la cifra, più bassa della Base.</span>
+                      <Campo id="totale-cauzione" titolo="Cauzione" errore={mostra['totale.cauzione']}>
+                        <CampoEuro id="totale-cauzione" valore={form.totale.cauzioneUgualeBase ? '' : form.totale.cauzione} onChange={(v) => aggiornaTotale({ cauzione: v })}
+                          invalido={Boolean(mostra['totale.cauzione'])} disabled={form.totale.cauzioneUgualeBase} />
+                      </Campo>
+                    </span>
+                  </label>
+                  <label className={`pro-scelta ${form.totale.cauzioneUgualeBase ? 'pro-scelta--si' : ''}`}>
+                    <input type="radio" name="tot-cauzione" checked={Boolean(form.totale.cauzioneUgualeBase)} onChange={() => aggiornaTotale({ cauzioneUgualeBase: true })} />
+                    <span>
+                      <b>Uguale alla Base</b>
+                      <span className="opt-aiuto">
+                        Si blocca la stessa cifra della Base{form.base.cauzione ? <>: <b>{form.base.cauzione} €</b></> : ''}. Se cambi la Base, si aggiorna da sola.
+                      </span>
+                    </span>
+                  </label>
+                  <p className="pro-nota-franchigia">
+                    <b>Franchigia e cauzione sono due cose diverse.</b> Con «Danni 0 €» il cliente non paga i danni, anche se la cauzione resta bloccata fino alla riconsegna.
+                  </p>
+                </fieldset>
                 <fieldset className="pro-coperture">
                   <legend className="opt-titolo-campo">Copre anche</legend>
                   {COPERTURE.map(([k, nome]) => (

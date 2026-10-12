@@ -212,6 +212,8 @@ describe('domanda 4: protezione ed extra', () => {
     // 3 giorni x 35 + Totale 36 + seggiolino 24
     expect(screen.getByText('165,00 €')).toBeInTheDocument();
     expect(screen.getByText(/non paga nulla/)).toBeInTheDocument();
+    expect(screen.getByText(/Non è un costo:/)).toBeInTheDocument(); // la cauzione e' una garanzia
+    expect(screen.getByText(/Franchigia: la parte che il cliente paga in caso di danno/)).toBeInTheDocument();
     expect(screen.getByText('Solo al banco')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Conferma prenotazione' }));
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ sceltaProtezione: 'totale', sceltaOptional: { s: 1 } }));

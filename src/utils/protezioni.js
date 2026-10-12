@@ -48,13 +48,18 @@ export function normalizzaProtezione(dati = {}) {
   const copre = tot.copre || {};
   const prezzoGiorno = importo(tot.prezzoGiorno);
   const massimo = importo(tot.massimo);
+  const baseNorm = Object.fromEntries(IMPORTI.map((k) => [k, importo(base[k])]));
+  // «Cauzione uguale alla Base»: la cifra della Totale segue sempre quella della Base.
+  const ugualeBase = tot.cauzioneUgualeBase === true;
   return {
-    base: Object.fromEntries(IMPORTI.map((k) => [k, importo(base[k])])),
+    base: baseNorm,
     totale: {
       offerta: tot.offerta === true,
       prezzoGiorno,
       massimo: massimo > 0 ? massimo : null,
       ...Object.fromEntries(IMPORTI.map((k) => [k, importo(tot[k])])),
+      ...(ugualeBase ? { cauzione: baseNorm.cauzione } : {}),
+      cauzioneUgualeBase: ugualeBase,
       copre: Object.fromEntries(COPERTURE.map(([k]) => [k, copre[k] === true])),
     },
   };
@@ -89,6 +94,7 @@ export function perForm(p) {
       prezzoGiorno: testo(n.totale.prezzoGiorno),
       massimo: testo(n.totale.massimo),
       ...Object.fromEntries(IMPORTI.map((k) => [k, testo(n.totale[k])])),
+      cauzioneUgualeBase: n.totale.cauzioneUgualeBase,
       copre: { ...n.totale.copre },
     },
   };
@@ -116,6 +122,8 @@ export function validaProtezione(form) {
     else if (prezzo > 0 && massimo < prezzo) errori['totale.massimo'] = 'Non può essere meno del prezzo di un giorno.';
   }
   IMPORTI.forEach((k) => {
+    // Cauzione «uguale alla Base»: non si scrive, segue la Base.
+    if (k === 'cauzione' && form.totale.cauzioneUgualeBase === true) return;
     const n = leggiEuro(form.totale[k]);
     const b = leggiEuro(form.base[k]);
     if (n === null) errori[`totale.${k}`] = 'Scrivi l\'importo (anche 0).';
@@ -139,6 +147,20 @@ export function prezzoProtezione(protezione, giorni) {
   const t = normalizzaProtezione(protezione).totale;
   if (!t.offerta || !(t.prezzoGiorno > 0)) return 0;
   return arrotonda(Math.min(t.prezzoGiorno * Math.max(1, giorni || 1), t.massimo ?? Infinity));
+}
+
+// Cosa sono franchigia e cauzione, scritto una volta per tutti (modulo,
+// contratto, rientro). La franchigia e' la parte che il cliente paga in caso
+// di danno o furto; la cauzione e' un blocco sulla carta a garanzia, non un costo.
+export const SPIEGA_FRANCHIGIA = 'Franchigia: la parte che il cliente paga in caso di danno o furto; il resto lo copre l\'assicurazione.';
+export const SPIEGA_CAUZIONE = 'Cauzione: bloccata sulla carta come garanzia, non è un costo. Si sblocca alla riconsegna, salvo addebiti.';
+
+// Frase sulla franchigia dei danni di una protezione (importo in euro).
+export function fraseFranchigiaDanni(danni) {
+  if (typeof danni !== 'number') return '';
+  return danni === 0
+    ? 'Nessuna franchigia sui danni: il cliente non paga nulla per i danni coperti.'
+    : `Franchigia sui danni ${euro(danni)}: in caso di danno il cliente paga al massimo questa cifra.`;
 }
 
 // "1.200 €": il punto delle migliaia sempre (in italiano di serie parte da 10.000).

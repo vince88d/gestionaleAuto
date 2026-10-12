@@ -51,3 +51,14 @@
 .pro-copia legend { padding: 0 4px; }
 .pro-copia-azioni { display: flex; gap: 16px; }
 .pro-avviso { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fdf0d5; color: #6b4200; font-size: 14px; line-height: 1.4; }
+
+/* Cauzione con la Totale (mockup gestionale-cauzione-totale.html) */
+.pro-tre.pro-due { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pro-cauzione { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 0; padding: 0; border: 0; }
+.pro-cauzione legend { padding: 0; margin-bottom: 2px; }
+.pro-scelta { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 2px solid #e3e8ee; border-radius: 10px; font-size: 15px; cursor: pointer; }
+.pro-scelta--si { border-color: #3498db; background: #eaf3fb; }
+.pro-scelta input[type='radio'] { margin-top: 4px; }
+.pro-scelta > span { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.pro-nota-franchigia { margin: 4px 0 0; padding: 10px 12px; border: 1px solid #cfe3f5; border-radius: 10px; background: #eef6fd; color: #2c3e50; font-size: 14px; line-height: 1.45; }
+.pro-come-base { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px; background: #e9f7ef; color: #1e7a46; font-size: 12px; font-weight: 700; }

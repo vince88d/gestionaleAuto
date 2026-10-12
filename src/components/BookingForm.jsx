@@ -868,10 +868,15 @@ function BookingForm({
                   <b>Cauzione da bloccare al ritiro</b>
                   <b className="px-cifra">{euroTondo(protezioneMostrata.cauzione)}</b>
                 </span>
+                <span className="px-cauzione-testo">
+                  <b>Non è un costo:</b> si blocca sulla carta come garanzia e si sblocca alla riconsegna, salvo addebiti.
+                </span>
                 {typeof protezioneMostrata.danni === 'number' && (
-                  <>{protezioneMostrata.danni === 0
-                    ? 'In caso di danno il cliente non paga nulla.'
-                    : <>In caso di danno il cliente paga al massimo <span className="px-cifra">{euroTondo(protezioneMostrata.danni)}</span>.</>}</>
+                  <span className="px-cauzione-testo">
+                    {protezioneMostrata.danni === 0
+                      ? 'Nessuna franchigia sui danni: il cliente non paga nulla per i danni coperti.'
+                      : <>Franchigia sui danni <span className="px-cifra">{euroTondo(protezioneMostrata.danni)}</span>: in caso di danno il cliente paga al massimo questa cifra.</>}
+                  </span>
                 )}
               </p>
             )}
