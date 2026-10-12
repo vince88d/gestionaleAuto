@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import Modal from 'react-modal';
 import './InfoModal.css';
-import { Pencil, Trash2, KeyRound, X, Download, FileText, Car, LogIn, Mail } from 'lucide-react';
+import { Pencil, Trash2, KeyRound, X, Download, FileText, Car, LogIn, Mail, Copy } from 'lucide-react';
 import '../styles/Prenotazione.css';
 import { dataEOra, formattaData } from '../utils/scadenze';
 import { oraBreve } from '../utils/orari';
@@ -17,7 +17,8 @@ import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
 import DotazioneConsegnata from './DotazioneConsegnata';
 import RientroDettagli from './RientroDettagli';
 import { salvaVerbaleRientro } from '../utils/pdfRientro';
-import { bozzaEmail } from '../utils/emailRiepilogo';
+import { bozzaEmail, testoRiepilogo } from '../utils/emailRiepilogo';
+import MenuPulsante from './MenuPulsante';
 import { useAzienda } from '../lib/firestoreAzienda';
 
 
@@ -150,7 +151,23 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
     }
   };
 
+  // Lo stesso riepilogo come testo da incollare (WhatsApp, SMS...).
+  const copiaTesto = async (fase) => {
+    try {
+      await navigator.clipboard.writeText(testoRiepilogo({ fase, prenotazione, azienda }));
+      toast.success('Testo copiato: incollalo dove vuoi.');
+    } catch (error) {
+      console.error('Testo non copiato:', error);
+      toast.error('Non sono riuscito a copiare il testo.');
+    }
+  };
+
   if (!prenotazione) return null;
+
+  // Finché c'è un «Prossimo passo» il pulsante grande in alto è l'azione principale.
+  const haProssimoPasso = !soloLettura && Boolean({ scegli: onScegliAuto, consegna: onConsegna, ricevi: onConcludi }[prossimoPasso(prenotazione)]);
+  const conPdf = Boolean(window.electronAPI?.salvaDocumentiPrenotazione);
+  const conEmail = Boolean(window.electronAPI?.apriBozzaEmail);
 
   const scheda = prenotazione.schedaVeicolo || {};
   const consegnata = eConsegnata(prenotazione);
@@ -277,36 +294,46 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
         </div>
 
         <footer className="pz-piede no-print">
-          <button type="button" className="vd-btn" onClick={handleDownloadPDF}>
-            <Download size={16} aria-hidden="true" /> Dettagli (PDF)
-          </button>
-          {consegnata && window.electronAPI?.salvaDocumentiPrenotazione && (
-            <button type="button" className="vd-btn" onClick={scaricaPdfConsegna}>
-              <FileText size={16} aria-hidden="true" /> PDF della consegna
-            </button>
+          <MenuPulsante
+            etichetta="Documenti" icona={<FileText size={16} aria-hidden="true" />}
+            sezioni={[{
+              titolo: 'Scarica il PDF',
+              voci: [
+                { etichetta: 'Dettagli della prenotazione', icona: <Download size={16} aria-hidden="true" />, onClick: handleDownloadPDF },
+                { etichetta: 'Verbale di consegna', icona: <FileText size={16} aria-hidden="true" />, disattiva: !consegnata || !conPdf, nota: !consegnata ? 'non ancora avvenuta' : undefined, onClick: scaricaPdfConsegna },
+                { etichetta: 'Verbale di rientro', icona: <FileText size={16} aria-hidden="true" />, disattiva: !prenotazione.rientro || !conPdf, nota: !prenotazione.rientro ? 'non ancora avvenuto' : undefined, onClick: scaricaVerbaleRientro },
+              ],
+            }]}
+          />
+          {consegnata && (
+            <MenuPulsante
+              etichetta="Invia riepilogo" icona={<Mail size={16} aria-hidden="true" />} primario={!haProssimoPasso}
+              sezioni={[
+                {
+                  titolo: 'Per email',
+                  nota: "Salva il PDF e apre il programma di posta: lo trascini nell'email.",
+                  voci: [
+                    { etichetta: 'Consegna', icona: <Mail size={16} aria-hidden="true" />, disattiva: !conEmail, onClick: () => inviaEmail('consegna') },
+                    { etichetta: 'Rientro', icona: <Mail size={16} aria-hidden="true" />, disattiva: !conEmail || !prenotazione.rientro, nota: !prenotazione.rientro ? 'non ancora avvenuto' : undefined, onClick: () => inviaEmail('rientro') },
+                  ],
+                },
+                {
+                  titolo: 'Copia il testo (WhatsApp, SMS…)',
+                  voci: [
+                    { etichetta: 'Consegna', icona: <Copy size={16} aria-hidden="true" />, onClick: () => copiaTesto('consegna') },
+                    { etichetta: 'Rientro', icona: <Copy size={16} aria-hidden="true" />, disattiva: !prenotazione.rientro, nota: !prenotazione.rientro ? 'non ancora avvenuto' : undefined, onClick: () => copiaTesto('rientro') },
+                  ],
+                },
+              ]}
+            />
           )}
-          {consegnata && window.electronAPI?.apriBozzaEmail && (
-            <button type="button" className="vd-btn" onClick={() => inviaEmail('consegna')}>
-              <Mail size={16} aria-hidden="true" /> Email consegna
-            </button>
-          )}
-          {prenotazione.rientro && window.electronAPI?.salvaDocumentiPrenotazione && (
-            <button type="button" className="vd-btn" onClick={scaricaVerbaleRientro}>
-              <FileText size={16} aria-hidden="true" /> Verbale di rientro (PDF)
-            </button>
-          )}
-          {prenotazione.rientro && window.electronAPI?.apriBozzaEmail && (
-            <button type="button" className="vd-btn" onClick={() => inviaEmail('rientro')}>
-              <Mail size={16} aria-hidden="true" /> Email rientro
-            </button>
-          )}
-          <span className="pz-piede-nota" />
           {!soloLettura && (
             <>
+              <span className="pz-menu-spazio" />
+              <button type="button" className="vd-btn" onClick={() => onModifica(prenotazione)}><Pencil size={16} /> Modifica</button>
               <button type="button" className="vd-btn vd-btn--pericolo" onClick={() => onElimina(prenotazione)}>
                 <Trash2 size={16} /> {isPagataOnline(prenotazione) ? 'Annulla e rimborsa' : 'Elimina'}
               </button>
-              <button type="button" className="vd-btn" onClick={() => onModifica(prenotazione)}><Pencil size={16} /> Modifica</button>
             </>
           )}
         </footer>
