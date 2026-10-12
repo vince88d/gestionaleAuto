@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { AlertTriangle, Clock, Save, X } from 'lucide-react';
 import { ascoltaOrari, salvaOrari } from '../lib/firestoreOrari';
 import { GIORNI, oreImpostazioni, testoChiusure, testoSettimana, validaOrari, preparaOrari } from '../utils/orari';
+import SezioneImpostazioni from './SezioneImpostazioni';
 import './OrariSede.css';
 
 const FERIALI = ['mar', 'mer', 'gio', 'ven'];
@@ -25,7 +26,7 @@ function SceltaOra({ valore, onChange, etichetta }) {
 // Sezione "Orari della sede" delle Impostazioni: settimana, chiusure
 // straordinarie e tolleranza alla riconsegna. Il sito li legge (documento
 // pubblico impostazioni/orari). Mockup: formiarent-documenti/mockup/gestionale-orari.html
-function OrariSede() {
+function OrariSede({ aperta = true, onToggle }) {
   const [salvati, setSalvati] = useState(null);
   const [esiste, setEsiste] = useState(true);
   const [form, setForm] = useState(null);
@@ -91,15 +92,15 @@ function OrariSede() {
   const chiusureTesto = testoChiusure(anteprima);
 
   return (
-    <section className="imp-sezione">
-      <header className="imp-sezione-testa">
-        <span className="imp-sezione-icona" aria-hidden="true"><Clock size={18} /></span>
-        <div>
-          <h2>Orari della sede</h2>
-          <p>Il sito li mostra ai clienti e fa scegliere ritiro e riconsegna solo quando la sede è aperta.</p>
-        </div>
-      </header>
-
+    <SezioneImpostazioni
+      Icona={Clock}
+      titolo="Orari della sede"
+      riassunto={testoSettimana(anteprima)}
+      descrizione="Il sito li mostra ai clienti e fa scegliere ritiro e riconsegna solo quando la sede è aperta."
+      stato={modificato ? { testo: 'Modifiche non salvate', tono: 'attenzione' } : null}
+      aperta={aperta}
+      onToggle={onToggle}
+    >
       {!esiste && (
         <div className="imp-avviso" role="status">
           <AlertTriangle size={16} aria-hidden="true" />
@@ -210,7 +211,7 @@ function OrariSede() {
           <Save size={16} aria-hidden="true" /> {salvando ? 'Salvataggio…' : 'Salva orari'}
         </button>
       </div>
-    </section>
+    </SezioneImpostazioni>
   );
 }
 

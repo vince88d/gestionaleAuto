@@ -4,6 +4,7 @@ import { Palette, Upload, Trash2, CheckCircle, AlertTriangle, Save, Check } from
 import { contrasto } from '../utils/pdfLayout';
 import { coloreValido } from '../utils/azienda';
 import { preparaLogo, dimensioniDaDataUrl, MESSAGGI_ERRORE_LOGO } from '../utils/logoAzienda';
+import SezioneImpostazioni from './SezioneImpostazioni';
 import './AspettoDocumenti.css';
 
 export const COLORE_BASE = '#1f4e79';
@@ -24,7 +25,7 @@ export const iniziali = (nome) => {
 
 // Sezione «Aspetto dei documenti» delle Impostazioni: logo e colore dei verbali
 // PDF, con l'anteprima della testata. Si salvano da soli (non con i dati azienda).
-function AspettoDocumenti({ dati = {}, caricato = true, onSalva }) {
+function AspettoDocumenti({ dati = {}, caricato = true, onSalva, aperta = true, onToggle }) {
   const [bozza, setBozza] = useState(null); // null = niente di modificato
   const [hexScritto, setHexScritto] = useState(null); // testo del campo mentre si scrive
   const [erroreLogo, setErroreLogo] = useState('');
@@ -95,15 +96,15 @@ function AspettoDocumenti({ dati = {}, caricato = true, onSalva }) {
   const nomeTinta = TINTE.find(([hex]) => hex === colore.toLowerCase())?.[1];
 
   return (
-    <section className="imp-sezione asp" aria-labelledby="asp-titolo">
-      <header className="imp-sezione-testa">
-        <span className="imp-sezione-icona" aria-hidden="true"><Palette size={18} /></span>
-        <div>
-          <h2 id="asp-titolo">Aspetto dei documenti</h2>
-          <p>Logo e colore compaiono nei verbali di consegna e di rientro (PDF). Sono uguali su tutte le postazioni.</p>
-        </div>
-      </header>
-
+    <SezioneImpostazioni
+      Icona={Palette}
+      titolo="Aspetto dei documenti"
+      riassunto={`${attuale.logo ? 'Logo caricato' : 'Nessun logo'} · ${nomeTinta ? `colore ${nomeTinta.toLowerCase()}` : 'colore personalizzato'}`}
+      descrizione="Logo e colore compaiono nei verbali di consegna e di rientro (PDF). Sono uguali su tutte le postazioni."
+      stato={modificato ? { testo: 'Modifiche non salvate', tono: 'attenzione' } : null}
+      aperta={aperta}
+      onToggle={onToggle}
+    >
       {/* 1. Il risultato, sempre in vista mentre si sceglie */}
       <div className="asp-blocco">
         <h3 className="asp-h3">Così apparirà il verbale</h3>
@@ -229,7 +230,7 @@ function AspettoDocumenti({ dati = {}, caricato = true, onSalva }) {
           <Save size={16} aria-hidden="true" /> {salvando ? 'Salvataggio…' : 'Salva'}
         </button>
       </div>
-    </section>
+    </SezioneImpostazioni>
   );
 }
 

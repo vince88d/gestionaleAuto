@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './ImpostazioniAzienda.css';
 import {
-  Download, KeyRound, Clock, CheckCircle, AlertTriangle, Building2, Save, DatabaseBackup, History,
+  Download, KeyRound, Clock, CheckCircle, AlertTriangle, Building2, Save, DatabaseBackup, History, ChevronsUpDown,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAzienda, salvaAzienda, salvaAspettoAzienda } from '../lib/firestoreAzienda';
 import AspettoDocumenti from '../components/AspettoDocumenti';
+import SezioneImpostazioni from '../components/SezioneImpostazioni';
 import OrariSede from '../components/OrariSede';
 import { leggiDatiPerBackup } from '../lib/backupDati';
 import {
@@ -29,8 +30,29 @@ const CAMPI = [
 ];
 const ETICHETTE = { ...Object.fromEntries(CAMPI.map((c) => [c.nome, c.etichetta])), coloreAccento: 'Colore dei documenti', logo: 'Logo' };
 
+const SEZIONI = ['dati', 'aspetto', 'orari', 'licenza', 'backup', 'recupero'];
+const CHIAVE_APERTE = 'impostazioni-sezioni-aperte';
+const leggiAperte = () => {
+  try {
+    const salvato = JSON.parse(window.localStorage.getItem(CHIAVE_APERTE) || '{}');
+    return Object.fromEntries(SEZIONI.map((id) => [id, salvato?.[id] === true]));
+  } catch {
+    return Object.fromEntries(SEZIONI.map((id) => [id, false]));
+  }
+};
+
 function ImpostazioniAzienda() {
   const navigate = useNavigate();
+  // Quali schede sono aperte: si ricorda da una volta all'altra (solo su questo computer).
+  const [aperte, setAperte] = useState(leggiAperte);
+  const cambiaAperte = useCallback((fn) => setAperte((prima) => {
+    const dopo = fn(prima);
+    try { window.localStorage.setItem(CHIAVE_APERTE, JSON.stringify(dopo)); } catch { /* il ricordo e' facoltativo */ }
+    return dopo;
+  }), []);
+  const toggle = (id) => () => cambiaAperte((a) => ({ ...a, [id]: !a[id] }));
+  const tutteAperte = SEZIONI.every((id) => aperte[id]);
+  const apriChiudiTutte = () => cambiaAperte(() => Object.fromEntries(SEZIONI.map((id) => [id, !tutteAperte])));
   const { dati: datiSalvati, caricato, errore: erroreLettura } = useAzienda();
 
   // `base` = i dati da cui e' partita la modifica. Se quelli salvati cambiano
@@ -158,18 +180,21 @@ function ImpostazioniAzienda() {
     <div className="imp">
       <div className="imp-toolbar">
         <h1 className="imp-titolo">Impostazioni</h1>
+        <button type="button" className="imp-btn imp-btn--testo" onClick={apriChiudiTutte}>
+          <ChevronsUpDown size={16} aria-hidden="true" /> {tutteAperte ? 'Chiudi tutte' : 'Apri tutte'}
+        </button>
       </div>
       <p className="imp-intro">Dati dell&apos;azienda, orari della sede, licenza e copia di sicurezza dei dati.</p>
 
-      <section className="imp-sezione">
-        <header className="imp-sezione-testa">
-          <span className="imp-sezione-icona" aria-hidden="true"><Building2 size={18} /></span>
-          <div>
-            <h2>Dati dell&apos;azienda</h2>
-            <p>Uguali su tutte le postazioni. Il nome compare in alto nel menu e nella Dashboard.</p>
-          </div>
-        </header>
-
+      <SezioneImpostazioni
+        Icona={Building2}
+        titolo="Dati dell'azienda"
+        riassunto={[datiSalvati.nome, datiSalvati.telefono, datiSalvati.email].filter(Boolean).join(' · ') || 'Nome, partita IVA e contatti'}
+        descrizione="Uguali su tutte le postazioni. Il nome compare in alto nel menu e nella Dashboard."
+        stato={conflitto ? { testo: "Cambiato da un'altra postazione", tono: 'attenzione' } : modificato ? { testo: 'Modifiche non salvate', tono: 'attenzione' } : null}
+        aperta={aperte.dati}
+        onToggle={toggle('dati')}
+      >
         {erroreLettura && (
           <div className="imp-avviso imp-avviso--errore" role="alert">
             <AlertTriangle size={16} aria-hidden="true" />
@@ -226,24 +251,25 @@ function ImpostazioniAzienda() {
             <Save size={16} aria-hidden="true" /> {salvando ? 'Salvataggio…' : 'Salva'}
           </button>
         </div>
-      </section>
+      </SezioneImpostazioni>
 
-      <AspettoDocumenti dati={datiSalvati} caricato={caricato} onSalva={salvaAspettoAzienda} />
+      <AspettoDocumenti dati={datiSalvati} caricato={caricato} onSalva={salvaAspettoAzienda} aperta={aperte.aspetto} onToggle={toggle('aspetto')} />
 
-      <OrariSede />
+      <OrariSede aperta={aperte.orari} onToggle={toggle('orari')} />
 
-      <section className="imp-sezione">
-        <header className="imp-sezione-testa">
-          <span className="imp-sezione-icona" aria-hidden="true"><KeyRound size={18} /></span>
-          <div>
-            <h2>Licenza</h2>
-            <p>Licenza di questo computer.</p>
-          </div>
-          <span className={`imp-stato ${licenzaAttiva ? 'imp-stato--ok' : 'imp-stato--prova'}`}>
-            {licenzaAttiva ? <CheckCircle size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
-            {licenzaAttiva ? 'Attiva' : 'Versione di prova'}
-          </span>
-        </header>
+      <SezioneImpostazioni
+        Icona={KeyRound}
+        titolo="Licenza"
+        riassunto={licenzaAttiva ? 'Licenza di questo computer attiva' : 'Versione di prova: inserisci il codice per attivarla'}
+        descrizione="Licenza di questo computer."
+        stato={{
+          testo: licenzaAttiva ? 'Attiva' : 'Versione di prova',
+          tono: licenzaAttiva ? 'ok' : 'attenzione',
+          icona: licenzaAttiva ? <CheckCircle size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />,
+        }}
+        aperta={aperte.licenza}
+        onToggle={toggle('licenza')}
+      >
         {!licenzaAttiva && (
           <div className="imp-riga">
             <input
@@ -258,43 +284,37 @@ function ImpostazioniAzienda() {
             </button>
           </div>
         )}
-      </section>
+      </SezioneImpostazioni>
 
-      <section className="imp-sezione">
-        <header className="imp-sezione-testa">
-          <span className="imp-sezione-icona" aria-hidden="true"><DatabaseBackup size={18} /></span>
-          <div>
-            <h2>Backup dei dati</h2>
-            <p>
-              Scarica in un file una copia di veicoli, prenotazioni, clienti, categorie, tariffe e dati
-              dell&apos;azienda. Le foto restano online: nel file ci sono i loro collegamenti.
-            </p>
-          </div>
-        </header>
+      <SezioneImpostazioni
+        Icona={DatabaseBackup}
+        titolo="Backup dei dati"
+        riassunto="Scarica una copia di tutti i dati in un file"
+        descrizione="Scarica in un file una copia di veicoli, prenotazioni, clienti, categorie, tariffe e dati dell'azienda. Le foto restano online: nel file ci sono i loro collegamenti."
+        aperta={aperte.backup}
+        onToggle={toggle('backup')}
+      >
         <div className="imp-piede imp-piede--sinistra">
           <button type="button" className="imp-btn imp-btn--primario" onClick={scaricaBackup} disabled={preparandoBackup}>
             <Download size={16} aria-hidden="true" /> {preparandoBackup ? 'Preparazione…' : 'Scarica backup'}
           </button>
         </div>
-      </section>
+      </SezioneImpostazioni>
 
-      <section className="imp-sezione">
-        <header className="imp-sezione-testa">
-          <span className="imp-sezione-icona" aria-hidden="true"><History size={18} /></span>
-          <div>
-            <h2>Dati della versione precedente</h2>
-            <p>
-              Recupera veicoli, prenotazioni, clienti, foto e contratti salvati sul computer dalla versione
-              precedente del gestionale.
-            </p>
-          </div>
-        </header>
+      <SezioneImpostazioni
+        Icona={History}
+        titolo="Dati della versione precedente"
+        riassunto="Recupera i dati salvati sul computer dalla versione precedente"
+        descrizione="Recupera veicoli, prenotazioni, clienti, foto e contratti salvati sul computer dalla versione precedente del gestionale."
+        aperta={aperte.recupero}
+        onToggle={toggle('recupero')}
+      >
         <div className="imp-piede imp-piede--sinistra">
           <button type="button" className="imp-btn" onClick={() => navigate('/recupero-dati')}>
             <History size={16} aria-hidden="true" /> Apri il recupero dati
           </button>
         </div>
-      </section>
+      </SezioneImpostazioni>
     </div>
   );
 }

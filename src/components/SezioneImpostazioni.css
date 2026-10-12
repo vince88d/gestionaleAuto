@@ -1,0 +1,36 @@
+/* Accordion delle Impostazioni: l'intera testata e' il pulsante (area grande,
+   freccia che ruota), il corpo compare con una breve dissolvenza. */
+.imp-acc { padding: 0; overflow: hidden; }
+.imp-acc-titolo { margin: 0; font-size: inherit; font-weight: 400; }
+.imp-acc-pulsante {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px;
+  margin: 0; padding: 14px 20px; border: 0; background: transparent;
+  color: #2c3e50; font: inherit; font-weight: 400; text-align: left; cursor: pointer;
+}
+.imp-acc-pulsante:hover { background: #f8fafc; }
+.imp-acc-pulsante:focus-visible { outline: 3px solid #5fb0f0; outline-offset: -3px; }
+.imp-acc-testi { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.imp-acc-nome { font-size: 16px; font-weight: 700; color: #2c3e50; }
+.imp-acc-riassunto { font-size: 13px; font-weight: 400; line-height: 1.4; color: #55616d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imp-acc-stato {
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+}
+.imp-acc-stato--ok { background: #e8f6ee; color: #1e7e46; }
+.imp-acc-stato--attenzione { background: #fff4db; color: #8a5a00; }
+.imp-acc-stato--neutro { background: #eef1f5; color: #4b5563; }
+.imp-acc-freccia { flex: none; color: #5d6d7e; transition: transform 0.2s ease; }
+.imp-acc--aperta .imp-acc-freccia { transform: rotate(180deg); }
+.imp-acc--aperta > .imp-acc-titolo .imp-acc-pulsante { border-bottom: 1px solid #eef1f5; }
+.imp-acc-corpo { padding: 18px 20px 20px; animation: imp-acc-apri 0.18s ease-out; }
+.imp-acc-corpo[hidden] { display: none; }
+.imp-acc-descrizione { margin: 0 0 16px; font-size: 13.5px; line-height: 1.5; color: #55616d; }
+@keyframes imp-acc-apri { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .imp-acc-corpo { animation: none; }
+  .imp-acc-freccia { transition: none; }
+}
+@media (max-width: 560px) {
+  .imp-acc-pulsante { padding: 12px 14px; flex-wrap: wrap; }
+  .imp-acc-riassunto { white-space: normal; }
+}
