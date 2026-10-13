@@ -33,7 +33,7 @@
 
 .or-stato button:first-child { border-radius: 8px 0 0 8px; }
 .or-stato button:last-child { border-left: none; border-radius: 0 8px 8px 0; }
-.or-stato button.or-si { border-color: #3498db; background: #eaf4fc; color: #1f6fa8; }
+.or-stato button.or-si { border-color: #1a6fb0; background: #eaf4fc; color: #1f6fa8; }
 .or-stato button.or-si.or-chiuso { border-color: #9ca3af; background: #eef1f5; color: #4b5563; }
 .or-stato button:focus-visible, .or-link:focus-visible, .or-togli:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 1px; }
 
@@ -70,7 +70,7 @@
   border: none;
   border-radius: 6px;
   background: none;
-  color: #9ca3af;
+  color: #5d6b79;
   cursor: pointer;
 }
 

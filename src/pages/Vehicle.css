@@ -42,7 +42,7 @@
   }
   
   .vehicle-form input:focus {
-    border-color: #3498db;
+    border-color: #1a6fb0;
     outline: none;
     background-color: #eef7fd;
   }
@@ -50,7 +50,7 @@
   .vehicle-form button {
     grid-column: 1 / -1;
     padding: 12px;
-    background-color: #3498db;
+    background-color: #1a6fb0;
     color: white;
     border: none;
     border-radius: 6px;
@@ -128,7 +128,7 @@
 .vehicle-form input:focus,
 .vehicle-form select:focus,
 .vehicle-form textarea:focus {
-  border-color: #3498db;
+  border-color: #1a6fb0;
   box-shadow: 0 0 8px rgba(52, 152, 219, 0.3); /* Effetto focus */
   outline: none;
 }
@@ -166,7 +166,7 @@
 }
 
 .vehicle-form.two-columns input:focus {
-  border-color: #3498db;
+  border-color: #1a6fb0;
   background-color: #eef7fd;
   outline: none;
 }
@@ -177,7 +177,7 @@
   justify-self: center;
   padding: 12px 20px;
   font-size: 16px;
-  background-color: #3498db;
+  background-color: #1a6fb0;
   color: white;
   border: none;
   border-radius: 8px;
@@ -225,11 +225,11 @@
 
 /* Bottoni specifici */
 .edit-btn {
-  background-color: #3498db;
+  background-color: #1a6fb0;
   color: #ffffff;
 }
 .edit-btn:hover {
-  background-color: #2980b9;
+  background-color: #155a8f;
 }
 
 .delete-btn {
@@ -322,7 +322,7 @@
 
 .veicoli-conteggio {
   font-size: 14px;
-  color: #7f8c9a;
+  color: #5d6b79;
 }
 
 .veicoli-azioni {
@@ -348,12 +348,12 @@
   background: #fff;
   border: 1px solid #d5dde6;
   border-radius: 8px;
-  color: #7f8c9a;
+  color: #5d6b79;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .veicoli-cerca:focus-within {
-  border-color: #3498db;
+  border-color: #1a6fb0;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
 
@@ -373,7 +373,7 @@
   align-items: center;
   gap: 6px;
   padding: 0 18px;
-  background-color: #3498db;
+  background-color: #1a6fb0;
   color: white;
   border: none;
   border-radius: 8px;
@@ -385,7 +385,7 @@
 }
 
 .veicoli-aggiungi:hover {
-  background-color: #2980b9;
+  background-color: #155a8f;
 }
 
 .filtro-cat {
@@ -410,7 +410,7 @@
 
 .filtro-cat-bottone:hover,
 .filtro-cat-bottone[aria-expanded="true"] {
-  border-color: #3498db;
+  border-color: #1a6fb0;
 }
 
 .filtro-cat-bottone:focus-visible {
@@ -419,7 +419,7 @@
 }
 
 .filtro-cat-bottone.attivo {
-  border-color: #3498db;
+  border-color: #1a6fb0;
   color: #1f6fb2;
   font-weight: 600;
 }
@@ -428,7 +428,7 @@
   min-width: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  background: #3498db;
+  background: #1a6fb0;
   color: #fff;
   font-size: 12px;
   text-align: center;
@@ -469,7 +469,7 @@
 }
 
 .filtro-cat-conteggio {
-  color: #7f8c9a;
+  color: #5d6b79;
   font-size: 13px;
 }
 
@@ -490,7 +490,7 @@
 .veicoli-vuoto {
   padding: 40px 20px;
   text-align: center;
-  color: #7f8c9a;
+  color: #5d6b79;
   background: #fff;
   border: 1px dashed #d5dde6;
   border-radius: 10px;
@@ -513,7 +513,7 @@
 
 .vcard:hover,
 .vcard:focus-visible {
-  border-color: #3498db;
+  border-color: #1a6fb0;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
   outline: none;
@@ -603,7 +603,7 @@
 .vcard-prezzo small {
   font-size: 12px;
   font-weight: 500;
-  color: #7f8c9a;
+  color: #5d6b79;
 }
 
 .vcard-meta {
@@ -647,7 +647,7 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #95a3b1;
+  color: #5d6b79;
 }
 
 .vcard-dati dd {
@@ -695,4 +695,4 @@
 .vcard-scadenza--verde { background: #e3f6ea; color: #1e7b3c; }
 .vcard-scadenza--giallo { background: #fdf3d6; color: #9a6b00; }
 .vcard-scadenza--rosso { background: #fdecea; color: #c0392b; }
-.vcard-scadenza--grigio { background: #eef1f5; color: #95a3b1; }
+.vcard-scadenza--grigio { background: #eef1f5; color: #5d6b79; }

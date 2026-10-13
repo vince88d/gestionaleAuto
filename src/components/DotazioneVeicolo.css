@@ -31,9 +31,9 @@
   cursor: pointer;
 }
 
-.dv-voce--si { border-color: #3498db; background: #eaf4fc; }
+.dv-voce--si { border-color: #1a6fb0; background: #eaf4fc; }
 .dv-voce:focus-within { outline: 3px solid #5fb0f0; outline-offset: 1px; }
-.dv-voce input { width: 16px; height: 16px; margin: 0; flex-shrink: 0; accent-color: #3498db; }
+.dv-voce input { width: 16px; height: 16px; margin: 0; flex-shrink: 0; accent-color: #1a6fb0; }
 .dv-nome { min-width: 0; }
 
 .dv-togli {
@@ -43,7 +43,7 @@
   border: none;
   border-radius: 6px;
   background: none;
-  color: #7a8795;
+  color: #5d6b79;
   cursor: pointer;
 }
 
@@ -75,7 +75,7 @@
 }
 
 .dv-chiavi, .dv-gomme { display: inline-flex; align-items: center; gap: 8px; }
-.dv-gomme input { width: 16px; height: 16px; margin: 0; accent-color: #3498db; }
+.dv-gomme input { width: 16px; height: 16px; margin: 0; accent-color: #1a6fb0; }
 .dv-scelte { display: inline-flex; }
 
 .dv-scelte button {
@@ -92,7 +92,7 @@
 
 .dv-scelte button:first-child { border-radius: 8px 0 0 8px; }
 .dv-scelte button:last-child { border-radius: 0 8px 8px 0; border-left: none; }
-.dv-scelte button.dv-si { border-color: #3498db; background: #eaf4fc; color: #1f6fa8; }
+.dv-scelte button.dv-si { border-color: #1a6fb0; background: #eaf4fc; color: #1f6fa8; }
 .dv-scelte button:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 1px; position: relative; }
 
 /* --- Consegna: controllo della dotazione --- */

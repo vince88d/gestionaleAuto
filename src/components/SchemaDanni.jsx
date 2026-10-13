@@ -4,7 +4,7 @@ import {
 } from '../utils/schemaDanni';
 import './SchemaDanni.css';
 
-const RIEMPIMENTI = { bianco: '#fff', vetro: '#dfe6ee', nero: '#1a1f26', cerchione: '#9aa5b1' };
+const RIEMPIMENTI = { bianco: '#fff', vetro: '#dfe6ee', nero: '#1a1f26', cerchione: '#5d6b79' };
 
 // Schema dell'auto con i danni numerati. Si tocca il punto, compare un numero
 // e si scrive cos'e'. `vecchi` sono i danni gia' presenti (grigi, non si

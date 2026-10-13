@@ -128,7 +128,7 @@ box-sizing: border-box;
   width: 2em;
   height: 2em;
   border-radius: 50%;
-  background-color: #3498db;
+  background-color: #1a6fb0;
   color: white;
   font-size: 0.7em;
 }
@@ -225,7 +225,7 @@ box-sizing: border-box;
 
 .booking-form button {
   padding: 0.8rem;
-  background-color: #3498db;
+  background-color: #1a6fb0;
   color: white;
   font-weight: bold;
   border: none;
@@ -235,7 +235,7 @@ box-sizing: border-box;
 }
 
 .booking-form button:hover {
-  background-color: #2980b9;
+  background-color: #155a8f;
 }
 
 /* ---------- Tabella riepilogativa ---------- */
@@ -371,7 +371,7 @@ box-sizing: border-box;
 }
 
 .info-btn svg {
-  color: #3498db;
+  color: #1a6fb0;
   width: 18px;
   height: 18px;
   transition: transform 0.2s ease, color 0.2s ease;
@@ -380,7 +380,7 @@ box-sizing: border-box;
 
 .info-btn:hover svg {
   transform: scale(1.1);
-  color: #2980b9;
+  color: #155a8f;
 }
 
 .export-btn {
@@ -516,7 +516,7 @@ box-sizing: border-box;
 }
 
 .newPren-btn{
-  background-color: #3498db;
+  background-color: #1a6fb0;
   color: white;
   padding: 0.6rem 1rem;
   border: none;
@@ -841,12 +841,12 @@ box-sizing: border-box;
 }
 
 .btn-primary {
-  background-color: #3498db;
+  background-color: #1a6fb0;
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #2980b9;
+  background-color: #155a8f;
 }
 
 .btn-secondary {
@@ -885,7 +885,7 @@ gap: 0.3rem;
 .spinner{
   margin: 2rem auto;
   border: 4px solid #eee;
-  border-top: 4px solid #3498db;
+  border-top: 4px solid #1a6fb0;
   border-radius: 50%;
   width: 40px;
   height: 40px;
@@ -1002,8 +1002,8 @@ gap: 0.3rem;
 
 .bookings-filtro--attivo,
 .bookings-filtro--attivo:hover {
-  background: #3498db;
-  border-color: #3498db;
+  background: #1a6fb0;
+  border-color: #1a6fb0;
   color: #fff;
 }
 
@@ -1090,7 +1090,7 @@ gap: 0.3rem;
 
 .main-content .bk-titolo { margin: 0; }
 
-.bk-conteggio { font-size: 14px; color: #7f8c9a; }
+.bk-conteggio { font-size: 14px; color: #5d6b79; }
 
 .bk-azioni {
   display: flex;
@@ -1110,12 +1110,12 @@ gap: 0.3rem;
   background: #fff;
   border: 1px solid #d5dde6;
   border-radius: 8px;
-  color: #7f8c9a;
+  color: #5d6b79;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .bk-cerca:focus-within {
-  border-color: #3498db;
+  border-color: #1a6fb0;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
 
@@ -1176,11 +1176,11 @@ gap: 0.3rem;
 .bk-btn:hover:not(:disabled) { background: #f4f6f8; }
 .bk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.bk-btn--primario { border-color: #3498db; background: #3498db; color: #fff; }
-.bk-btn--primario:hover:not(:disabled) { background: #2980b9; }
+.bk-btn--primario { border-color: #1a6fb0; background: #1a6fb0; color: #fff; }
+.bk-btn--primario:hover:not(:disabled) { background: #155a8f; }
 
 .bk-btn--piccolo { padding: 6px 10px; font-size: 13px; }
-.bk-btn--icona { padding: 6px 8px; color: #7f8c9a; }
+.bk-btn--icona { padding: 6px 8px; color: #5d6b79; }
 
 .bk-btn--consegna { border-color: #bfdbfe; background: #eff6ff; color: #1e40af; }
 .bk-btn--consegna:hover:not(:disabled) { background: #dbeafe; }
@@ -1216,7 +1216,7 @@ gap: 0.3rem;
   padding: 11px 14px;
   border-bottom: 1px solid #e3e8ee;
   background: #f8fafc;
-  color: #7f8c9a;
+  color: #5d6b79;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1238,7 +1238,7 @@ gap: 0.3rem;
 .bk-riga:hover { background: #f8fafc; }
 
 .bk-principale { display: block; font-weight: 600; color: #2c3e50; white-space: nowrap; }
-.bk-secondario { display: block; margin-top: 2px; font-size: 12px; color: #7f8c9a; }
+.bk-secondario { display: block; margin-top: 2px; font-size: 12px; color: #5d6b79; }
 
 .bk-targa {
   display: inline-block;
@@ -1280,7 +1280,7 @@ gap: 0.3rem;
 .bk-vuoto {
   padding: 32px 16px !important;
   text-align: center !important;
-  color: #7f8c9a;
+  color: #5d6b79;
 }
 
 .bk-pagine {
@@ -1302,7 +1302,7 @@ gap: 0.3rem;
   cursor: pointer;
 }
 
-.bk-pagine .bk-pagina--attiva { border-color: #3498db; background: #3498db; color: #fff; }
+.bk-pagine .bk-pagina--attiva { border-color: #1a6fb0; background: #1a6fb0; color: #fff; }
 
 /* ---------- Calendario ---------- */
 .bk-calendario {
@@ -1345,7 +1345,7 @@ gap: 0.3rem;
 
 .bk-calendario .fc .fc-col-header-cell-cushion {
   padding: 8px 4px;
-  color: #7f8c9a;
+  color: #5d6b79;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1371,7 +1371,7 @@ gap: 0.3rem;
   margin: 4px;
   padding: 2px 7px;
   border-radius: 999px;
-  background: #3498db;
+  background: #1a6fb0;
   color: #fff;
 }
 
@@ -1401,7 +1401,7 @@ gap: 0.3rem;
   margin-left: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #3498db;
+  color: #1a6fb0;
 }
 
 .bk-legenda {
@@ -1426,7 +1426,7 @@ gap: 0.3rem;
 .bk-legenda-punto.fase--da-consegnare { background: #3b82f6; }
 .bk-legenda-punto.fase--in-corso { background: #22c55e; }
 .bk-legenda-punto.fase--da-concludere { background: #ef4444; }
-.bk-legenda .bk-legenda-nota { margin-left: auto; color: #95a3b1; }
+.bk-legenda .bk-legenda-nota { margin-left: auto; color: #5d6b79; }
 
 @media (max-width: 900px) {
   .bk-cerca { width: 100%; }

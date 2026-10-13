@@ -6,7 +6,7 @@
 .sd-schema svg { display: block; width: 100%; height: auto; user-select: none; cursor: crosshair; }
 .sd-zona { fill: transparent; stroke: none; outline: none; }
 .sd-zona:hover { fill: rgba(52, 152, 219, .08); }
-.sd-zona:focus-visible { stroke: #3498db; stroke-width: 2; stroke-dasharray: 5 3; }
+.sd-zona:focus-visible { stroke: #1a6fb0; stroke-width: 2; stroke-dasharray: 5 3; }
 .sd-scritta { font-size: 9px; fill: #5b6672; letter-spacing: .6px; pointer-events: none; }
 .sd-pin { cursor: pointer; }
 .sd-pin circle { fill: #a4372b; stroke: #fff; stroke-width: 1.5; }
@@ -19,7 +19,7 @@
 .sd-vuoto { padding: 14px; border: 1px dashed #d5dde6; border-radius: 10px; color: #5b6672; font-size: 14px; }
 .sd-voce { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px 10px; align-items: start; padding: 10px; border: 1px solid #d5dde6; border-radius: 10px; }
 .sd-voce--vecchio { background: #f4f6f8; }
-.sd-voce--scelto { border-color: #3498db; box-shadow: 0 0 0 2px #cfe6f8; }
+.sd-voce--scelto { border-color: #1a6fb0; box-shadow: 0 0 0 2px #cfe6f8; }
 .sd-numero { width: 24px; height: 24px; border-radius: 50%; background: #a4372b; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .sd-numero--vecchio { background: #5b6672; }
 .sd-campi { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
