@@ -1,6 +1,7 @@
 import React from 'react';
 import { COPERTURE, euro as euroTondo } from '../utils/protezioni';
 import { testoSupplemento } from '../utils/etaConducenti';
+import CorniceDettagli from './CorniceDettagli';
 
 const euro = (valore) => `${Number(valore || 0).toFixed(2).replace('.', ',')} €`;
 const importo = (n) => (typeof n === 'number' ? euroTondo(n) : '—');
@@ -9,7 +10,7 @@ const importo = (n) => (typeof n === 'number' ? euroTondo(n) : '—');
 // sito o dal gestionale, stessi campi: vedi utils/sceltaExtra.js). Riquadro
 // dei dettagli e del riepilogo della consegna. Le prenotazioni di prima non
 // li hanno: non mostra niente.
-function ProtezioneExtraDettagli({ prenotazione }) {
+function ProtezioneExtraDettagli({ prenotazione, senzaCornice = false }) {
   const p = prenotazione?.protezione;
   const extra = (Array.isArray(prenotazione?.optional) ? prenotazione.optional : []).filter((r) => r?.quantita > 0);
   const giovane = prenotazione?.giovaneConducente;
@@ -18,8 +19,7 @@ function ProtezioneExtraDettagli({ prenotazione }) {
   const coperture = p?.copre ? COPERTURE.filter(([k]) => p.copre[k]).map(([, nome]) => nome) : [];
 
   return (
-    <section className="pz-sezione">
-      <h3 className="pz-titolo-sezione">Protezione ed extra</h3>
+    <CorniceDettagli senza={senzaCornice} titolo="Protezione ed extra">
       {p && (
         <dl className="pz-dati">
           <div>
@@ -61,7 +61,7 @@ function ProtezioneExtraDettagli({ prenotazione }) {
           </div>
         </dl>
       )}
-    </section>
+    </CorniceDettagli>
   );
 }
 

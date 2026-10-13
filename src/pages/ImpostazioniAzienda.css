@@ -26,13 +26,6 @@
 }
 
 /* ---------- Sezioni ---------- */
-.imp-sezione {
-  border: 1px solid #e3e8ee;
-  border-radius: 12px;
-  background: #fff;
-  padding: 18px 20px;
-  margin-bottom: 16px;
-}
 
 .imp-sezione-testa {
   display: flex;
@@ -57,17 +50,6 @@
   line-height: 1.45;
 }
 
-.imp-sezione-icona {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: #eaf4fc;
-  color: #3498db;
-}
 
 /* ---------- Campi ---------- */
 .imp-griglia {

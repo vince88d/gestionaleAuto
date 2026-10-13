@@ -163,3 +163,43 @@ describe('email di riepilogo', () => {
     expect(window.electronAPI.apriBozzaEmail).not.toHaveBeenCalled();
   });
 });
+
+describe('schede richiudibili', () => {
+  const consegnata = {
+    ...prenotazioneDalSito, veicolo: 'Panda', targa: 'AA111AA', consegnataIl: '2026-10-10T09:00:00',
+    schedaVeicolo: { kmIniziali: 48250, carburante: '3/4' },
+  };
+
+  test('da consegnare: aperte Cliente e Noleggio, chiusa la Consegna con il suo riassunto', () => {
+    render(<InfoModal isOpen prenotazione={{ ...prenotazioneDalSito, veicolo: 'Panda', targa: 'AA111AA' }} {...azioni} />);
+    expect(screen.getByRole('button', { name: /^Cliente/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /^Noleggio/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /^Consegna/ })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Non ancora consegnata')).toBeInTheDocument();
+  });
+
+  test('auto fuori: si apre la Consegna, il Rientro e\' chiuso e dice che non e\' avvenuto', () => {
+    render(<InfoModal isOpen prenotazione={consegnata} {...azioni} />);
+    expect(screen.getByRole('button', { name: /^Consegna/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /^Cliente/ })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: /^Rientro/ })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Non ancora avvenuto')).toBeInTheDocument();
+  });
+
+  test('«Apri tutte» / «Chiudi tutte» e il clic sulla singola scheda', () => {
+    render(<InfoModal isOpen prenotazione={consegnata} {...azioni} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Apri tutte' }));
+    expect(screen.getByRole('button', { name: /^Cliente/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Chiudi tutte' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Cliente/ }));
+    expect(screen.getByRole('button', { name: /^Cliente/ })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('aprendo un\'altra prenotazione si riparte dalle schede che servono', () => {
+    const { rerender } = render(<InfoModal isOpen prenotazione={consegnata} {...azioni} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Apri tutte' }));
+    rerender(<InfoModal isOpen prenotazione={{ ...prenotazioneDalSito, id: 'p2' }} {...azioni} />);
+    expect(screen.getByRole('button', { name: /^Consegna/ })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: /^Noleggio/ })).toHaveAttribute('aria-expanded', 'true');
+  });
+});

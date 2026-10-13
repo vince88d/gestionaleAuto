@@ -292,6 +292,11 @@
 .vd-sezione:first-child,
 .vd-avviso + .vd-sezione { margin-top: 0; }
 
+/* Schede richiudibili di Danni e Manutenzioni: stessa distanza dei riquadri. */
+.vd-contenuto .imp-sezione { margin-top: 16px; }
+.vd-contenuto .imp-sezione:first-child { margin-top: 0; }
+.vd-barra-sezione--destra { justify-content: flex-end; }
+
 .vd-titolo-sezione {
   margin: 0 0 14px;
   font-size: 12px;

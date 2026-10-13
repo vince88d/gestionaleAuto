@@ -9,6 +9,8 @@ import {
   CalendarDays, Gauge, Palette, Fuel, Cog, DoorOpen, Euro, Wrench, PauseCircle, PlayCircle,
 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
+import SezioneImpostazioni from "./SezioneImpostazioni";
+import { useSchedeAperte } from "../utils/useSchedeAperte";
 import "../styles/VehicleDetailModal.css";
 import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";
@@ -157,6 +159,29 @@ const VehicleDetailModal = ({
     }
   };
 
+  const danni = veicolo?.danni || [];
+  const storico = veicolo?.storicoRiparazioni || [];
+  const danniRiconsegne = (prenotazioni || []).filter(
+    (p) => p.targa === veicolo?.targa && p.status === "completata" && (p.descrizioneDanno || p.fotoDanni)
+  );
+  const danniDaRiparare = danni.filter((d) => d.daRiparare).length;
+  const riconsegneDaRiparare = danniRiconsegne.filter((p) => p.daRiparare).length;
+  const daRiparare = danniDaRiparare + riconsegneDaRiparare;
+
+  const manutenzioni = veicolo?.manutenzioni || [];
+  const totaleManutenzioni = manutenzioni.reduce((acc, m) => acc + parseFloat(m.costo || 0), 0);
+
+  // Schede richiudibili di Danni e Manutenzioni: si ricorda cosa si e' aperto.
+  // Di partenza resta aperto cio' che si consulta di piu' (i danni, lo storico
+  // delle manutenzioni) e i danni da riparare delle riconsegne.
+  const schedeAperte = useSchedeAperte({
+    danniVeicolo: true,
+    riconsegne: riconsegneDaRiparare > 0,
+    storico: false,
+    nuovaManutenzione: false,
+    storicoManutenzioni: true,
+  }, "veicolo-schede-aperte");
+
   if (!veicolo) return null;
 
   // Prenotazioni che occupano davvero il veicolo: niente annullate, richieste
@@ -249,16 +274,6 @@ const VehicleDetailModal = ({
     .filter((p) => p.targa === veicolo.targa && p.dataFine >= oggi)
     .sort((a, b) => String(a.dataInizio).localeCompare(String(b.dataInizio)));
 
-  const danni = veicolo.danni || [];
-  const storico = veicolo.storicoRiparazioni || [];
-  const danniRiconsegne = prenotazioni.filter(
-    (p) => p.targa === veicolo.targa && p.status === "completata" && (p.descrizioneDanno || p.fotoDanni)
-  );
-  const daRiparare =
-    danni.filter((d) => d.daRiparare).length + danniRiconsegne.filter((p) => p.daRiparare).length;
-
-  const manutenzioni = veicolo.manutenzioni || [];
-  const totaleManutenzioni = manutenzioni.reduce((acc, m) => acc + parseFloat(m.costo || 0), 0);
 
   const schede = SCHEDE.filter((s) => !modalLite || !s.soloCompleta);
 
@@ -529,15 +544,19 @@ const VehicleDetailModal = ({
 
             {scheda === "danni" && !modalLite && (
               <>
-                <section className="vd-sezione">
-                  <div className="vd-barra-sezione">
-                    <h3 className="vd-titolo-sezione">Danni sul veicolo</h3>
-                    {!formDannoAperto && (
+                <SezioneImpostazioni
+                  className="imp-acc--compatta" titolo="Danni sul veicolo"
+                  riassunto={danni.length > 0 ? `${danni.length} ${danni.length === 1 ? "registrato" : "registrati"}` : "Nessun danno registrato"}
+                  stato={danniDaRiparare > 0 ? { testo: `${danniDaRiparare} da riparare`, tono: "attenzione" } : null}
+                  aperta={schedeAperte.aperta("danniVeicolo")} onToggle={schedeAperte.toggle("danniVeicolo")}
+                >
+                  {!formDannoAperto && (
+                    <div className="vd-barra-sezione vd-barra-sezione--destra">
                       <button type="button" className="vd-btn" onClick={() => setFormDannoAperto(true)}>
                         <Plus size={16} aria-hidden="true" /> Aggiungi danno
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {formDannoAperto && (
                     <div className="vd-form-danno">
@@ -631,10 +650,18 @@ const VehicleDetailModal = ({
                   ) : (
                     <p className="vd-vuoto">Nessun danno registrato sul veicolo.</p>
                   )}
-                </section>
+                </SezioneImpostazioni>
 
-                <section className="vd-sezione">
-                  <h3 className="vd-titolo-sezione">Danni rilevati alle riconsegne</h3>
+                <SezioneImpostazioni
+                  className="imp-acc--compatta" titolo="Danni rilevati alle riconsegne"
+                  riassunto={danniRiconsegne.length > 0
+                    ? `${danniRiconsegne.length} ${danniRiconsegne.length === 1 ? "segnalato" : "segnalati"}${riconsegneDaRiparare === 0 ? " · nessuno da riparare" : ""}`
+                    : "Nessun danno segnalato alla riconsegna"}
+                  stato={riconsegneDaRiparare > 0
+                    ? { testo: `${riconsegneDaRiparare} da riparare`, tono: "attenzione" }
+                    : danniRiconsegne.length > 0 ? { testo: "Tutto a posto", tono: "ok" } : null}
+                  aperta={schedeAperte.aperta("riconsegne")} onToggle={schedeAperte.toggle("riconsegne")}
+                >
                   {danniRiconsegne.length > 0 ? (
                     <div className="vd-griglia-danni">
                       {danniRiconsegne.map((p) => {
@@ -674,10 +701,15 @@ const VehicleDetailModal = ({
                   ) : (
                     <p className="vd-vuoto">Nessun danno segnalato alla riconsegna.</p>
                   )}
-                </section>
+                </SezioneImpostazioni>
 
-                <section className="vd-sezione">
-                  <h3 className="vd-titolo-sezione">Storico riparazioni</h3>
+                <SezioneImpostazioni
+                  className="imp-acc--compatta" titolo="Storico riparazioni"
+                  riassunto={storico.length > 0
+                    ? `${storico.length} ${storico.length === 1 ? "riparazione" : "riparazioni"} · l'ultima il ${formattaData(storico.map((d) => d.riparatoIn).filter(Boolean).sort().pop())}`
+                    : "Nessuna riparazione registrata"}
+                  aperta={schedeAperte.aperta("storico")} onToggle={schedeAperte.toggle("storico")}
+                >
                   {storico.length > 0 ? (
                     <div className="vd-griglia-danni">
                       {storico.map((danno, i) => (
@@ -706,14 +738,17 @@ const VehicleDetailModal = ({
                   ) : (
                     <p className="vd-vuoto">Nessuna riparazione registrata.</p>
                   )}
-                </section>
+                </SezioneImpostazioni>
               </>
             )}
 
             {scheda === "manutenzioni" && !modalLite && (
               <>
-                <section className="vd-sezione">
-                  <h3 className="vd-titolo-sezione">Nuova manutenzione</h3>
+                <SezioneImpostazioni
+                  className="imp-acc--compatta" titolo="Nuova manutenzione"
+                  riassunto="Tagliando, cambio gomme, revisione…"
+                  aperta={schedeAperte.aperta("nuovaManutenzione")} onToggle={schedeAperte.toggle("nuovaManutenzione")}
+                >
                   {/* Un div e non un <form>: le regole generiche ".Modal form" di
                       schedaModal.css metterebbero tutto in colonna. Invio aggiunge. */}
                   <div className="vd-nuova-manutenzione" onKeyDown={aggiungiManutenzione}>
@@ -749,10 +784,14 @@ const VehicleDetailModal = ({
                       <Plus size={16} aria-hidden="true" /> Aggiungi
                     </button>
                   </div>
-                </section>
+                </SezioneImpostazioni>
 
-                <section className="vd-sezione">
-                  <h3 className="vd-titolo-sezione">Storico manutenzioni</h3>
+                <SezioneImpostazioni
+                  className="imp-acc--compatta" titolo="Storico manutenzioni"
+                  riassunto={manutenzioni.length > 0 ? `Totale ${euro(totaleManutenzioni)}` : "Nessuna manutenzione registrata"}
+                  stato={manutenzioni.length > 0 ? { testo: `${manutenzioni.length} ${manutenzioni.length === 1 ? "intervento" : "interventi"}`, tono: "neutro" } : null}
+                  aperta={schedeAperte.aperta("storicoManutenzioni")} onToggle={schedeAperte.toggle("storicoManutenzioni")}
+                >
                   {manutenzioni.length > 0 ? (
                     <table className="vd-tabella">
                       <thead>
@@ -797,7 +836,7 @@ const VehicleDetailModal = ({
                       Nessuna manutenzione registrata.
                     </div>
                   )}
-                </section>
+                </SezioneImpostazioni>
               </>
             )}
           </div>

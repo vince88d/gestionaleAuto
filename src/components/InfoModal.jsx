@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import Modal from 'react-modal';
 import './InfoModal.css';
-import { Pencil, Trash2, KeyRound, X, Download, FileText, Car, LogIn, Mail, Copy } from 'lucide-react';
+import { Pencil, Trash2, KeyRound, X, Download, FileText, Car, LogIn, Mail, Copy, User, ShieldCheck, ClipboardCheck, Undo2, AlertTriangle, ChevronsUpDown } from 'lucide-react';
 import '../styles/Prenotazione.css';
 import { dataEOra, formattaData } from '../utils/scadenze';
 import { oraBreve } from '../utils/orari';
@@ -20,6 +20,12 @@ import { salvaVerbaleRientro } from '../utils/pdfRientro';
 import { bozzaEmail, testoRiepilogo } from '../utils/emailRiepilogo';
 import MenuPulsante from './MenuPulsante';
 import { useAzienda } from '../lib/firestoreAzienda';
+import SezioneImpostazioni from './SezioneImpostazioni';
+import { useSchedeAperte } from '../utils/useSchedeAperte';
+import {
+  schedeAperteIniziali, riassuntoCliente, riassuntoNoleggio, riassuntoProtezioneExtra,
+  riassuntoConsegna, riassuntoRientro, riassuntoDanni,
+} from '../utils/riassuntiPrenotazione';
 
 
 
@@ -77,6 +83,16 @@ function ProssimoPasso({ prenotazione, onScegliAuto, onConsegna, onConcludi }) {
 function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, onConsegna, onScegliAuto, soloLettura = false }) {
   const printRef = useRef();
   const { dati: azienda } = useAzienda();
+  // Schede richiudibili: si apre da sola quella che serve in quel momento
+  // (consegna, rientro...); ogni volta che si apre un'altra prenotazione si riparte da li'.
+  const schede = useSchedeAperte(schedeAperteIniziali(prenotazione || {}));
+  const idPrenotazione = prenotazione?.id;
+  const { reimposta } = schede;
+  useEffect(() => {
+    if (isOpen) reimposta();
+    // Solo quando si apre la finestra o cambia prenotazione, non a ogni salvataggio.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, idPrenotazione]);
 
   // Qui c'era una sezione "Danni attivi sul veicolo" che leggeva il campo
   // `danniAttivi`, che nessuno scrive piu' (non mostrava mai nulla) e che per
@@ -172,11 +188,14 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
   const scheda = prenotazione.schedaVeicolo || {};
   const consegnata = eConsegnata(prenotazione);
   const senzaAuto = daAssegnare(prenotazione);
+  const conProtezioneExtra = Boolean(riassuntoProtezioneExtra(prenotazione));
   const fotoRiconsegna = [].concat(prenotazione.fotoDanni || []).filter(Boolean);
   const statoTesto = {
     completata: 'Conclusa',
     annullata: 'Annullata',
   }[prenotazione.status] || (senzaAuto ? 'Auto da scegliere' : consegnata ? 'Consegnata' : 'Da consegnare');
+
+  const statoTono = prenotazione.status === 'annullata' ? 'attenzione' : prenotazione.status === 'completata' || consegnata ? 'ok' : 'neutro';
 
   return (
     <Modal
@@ -212,18 +231,29 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
             />
           )}
 
-          <section className="pz-sezione">
-            <h3 className="pz-titolo-sezione">Cliente</h3>
+          <div className="pz-barra-schede">
+            <button type="button" className="vd-link" onClick={schede.apriChiudiTutte}>
+              <ChevronsUpDown size={15} aria-hidden="true" /> {schede.tutteAperte ? 'Chiudi tutte' : 'Apri tutte'}
+            </button>
+          </div>
+
+          <SezioneImpostazioni
+            className="imp-acc--compatta" Icona={User} titolo="Cliente"
+            riassunto={riassuntoCliente(prenotazione)} aperta={schede.aperta('cliente')} onToggle={schede.toggle('cliente')}
+          >
             <dl className="pz-dati">
               <div><dt>Nome</dt><dd>{prenotazione.cliente || '—'}</dd></div>
               <div><dt>Codice fiscale</dt><dd>{prenotazione.codiceFiscale || '—'}</dd></div>
               <div><dt>Patente</dt><dd>{prenotazione.patente || '—'}</dd></div>
               <div className="pz-intera"><dt>Email</dt><dd>{prenotazione.emailCliente || '—'}</dd></div>
             </dl>
-          </section>
+          </SezioneImpostazioni>
 
-          <section className="pz-sezione">
-            <h3 className="pz-titolo-sezione">Noleggio</h3>
+          <SezioneImpostazioni
+            className="imp-acc--compatta" Icona={Car} titolo="Noleggio"
+            riassunto={riassuntoNoleggio(prenotazione)} stato={{ testo: statoTesto, tono: statoTono }}
+            aperta={schede.aperta('noleggio')} onToggle={schede.toggle('noleggio')}
+          >
             <dl className="pz-dati">
               {senzaAuto ? (
                 <>
@@ -241,12 +271,22 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
               <div><dt>Riconsegna</dt><dd>{prenotazione.oraFine ? `${formattaData(prenotazione.dataFine)} entro le ${oraBreve(prenotazione.oraFine)}` : formattaData(prenotazione.dataFine)}</dd></div>
               <div><dt>Stato</dt><dd>{statoTesto}</dd></div>
             </dl>
-          </section>
+          </SezioneImpostazioni>
 
-          <ProtezioneExtraDettagli prenotazione={prenotazione} />
+          {conProtezioneExtra && (
+            <SezioneImpostazioni
+              className="imp-acc--compatta" Icona={ShieldCheck} titolo="Protezione ed extra"
+              riassunto={riassuntoProtezioneExtra(prenotazione)} aperta={schede.aperta('protezione')} onToggle={schede.toggle('protezione')}
+            >
+              <ProtezioneExtraDettagli prenotazione={prenotazione} senzaCornice />
+            </SezioneImpostazioni>
+          )}
 
-          <section className="pz-sezione">
-            <h3 className="pz-titolo-sezione">Consegna</h3>
+          <SezioneImpostazioni
+            className="imp-acc--compatta" Icona={ClipboardCheck} titolo="Consegna"
+            riassunto={riassuntoConsegna(prenotazione)} stato={consegnata ? { testo: 'Fatta', tono: 'ok' } : null}
+            aperta={schede.aperta('consegna')} onToggle={schede.toggle('consegna')}
+          >
             {consegnata ? (
               <>
                 <dl className="pz-dati">
@@ -275,13 +315,27 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
                 Non ancora consegnata: il giorno del ritiro usa «Consegna l'auto» per km, carburante, dotazione e contratto.
               </p>
             )}
-          </section>
+          </SezioneImpostazioni>
 
-          <RientroDettagli prenotazione={prenotazione} />
+          {(consegnata || prenotazione.rientro) && (
+            <SezioneImpostazioni
+              className="imp-acc--compatta" Icona={Undo2} titolo="Rientro"
+              riassunto={riassuntoRientro(prenotazione)} stato={prenotazione.rientro ? { testo: 'Fatto', tono: 'ok' } : null}
+              aperta={schede.aperta('rientro')} onToggle={schede.toggle('rientro')}
+            >
+              {prenotazione.rientro
+                ? <RientroDettagli prenotazione={prenotazione} senzaCornice />
+                : <p className="pz-aiuto" style={{ fontSize: 14 }}>Non ancora avvenuto: quando l&apos;auto torna usa «Ricevi l&apos;auto».</p>}
+            </SezioneImpostazioni>
+          )}
 
           {(prenotazione.descrizioneDanno || fotoRiconsegna.length > 0) && (
-            <section className="pz-sezione">
-              <h3 className="pz-titolo-sezione">Danni alla riconsegna</h3>
+            <SezioneImpostazioni
+              className="imp-acc--compatta" Icona={AlertTriangle} titolo="Danni alla riconsegna"
+              riassunto={riassuntoDanni(prenotazione)}
+              stato={prenotazione.daRiparare ? { testo: 'Da riparare', tono: 'attenzione' } : null}
+              aperta={schede.aperta('danni')} onToggle={schede.toggle('danni')}
+            >
               {prenotazione.descrizioneDanno && <p style={{ margin: 0 }}>{prenotazione.descrizioneDanno}</p>}
               {prenotazione.daRiparare && <p className="pz-errore" style={{ marginTop: 6 }}>Da riparare</p>}
               {fotoRiconsegna.length > 0 && (
@@ -289,7 +343,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
                   {fotoRiconsegna.map((src, idx) => <img key={src} src={src} alt={`Danno ${idx + 1}`} />)}
                 </div>
               )}
-            </section>
+            </SezioneImpostazioni>
           )}
         </div>
 
