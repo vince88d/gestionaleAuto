@@ -89,7 +89,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
   const idPrenotazione = prenotazione?.id;
   const { reimposta } = schede;
   useEffect(() => {
-    if (isOpen) reimposta(schedeAperteIniziali(prenotazione || {}));
+    if (isOpen) reimposta();
     // Solo quando si apre la finestra o cambia prenotazione, non a ogni salvataggio.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, idPrenotazione]);

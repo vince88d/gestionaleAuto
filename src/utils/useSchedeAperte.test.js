@@ -11,7 +11,7 @@ test('parte dalle iniziali, apre/chiude una scheda e tutte insieme', () => {
   expect(result.current.tutteAperte).toBe(true);
   act(() => result.current.apriChiudiTutte());
   expect(result.current.aperta('a')).toBe(false);
-  act(() => result.current.reimposta({ a: true, b: false }));
+  act(() => result.current.reimposta());
   expect(result.current.aperta('a')).toBe(true);
 });
 
@@ -22,4 +22,16 @@ test('con la chiave la scelta si ricorda; senza no', () => {
   expect(secondo.result.current.aperta('a')).toBe(true);
   const senza = renderHook(() => useSchedeAperte({ a: false }));
   expect(senza.result.current.aperta('a')).toBe(false);
+});
+
+test('le scelte a mano battono le iniziali, che possono cambiare con i dati', () => {
+  const { result, rerender } = renderHook(({ ini }) => useSchedeAperte(ini), { initialProps: { ini: { a: false } } });
+  rerender({ ini: { a: true } });
+  expect(result.current.aperta('a')).toBe(true);
+  act(() => result.current.toggle('a')());
+  rerender({ ini: { a: false } });
+  expect(result.current.aperta('a')).toBe(false);
+  act(() => result.current.toggle('a')());
+  rerender({ ini: { a: false } });
+  expect(result.current.aperta('a')).toBe(true);
 });
