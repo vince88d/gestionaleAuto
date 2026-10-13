@@ -894,3 +894,7 @@
 .pz-menu-voce small { display: block; font-size: 12px; font-weight: 400; }
 .pz-piede--menu { justify-content: flex-start; }
 .pz-piede .pz-menu-spazio { margin-left: auto; }
+
+/* «Apri tutte / Chiudi tutte» sopra le schede richiudibili dei dettagli */
+.pz-barra-schede { display: flex; justify-content: flex-end; margin: -4px 0 -4px; }
+.pz-barra-schede .vd-link { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; }

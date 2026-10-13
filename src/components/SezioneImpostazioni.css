@@ -1,3 +1,25 @@
+/* Cornice e icona delle schede (usate anche fuori dalle Impostazioni). */
+.imp-sezione {
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.imp-sezione-icona {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #eaf4fc;
+  color: #3498db;
+}
+/* Dentro un elenco di riquadri con il suo spazio (es. dettagli prenotazione). */
+.imp-sezione.imp-acc--compatta { margin-bottom: 0; flex: none; }
+
 /* Accordion delle Impostazioni: l'intera testata e' il pulsante (area grande,
    freccia che ruota), il corpo compare con una breve dissolvenza. */
 .imp-acc { padding: 0; overflow: hidden; }

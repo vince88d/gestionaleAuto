@@ -8,13 +8,13 @@ import './SezioneImpostazioni.css';
 // (`hidden`): quello che si sta scrivendo non si perde.
 //   tono dello stato: 'ok' | 'attenzione' | 'neutro'
 function SezioneImpostazioni({
-  Icona, titolo, riassunto = '', descrizione = '', stato = null, aperta = true, onToggle, children,
+  Icona, titolo, riassunto = '', descrizione = '', stato = null, aperta = true, onToggle, className = '', children,
 }) {
   const id = useId();
   const pulsante = `${id}-pulsante`;
   const pannello = `${id}-pannello`;
   return (
-    <section className={`imp-sezione imp-acc ${aperta ? 'imp-acc--aperta' : ''}`}>
+    <section className={`imp-sezione imp-acc ${aperta ? 'imp-acc--aperta' : ''} ${className}`.trim()}>
       <h2 className="imp-acc-titolo">
         <button type="button" id={pulsante} className="imp-acc-pulsante" aria-expanded={aperta} aria-controls={pannello} onClick={onToggle}>
           {Icona && <span className="imp-sezione-icona" aria-hidden="true"><Icona size={18} /></span>}

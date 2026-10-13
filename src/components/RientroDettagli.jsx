@@ -1,15 +1,15 @@
 import React from 'react';
 import { sezioniRientro } from '../utils/pdfRientro';
+import CorniceDettagli from './CorniceDettagli';
 
 // Rientro di un noleggio concluso, nei dettagli della prenotazione: gli stessi
 // dati del verbale (utils/pdfRientro.js). Niente per i noleggi conclusi prima
 // del rientro completo.
-function RientroDettagli({ prenotazione }) {
+function RientroDettagli({ prenotazione, senzaCornice = false }) {
   const sezioni = sezioniRientro(prenotazione);
   if (sezioni.length === 0) return null;
   return (
-    <section className="pz-sezione">
-      <h3 className="pz-titolo-sezione">Rientro</h3>
+    <CorniceDettagli senza={senzaCornice} titolo="Rientro">
       {sezioni.map(({ titolo, righe }, i) => {
         // Cliente, veicolo e periodo sono gia' negli altri riquadri.
         const mostrate = i === 0 ? righe.slice(3) : righe;
@@ -26,7 +26,7 @@ function RientroDettagli({ prenotazione }) {
           </div>
         );
       })}
-    </section>
+    </CorniceDettagli>
   );
 }
 
