@@ -37,7 +37,7 @@
 
 .Modal.vf-modal .vf-sottotitolo {
   font-size: 14px;
-  color: #7f8c9a;
+  color: #5d6b79;
   text-transform: capitalize;
 }
 
@@ -47,7 +47,7 @@
   border: none;
   border-radius: 6px;
   background: none;
-  color: #7f8c9a;
+  color: #5d6b79;
   cursor: pointer;
 }
 
@@ -181,7 +181,7 @@
 .Modal.vf-modal .vf-campo select:focus,
 .Modal.vf-modal .vf-note:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: #1a6fb0;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
 
@@ -211,7 +211,7 @@
 
 .Modal.vf-modal .vf-aiuto {
   font-size: 12px;
-  color: #95a3b1;
+  color: #5d6b79;
 }
 
 /* Barra in fondo sempre visibile */
@@ -257,12 +257,12 @@
 .Modal.vf-modal .vd-btn:hover:not(:disabled) { background: #f4f6f8; }
 
 .Modal.vf-modal .vd-btn--primario {
-  border-color: #3498db;
-  background: #3498db;
+  border-color: #1a6fb0;
+  background: #1a6fb0;
   color: #fff;
 }
 
-.Modal.vf-modal .vd-btn--primario:hover:not(:disabled) { background: #2980b9; }
+.Modal.vf-modal .vd-btn--primario:hover:not(:disabled) { background: #155a8f; }
 
 .Modal.vf-modal .vd-link {
   margin: 0;

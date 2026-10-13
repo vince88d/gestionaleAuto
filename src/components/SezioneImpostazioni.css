@@ -15,7 +15,7 @@
   height: 34px;
   border-radius: 9px;
   background: #eaf4fc;
-  color: #3498db;
+  color: #1a6fb0;
 }
 /* Dentro un elenco di riquadri con il suo spazio (es. dettagli prenotazione). */
 .imp-sezione.imp-acc--compatta { margin-bottom: 0; flex: none; }

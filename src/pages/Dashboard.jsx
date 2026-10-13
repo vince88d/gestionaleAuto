@@ -35,7 +35,7 @@ function saluto(ora = new Date().getHours()) {
 
 // Stile comune dei due grafici a barre: sull'asse solo il mese, nel riquadro
 // al passaggio del mouse anche l'anno.
-const ASSE = { fill: '#95a3b1', fontSize: 12 };
+const ASSE = { fill: '#5d6b79', fontSize: 12 };
 const etichettaMese = (nome, payload) => payload?.[0]?.payload?.mese || nome;
 
 function testoGiorni(giorni, femminile = true) {
@@ -506,7 +506,7 @@ function Dashboard() {
               <XAxis dataKey="nome" tick={ASSE} axisLine={false} tickLine={false} interval={0} />
               <YAxis allowDecimals={false} tick={ASSE} axisLine={false} tickLine={false} />
               <Tooltip cursor={{ fill: '#f4f6f8' }} labelFormatter={etichettaMese} />
-              <Bar dataKey="prenotazioni" name="Prenotazioni" fill="#3498db" radius={[4, 4, 0, 0]} maxBarSize={28} />
+              <Bar dataKey="prenotazioni" name="Prenotazioni" fill="#1a6fb0" radius={[4, 4, 0, 0]} maxBarSize={28} />
             </BarChart>
           </ResponsiveContainer>
         </section>

@@ -54,7 +54,7 @@
   display: block;
   margin-top: 3px;
   font-size: 13px;
-  color: #7f8c9a;
+  color: #5d6b79;
 }
 
 .pz .pz-chiudi,
@@ -65,7 +65,7 @@
   border: none;
   border-radius: 6px;
   background: none;
-  color: #7f8c9a;
+  color: #5d6b79;
   cursor: pointer;
 }
 
@@ -89,7 +89,7 @@
   margin-top: 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #95a3b1;
+  color: #5d6b79;
 }
 
 .pz-passo {
@@ -111,7 +111,7 @@
 }
 
 .pz-passo--attivo { color: #2c3e50; }
-.pz-passo--attivo .pz-passo-numero { background: #3498db; color: #fff; }
+.pz-passo--attivo .pz-passo-numero { background: #1a6fb0; color: #fff; }
 .pz-passo--fatto .pz-passo-numero { background: #2ecc71; color: #fff; }
 .pz-passi-linea { width: 24px; height: 1px; background: #d5dde6; }
 
@@ -148,7 +148,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #7f8c9a;
+  color: #5d6b79;
 }
 
 .pz-barra-sezione {
@@ -223,7 +223,7 @@
 .pz .pz-campo select:focus,
 .pz .pz-campo textarea:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: #1a6fb0;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
 
@@ -245,7 +245,7 @@
 .pz .pz-aiuto {
   margin: 0;
   font-size: 12px;
-  color: #95a3b1;
+  color: #5d6b79;
 }
 
 .pz .react-datepicker-wrapper,
@@ -281,7 +281,7 @@
 
 .pz .pz-scelta--attiva,
 .pz .pz-scelta--attiva:hover {
-  border-color: #3498db;
+  border-color: #1a6fb0;
   background: #eaf4fc;
   color: #1f6fa8;
 }
@@ -309,11 +309,11 @@
 }
 
 .pz .pz-spunta:has(input:checked) {
-  border-color: #3498db;
+  border-color: #1a6fb0;
   background: #eaf4fc;
 }
 
-.pz .pz-spunta input { width: 16px; height: 16px; margin: 0; accent-color: #3498db; }
+.pz .pz-spunta input { width: 16px; height: 16px; margin: 0; accent-color: #1a6fb0; }
 
 /* Foto dei danni */
 .pz-foto {
@@ -346,7 +346,7 @@
 .pz-dati dt {
   font-size: 12px;
   font-weight: 600;
-  color: #7f8c9a;
+  color: #5d6b79;
 }
 
 .pz-dati dd {
@@ -382,7 +382,7 @@
 
 .pz-chip--no {
   background: #f1f4f8;
-  color: #95a3b1;
+  color: #5d6b79;
   text-decoration: line-through;
 }
 
@@ -414,7 +414,7 @@
 }
 
 .pz .pz-opzione:last-child { margin-bottom: 0; }
-.pz .pz-opzione input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: #3498db; }
+.pz .pz-opzione input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: #1a6fb0; }
 
 /* ---------- Barra in fondo ---------- */
 .pz-piede {
@@ -431,7 +431,7 @@
 .pz-piede-nota {
   margin-right: auto;
   font-size: 12px;
-  color: #95a3b1;
+  color: #5d6b79;
 }
 
 .pz-piede-nota--errore { font-weight: 600; color: #c0392b; }
@@ -460,8 +460,8 @@
 .pz .vd-btn:hover:not(:disabled) { background: #f4f6f8; transform: none; }
 .pz .vd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.pz .vd-btn--primario { border-color: #3498db; background: #3498db; color: #fff; }
-.pz .vd-btn--primario:hover:not(:disabled) { background: #2980b9; }
+.pz .vd-btn--primario { border-color: #1a6fb0; background: #1a6fb0; color: #fff; }
+.pz .vd-btn--primario:hover:not(:disabled) { background: #155a8f; }
 
 .pz .vd-btn--successo { border-color: #27ae60; background: #27ae60; color: #fff; }
 .pz .vd-btn--successo:hover:not(:disabled) { background: #1e8449; }
@@ -477,7 +477,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: #3498db;
+  color: #1a6fb0;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -515,7 +515,7 @@
   border: 1px dashed #d5dde6;
   border-radius: 10px;
   background: #fff;
-  color: #7f8c9a;
+  color: #5d6b79;
   text-align: center;
 }
 
@@ -577,7 +577,7 @@
 
 .pz .sv-categoria:hover { background: #f4f6f8; }
 .pz .sv-categoria--attiva,
-.pz .sv-categoria--attiva:hover { border-color: #3498db; background: #eaf4fc; color: #1f6fa8; }
+.pz .sv-categoria--attiva:hover { border-color: #1a6fb0; background: #eaf4fc; color: #1f6fa8; }
 
 .sv-conto {
   padding: 1px 7px;
@@ -603,10 +603,10 @@
   border: 1px solid #d5dde6;
   border-radius: 8px;
   background: #fff;
-  color: #7f8c9a;
+  color: #5d6b79;
 }
 
-.pz .sv-cerca:focus-within { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2); }
+.pz .sv-cerca:focus-within { border-color: #1a6fb0; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2); }
 
 .pz .sv-cerca input {
   flex: 1;
@@ -649,7 +649,7 @@
 
 .pz .sv-veicolo--scelto,
 .pz .sv-veicolo--scelto:hover:not(:disabled) {
-  border-color: #3498db;
+  border-color: #1a6fb0;
   background: #eaf4fc;
   box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
 }
@@ -679,7 +679,7 @@
   text-overflow: ellipsis;
 }
 
-.sv-dettagli { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #7f8c9a; }
+.sv-dettagli { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5d6b79; }
 
 .sv-targa {
   padding: 0 6px;
@@ -695,13 +695,13 @@
 .sv-destra { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex: 0 0 auto; }
 
 .sv-prezzo { font-size: 13px; font-weight: 700; color: #2c3e50; }
-.sv-prezzo small { font-weight: 500; color: #7f8c9a; }
+.sv-prezzo small { font-weight: 500; color: #5d6b79; }
 
 .sv-stato { font-size: 11px; font-weight: 700; }
 .sv-stato--libero { color: #1e8449; }
 .sv-stato--occupato { color: #c0392b; }
 .sv-stato--categoria-piena { color: #b45309; }
-.sv-stato--sospeso { color: #7f8c9a; }
+.sv-stato--sospeso { color: #5d6b79; }
 
 .sv-vuoto {
   grid-column: 1 / -1;
@@ -709,7 +709,7 @@
   padding: 18px;
   border: 1px dashed #d5dde6;
   border-radius: 10px;
-  color: #7f8c9a;
+  color: #5d6b79;
   text-align: center;
 }
 
@@ -737,14 +737,14 @@
   border: none;
   border-bottom: 2px solid transparent;
   background: none;
-  color: #7f8c9a;
+  color: #5d6b79;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .pz .pz-scheda:hover { color: #2c3e50; }
-.pz .pz-scheda--attiva { border-bottom-color: #3498db; color: #1f6fa8; }
+.pz .pz-scheda--attiva { border-bottom-color: #1a6fb0; color: #1f6fa8; }
 
 .pz-scadenza {
   display: inline-block;
@@ -769,7 +769,7 @@
   padding: 10px 12px;
   border-bottom: 1px solid #e3e8ee;
   background: #f8fafc;
-  color: #7f8c9a;
+  color: #5d6b79;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -875,16 +875,16 @@
 /* ---------- Pulsante con menu (barra in fondo ai dettagli) ---------- */
 .pz-menu { position: relative; display: inline-block; }
 .pz .pz-menu-btn--aperto { background: #eaf3fb; }
-.pz .vd-btn--primario.pz-menu-btn--aperto { background: #2980b9; }
+.pz .vd-btn--primario.pz-menu-btn--aperto { background: #155a8f; }
 .pz-menu-freccia { transition: transform .12s; }
 .pz-menu-freccia--su { transform: rotate(180deg); }
 .pz-menu-lista {
   position: absolute; bottom: calc(100% + 6px); z-index: 20; max-width: calc(100vw - 32px); padding: 6px;
   background: #fff; border: 1px solid #d5dde6; border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
 }
-.pz-menu-titolo { margin: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #95a3b1; }
+.pz-menu-titolo { margin: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #5d6b79; }
 .pz-menu-linea { margin: 6px 0; border: 0; border-top: 1px solid #e3e8ee; }
-.pz-menu-nota { margin: 2px 10px 6px; font-size: 12px; color: #95a3b1; line-height: 1.35; }
+.pz-menu-nota { margin: 2px 10px 6px; font-size: 12px; color: #5d6b79; line-height: 1.35; }
 .pz .pz-menu-voce {
   display: flex; align-items: center; gap: 9px; width: 100%; margin: 0; padding: 8px 10px; border: 0; border-radius: 7px;
   background: none; color: #2c3e50; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; transform: none;

@@ -52,12 +52,12 @@
 .dash-btn:hover { background: #f4f6f8; }
 
 .dash-btn--primario {
-  border-color: #3498db;
-  background: #3498db;
+  border-color: #1a6fb0;
+  background: #1a6fb0;
   color: #fff;
 }
 
-.dash-btn--primario:hover { background: #2980b9; }
+.dash-btn--primario:hover { background: #155a8f; }
 
 /* Numeri: quattro card cliccabili. Etichette a 16px scure e corte (prima
    14px grigie e andavano a capo); il numero resta la cosa piu' grande. */
@@ -85,7 +85,7 @@
 }
 
 .dash-stat-card:hover {
-  border-color: #3498db;
+  border-color: #1a6fb0;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
@@ -360,7 +360,7 @@
 
 .dash-campo-data input:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: #1a6fb0;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
 
@@ -387,7 +387,7 @@
 }
 
 .dash-veicolo:hover {
-  border-color: #3498db;
+  border-color: #1a6fb0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
@@ -419,7 +419,7 @@
   text-transform: capitalize;
 }
 
-.dash-veicolo-meta { font-size: 12px; color: #7f8c9a; }
+.dash-veicolo-meta { font-size: 12px; color: #5d6b79; }
 
 /* Prenotazioni del sito che aspettano l'auto: arancio scuro (testo bianco AA),
    diverso dal rosso dei problemi e dal blu delle consegne. */

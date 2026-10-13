@@ -24,7 +24,7 @@
 .add-voce .opt-euro { width: 140px; }
 .add-voce select.opt-input { width: auto; min-width: 120px; background: #fff; }
 .add-voce .opt-input[aria-invalid='true'] { border-color: #c0392b; }
-.add-togli { display: inline-flex; padding: 10px; border: none; border-radius: 8px; background: none; color: #8a96a3; cursor: pointer; }
+.add-togli { display: inline-flex; padding: 10px; border: none; border-radius: 8px; background: none; color: #5d6b79; cursor: pointer; }
 .add-togli:hover { background: #fdecea; color: #c0392b; }
 .add-link { align-self: flex-start; margin-top: 4px; padding: 6px 0; border: none; background: none; color: #1f6fb2; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
 .add-link:hover { text-decoration: underline; }

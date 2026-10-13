@@ -66,10 +66,10 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
         <style>
           body { font-family: sans-serif; padding: 24px; color: #2c3e50; }
           h1 { font-size: 20px; margin: 0 0 16px; }
-          h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: #7f8c9a; margin: 0 0 8px; }
+          h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: #5d6b79; margin: 0 0 8px; }
           section { border: 1px solid #ddd; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
           dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 16px; margin: 0; }
-          dt { font-size: 11px; color: #7f8c9a; } dd { margin: 2px 0 0; font-weight: 600; }
+          dt { font-size: 11px; color: #5d6b79; } dd { margin: 2px 0 0; font-weight: 600; }
           ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
           img { max-width: 240px; margin-top: 8px; }
           .firma { margin-top: 48px; border-top: 1px solid #000; width: 260px; padding-top: 4px; }

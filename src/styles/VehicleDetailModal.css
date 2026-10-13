@@ -59,7 +59,7 @@
 /* "(tariffa Furgone)": il prezzo al giorno viene dalla categoria, non si
    cambia dal veicolo ma dalla pagina Tariffe. */
 .prezzo-da-tariffa {
-  color: #7f8c9a;
+  color: #5d6b79;
   font-size: 0.9em;
 }
 
@@ -202,12 +202,12 @@
 .vd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .vd-btn--primario {
-  background: #3498db;
-  border-color: #3498db;
+  background: #1a6fb0;
+  border-color: #1a6fb0;
   color: #fff;
 }
 
-.vd-btn--primario:hover:not(:disabled) { background: #2980b9; }
+.vd-btn--primario:hover:not(:disabled) { background: #155a8f; }
 
 .vd-btn--icona { padding: 8px 10px; }
 
@@ -221,7 +221,7 @@
   border: none;
   border-radius: 6px;
   background: none;
-  color: #7f8c9a;
+  color: #5d6b79;
   cursor: pointer;
 }
 
@@ -256,8 +256,8 @@
 .vd-scheda:hover { color: #2c3e50; }
 
 .vd-scheda.attiva {
-  color: #3498db;
-  border-bottom-color: #3498db;
+  color: #1a6fb0;
+  border-bottom-color: #1a6fb0;
 }
 
 .vd-contatore {
@@ -303,7 +303,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #7f8c9a;
+  color: #5d6b79;
 }
 
 .vd-barra-sezione {
@@ -325,7 +325,7 @@
   padding: 20px 16px;
   border: 1px dashed #d5dde6;
   border-radius: 10px;
-  color: #7f8c9a;
+  color: #5d6b79;
   font-size: 14px;
   text-align: center;
 }
@@ -387,7 +387,7 @@
 
 .vd-dato-etichetta {
   font-size: 12px;
-  color: #7f8c9a;
+  color: #5d6b79;
 }
 
 .vd-dato-valore {
@@ -402,7 +402,7 @@
 
 .vd-dato-valore--vuoto {
   font-weight: 500;
-  color: #b0bcc8;
+  color: #5d6b79;
   text-transform: none;
 }
 
@@ -446,7 +446,7 @@
 .vd-scadenza--verde { background: #f1faf4; border-color: #2ecc71; color: #1e7b3c; }
 .vd-scadenza--giallo { background: #fef9ec; border-color: #f1c40f; color: #9a6b00; }
 .vd-scadenza--rosso { background: #fdf3f2; border-color: #e74c3c; color: #c0392b; }
-.vd-scadenza--grigio { background: #f4f6f8; border-color: #c9d3de; color: #7f8c9a; }
+.vd-scadenza--grigio { background: #f4f6f8; border-color: #c9d3de; color: #5d6b79; }
 
 .vd-note {
   margin: 0;
@@ -470,7 +470,7 @@
   --fc-button-hover-bg-color: #f4f6f8;
   --fc-button-hover-border-color: #c9d3de;
   --fc-button-active-bg-color: #eaf3fc;
-  --fc-button-active-border-color: #3498db;
+  --fc-button-active-border-color: #1a6fb0;
 }
 
 .vd-calendario .fc .fc-toolbar.fc-header-toolbar { margin-bottom: 12px; }
@@ -498,7 +498,7 @@
   padding: 6px 0;
   font-size: 12px;
   font-weight: 600;
-  color: #95a3b1;
+  color: #5d6b79;
   text-transform: uppercase;
   text-decoration: none;
 }
@@ -545,7 +545,7 @@
 .vd-calendario .vd-giorno--passato .fc-daygrid-day-number { color: #b0bcc8; }
 
 .vd-calendario .fc .fc-day-today .fc-daygrid-day-number {
-  background: #3498db;
+  background: #1a6fb0;
   color: #fff;
 }
 
@@ -569,9 +569,9 @@
 
 .vd-legenda-punto--libero { background: #dcf4e4; border: 1px solid #9ddcb3; }
 .vd-legenda-punto--occupato { background: #fdecea; border: 1px solid #f5c6c0; }
-.vd-legenda-punto--oggi { background: #3498db; border-radius: 999px; }
+.vd-legenda-punto--oggi { background: #1a6fb0; border-radius: 999px; }
 
-.vd-legenda-nota { margin-left: auto; color: #95a3b1; }
+.vd-legenda-nota { margin-left: auto; color: #5d6b79; }
 
 .vd-prenotazioni {
   margin: 0;
@@ -674,7 +674,7 @@
 
 .vd-danno-data {
   font-size: 12px;
-  color: #7f8c9a;
+  color: #5d6b79;
 }
 
 .vd-danno-azioni {
@@ -741,7 +741,7 @@
   cursor: pointer;
 }
 
-.vd-scegli-foto:hover { border-color: #3498db; color: #3498db; }
+.vd-scegli-foto:hover { border-color: #1a6fb0; color: #1a6fb0; }
 
 .vd-form-danno-campi {
   flex: 1;
@@ -773,7 +773,7 @@
 
 .vd-campo input:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: #1a6fb0;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
 
@@ -809,7 +809,7 @@
   border-bottom: 1px solid #e3e8ee;
   font-size: 12px;
   font-weight: 600;
-  color: #7f8c9a;
+  color: #5d6b79;
   text-align: left;
 }
 

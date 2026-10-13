@@ -21,7 +21,7 @@
 .cst-sottotitolo {
   margin: 6px 0 0;
   font-size: 14px;
-  color: #7f8c9a;
+  color: #5d6b79;
   max-width: 640px;
   line-height: 1.5;
 }
@@ -48,10 +48,10 @@
   margin: 0 0 10px;
 }
 
-.cst-conteggio { font-weight: 500; color: #7f8c9a; }
+.cst-conteggio { font-weight: 500; color: #5d6b79; }
 
 .cst-vuoto {
-  color: #9aa5b1;
+  color: #5d6b79;
   font-size: 14px;
   background: #f8fafc;
   border: 1px dashed #e3e8ee;
@@ -81,9 +81,9 @@
 .cst-riga:last-child { border-bottom: none; }
 
 .cst-nome { font-weight: 600; font-size: 14px; }
-.cst-meta { font-size: 12.5px; color: #7f8c9a; margin-top: 2px; }
+.cst-meta { font-size: 12.5px; color: #5d6b79; margin-top: 2px; }
 
-.cst-scadenza { color: #9aa5b1; }
+.cst-scadenza { color: #5d6b79; }
 .cst-scadenza--vicina { color: #b45309; font-weight: 600; }
 
 .cst-azioni { display: flex; gap: 8px; flex-shrink: 0; }
