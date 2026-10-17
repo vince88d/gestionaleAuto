@@ -33,6 +33,7 @@ import { annullaConRimborso, messaggioErroreRimborso } from '../lib/annullamento
 import { readVeicoli } from '../lib/firestoreVeicoli';
 import { useHolds } from '../lib/firestoreHolds';
 import { useExtra } from '../lib/useExtra';
+import { useFormuleKm } from '../lib/firestoreChilometri';
 import { dotazioneIniziale, dotazioneDaSalvare } from '../utils/dotazione';
 import { aggiornaDotazioneVeicolo } from '../lib/firestoreVeicoli';
 import { useAddebiti } from '../lib/firestoreAddebiti';
@@ -122,6 +123,8 @@ function Bookings() {
   const holds = useHolds();
   // Protezioni per categoria e optional: prezzo, cauzione e pezzi liberi.
   const extra = useExtra();
+  // Formule dei km e prezzo del km in piu' (Tariffe e optional).
+  const formuleKm = useFormuleKm();
   const [forceRenderKey, setForceRenderKey] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
@@ -467,6 +470,8 @@ useEffect(() => {
       protezioni: extra.protezioni,
       catalogo: extra.catalogo,
       etaConducenti,
+      formuleKm,
+      euroKmInPiu: prezziAddebiti.kmInPiu,
     });
     if (esito.errore) {
       showFeedback(esito.errore, "error");
@@ -1024,6 +1029,8 @@ return (
         protezioni={extra.protezioni}
         catalogo={extra.catalogo}
         etaConducenti={etaConducenti}
+        formuleKm={formuleKm}
+        euroKmInPiu={prezziAddebiti.kmInPiu}
       />
     </BookingModal>
 

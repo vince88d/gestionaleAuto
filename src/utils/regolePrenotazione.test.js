@@ -19,7 +19,7 @@ describe('controllaPrenotazione', () => {
   test('prenotazione nuova valida: prezzo giorni x prezzo al giorno', () => {
     expect(controllaPrenotazione({ dati: base, veicoli, prenotazioni: [], oggi: OGGI })).toEqual({
       prezzoTotale: 60, totaleNoleggio: 60, protezione: null, cauzione: null, optional: [],
-      etaConducente: null, giovaneConducente: null,
+      etaConducente: null, giovaneConducente: null, chilometri: null,
     });
   });
 

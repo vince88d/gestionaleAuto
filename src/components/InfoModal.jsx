@@ -271,6 +271,17 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
               <div><dt>Prezzo</dt><dd className="pz-prezzo">€ {prezzoPrenotazione(prenotazione) || '—'}</dd></div>
               <div><dt>Ritiro</dt><dd>{dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)}</dd></div>
               <div><dt>Riconsegna</dt><dd>{prenotazione.oraFine ? `${formattaData(prenotazione.dataFine)} entro le ${oraBreve(prenotazione.oraFine)}` : formattaData(prenotazione.dataFine)}</dd></div>
+              {prenotazione.chilometri?.nome && (
+                <div>
+                  <dt>Chilometri</dt>
+                  <dd>
+                    {prenotazione.chilometri.nome}
+                    {prenotazione.chilometri.kmInclusi ? ` · ${prenotazione.chilometri.kmInclusi.toLocaleString('it-IT')} km inclusi` : ''}
+                    {prenotazione.chilometri.kmInclusi && prenotazione.chilometri.euroKmInPiu
+                      ? ` · poi ${prenotazione.chilometri.euroKmInPiu.toLocaleString('it-IT', { minimumFractionDigits: 2 })} € al km` : ''}
+                  </dd>
+                </div>
+              )}
               <div><dt>Stato</dt><dd>{statoTesto}</dd></div>
             </dl>
           </SezioneImpostazioni>

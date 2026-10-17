@@ -43,7 +43,8 @@ export function sceltaRichiesta(p) {
   const extra = (Array.isArray(p?.optional) ? p.optional : [])
     .filter((r) => r?.nome && Number(r.quantita) > 0)
     .map((r) => (Number(r.quantita) > 1 ? `${r.nome} × ${r.quantita}` : r.nome));
-  return [protezione, ...extra].filter(Boolean).join(' · ');
+  const km = p?.chilometri?.nome || null;
+  return [protezione, km, ...extra].filter(Boolean).join(' · ');
 }
 
 // Il prezzo scritto dallo staff: numero da 0 in su, anche con la virgola.
