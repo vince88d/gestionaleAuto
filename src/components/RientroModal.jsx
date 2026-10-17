@@ -119,7 +119,7 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
     }
     const proposte = proponiAddebiti({
       prenotazione, prezzi, dataRientro, oraRientro, carburante, chiaviTornate: datiPasso1.chiaviTornate,
-      nonTornati: nonTornati.map((nome) => ({ nome, addebita: statoMancante(nome).addebita })), danno, tolleranza,
+      nonTornati: nonTornati.map((nome) => ({ nome, addebita: statoMancante(nome).addebita })), danno, tolleranza, km,
     });
     // Tornando indietro e cambiando qualcosa si tiene quello che e' stato
     // scritto nelle righe che ci sono ancora; le altre voci sono nuove.

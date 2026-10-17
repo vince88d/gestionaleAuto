@@ -50,6 +50,27 @@ describe('ritardo', () => {
   });
 });
 
+describe('km in più al rientro', () => {
+  const conKm = (chilometri) => ({
+    prenotazione: { dataInizio: '2026-10-14', dataFine: '2026-10-15', schedaVeicolo: { kmIniziali: 45200 }, chilometri },
+    prezzi: ADDEBITI_DI_PARTENZA, dataRientro: '2026-10-15', carburante: '', nonTornati: [],
+  });
+  it('210 km fatti su 200 inclusi: 10 km × 0,25 €, gia\' attiva', () => {
+    const r = proponiAddebiti({ ...conKm({ nome: '200 km al giorno', kmInclusi: 200, euroKmInPiu: 0.25 }), km: '45410' });
+    expect(r.find((x) => x.id === 'kmInPiu')).toMatchObject({ importo: 2.5, attiva: true });
+    expect(r.find((x) => x.id === 'kmInPiu').dettaglio).toMatch(/10 km oltre i 200 inclusi/);
+  });
+  it('nessuna riga con i km illimitati, dentro i km inclusi o senza formula', () => {
+    expect(proponiAddebiti({ ...conKm({ nome: 'Km illimitati', kmInclusi: null }), km: '49000' }).some((x) => x.id === 'kmInPiu')).toBe(false);
+    expect(proponiAddebiti({ ...conKm({ nome: '200 km al giorno', kmInclusi: 200, euroKmInPiu: 0.25 }), km: '45300' }).some((x) => x.id === 'kmInPiu')).toBe(false);
+    expect(proponiAddebiti({ ...conKm(undefined), km: '49000' }).some((x) => x.id === 'kmInPiu')).toBe(false);
+  });
+  it('senza prezzo salvato usa quello del listino', () => {
+    const r = proponiAddebiti({ ...conKm({ nome: '100 km al giorno', kmInclusi: 100 }), km: '45320' });
+    expect(r.find((x) => x.id === 'kmInPiu').importo).toBe(5);
+  });
+});
+
 describe('addebiti proposti', () => {
   const base = {
     prenotazione: pren, prezzi: ADDEBITI_DI_PARTENZA, dataRientro: '2026-10-15', oraRientro: '11:30',

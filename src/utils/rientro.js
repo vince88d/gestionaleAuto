@@ -8,6 +8,7 @@ import { calcolaGiorniNoleggio } from './giorniNoleggio';
 import { leggiEuro } from './protezioni';
 import { riassuntoDotazione, normalizzaVoci } from './dotazione';
 import { vociLibereListino } from './addebiti';
+import { kmInPiu } from './chilometri';
 
 export const LIVELLI = ['1/4', '1/2', '3/4', 'Pieno'];
 const arrotonda = (n) => Math.round(n * 100) / 100;
@@ -67,7 +68,7 @@ export const tettoDanno = (prenotazione) => (typeof prenotazione?.protezione?.da
 // `prezzi` sono quelli di «Penali e addebiti» (normalizzati).
 export function proponiAddebiti({
   prenotazione = {}, prezzi, dataRientro, oraRientro, carburante, chiaviTornate,
-  nonTornati = [], danno = '', tolleranza,
+  nonTornati = [], danno = '', tolleranza, km,
 }) {
   const righe = [];
   const giorni = giorniInPiu({ prenotazione, dataRientro, oraRientro, tolleranza });
@@ -88,6 +89,19 @@ export function proponiAddebiti({
       nome: 'Rifornimento',
       dettaglio: `Consegnata ${prenotazione.schedaVeicolo?.carburante}, tornata a ${carburante} · ${quarti} ${quarti === 1 ? 'quarto' : 'quarti'} × ${prezzi.rifornimentoQuarto.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €`,
       importo: arrotonda(quarti * prezzi.rifornimentoQuarto),
+      attiva: true,
+    });
+  }
+  // Km oltre quelli inclusi nella formula scelta (mai con «Km illimitati»).
+  const percorsi = kmPercorsi(prenotazione.schedaVeicolo?.kmIniziali, km);
+  const oltre = kmInPiu(prenotazione.chilometri, percorsi, prezzi.kmInPiu);
+  if (oltre.km > 0) {
+    const euroKm = typeof prenotazione.chilometri?.euroKmInPiu === 'number' ? prenotazione.chilometri.euroKmInPiu : prezzi.kmInPiu;
+    righe.push({
+      id: 'kmInPiu',
+      nome: 'Km in più',
+      dettaglio: `${oltre.km.toLocaleString('it-IT')} km oltre i ${prenotazione.chilometri.kmInclusi.toLocaleString('it-IT')} inclusi (${prenotazione.chilometri.nome}) × ${euroKm.toLocaleString('it-IT', { minimumFractionDigits: 2 })} € al km`,
+      importo: oltre.importo,
       attiva: true,
     });
   }

@@ -37,6 +37,14 @@ export function vociProtezioneExtra(prenotazione = {}) {
   }
   (Array.isArray(prenotazione.optional) ? prenotazione.optional : []).filter((r) => r?.quantita > 0)
     .forEach((r) => righe.push([r.nome, `${r.quantita} ${r.quantita === 1 ? 'pezzo' : 'pezzi'}`, eur(r.totale, true)]));
+  // Formula dei km scelta dal cliente (solo se c'era una scelta da fare).
+  const km = prenotazione.chilometri;
+  if (km?.nome) {
+    const dettaglio = km.kmInclusi
+      ? `${Number(km.kmInclusi).toLocaleString('it-IT')} km inclusi${km.euroKmInPiu ? `, poi ${eur(km.euroKmInPiu, true)} al km` : ''}`
+      : 'Nessun limite';
+    righe.push([`Chilometri: ${km.nome}`, dettaglio, km.importo > 0 ? eur(km.importo, true) : 'Inclusa']);
+  }
   const g = prenotazione.giovaneConducente;
   if (g) {
     righe.push(['Giovane conducente', g.alMassimo
