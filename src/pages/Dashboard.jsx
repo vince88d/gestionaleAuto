@@ -354,7 +354,7 @@ function Dashboard() {
                       tono="scegli"
                       nome
                       principale={p.cliente || 'Cliente non indicato'}
-                      secondaria={<>Ha pagato dal sito: <b>{p.categoria || 'categoria non indicata'}</b> · ritiro {dataEOra(p.dataInizio, p.oraInizio)}</>}
+                      secondaria={<>{p.richiestaSenzaPagamento ? 'Confermata dal sito (paga al ritiro)' : 'Ha pagato dal sito'}: <b>{p.categoria || 'categoria non indicata'}</b> · ritiro {dataEOra(p.dataInizio, p.oraInizio)}</>}
                       nota={passati > 0 ? `Il ritiro è già passato da ${passati} ${passati === 1 ? 'giorno' : 'giorni'}` : null}
                       onApri={() => vaiAPrenotazioni({ azione: 'dettagli', id: p.id })}
                       azione={

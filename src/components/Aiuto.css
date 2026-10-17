@@ -9,14 +9,14 @@
 .aiuto-btn:hover, .aiuto-btn[aria-expanded="true"] { background: #1a6fb0; color: #fff; }
 .aiuto-btn:focus-visible { outline: 3px solid #9cc7ea; outline-offset: 2px; }
 .aiuto-fumetto {
-  position: absolute; top: 34px; left: -14px; z-index: 50; width: 310px; max-width: 80vw;
+  position: fixed; z-index: 2000; width: 310px; max-width: calc(100vw - 16px); box-sizing: border-box;
   display: block; padding: 13px 34px 12px 15px; border-radius: 10px;
   background: #1f2d3a; color: #fff; text-align: left;
   font-size: 14.5px; font-weight: 400; line-height: 1.5; text-transform: none; letter-spacing: 0;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 .aiuto-fumetto::before {
-  content: ""; position: absolute; top: -7px; left: 20px;
+  content: ""; position: absolute; top: -7px; left: var(--freccia, 20px);
   border: 7px solid transparent; border-top: 0; border-bottom-color: #1f2d3a;
 }
 .aiuto-titolo { display: block; margin-bottom: 3px; font-size: 15px; }
