@@ -1,11 +1,50 @@
 /* Pagina Tariffe e optional: titolo e schede. Prefisso teo-. */
 .teo { max-width: 1240px; margin: 0 auto; padding: 8px 4px 32px; color: #1e2a36; }
-.main-content .teo-titolo { margin: 0; }
-.teo-intro { margin: 6px 0 18px; font-size: 16px; color: #4d5b69; max-width: 760px; line-height: 1.5; }
+.main-content .teo-titolo { margin: 0; font-size: 26px; line-height: 1.2; }
+.main-content .teo-intro { margin: 4px 0 0; font-size: 16px; color: #3b4856; max-width: 760px; line-height: 1.45; }
 
-.teo-schede { display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 2px solid #e1e6ec; }
+/* Testata: icona, titolo e a cosa serve la pagina. */
+.teo-testata { display: flex; gap: 14px; align-items: flex-start; }
+.teo-testata-icona {
+  display: grid; place-items: center; width: 46px; height: 46px; flex: none;
+  border-radius: 12px; background: #1a6fb0; color: #fff;
+}
+
+/* «Prezzi sul sito»: due scelte grandi, una sola attiva. */
+.teo-card { margin-top: 18px; padding: 18px 22px 20px; border: 1px solid #e3e8ee; border-radius: 12px; background: #fff; }
+.main-content .teo-card-titolo { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 19px; }
+.main-content .teo-card-sotto { margin: 4px 0 14px; font-size: 15px; color: #3b4856; }
+.teo-scelte { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.teo-scelta {
+  display: flex; gap: 12px; padding: 16px 16px 14px; border: 2px solid #e3e8ee; border-radius: 12px;
+  background: #fff; color: #1f2d3a; font: inherit; text-align: left; cursor: pointer;
+}
+.teo-scelta:hover:not(:disabled) { border-color: #9cc7ea; }
+.teo-scelta:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
+.teo-scelta:disabled { cursor: default; opacity: 0.6; }
+.teo-scelta--attiva { border-color: #1a6fb0; background: #f5faff; box-shadow: 0 0 0 3px #d6e8f7; }
+.teo-pallino {
+  display: grid; place-items: center; width: 22px; height: 22px; flex: none; margin-top: 2px;
+  border: 2px solid #9aa6b2; border-radius: 50%;
+}
+.teo-scelta--attiva .teo-pallino { border-color: #1a6fb0; }
+.teo-scelta--attiva .teo-pallino::after { content: ""; width: 11px; height: 11px; border-radius: 50%; background: #1a6fb0; }
+.teo-scelta-testi { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.teo-scelta-testi b { font-size: 16.5px; }
+.teo-scelta-testi > span { font-size: 14.5px; color: #3b4856; line-height: 1.5; }
+.teo-scelta-testi > .teo-scelta-eti {
+  margin-top: 4px; padding: 3px 9px; border-radius: 999px; background: #eef1f5; color: #4b5563;
+  font-size: 12.5px; font-weight: 700;
+}
+.teo-scelta--attiva .teo-scelta-testi > .teo-scelta-eti { background: #e8f6ee; color: #1e7e46; }
+@media (max-width: 760px) { .teo-scelte { grid-template-columns: 1fr; } }
+
+.teo-schede { display: flex; flex-wrap: wrap; gap: 6px; margin: 22px 0 20px; border-bottom: 2px solid #e1e6ec; }
 
 .teo-scheda {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 -2px;
   padding: 12px 18px;
   border: none;

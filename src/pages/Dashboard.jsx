@@ -18,6 +18,7 @@ import { dataEOra, formattaData, giornoLocale } from '../utils/scadenze';
 import { oraBreve } from '../utils/orari';
 import VehicleDetailModal from '../components/VehicleDetailModal';
 import RinnovaScadenzaModal from '../components/RinnovaScadenzaModal';
+import RichiesteSito from '../components/RichiesteSito';
 import { useAzienda } from '../lib/firestoreAzienda';
 
 const euro = (valore) => `€ ${Number(valore || 0).toLocaleString('it-IT', { maximumFractionDigits: 2 })}`;
@@ -240,6 +241,8 @@ function Dashboard() {
         <h1 className="dash-saluto">{saluto()}</h1>
       </header>
 
+      <RichiesteSito prenotazioni={tuttePrenotazioni} oggi={oggi} />
+
       <div className="dash-stat">
         {stats.map(({ titolo, valore, extra, link, Icona, tono, onClick }) => (
           <button key={titolo} type="button" className="dash-stat-card" onClick={onClick}>
@@ -351,7 +354,7 @@ function Dashboard() {
                       tono="scegli"
                       nome
                       principale={p.cliente || 'Cliente non indicato'}
-                      secondaria={<>Ha pagato dal sito: <b>{p.categoria || 'categoria non indicata'}</b> · ritiro {dataEOra(p.dataInizio, p.oraInizio)}</>}
+                      secondaria={<>{p.richiestaSenzaPagamento ? 'Confermata dal sito (paga al ritiro)' : 'Ha pagato dal sito'}: <b>{p.categoria || 'categoria non indicata'}</b> · ritiro {dataEOra(p.dataInizio, p.oraInizio)}</>}
                       nota={passati > 0 ? `Il ritiro è già passato da ${passati} ${passati === 1 ? 'giorno' : 'giorni'}` : null}
                       onApri={() => vaiAPrenotazioni({ azione: 'dettagli', id: p.id })}
                       azione={

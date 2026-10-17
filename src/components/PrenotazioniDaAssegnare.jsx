@@ -24,7 +24,7 @@ export default function PrenotazioniDaAssegnare({ prenotazioni, oggi, onScegli }
               : `${daFare.length} prenotazioni dal sito aspettano l'auto`}
           </h2>
           <p className="ads-spiega">
-            Il cliente ha già pagato una categoria (es. «Furgone»): scegli quale auto dargli. Dopo potrai consegnarla.
+            Il cliente ha scelto una categoria dal sito (es. «Furgone»): scegli quale auto dargli. Dopo potrai consegnarla.
           </p>
         </div>
       </div>

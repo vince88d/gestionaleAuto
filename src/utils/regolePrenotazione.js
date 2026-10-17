@@ -8,7 +8,9 @@ import { pezziOccupati, preventivoPrenotazione } from './sceltaExtra';
 const STATI_NON_OCCUPANTI = ['annullata', 'completata', 'richiesta-sito', 'scaduta', 'pagamento-fallito'];
 const giorno = (valore) => (valore ? String(valore).slice(0, 10) : '');
 
-// Prenotazione pagata sul sito: il prezzo e' quello pagato, non si ricalcola.
+// Prenotazione nata sul sito: il prezzo e' quello pagato online oppure, per le
+// richieste senza pagamento (modalita' «Solo richieste»), quello concordato al
+// telefono quando lo staff l'ha confermata. In entrambi i casi non si ricalcola.
 export const pagataSulSito = (p) => Boolean(p && (p.paymentIntentId || p.origine === 'sito'));
 
 // Controlli prima di salvare una prenotazione nuova (`originale` assente) o

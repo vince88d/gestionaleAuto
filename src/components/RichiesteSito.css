@@ -1,0 +1,41 @@
+/* Richieste dal sito da confermare (RichiesteSito.jsx). */
+.ric {
+  display: flex; flex-direction: column; gap: 10px; margin: 0 0 16px; padding: 16px 18px;
+  border: 1px solid #c9dff1; border-left: 6px solid #1a6fb0; border-radius: 12px; background: #f5faff;
+}
+.ric-testa { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ric-icona { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px; background: #dbeafe; color: #1a6fb0; }
+.main-content .ric-titolo { margin: 0; font-size: 18px; font-weight: 800; color: #0f3d63; display: flex; align-items: center; gap: 8px; }
+.ric-conto { background: #c0392b; color: #fff; font-size: 13px; font-weight: 800; border-radius: 999px; padding: 2px 9px; }
+.main-content .ric-cosa {
+  display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 10px 12px;
+  border: 1px solid #f1d39a; border-radius: 10px; background: #fff7e6; color: #3b2a07; font-size: 15px; line-height: 1.5;
+}
+.ric-cosa svg { flex: none; margin-top: 2px; color: #a26100; }
+.ric-riga {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  padding: 14px 16px; border: 1px solid #dbe6f1; border-radius: 12px; background: #fff;
+}
+.ric-testi { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; flex: 1; }
+.ric-nome { font-size: 17px; font-weight: 800; color: #1e2a36; text-transform: capitalize; }
+.ric-det { font-size: 15px; color: #3b4856; line-height: 1.5; }
+.ric-tel { display: inline-flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 700; color: #1a6fb0; text-decoration: none; }
+.ric-tel:hover { text-decoration: underline; }
+.ric-tempo { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #fff4db; color: #8a5a00; font-size: 13.5px; font-weight: 700; }
+.ric-tempo--urgente { background: #fdecea; color: #a93226; }
+.ric-azioni { display: flex; flex-direction: column; gap: 8px; }
+.ric-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 130px; padding: 10px 16px;
+  border-radius: 9px; border: 1.5px solid #c3ccd6; background: #fff; color: #1f2d3a; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.ric-btn--si { background: #1e7e46; border-color: #1e7e46; color: #fff; }
+.ric-btn--si:hover { background: #17663a; }
+.ric-btn--no { color: #a93226; border-color: #e5b3ad; }
+.ric-btn--no:hover { background: #fdecea; }
+.ric-campo-etichetta { display: block; margin-top: 4px; font-size: 16px; font-weight: 700; color: #1f2d3a; }
+.ric-campo-aiuto { margin: 4px 0 8px; font-size: 14.5px; color: #3b4856; line-height: 1.5; }
+.ric-campo { display: flex; align-items: center; gap: 8px; width: 200px; height: 46px; padding: 0 12px; border: 1.5px solid #b9c4cf; border-radius: 8px; background: #fff; }
+.ric-campo:focus-within { border-color: #1a6fb0; box-shadow: 0 0 0 3px #d6e8f7; }
+.ric-campo input { flex: 1; min-width: 0; border: 0; outline: 0; font: inherit; font-size: 17px; background: transparent; }
+.ric-errore { margin: 8px 0 0; color: #a93226; font-size: 14.5px; font-weight: 600; }
+@media (max-width: 760px) { .ric-azioni { flex-direction: row; } }

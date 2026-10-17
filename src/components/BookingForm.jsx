@@ -734,7 +734,7 @@ function BookingForm({
                   </select>
                 </label>
                 {sito ? (
-                  <p className="np-aiuto">Dichiarata dal cliente sul sito: il supplemento è già pagato.</p>
+                  <p className="np-aiuto">{initialValues?.richiestaSenzaPagamento ? 'Dichiarata dal cliente sul sito: il supplemento è nel prezzo concordato.' : 'Dichiarata dal cliente sul sito: il supplemento è già pagato.'}</p>
                 ) : dati.etaConducente === 'oltre' ? (
                   <div className="np-avviso-ora" role="status">
                     <p>Oltre l&apos;età massima che hai impostato ({etaMassima} anni): sul sito non potrebbe prenotare. Conferma solo se hai deciso tu di noleggiare.</p>
@@ -808,7 +808,7 @@ function BookingForm({
 
           <div className="np-prezzi">
             {sito ? (
-              <p className="np-aiuto">Pagata sul sito: il prezzo resta quello pagato.</p>
+              <p className="np-aiuto">{initialValues?.richiestaSenzaPagamento ? 'Richiesta dal sito: il prezzo resta quello concordato al telefono (si paga al ritiro).' : 'Pagata sul sito: il prezzo resta quello pagato.'}</p>
             ) : (
               <>
                 <div className="np-riga-prezzo">

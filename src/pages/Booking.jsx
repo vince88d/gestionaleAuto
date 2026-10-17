@@ -20,6 +20,7 @@ import "../components/BookingForm.css";
 import { useDispatch,useSelector } from 'react-redux';
 import RientroModal from '../components/RientroModal';
 import PrenotazioniDaAssegnare from '../components/PrenotazioniDaAssegnare';
+import RichiesteSito from '../components/RichiesteSito';
 import SceltaAutoModal from '../components/SceltaAutoModal';
 import AnnullaConPenaleModal from '../components/AnnullaConPenaleModal';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
@@ -844,6 +845,7 @@ return (
     </div>
   </div>
 
+  <RichiesteSito prenotazioni={prenotazioni} oggi={oggi} />
   <PrenotazioniDaAssegnare prenotazioni={prenotazioni} oggi={oggi} onScegli={apriSceltaAuto} />
 
   <div className="bk-barra">

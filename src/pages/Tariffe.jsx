@@ -222,7 +222,7 @@ function Tariffe({ incorporata = false, onModifiche }) {
           <section className="tar-box">
             <div className="tar-box-testa">
               <div>
-                <h2 className="tar-box-titolo">Prezzo al giorno per categoria</h2>
+                <h2 className="tar-box-titolo">Prezzo al giorno di ogni categoria</h2>
                 <span className="tar-sottotitolo">
                   {ricerca.trim() ? `Mostro ${righeMostrate.length} di ` : ''}{righe.length} {righe.length === 1 ? 'categoria' : 'categorie'} · {Object.keys(salvate).length} {Object.keys(salvate).length === 1 ? 'tariffa salvata' : 'tariffe salvate'}
                 </span>
@@ -230,8 +230,9 @@ function Tariffe({ incorporata = false, onModifiche }) {
               <CampoRicerca valore={ricerca} onChange={setRicerca} placeholder="Cerca categoria…" etichetta="Cerca categoria" />
             </div>
             <p className="tar-intro">
-              {incorporata ? '' : 'È il prezzo che il cliente vede e paga sul sito, e il listino di partenza quando prenoti dal gestionale. '}
-              Puoi sempre cambiarlo nella singola prenotazione. Le prenotazioni già fatte non cambiano.
+              {incorporata
+                ? 'Quanto costa un giorno di noleggio. Il gestionale lo moltiplica da solo per i giorni.'
+                : 'È il prezzo che il cliente vede e paga sul sito, e il listino di partenza quando prenoti dal gestionale. Puoi sempre cambiarlo nella singola prenotazione. Le prenotazioni già fatte non cambiano.'}
             </p>
             {Object.keys(salvate).length === 0 && (
               <p className="tar-avviso">
@@ -249,6 +250,7 @@ function Tariffe({ incorporata = false, onModifiche }) {
                     <th>Categoria</th>
                     <th>Veicoli</th>
                     <th>Prezzo al giorno</th>
+                    <th className="tar-col-esempio">Esempio: 3 giorni</th>
                     <th>Stato</th>
                   </tr>
                 </thead>
@@ -274,6 +276,12 @@ function Tariffe({ incorporata = false, onModifiche }) {
                           />
                           <span className="tar-euro-simbolo" aria-hidden="true">€</span>
                         </div>
+                      </td>
+                      <td className="tar-col-esempio tar-esempio">
+                        {/* Il gestionale moltiplica da solo per i giorni: l'esempio lo fa vedere. */}
+                        {Number(String(campi[categoria] ?? '').replace(',', '.')) > 0
+                          ? <>il cliente paga <b>{formattaPrezzo(Number(String(campi[categoria]).replace(',', '.')) * 3)}</b></>
+                          : '—'}
                       </td>
                       <td>
                         {conflitti.includes(categoria) ? (
