@@ -3,7 +3,10 @@
 .km-intro { padding: 0 20px; }
 .km-tabella td { vertical-align: middle; }
 .km-radio { width: 20px; height: 20px; accent-color: #1a6fb0; cursor: pointer; }
-.km-riga { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.km-riga { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.km-tabella th:first-child { width: 90px; white-space: nowrap; }
+.km-tabella th:nth-child(3) { width: 220px; }
+@media (max-width: 1100px) { .km-riga { flex-wrap: wrap; } }
 .km-seg { display: inline-flex; border: 1.5px solid #b9c4cf; border-radius: 9px; overflow: hidden; }
 .km-seg button { padding: 9px 12px; border: 0; background: #fff; color: #3b4856; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .km-seg button + button { border-left: 1.5px solid #b9c4cf; }
