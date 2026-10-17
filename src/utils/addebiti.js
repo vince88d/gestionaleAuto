@@ -11,6 +11,7 @@ import { leggiEuro } from './protezioni';
 
 export const ADDEBITI = [
   { chiave: 'rifornimentoQuarto', nome: 'Rifornimento', aiuto: 'Per ogni quarto di serbatoio mancante rispetto alla consegna', unita: '€ / quarto' },
+  { chiave: 'kmInPiu', nome: 'Km in più', aiuto: 'Per ogni km oltre quelli inclusi nella formula scelta dal cliente (solo per le formule con i km limitati, vedi la scheda Chilometri)', unita: '€ / km' },
   { chiave: 'pulizia', nome: 'Pulizia straordinaria', aiuto: 'Auto molto sporca, peli di animali, odore di fumo', unita: '€' },
   { chiave: 'chiave', nome: 'Chiave non restituita', aiuto: 'Per ogni chiave in meno rispetto a quelle consegnate', unita: '€ / chiave' },
   { chiave: 'oggettoMancante', nome: 'Oggetto della dotazione mancante', aiuto: 'Triangolo, giubbotto, cavo… (si cambia caso per caso)', unita: '€' },
@@ -25,11 +26,11 @@ export const RITARDO = {
 };
 
 // Prezzi di partenza.
-export const ADDEBITI_DI_PARTENZA = { rifornimentoQuarto: 20, pulizia: 30, chiave: 150, oggettoMancante: 15, gestioneMulta: 30 };
+export const ADDEBITI_DI_PARTENZA = { rifornimentoQuarto: 20, kmInPiu: 0.25, pulizia: 30, chiave: 150, oggettoMancante: 15, gestioneMulta: 30 };
 
 // Quali voci si mostrano sul sito, se il titolare non ha deciso.
 export const SITO_DI_PARTENZA = {
-  rifornimentoQuarto: true, pulizia: true, chiave: true, oggettoMancante: false, gestioneMulta: true, ritardo: true,
+  rifornimentoQuarto: true, kmInPiu: true, pulizia: true, chiave: true, oggettoMancante: false, gestioneMulta: true, ritardo: true,
 };
 
 export const MODI_VOCE = [

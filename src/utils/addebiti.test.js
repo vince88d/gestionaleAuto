@@ -43,7 +43,7 @@ describe('listino penali e addebiti', () => {
 
   it('valida: vuoto e non numeri sono errori, 0 va bene; le voci vogliono nome e importo', () => {
     const errori = validaAddebiti({
-      rifornimentoQuarto: '', pulizia: 'x', chiave: '0', oggettoMancante: '15', gestioneMulta: '30',
+      rifornimentoQuarto: '', kmInPiu: '0,25', pulizia: 'x', chiave: '0', oggettoMancante: '15', gestioneMulta: '30',
       voci: [{ nome: '', importo: '10' }, { nome: 'Fumo', importo: '' }, { nome: 'Ok', importo: '5' }],
     });
     expect(Object.keys(errori).sort()).toEqual(['pulizia', 'rifornimentoQuarto', 'voci.0.nome', 'voci.1.importo']);
@@ -74,6 +74,7 @@ describe('listino penali e addebiti', () => {
     }, 29);
     expect(v.map((r) => `${r.nome}: ${r.testo}`)).toEqual([
       'Rifornimento: 20 € per quarto',
+      'Km in più: 0,25 € per km',
       'Chiave non restituita: 150 € per chiave',
       'Gestione multa: 30 € per verbale',
       'Fumo: 80 €',

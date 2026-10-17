@@ -1,0 +1,25 @@
+/* Scheda «Chilometri» di Tariffe e optional (ChilometriFormule.jsx). Prefisso km-. */
+.main-content .km-titolo { display: flex; align-items: center; gap: 8px; }
+.km-intro { padding: 0 20px; }
+.km-tabella td { vertical-align: middle; }
+.km-radio { width: 20px; height: 20px; accent-color: #1a6fb0; cursor: pointer; }
+.km-riga { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.km-seg { display: inline-flex; border: 1.5px solid #b9c4cf; border-radius: 9px; overflow: hidden; }
+.km-seg button { padding: 9px 12px; border: 0; background: #fff; color: #3b4856; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.km-seg button + button { border-left: 1.5px solid #b9c4cf; }
+.km-seg .km-seg--on { background: #1a6fb0; color: #fff; }
+.km-seg button:focus-visible { outline: 3px solid #5fb0f0; outline-offset: -3px; }
+.km-campo { width: 200px; }
+.km-campo .opt-input { padding-right: 118px; }
+.km-campo .opt-euro-simbolo { white-space: nowrap; font-size: 14px; }
+.km-cliente { font-size: 14px; color: #3b4856; }
+.km-togli { border: 0; background: none; color: #a93226; font: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.km-doppie { margin: 8px 20px 0; }
+.km-piu {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 14px 20px 0; padding: 12px 14px; border: 1px solid #e3e8ee; border-radius: 10px; background: #f7f9fb; font-size: 15px;
+}
+.km-piu-nota { color: #5d6b79; }
+.km-link { border: 0; background: none; color: #1a6fb0; font: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.km-spazio { flex: 1; }
+@media (max-width: 860px) { .km-col-cliente { display: none; } }
