@@ -40,7 +40,7 @@
   padding: 12px 20px;
   font-size: 15px;
   line-height: 1.5;
-  color: #4d5b69;
+  color: #3b4856;
   border-bottom: 1px solid #eef1f5;
 }
 
@@ -201,3 +201,7 @@
 }
 
 .tar-avviso { margin: 0; padding: 12px 20px; background: #eef5fc; color: #174a75; font-size: 15px; border-bottom: 1px solid #dbe7f3; }
+
+/* Esempio del prezzo per 3 giorni: fa capire che si moltiplica da solo. */
+.tar-esempio { font-size: 14.5px; color: #3b4856; }
+@media (max-width: 860px) { .tar-col-esempio { display: none; } }

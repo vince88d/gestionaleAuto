@@ -14,6 +14,24 @@ import './CatalogoOptional.css';
 import './ProtezioniCategorie.css';
 
 const IMPORTI = [['danni', 'Danni'], ['furto', 'Furto'], ['cauzione', 'Cauzione']];
+// Pulsanti «?» accanto agli importi: le parole che il cliente (e lo staff) confonde.
+const SPIEGAZIONI = {
+  danni: {
+    titolo: 'Cos\'è la franchigia danni?',
+    testo: 'È la parte del danno che paga il cliente. Il resto lo paga l\'assicurazione.',
+    esempio: 'Esempio: franchigia 1.200 €, danno da 3.000 € → il cliente paga 1.200 €.',
+  },
+  furto: {
+    titolo: 'Cos\'è la franchigia furto?',
+    testo: 'Quanto paga il cliente se l\'auto viene rubata mentre ce l\'ha lui.',
+    esempio: 'Esempio: franchigia furto 1.800 € → il cliente paga al massimo 1.800 €.',
+  },
+  cauzione: {
+    titolo: 'Cos\'è la cauzione?',
+    testo: 'Soldi bloccati sulla carta del cliente al ritiro, come garanzia. Non vengono presi: si sbloccano al rientro se è tutto a posto.',
+    esempio: 'Esempio: cauzione 600 € → bloccati al ritiro, liberati al rientro.',
+  },
+};
 const conta = (n, uno, tanti) => `${n} ${n === 1 ? uno : tanti}`;
 
 // Tre importi affiancati (danni, furto, cauzione): titoli di una parola,
@@ -22,7 +40,7 @@ function TreImporti({ prefisso, valori, errori, onChange, chiavi }) {
   return (
     <div className={chiavi && chiavi.length === 2 ? 'pro-tre pro-due' : 'pro-tre'}>
       {IMPORTI.filter(([k]) => !chiavi || chiavi.includes(k)).map(([k, titolo]) => (
-        <Campo key={k} id={`${prefisso}-${k}`} titolo={titolo} errore={errori[`${prefisso}.${k}`]}>
+        <Campo key={k} id={`${prefisso}-${k}`} titolo={titolo} errore={errori[`${prefisso}.${k}`]} spiegazione={SPIEGAZIONI[k]}>
           <CampoEuro id={`${prefisso}-${k}`} valore={valori[k]} onChange={(v) => onChange(k, v)} invalido={Boolean(errori[`${prefisso}.${k}`])} />
         </Campo>
       ))}

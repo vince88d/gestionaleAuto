@@ -93,7 +93,8 @@ function SchedaVeicoloModal({
     etaConducenti,
     codiceFiscale: codiceFiscaleValido(prenotazione.codiceFiscale) ? prenotazione.codiceFiscale : documenti.codiceFiscale,
     oggi: giornoLocale(),
-    pagataSulSito: pagataSulSito(prenotazione),
+    // Le richieste senza pagamento si pagano al ritiro: la differenza si corregge prima.
+    pagataSulSito: pagataSulSito(prenotazione) && !prenotazione.richiestaSenzaPagamento,
   }) : null;
   const aggiornaDocumento = (campo, valore) => onDocumentiChange({ ...documenti, [campo]: valore });
 

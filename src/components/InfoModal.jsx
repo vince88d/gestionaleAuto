@@ -42,7 +42,9 @@ function ProssimoPasso({ prenotazione, onScegliAuto, onConsegna, onConcludi }) {
     scegli: onScegliAuto && {
       tono: 'scegli',
       titolo: "Scegli quale auto dare al cliente",
-      spiega: `Ha pagato dal sito la categoria «${prenotazione.categoria || '—'}». Dopo aver scelto l'auto potrai consegnarla.`,
+      spiega: prenotazione.richiestaSenzaPagamento
+        ? `Ha chiesto dal sito la categoria «${prenotazione.categoria || '—'}» (paga al ritiro). Dopo aver scelto l'auto potrai consegnarla.`
+        : `Ha pagato dal sito la categoria «${prenotazione.categoria || '—'}». Dopo aver scelto l'auto potrai consegnarla.`,
       pulsante: <><Car size={18} aria-hidden="true" /> Scegli l&apos;auto</>,
       classe: 'vd-btn--scegli',
       azione: onScegliAuto,
@@ -257,7 +259,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
             <dl className="pz-dati">
               {senzaAuto ? (
                 <>
-                  <div><dt>Categoria pagata</dt><dd>{prenotazione.categoria || '—'}</dd></div>
+                  <div><dt>{prenotazione.richiestaSenzaPagamento ? 'Categoria chiesta' : 'Categoria pagata'}</dt><dd>{prenotazione.categoria || '—'}</dd></div>
                   <div><dt>Auto</dt><dd className="pz-da-scegliere">Da scegliere</dd></div>
                 </>
               ) : (

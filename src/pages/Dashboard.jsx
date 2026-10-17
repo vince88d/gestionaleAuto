@@ -18,6 +18,7 @@ import { dataEOra, formattaData, giornoLocale } from '../utils/scadenze';
 import { oraBreve } from '../utils/orari';
 import VehicleDetailModal from '../components/VehicleDetailModal';
 import RinnovaScadenzaModal from '../components/RinnovaScadenzaModal';
+import RichiesteSito from '../components/RichiesteSito';
 import { useAzienda } from '../lib/firestoreAzienda';
 
 const euro = (valore) => `€ ${Number(valore || 0).toLocaleString('it-IT', { maximumFractionDigits: 2 })}`;
@@ -239,6 +240,8 @@ function Dashboard() {
         </p>
         <h1 className="dash-saluto">{saluto()}</h1>
       </header>
+
+      <RichiesteSito prenotazioni={tuttePrenotazioni} oggi={oggi} />
 
       <div className="dash-stat">
         {stats.map(({ titolo, valore, extra, link, Icona, tono, onClick }) => (

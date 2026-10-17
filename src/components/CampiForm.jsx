@@ -1,4 +1,5 @@
 import React from 'react';
+import Aiuto from './Aiuto';
 import { Plus, Minus } from 'lucide-react';
 
 // Pezzi dei form dello staff (optional, protezioni): stessa grafica ovunque.
@@ -8,10 +9,18 @@ import '../pages/CatalogoOptional.css';
 // Un campo del form: titolo, riga di aiuto, casella, eventuale errore (in
 // quest'ordine, come nelle linee guida GOV.UK). Una sola colonna, cosi' le
 // caselle restano sempre allineate.
-export function Campo({ id, titolo, aiuto, errore, children }) {
+// `spiegazione`: { titolo, testo, esempio } per il pulsante «?» accanto al
+// titolo (vedi Aiuto.jsx), solo per le parole difficili.
+export function Campo({ id, titolo, aiuto, errore, spiegazione, children }) {
+  const etichetta = <label htmlFor={id} className="opt-titolo-campo">{titolo}</label>;
   return (
     <div className={`opt-campo ${errore ? 'opt-campo--errore' : ''}`}>
-      <label htmlFor={id} className="opt-titolo-campo">{titolo}</label>
+      {spiegazione ? (
+        <span className="opt-titolo-riga">
+          {etichetta}
+          <Aiuto titolo={spiegazione.titolo} esempio={spiegazione.esempio}>{spiegazione.testo}</Aiuto>
+        </span>
+      ) : etichetta}
       {aiuto && <span id={`${id}-aiuto`} className="opt-aiuto">{aiuto}</span>}
       {children}
       {errore && <span className="opt-errore-campo" role="alert">{errore}</span>}

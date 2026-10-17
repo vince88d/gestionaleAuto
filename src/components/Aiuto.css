@@ -1,0 +1,43 @@
+/* Pulsante «?» e fumetto di spiegazione (Aiuto.jsx). */
+.aiuto { position: relative; display: inline-flex; vertical-align: middle; }
+.aiuto-btn {
+  width: 26px; height: 26px; padding: 0; border-radius: 50%;
+  border: 1.5px solid #1a6fb0; background: #fff; color: #1a6fb0;
+  font: inherit; font-size: 14px; font-weight: 800; line-height: 1; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.aiuto-btn:hover, .aiuto-btn[aria-expanded="true"] { background: #1a6fb0; color: #fff; }
+.aiuto-btn:focus-visible { outline: 3px solid #9cc7ea; outline-offset: 2px; }
+.aiuto-fumetto {
+  position: absolute; top: 34px; left: -14px; z-index: 50; width: 310px; max-width: 80vw;
+  display: block; padding: 13px 34px 12px 15px; border-radius: 10px;
+  background: #1f2d3a; color: #fff; text-align: left;
+  font-size: 14.5px; font-weight: 400; line-height: 1.5; text-transform: none; letter-spacing: 0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+.aiuto-fumetto::before {
+  content: ""; position: absolute; top: -7px; left: 20px;
+  border: 7px solid transparent; border-top: 0; border-bottom-color: #1f2d3a;
+}
+.aiuto-titolo { display: block; margin-bottom: 3px; font-size: 15px; }
+.aiuto-testo { display: block; }
+.aiuto-esempio { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px solid #3d4d5c; color: #d6dde4; }
+.aiuto-chiudi {
+  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; padding: 0;
+  border: 0; border-radius: 6px; background: none; color: #c4ccd4; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.aiuto-chiudi:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+
+/* Riquadro «Come funziona» in cima a una pagina (ComeFunziona.jsx). */
+.come {
+  display: flex; gap: 12px; margin: 16px 0 0; padding: 14px 18px;
+  border: 1px solid #c9dff1; border-left: 5px solid #1a6fb0; border-radius: 10px;
+  background: #eaf3fb; color: #1f2d3a;
+}
+.come-icona { flex: none; margin-top: 1px; color: #1a6fb0; }
+.main-content .come-titolo { display: block; margin: 0 0 4px; font-size: 16px; font-weight: 700; color: #0f3d63; }
+.come ol { margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.6; }
+.come details { margin-top: 6px; font-size: 15px; }
+.come summary { cursor: pointer; color: #1a6fb0; font-weight: 600; text-decoration: underline; }
+.come details p { margin: 6px 0 0; line-height: 1.55; }
