@@ -113,7 +113,14 @@ function AddebitiRientro() {
                 ))}
                 {!tolte.includes('ritardo') && (
                   <tr>
-                    <td className="add-voce-nome-cella"><b>{RITARDO.nome}</b><span>{RITARDO.aiuto}</span></td>
+                    <td className="add-voce-nome-cella">
+                      <b>{RITARDO.nome}</b>
+                      <span>{RITARDO.aiuto}</span>
+                      <span className="add-tolleranza">
+                        Tolleranza: {Number(orari?.tolleranzaMinuti) > 0 ? `${orari.tolleranzaMinuti} minuti di ritardo non si pagano` : 'nessuna, si paga subito'}.{' '}
+                        <a href="#/impostazioni-azienda">Cambia in Orari della sede</a>
+                      </span>
+                    </td>
                     <td><span className="add-auto">Automatico</span></td>
                     <td className="add-cella-azioni">
                       <Interruttore acceso={form.sito.ritardo} onChange={(x) => sito('ritardo', x)} nome={RITARDO.nome} />

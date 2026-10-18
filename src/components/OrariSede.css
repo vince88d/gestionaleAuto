@@ -78,7 +78,13 @@
 
 .or-nota { font-size: 13px; color: #6b7280; }
 .or-azioni { display: flex; gap: 16px; margin-top: 8px; }
-.or-sotto { margin: 18px 0 8px; font-size: 14px; font-weight: 700; color: #2c3e50; }
+.or-blocco { margin-top: 22px; padding-top: 18px; border-top: 1px solid #e3e8ee; }
+.or-blocco:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+.or-blocco-testa { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.or-blocco-icona { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: #eaf3fb; color: #1a6fb0; }
+.main-content .or-blocco-titolo, .or-blocco-titolo { margin: 0; font-size: 17px; font-weight: 800; color: #1f2d3a; }
+.or-blocco-desc { margin: 2px 0 0; font-size: 14px; line-height: 1.45; color: #4b5563; }
+.or-esempio { margin: 8px 0 0; font-size: 14px; line-height: 1.5; }
 
 .or-chiusure { display: flex; flex-direction: column; gap: 8px; }
 .or-chiusura { display: grid; grid-template-columns: 1fr 1fr 2fr 28px; gap: 8px; align-items: end; }

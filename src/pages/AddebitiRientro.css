@@ -85,3 +85,6 @@
 .add-tolte li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 15px; color: #3b4856; }
 .add-tolte .add-togli { color: #1a6fb0; }
 .add-tolte .add-togli:hover { background: #eaf3fb; }
+
+.add-voce-nome-cella .add-tolleranza { margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: #f1f5f9; color: #3b4856; font-size: 14px; }
+.add-tolleranza a { color: #1a6fb0; font-weight: 600; }

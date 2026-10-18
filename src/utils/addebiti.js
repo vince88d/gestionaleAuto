@@ -22,7 +22,7 @@ export const ADDEBITI = [
 export const RITARDO = {
   chiave: 'ritardo',
   nome: 'Ritardo nella riconsegna',
-  aiuto: 'Automatico: giorni in più × prezzo al giorno della prenotazione, oltre la tolleranza (la decidi in Impostazioni → Orari della sede).',
+  aiuto: 'Automatico: giorni in più × prezzo al giorno della prenotazione, oltre la tolleranza (vedi la tolleranza qui sotto).',
 };
 
 // Prezzi di partenza.
