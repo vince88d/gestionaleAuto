@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Trash2 } from 'lucide-react';
+import { Timer, Trash2 } from 'lucide-react';
 import { ascoltaAddebiti, salvaAddebiti } from '../lib/firestoreAddebiti';
 import { useOrari } from '../lib/firestoreOrari';
 import {
@@ -50,6 +50,9 @@ function AddebitiRientro() {
   const tolte = form.tolte || [];
   const cambiaRitardo = (campi) => setForm((f) => ({ ...f, ritardo: { ...f.ritardo, ...campi } }));
   const ritardoPronto = preparaAddebiti(form).ritardo;
+  const r = form.ritardo;
+  const riassuntoRitardo = r.metodo === 'ore' ? `${r.percentuale}% all’ora` : r.metodo === 'oraFissa' ? `${r.euroOra} € all’ora` : '1 giorno';
+  const tolleranzaMin = Number(orari?.tolleranzaMinuti) || 0;
   const PREZZO_ESEMPIO = 60;
   const esempiRitardo = [1, 2, 3, 6, 12].map((h) => ({
     h,
@@ -126,12 +129,8 @@ function AddebitiRientro() {
                   <td className="add-voce-nome-cella">
                     <b>{RITARDO.nome}</b>
                     <span>{RITARDO.aiuto}</span>
-                    <span className="add-tolleranza">
-                      Tolleranza: {Number(orari?.tolleranzaMinuti) > 0 ? `${orari.tolleranzaMinuti} minuti di ritardo non si pagano` : 'nessuna, si paga subito'}.{' '}
-                      <a href="#/impostazioni-azienda">Cambia in Orari della sede</a>
-                    </span>
                   </td>
-                  <td><span className="add-auto">{METODI_RITARDO.find((m) => m.valore === form.ritardo.metodo)?.nome}</span></td>
+                  <td><span className="add-auto">{riassuntoRitardo}</span></td>
                   <td><Interruttore acceso={!tolte.includes('ritardo')} onChange={(x) => (x ? rimetti('ritardo') : togli('ritardo'))} nome={RITARDO.nome} etichetta="In uso" /></td>
                   <td><Interruttore acceso={form.sito.ritardo} onChange={(x) => sito('ritardo', x)} nome={RITARDO.nome} bloccato={tolte.includes('ritardo')} /></td>
                 </tr>
@@ -140,6 +139,14 @@ function AddebitiRientro() {
                     <td colSpan={4}>
                       <fieldset className="add-come">
                         <legend>Come si calcola il ritardo</legend>
+                        <div className="add-toll" role="note">
+                          <Timer size={22} aria-hidden="true" />
+                          <div>
+                            <b>Tolleranza: {tolleranzaMin > 0 ? `${tolleranzaMin} minuti` : 'nessuna'}</b>
+                            <span>{tolleranzaMin > 0 ? `I primi ${tolleranzaMin} minuti di ritardo non si pagano.` : 'Il ritardo si paga fin dal primo minuto.'} Poi scatta il metodo scelto qui sotto.</span>
+                          </div>
+                          <a href="#/impostazioni-azienda">Cambia in Orari della sede</a>
+                        </div>
                         <p className="add-come-d">Scegli un metodo. Al rientro il gestionale propone già l’importo, e lo puoi sempre cambiare.</p>
                         <div className="add-metodi">
                           {METODI_RITARDO.map((m) => (
