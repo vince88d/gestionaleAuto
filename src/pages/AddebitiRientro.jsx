@@ -6,7 +6,8 @@ import { useOrari } from '../lib/firestoreOrari';
 import {
   ADDEBITI, MODI_VOCE, RITARDO, addebitiPerForm, nuovaVoce, preparaAddebiti, validaAddebiti, vociPerSito,
 } from '../utils/addebiti';
-import { Campo, CampoEuro } from '../components/CampiForm';
+import { CampoEuro } from '../components/CampiForm';
+import { leggiEuro } from '../utils/protezioni';
 import './CatalogoOptional.css';
 import './AddebitiRientro.css';
 
@@ -63,44 +64,59 @@ function AddebitiRientro() {
     }
   };
 
-  const MostraSulSito = ({ chiave, nome }) => (
-    <label className="opt-spunta add-sito">
-      <input type="checkbox" checked={form.sito[chiave]} onChange={(e) => sito(chiave, e.target.checked)} aria-label={`Mostra sul sito: ${nome}`} />
-      Mostra sul sito
+  const Interruttore = ({ acceso, onChange, nome, bloccato }) => (
+    <label className={`add-tg ${acceso && !bloccato ? 'add-tg--on' : ''} ${bloccato ? 'add-tg--dis' : ''}`}>
+      <input type="checkbox" role="switch" checked={acceso && !bloccato} disabled={bloccato} onChange={(e) => onChange(e.target.checked)} aria-label={`Mostra sul sito: ${nome}`} />
+      <span className="add-tg-sw" aria-hidden="true" />
+      {acceso && !bloccato ? 'Sì' : 'No'}
     </label>
   );
+  const gratis = (valore) => leggiEuro(valore) === 0;
+  const unita = (u) => (u === '€' ? 'una volta' : u.replace('€ / ', 'per '));
 
   return (
     <form className="opt" onSubmit={salva} noValidate aria-label="Penali e addebiti">
-      <section className="opt-box add-box">
-        <div className="opt-box-testa">
-          <h2 className="opt-box-titolo">Penali e addebiti</h2>
-        </div>
-        <p className="opt-nota">
-          Si scrivono una volta: quando ricevi l’auto vengono proposti già compilati e li puoi cambiare caso per caso.
-          Con «Mostra sul sito» il cliente li legge nelle condizioni, prima di pagare.
-        </p>
-        <div className="add-campi">
-          {ADDEBITI.map(({ chiave, nome, aiuto, unita }) => (
-            <Campo key={chiave} id={`add-${chiave}`} titolo={nome} aiuto={aiuto} errore={mostra(chiave)}>
-              <div className="add-riga">
-                <CampoEuro id={`add-${chiave}`} valore={form[chiave]} onChange={(v) => cambia({ [chiave]: v })} invalido={Boolean(mostra(chiave))} />
-                {unita !== '€' && <span className="add-unita">{unita.replace('€ ', '')}</span>}
-              </div>
-              <MostraSulSito chiave={chiave} nome={nome} />
-            </Campo>
-          ))}
+      <p className="add-intro">
+        Si scrivono una volta: quando ricevi l’auto vengono proposti già compilati e li puoi cambiare caso per caso.
+        Con <b>«Il cliente la vede sul sito»</b> su Sì, li legge nelle condizioni prima di prenotare.
+      </p>
+      <div className="add-lay">
+        <div className="add-colonna">
+          <section className="opt-box add-box">
+            <div className="add-testa">
+              <h2 className="opt-box-titolo">Addebiti fissi</h2>
+              <p>Importi che il gestionale propone al rientro dell’auto.</p>
+            </div>
+            <table className="add-tab">
+              <thead><tr><th scope="col">Voce</th><th scope="col">Importo</th><th scope="col">Il cliente la vede sul sito</th></tr></thead>
+              <tbody>
+                {ADDEBITI.map(({ chiave, nome, aiuto, unita: u }) => (
+                  <tr key={chiave}>
+                    <td className="add-voce-nome-cella"><b>{nome}</b><span>{aiuto}</span></td>
+                    <td>
+                      <CampoEuro id={`add-${chiave}`} valore={form[chiave]} onChange={(v) => cambia({ [chiave]: v })} invalido={Boolean(mostra(chiave))} />
+                      <label htmlFor={`add-${chiave}`} className="add-vis-nascosta">{nome}</label>
+                      <span className="add-unita">{unita(u)}</span>
+                      {mostra(chiave) && <span className="opt-errore-campo" role="alert">{mostra(chiave)}</span>}
+                      {!mostra(chiave) && gratis(form[chiave]) && <span className="add-gratis">Importo 0: è gratis, non si mostra.</span>}
+                    </td>
+                    <td><Interruttore acceso={form.sito[chiave]} onChange={(x) => sito(chiave, x)} nome={nome} bloccato={gratis(form[chiave])} /></td>
+                  </tr>
+                ))}
+                <tr>
+                  <td className="add-voce-nome-cella"><b>{RITARDO.nome}</b><span>{RITARDO.aiuto}</span></td>
+                  <td><span className="add-auto">Automatico</span></td>
+                  <td><Interruttore acceso={form.sito.ritardo} onChange={(x) => sito('ritardo', x)} nome={RITARDO.nome} /></td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
 
-          <div className="opt-campo">
-            <span className="opt-titolo-campo">{RITARDO.nome}</span>
-            <span className="opt-aiuto">{RITARDO.aiuto}</span>
-            <span className="add-auto">automatico</span>
-            <MostraSulSito chiave="ritardo" nome={RITARDO.nome} />
-          </div>
-
-          <div className="opt-campo">
-            <span className="opt-titolo-campo">Le tue voci</span>
-            <span className="opt-aiuto">Altre penali o costi che applichi (es. fumo nell’auto, sabbia, pedaggi non pagati).</span>
+          <section className="opt-box add-box">
+            <div className="add-testa">
+              <h2 className="opt-box-titolo">Le tue voci</h2>
+              <p>Altre penali o costi che applichi, per esempio fumo nell’auto, sabbia, pedaggi non pagati.</p>
+            </div>
             {form.voci.map((v, i) => (
               <div key={v.id} className="add-voce">
                 <div className="add-voce-riga">
@@ -121,40 +137,50 @@ function AddebitiRientro() {
                       {MODI_VOCE.map((m) => <option key={m.valore} value={m.valore}>{m.testo}</option>)}
                     </select>
                   </div>
-                  <button type="button" className="add-togli" aria-label={`Togli la voce ${v.nome || i + 1}`} onClick={() => cambia({ voci: form.voci.filter((_, j) => j !== i) })}>
-                    <X size={18} aria-hidden="true" />
+                  <button type="button" className="add-togli" onClick={() => cambia({ voci: form.voci.filter((_, j) => j !== i) })}>
+                    Togli<span className="add-vis-nascosta"> la voce {v.nome || i + 1}</span>
                   </button>
                 </div>
                 <div>
-                  <label htmlFor={`add-voce-desc-${i}`} className="add-voce-et">Cosa vede il cliente (facoltativo)</label>
+                  <label htmlFor={`add-voce-desc-${i}`} className="add-voce-et">Cosa legge il cliente <span className="add-fac">(facoltativo)</span></label>
                   <input
                     id={`add-voce-desc-${i}`} type="text" className="opt-input" value={v.descrizione} placeholder="Es. È vietato fumare nei veicoli."
                     onChange={(e) => voce(i, { descrizione: e.target.value })}
                   />
                 </div>
-                <label className="opt-spunta add-sito">
-                  <input type="checkbox" checked={v.sito} onChange={(e) => voce(i, { sito: e.target.checked })} aria-label={`Mostra sul sito: ${v.nome || `voce ${i + 1}`}`} />
-                  Mostra sul sito
-                </label>
                 {(mostra(`voci.${i}.nome`) || mostra(`voci.${i}.importo`)) && (
                   <span className="opt-errore-campo" role="alert">{errori[`voci.${i}.nome`] || errori[`voci.${i}.importo`]}</span>
                 )}
+                {!mostra(`voci.${i}.importo`) && gratis(v.importo) && <span className="add-gratis">Importo 0: è gratis, non si mostra al cliente.</span>}
+                <div className="add-voce-sito">
+                  <span>Il cliente la vede sul sito:</span>
+                  <Interruttore acceso={v.sito} onChange={(x) => voce(i, { sito: x })} nome={v.nome || `voce ${i + 1}`} bloccato={gratis(v.importo)} />
+                </div>
               </div>
             ))}
-            <button type="button" className="add-link" onClick={() => cambia({ voci: [...form.voci, nuovaVoce()] })}>+ Aggiungi una voce</button>
-          </div>
-
-          <div className="opt-esempio add-anteprima">
-            <b>Come lo vede il cliente sul sito</b> (nelle condizioni, riga «Penali e costi aggiuntivi»)
-            <br />
-            {anteprima.length > 0
-              ? anteprima.map((r) => `${r.nome} ${r.testo}`).join(' · ')
-              : 'Niente: nessuna voce è accesa, la riga non compare.'}
-          </div>
-          <p className="opt-aiuto">Importo 0 = gratis: la voce non si mostra. Cambiando un importo le riconsegne già registrate non cambiano.</p>
+            <div className="add-aggiungi">
+              <button type="button" className="opt-btn" onClick={() => cambia({ voci: [...form.voci, nuovaVoce()] })}>+ Aggiungi una voce</button>
+            </div>
+          </section>
         </div>
-        <div className="add-piede">
-          {tentato && Object.keys(errori).length > 0 && <span className="opt-errore add-piede-errore">Controlla i campi segnati.</span>}
+
+        <aside className="add-anteprima" aria-label="Cosa legge il cliente">
+          <h3>Cosa legge il cliente</h3>
+          <p className="add-anteprima-d">Nelle condizioni sul sito, riga «Penali e costi aggiuntivi». Si aggiorna mentre scrivi.</p>
+          {anteprima.length > 0 ? (
+            <ul>
+              {anteprima.map((r) => <li key={r.id}><b>{r.nome}</b><small>{r.testo}</small></li>)}
+            </ul>
+          ) : <p className="add-anteprima-d">Niente: nessuna voce è accesa, la riga non compare.</p>}
+          <p className="add-anteprima-d">Cambiando un importo le riconsegne già registrate non cambiano.</p>
+        </aside>
+      </div>
+
+      <div className="add-barra">
+        <span className={modificato ? 'add-stato add-stato--mod' : 'add-stato'} role="status">
+          {tentato && Object.keys(errori).length > 0 ? 'Controlla i campi segnati.' : modificato ? 'Modifiche non salvate' : 'Tutto salvato'}
+        </span>
+        <span className="add-azioni">
           {modificato && (
             <button type="button" className="opt-btn" onClick={() => { setForm(addebitiPerForm(salvati)); setTentato(false); }} disabled={salvando}>
               Annulla modifiche
@@ -163,8 +189,8 @@ function AddebitiRientro() {
           <button type="submit" className="opt-btn opt-btn--salva" disabled={!modificato || salvando}>
             {salvando ? 'Salvo…' : 'Salva'}
           </button>
-        </div>
-      </section>
+        </span>
+      </div>
     </form>
   );
 }
