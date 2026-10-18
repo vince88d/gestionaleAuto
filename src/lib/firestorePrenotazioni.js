@@ -176,6 +176,8 @@ export const CAMPI_PRENOTAZIONE = [
   // Eta' dichiarata del conducente (null = senza supplemento) e supplemento
   // giovane conducente calcolato (vedi utils/etaConducenti.js), come il sito.
   'etaConducente', 'giovaneConducente',
+  // Data di rilascio della patente (limiti dei neopatentati, utils/neopatentati.js).
+  'rilascioPatente',
 ];
 
 const soloCampiPrenotazione = (dati) =>

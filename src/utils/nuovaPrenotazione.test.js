@@ -74,8 +74,9 @@ describe('cliente dall\'anagrafica', () => {
   test('nome, contatti e documenti', () => {
     const c = { nome: 'Mario', cognome: 'Rossi', cellulare: '333', email: 'm@r.it', codiceFiscale: 'rssmra80a01h501u', patente: 'ab12' };
     expect(datiDaCliente(c)).toEqual({
-      cliente: 'Mario Rossi', telefono: '333', emailCliente: 'm@r.it', codiceFiscale: 'RSSMRA80A01H501U', patente: 'AB12',
+      cliente: 'Mario Rossi', telefono: '333', emailCliente: 'm@r.it', codiceFiscale: 'RSSMRA80A01H501U', patente: 'AB12', rilascioPatente: '',
     });
+    expect(datiDaCliente({ ...c, rilascioPatente: '2025-03-14' }).rilascioPatente).toBe('2025-03-14');
     expect(documentiCompleti(c)).toBe(true);
     expect(documentiCompleti({ ...c, patente: '' })).toBe(false);
   });

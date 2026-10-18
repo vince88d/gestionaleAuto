@@ -88,6 +88,7 @@ export function datiDaCliente(c) {
     emailCliente: c.email || '',
     codiceFiscale: normalizzaCodiceFiscale(c.codiceFiscale),
     patente: (c.patente || '').toUpperCase(),
+    rilascioPatente: c.rilascioPatente || '',
   };
 }
 
