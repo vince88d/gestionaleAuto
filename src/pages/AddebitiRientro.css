@@ -74,7 +74,11 @@
   .add-voce-riga { align-items: stretch; }
 }
 
-.add-togli--riga { display: block; margin-top: 8px; padding: 6px 0; }
+.add-cella-azioni { white-space: nowrap; }
+.add-cella-azioni .add-tg { vertical-align: middle; margin-right: 14px; }
+.add-cestino { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; vertical-align: middle; border: 1.5px solid transparent; border-radius: 8px; background: none; color: #5d6b79; cursor: pointer; }
+.add-cestino:hover { background: #fdecea; color: #a93226; border-color: #f3c6c1; }
+.add-cestino:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
 .add-tolte { display: flex; flex-direction: column; gap: 4px; padding: 14px 22px; border-top: 1px solid #e3e8ee; background: #fbfcfd; font-size: 14px; color: #5d6b79; }
 .add-tolte b { font-size: 15px; color: #1f2d3a; }
 .add-tolte ul { margin: 6px 0 0; padding: 0; list-style: none; }

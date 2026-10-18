@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { X } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { ascoltaAddebiti, salvaAddebiti } from '../lib/firestoreAddebiti';
 import { useOrari } from '../lib/firestoreOrari';
 import {
@@ -103,10 +103,10 @@ function AddebitiRientro() {
                       {mostra(chiave) && <span className="opt-errore-campo" role="alert">{mostra(chiave)}</span>}
                       {!mostra(chiave) && gratis(form[chiave]) && <span className="add-gratis">Importo 0: è gratis, non si mostra.</span>}
                     </td>
-                    <td>
+                    <td className="add-cella-azioni">
                       <Interruttore acceso={form.sito[chiave]} onChange={(x) => sito(chiave, x)} nome={nome} bloccato={gratis(form[chiave])} />
-                      <button type="button" className="add-togli add-togli--riga" onClick={() => togli(chiave)}>
-                        Togli<span className="add-vis-nascosta"> la voce {nome}</span>
+                      <button type="button" className="add-cestino" title="Togli questa voce" aria-label={`Togli la voce ${nome}`} onClick={() => togli(chiave)}>
+                        <Trash2 size={20} aria-hidden="true" />
                       </button>
                     </td>
                   </tr>
@@ -115,10 +115,10 @@ function AddebitiRientro() {
                   <tr>
                     <td className="add-voce-nome-cella"><b>{RITARDO.nome}</b><span>{RITARDO.aiuto}</span></td>
                     <td><span className="add-auto">Automatico</span></td>
-                    <td>
+                    <td className="add-cella-azioni">
                       <Interruttore acceso={form.sito.ritardo} onChange={(x) => sito('ritardo', x)} nome={RITARDO.nome} />
-                      <button type="button" className="add-togli add-togli--riga" onClick={() => togli('ritardo')}>
-                        Togli<span className="add-vis-nascosta"> la voce {RITARDO.nome}</span>
+                      <button type="button" className="add-cestino" title="Togli questa voce" aria-label={`Togli la voce ${RITARDO.nome}`} onClick={() => togli('ritardo')}>
+                        <Trash2 size={20} aria-hidden="true" />
                       </button>
                     </td>
                   </tr>
@@ -171,8 +171,8 @@ function AddebitiRientro() {
                       {MODI_VOCE.map((m) => <option key={m.valore} value={m.valore}>{m.testo}</option>)}
                     </select>
                   </div>
-                  <button type="button" className="add-togli" onClick={() => cambia({ voci: form.voci.filter((_, j) => j !== i) })}>
-                    Togli<span className="add-vis-nascosta"> la voce {v.nome || i + 1}</span>
+                  <button type="button" className="add-cestino" title="Togli questa voce" aria-label={`Togli la voce ${v.nome || i + 1}`} onClick={() => cambia({ voci: form.voci.filter((_, j) => j !== i) })}>
+                    <Trash2 size={20} aria-hidden="true" />
                   </button>
                 </div>
                 <div>
