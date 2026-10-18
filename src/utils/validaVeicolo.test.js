@@ -56,3 +56,18 @@ test('preparaVeicolo: dotazione pulita, chiavi solo 1 o 2, gomme invernali si/no
   expect(p.gommeInvernali).toBe(false);
   expect(preparaVeicolo({ targa: 'AB123CD', chiavi: 2 }).chiavi).toBe(2);
 });
+
+describe('potenza e tara (neopatentati)', () => {
+  const base = { marca: 'Fiat', modello: 'Panda', targa: 'AB123CD', categoria: 'City Car' };
+  it('sono facoltative', () => {
+    expect(validaVeicolo(base)).toEqual({});
+  });
+  it('controlla i limiti del libretto', () => {
+    expect(validaVeicolo({ ...base, potenzaKw: 66, taraKg: 1050 })).toEqual({});
+    expect(validaVeicolo({ ...base, potenzaKw: 0 }).potenzaKw).toBeDefined();
+    expect(validaVeicolo({ ...base, taraKg: 50 }).taraKg).toBeDefined();
+  });
+  it('si salvano come numeri', () => {
+    expect(preparaVeicolo({ ...base, potenzaKw: '66', taraKg: '1050' })).toMatchObject({ potenzaKw: 66, taraKg: 1050 });
+  });
+});

@@ -44,6 +44,13 @@ export function validaVeicolo(dati, flotta = [], idCorrente = null, annoCorrente
   const porte = numeroOVuoto(dati?.porte);
   if (porte !== '' && !(Number.isInteger(porte) && porte >= 1 && porte <= 9)) errori.porte = 'Porte tra 1 e 9.';
 
+  // Potenza e tara dal libretto (facoltative: senza, l'auto resta «da verificare»
+  // per i neopatentati, vedi utils/neopatentati.js).
+  const potenza = numeroOVuoto(dati?.potenzaKw);
+  if (potenza !== '' && !(Number.isFinite(potenza) && potenza >= 1 && potenza <= 1000)) errori.potenzaKw = 'Potenza in kW tra 1 e 1000 (campo P.2 del libretto).';
+  const tara = numeroOVuoto(dati?.taraKg);
+  if (tara !== '' && !(Number.isFinite(tara) && tara >= 300 && tara <= 10000)) errori.taraKg = 'Tara in kg tra 300 e 10000 (campo G del libretto).';
+
   return errori;
 }
 
@@ -54,7 +61,7 @@ export function preparaVeicolo(dati) {
   ['marca', 'modello', 'colore', 'note'].forEach((campo) => {
     if (typeof pronto[campo] === 'string') pronto[campo] = pronto[campo].trim();
   });
-  ['anno', 'km', 'porte'].forEach((campo) => {
+  ['anno', 'km', 'porte', 'potenzaKw', 'taraKg'].filter((c) => !['potenzaKw', 'taraKg'].includes(c) || c in pronto).forEach((campo) => {
     const valore = numeroOVuoto(pronto[campo]);
     pronto[campo] = Number.isNaN(valore) ? '' : valore;
   });

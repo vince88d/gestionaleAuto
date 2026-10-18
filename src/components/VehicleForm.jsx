@@ -4,6 +4,7 @@ import { Car, Upload, X } from 'lucide-react';
 import { SCADENZE_VEICOLO } from '../utils/scadenze';
 import { normalizzaTarga } from '../utils/validaVeicolo';
 import DotazioneVeicolo from './DotazioneVeicolo';
+import { idoneitaNeopatentati, kwPerTonnellata, LIMITI_NEOPATENTATI } from '../utils/neopatentati';
 // vd-btn, vd-link, vd-titolo-sezione: stessi pulsanti e titoli della scheda veicolo.
 import '../styles/VehicleDetailModal.css';
 import '../styles/VehicleForm.css';
@@ -26,6 +27,40 @@ function Campo({ nome, etichetta, obbligatorio, errore, aiuto, children }) {
         aiuto && <span className="vf-aiuto">{aiuto}</span>
       )}
     </label>
+  );
+}
+
+// Potenza e tara dal libretto: il gestionale calcola i kW/t e dice se l'auto
+// e' adatta a un neopatentato (utils/neopatentati.js).
+// Mockup: formiarent-documenti/mockup/gestionale-sito-neopatentati.html
+function SezioneNeopatentati({ formData, input, errori }) {
+  const kwT = kwPerTonnellata(formData.potenzaKw, formData.taraKg);
+  const idoneita = idoneitaNeopatentati(formData);
+  const { esito, limiti } = idoneita;
+  const virgola = (n) => n.toLocaleString('it-IT', { maximumFractionDigits: 1 });
+  return (
+    <section className="vf-sezione">
+      <h3 className="vd-titolo-sezione">Potenza per i neopatentati</h3>
+      <p className="vf-nota">Dal libretto: <b>P.2</b> è la potenza in kW (non i cavalli), <b>G</b> è la tara, cioè il peso a vuoto, in kg. Per le elettriche e le ibride usa i valori del libretto.</p>
+      <div className="vf-griglia vf-griglia--3">
+        <Campo nome="potenzaKw" etichetta="Potenza (kW)" errore={errori.potenzaKw} aiuto="Libretto, campo P.2">
+          {input('potenzaKw', { tipo: 'number', min: 1, step: 1, placeholder: 'Es. 66' })}
+        </Campo>
+        <Campo nome="taraKg" etichetta="Tara (kg)" errore={errori.taraKg} aiuto="Libretto, campo G">
+          {input('taraKg', { tipo: 'number', min: 1, step: 1, placeholder: 'Es. 1050' })}
+        </Campo>
+        <div className="vf-campo">
+          <span className="vf-etichetta">Rapporto</span>
+          <output className="vf-calcolato" aria-live="polite">{kwT === null ? '—' : `${virgola(kwT)} kW/t`}</output>
+          <span className="vf-aiuto">Calcolato da solo</span>
+        </div>
+      </div>
+      <div className={`vf-esito vf-esito--${esito}`} role="status">
+        {esito === 'si' && <><b>Adatta ai neopatentati</b><span>{idoneita.motivo}.</span></>}
+        {esito === 'no' && <><b>Non adatta ai neopatentati</b><span>{idoneita.motivo}.</span></>}
+        {esito === 'nd' && <><b>Da verificare</b><span>Scrivi potenza e tara: finché mancano, questa auto non si propone a chi ha la patente da meno di {LIMITI_NEOPATENTATI.anni} anni (limiti {limiti.kwPerTonnellata} kW/t e {limiti.kwMax} kW).</span></>}
+      </div>
+    </section>
   );
 }
 
@@ -189,6 +224,8 @@ const VehicleForm = ({
                 </Campo>
               </div>
             </section>
+
+            <SezioneNeopatentati formData={formData} input={input} errori={errori} />
 
             <DotazioneVeicolo formData={formData} setFormData={setFormData} nonImpostata={dotazioneNonImpostata} />
 
