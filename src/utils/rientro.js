@@ -72,7 +72,8 @@ export function proponiAddebiti({
 }) {
   const righe = [];
   const giorni = giorniInPiu({ prenotazione, dataRientro, oraRientro, tolleranza });
-  if (giorni > 0) {
+  const tolta = (k) => (prezzi.tolte || []).includes(k);
+  if (giorni > 0 && !tolta('ritardo')) {
     const prezzoGiorno = parseFloat(prenotazione.prezzoGiornaliero) || 0;
     righe.push({
       id: 'ritardo',
@@ -83,7 +84,7 @@ export function proponiAddebiti({
     });
   }
   const quarti = quartiMancanti(prenotazione.schedaVeicolo?.carburante, carburante);
-  if (quarti > 0) {
+  if (quarti > 0 && !tolta('rifornimentoQuarto')) {
     righe.push({
       id: 'rifornimento',
       nome: 'Rifornimento',
@@ -95,7 +96,7 @@ export function proponiAddebiti({
   // Km oltre quelli inclusi nella formula scelta (mai con «Km illimitati»).
   const percorsi = kmPercorsi(prenotazione.schedaVeicolo?.kmIniziali, km);
   const oltre = kmInPiu(prenotazione.chilometri, percorsi, prezzi.kmInPiu);
-  if (oltre.km > 0) {
+  if (oltre.km > 0 && !tolta('kmInPiu')) {
     const euroKm = typeof prenotazione.chilometri?.euroKmInPiu === 'number' ? prenotazione.chilometri.euroKmInPiu : prezzi.kmInPiu;
     righe.push({
       id: 'kmInPiu',
@@ -115,12 +116,12 @@ export function proponiAddebiti({
       attiva: true,
     });
   }
-  nonTornati.filter((n) => n.addebita).forEach((n) => {
+  nonTornati.filter((n) => n.addebita && !tolta('oggettoMancante')).forEach((n) => {
     righe.push({ id: `mancante:${n.nome}`, nome: `${n.nome} non tornato`, dettaglio: 'Oggetto della dotazione mancante', importo: prezzi.oggettoMancante, attiva: true });
   });
   const consegnate = Number(riassuntoDotazione(prenotazione.schedaVeicolo).chiaviConsegnate) || 0;
   const mancanoChiavi = consegnate > 0 && chiaviTornate != null ? Math.max(0, consegnate - Number(chiaviTornate)) : 0;
-  if (mancanoChiavi > 0) {
+  if (mancanoChiavi > 0 && !tolta('chiave')) {
     righe.push({
       id: 'chiave',
       nome: mancanoChiavi === 1 ? 'Chiave non restituita' : `${mancanoChiavi} chiavi non restituite`,
@@ -130,8 +131,8 @@ export function proponiAddebiti({
     });
   }
   // «Altri addebiti dal listino»: da spuntare solo se servono.
-  righe.push({ id: 'pulizia', nome: 'Pulizia straordinaria', dettaglio: "Spunta se l'auto è tornata molto sporca", importo: prezzi.pulizia, attiva: false, gruppo: 'listino' });
-  if (prezzi.gestioneMulta > 0) {
+  if (!tolta('pulizia')) righe.push({ id: 'pulizia', nome: 'Pulizia straordinaria', dettaglio: "Spunta se l'auto è tornata molto sporca", importo: prezzi.pulizia, attiva: false, gruppo: 'listino' });
+  if (prezzi.gestioneMulta > 0 && !tolta('gestioneMulta')) {
     righe.push({ id: 'multa', nome: 'Gestione multa', dettaglio: 'Spese per ogni verbale ricevuto', importo: prezzi.gestioneMulta, attiva: false, gruppo: 'listino' });
   }
   const giorniNoleggio = calcolaGiorniNoleggio(

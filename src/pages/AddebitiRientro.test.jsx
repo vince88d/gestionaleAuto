@@ -30,3 +30,15 @@ test('un importo vuoto non si salva', async () => {
   expect(await screen.findByText(/Scrivi l'importo/)).toBeInTheDocument();
   expect(salvaAddebiti).not.toHaveBeenCalled();
 });
+
+test('una voce di partenza si toglie e si rimette', async () => {
+  salvaAddebiti.mockClear();
+  render(<AddebitiRientro />);
+  fireEvent.click(await screen.findByRole('button', { name: /Togli la voce Pulizia straordinaria/ }));
+  expect(screen.queryByLabelText('Pulizia straordinaria')).not.toBeInTheDocument();
+  expect(screen.getByText('Voci tolte')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Salva' }));
+  await waitFor(() => expect(salvaAddebiti).toHaveBeenCalledWith(expect.objectContaining({ tolte: ['pulizia'] })));
+  fireEvent.click(screen.getByRole('button', { name: /Rimetti la voce Pulizia straordinaria/ }));
+  expect(screen.getByLabelText('Pulizia straordinaria')).toBeInTheDocument();
+});

@@ -73,3 +73,11 @@
   .add-tab tr { padding: 10px 0; border-bottom: 1px solid #eef1f5; }
   .add-voce-riga { align-items: stretch; }
 }
+
+.add-togli--riga { display: block; margin-top: 8px; padding: 6px 0; }
+.add-tolte { display: flex; flex-direction: column; gap: 4px; padding: 14px 22px; border-top: 1px solid #e3e8ee; background: #fbfcfd; font-size: 14px; color: #5d6b79; }
+.add-tolte b { font-size: 15px; color: #1f2d3a; }
+.add-tolte ul { margin: 6px 0 0; padding: 0; list-style: none; }
+.add-tolte li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 15px; color: #3b4856; }
+.add-tolte .add-togli { color: #1a6fb0; }
+.add-tolte .add-togli:hover { background: #eaf3fb; }

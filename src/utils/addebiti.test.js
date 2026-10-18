@@ -5,7 +5,7 @@ import {
 
 describe('listino penali e addebiti', () => {
   it('parte dai prezzi di partenza, senza voci libere', () => {
-    expect(normalizzaAddebiti(undefined)).toEqual({ ...ADDEBITI_DI_PARTENZA, sito: SITO_DI_PARTENZA, voci: [] });
+    expect(normalizzaAddebiti(undefined)).toEqual({ ...ADDEBITI_DI_PARTENZA, sito: SITO_DI_PARTENZA, tolte: [], voci: [] });
   });
 
   it('legge gli importi all\'italiana e scarta quelli sbagliati', () => {
@@ -82,5 +82,15 @@ describe('listino penali e addebiti', () => {
     ]);
     // Importo 0 = gratis: non si mostra.
     expect(vociPerSito({ rifornimentoQuarto: 0 }, 0).some((r) => r.id === 'rifornimentoQuarto')).toBe(false);
+  });
+});
+
+describe('voci tolte', () => {
+  test('una voce tolta non si mostra sul sito ma tiene l\'importo', () => {
+    const n = normalizzaAddebiti({ pulizia: 40, tolte: ['pulizia', 'inventata'], sito: { pulizia: true } });
+    expect(n.tolte).toEqual(['pulizia']);
+    expect(n.pulizia).toBe(40);
+    expect(n.sito.pulizia).toBe(false);
+    expect(vociPerSito(n).some((r) => r.id === 'pulizia')).toBe(false);
   });
 });

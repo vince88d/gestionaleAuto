@@ -67,9 +67,13 @@ function normalizzaVoci(grezze) {
 export function normalizzaAddebiti(dati = {}) {
   const d = dati && typeof dati === 'object' ? dati : {};
   const sito = d.sito && typeof d.sito === 'object' ? d.sito : {};
+  // Voci di partenza che il gestore ha tolto: non si propongono al rientro e
+  // non si mostrano sul sito, ma l'importo resta per poterle rimettere.
+  const tolte = (Array.isArray(d.tolte) ? d.tolte : []).filter((k, i, a) => k in SITO_DI_PARTENZA && a.indexOf(k) === i);
   return {
     ...Object.fromEntries(ADDEBITI.map(({ chiave }) => [chiave, importo(d[chiave], ADDEBITI_DI_PARTENZA[chiave])])),
-    sito: Object.fromEntries(Object.entries(SITO_DI_PARTENZA).map(([k, base]) => [k, typeof sito[k] === 'boolean' ? sito[k] : base])),
+    sito: Object.fromEntries(Object.entries(SITO_DI_PARTENZA).map(([k, base]) => [k, !tolte.includes(k) && (typeof sito[k] === 'boolean' ? sito[k] : base)])),
+    tolte,
     voci: normalizzaVoci(d.voci),
   };
 }
@@ -79,6 +83,7 @@ export function normalizzaAddebiti(dati = {}) {
 export function validaAddebiti(form = {}) {
   const errori = {};
   ADDEBITI.forEach(({ chiave }) => {
+    if ((form.tolte || []).includes(chiave)) return;
     const n = leggiEuro(form[chiave]);
     if (n === null) errori[chiave] = 'Scrivi l\'importo (anche 0).';
     else if (Number.isNaN(n) || n < 0) errori[chiave] = 'Scrivi un importo, es. 20';
@@ -100,6 +105,7 @@ export function addebitiPerForm(dati) {
   return {
     ...Object.fromEntries(ADDEBITI.map(({ chiave }) => [chiave, testoEuro(n[chiave])])),
     sito: { ...n.sito },
+    tolte: [...n.tolte],
     voci: n.voci.map((v) => ({ ...v, importo: testoEuro(v.importo) })),
   };
 }

@@ -45,6 +45,9 @@ function AddebitiRientro() {
   const cambia = (campi) => setForm((f) => ({ ...f, ...campi }));
   const sito = (chiave, valore) => setForm((f) => ({ ...f, sito: { ...f.sito, [chiave]: valore } }));
   const voce = (i, campi) => setForm((f) => ({ ...f, voci: f.voci.map((v, j) => (j === i ? { ...v, ...campi } : v)) }));
+  const tolte = form.tolte || [];
+  const togli = (k) => setForm((f) => ({ ...f, tolte: [...(f.tolte || []), k] }));
+  const rimetti = (k) => setForm((f) => ({ ...f, tolte: (f.tolte || []).filter((x) => x !== k), sito: { ...f.sito, [k]: true } }));
   const anteprima = vociPerSito(preparaAddebiti(form), orari?.tolleranzaMinuti);
 
   const salva = async (e) => {
@@ -90,7 +93,7 @@ function AddebitiRientro() {
             <table className="add-tab">
               <thead><tr><th scope="col">Voce</th><th scope="col">Importo</th><th scope="col">Il cliente la vede sul sito</th></tr></thead>
               <tbody>
-                {ADDEBITI.map(({ chiave, nome, aiuto, unita: u }) => (
+                {ADDEBITI.filter(({ chiave }) => !tolte.includes(chiave)).map(({ chiave, nome, aiuto, unita: u }) => (
                   <tr key={chiave}>
                     <td className="add-voce-nome-cella"><b>{nome}</b><span>{aiuto}</span></td>
                     <td>
@@ -100,22 +103,53 @@ function AddebitiRientro() {
                       {mostra(chiave) && <span className="opt-errore-campo" role="alert">{mostra(chiave)}</span>}
                       {!mostra(chiave) && gratis(form[chiave]) && <span className="add-gratis">Importo 0: è gratis, non si mostra.</span>}
                     </td>
-                    <td><Interruttore acceso={form.sito[chiave]} onChange={(x) => sito(chiave, x)} nome={nome} bloccato={gratis(form[chiave])} /></td>
+                    <td>
+                      <Interruttore acceso={form.sito[chiave]} onChange={(x) => sito(chiave, x)} nome={nome} bloccato={gratis(form[chiave])} />
+                      <button type="button" className="add-togli add-togli--riga" onClick={() => togli(chiave)}>
+                        Togli<span className="add-vis-nascosta"> la voce {nome}</span>
+                      </button>
+                    </td>
                   </tr>
                 ))}
-                <tr>
-                  <td className="add-voce-nome-cella"><b>{RITARDO.nome}</b><span>{RITARDO.aiuto}</span></td>
-                  <td><span className="add-auto">Automatico</span></td>
-                  <td><Interruttore acceso={form.sito.ritardo} onChange={(x) => sito('ritardo', x)} nome={RITARDO.nome} /></td>
-                </tr>
+                {!tolte.includes('ritardo') && (
+                  <tr>
+                    <td className="add-voce-nome-cella"><b>{RITARDO.nome}</b><span>{RITARDO.aiuto}</span></td>
+                    <td><span className="add-auto">Automatico</span></td>
+                    <td>
+                      <Interruttore acceso={form.sito.ritardo} onChange={(x) => sito('ritardo', x)} nome={RITARDO.nome} />
+                      <button type="button" className="add-togli add-togli--riga" onClick={() => togli('ritardo')}>
+                        Togli<span className="add-vis-nascosta"> la voce {RITARDO.nome}</span>
+                      </button>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
+            {tolte.length > 0 && (
+              <div className="add-tolte">
+                <b>Voci tolte</b>
+                <span>Non si propongono al rientro e non compaiono sul sito. Le puoi rimettere.</span>
+                <ul>
+                  {tolte.map((k) => {
+                    const nome = k === 'ritardo' ? RITARDO.nome : ADDEBITI.find((a) => a.chiave === k)?.nome;
+                    return (
+                      <li key={k}>
+                        {nome}
+                        <button type="button" className="add-togli" onClick={() => rimetti(k)}>
+                          Rimetti<span className="add-vis-nascosta"> la voce {nome}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </section>
 
           <section className="opt-box add-box">
             <div className="add-testa">
               <h2 className="opt-box-titolo">Le tue voci</h2>
-              <p>Altre penali o costi che applichi, per esempio fumo nell’auto, sabbia, pedaggi non pagati.</p>
+              <p>Aggiungi le penali e i costi che applichi tu, per esempio fumo nell’auto, sabbia, pedaggi non pagati.</p>
             </div>
             {form.voci.map((v, i) => (
               <div key={v.id} className="add-voce">

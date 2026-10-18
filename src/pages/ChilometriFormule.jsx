@@ -141,7 +141,9 @@ function ChilometriFormule({ onVaiAPenali }) {
         {mostra('doppie') && <p className="opt-errore-campo km-doppie" role="alert">{errori.doppie}</p>}
 
         <div className="km-piu">
-          <span><b>Ogni km in più:</b> {euro(prezzi.kmInPiu)} al km <span className="km-piu-nota">· si cambia in «Penali e addebiti»</span></span>
+          {(prezzi.tolte || []).includes('kmInPiu')
+            ? <span><b>Ogni km in più:</b> nessun addebito <span className="km-piu-nota">· l’hai tolto in «Penali e addebiti»</span></span>
+            : <span><b>Ogni km in più:</b> {euro(prezzi.kmInPiu)} al km <span className="km-piu-nota">· si cambia in «Penali e addebiti»</span></span>}
           {onVaiAPenali && <button type="button" className="km-link" onClick={onVaiAPenali}>Vai a Penali e addebiti</button>}
         </div>
 
