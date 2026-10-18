@@ -23,6 +23,7 @@ function AddebitiRientro() {
   const [tentato, setTentato] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const modificatoRef = useRef(false);
+  const [daEliminare, setDaEliminare] = useState(null);
   const orari = useOrari();
 
   const modificato = Boolean(form && salvati) && JSON.stringify(form) !== JSON.stringify(addebitiPerForm(salvati));
@@ -67,9 +68,9 @@ function AddebitiRientro() {
     }
   };
 
-  const Interruttore = ({ acceso, onChange, nome, bloccato }) => (
+  const Interruttore = ({ acceso, onChange, nome, bloccato, etichetta = 'Mostra sul sito' }) => (
     <label className={`add-tg ${acceso && !bloccato ? 'add-tg--on' : ''} ${bloccato ? 'add-tg--dis' : ''}`}>
-      <input type="checkbox" role="switch" checked={acceso && !bloccato} disabled={bloccato} onChange={(e) => onChange(e.target.checked)} aria-label={`Mostra sul sito: ${nome}`} />
+      <input type="checkbox" role="switch" checked={acceso && !bloccato} disabled={bloccato} onChange={(e) => onChange(e.target.checked)} aria-label={`${etichetta}: ${nome}`} />
       <span className="add-tg-sw" aria-hidden="true" />
       {acceso && !bloccato ? 'Sì' : 'No'}
     </label>
@@ -91,66 +92,40 @@ function AddebitiRientro() {
               <p>Importi che il gestionale propone al rientro dell’auto.</p>
             </div>
             <table className="add-tab">
-              <thead><tr><th scope="col">Voce</th><th scope="col">Importo</th><th scope="col">Il cliente la vede sul sito</th></tr></thead>
+              <thead><tr><th scope="col">Voce</th><th scope="col">Importo</th><th scope="col">In uso</th><th scope="col">Il cliente la vede sul sito</th></tr></thead>
               <tbody>
-                {ADDEBITI.filter(({ chiave }) => !tolte.includes(chiave)).map(({ chiave, nome, aiuto, unita: u }) => (
-                  <tr key={chiave}>
-                    <td className="add-voce-nome-cella"><b>{nome}</b><span>{aiuto}</span></td>
-                    <td>
-                      <CampoEuro id={`add-${chiave}`} valore={form[chiave]} onChange={(v) => cambia({ [chiave]: v })} invalido={Boolean(mostra(chiave))} />
-                      <label htmlFor={`add-${chiave}`} className="add-vis-nascosta">{nome}</label>
-                      <span className="add-unita">{unita(u)}</span>
-                      {mostra(chiave) && <span className="opt-errore-campo" role="alert">{mostra(chiave)}</span>}
-                      {!mostra(chiave) && gratis(form[chiave]) && <span className="add-gratis">Importo 0: è gratis, non si mostra.</span>}
-                    </td>
-                    <td className="add-cella-azioni">
-                      <Interruttore acceso={form.sito[chiave]} onChange={(x) => sito(chiave, x)} nome={nome} bloccato={gratis(form[chiave])} />
-                      <button type="button" className="add-cestino" title="Togli questa voce" aria-label={`Togli la voce ${nome}`} onClick={() => togli(chiave)}>
-                        <Trash2 size={20} aria-hidden="true" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {!tolte.includes('ritardo') && (
-                  <tr>
-                    <td className="add-voce-nome-cella">
-                      <b>{RITARDO.nome}</b>
-                      <span>{RITARDO.aiuto}</span>
-                      <span className="add-tolleranza">
-                        Tolleranza: {Number(orari?.tolleranzaMinuti) > 0 ? `${orari.tolleranzaMinuti} minuti di ritardo non si pagano` : 'nessuna, si paga subito'}.{' '}
-                        <a href="#/impostazioni-azienda">Cambia in Orari della sede</a>
-                      </span>
-                    </td>
-                    <td><span className="add-auto">Automatico</span></td>
-                    <td className="add-cella-azioni">
-                      <Interruttore acceso={form.sito.ritardo} onChange={(x) => sito('ritardo', x)} nome={RITARDO.nome} />
-                      <button type="button" className="add-cestino" title="Togli questa voce" aria-label={`Togli la voce ${RITARDO.nome}`} onClick={() => togli('ritardo')}>
-                        <Trash2 size={20} aria-hidden="true" />
-                      </button>
-                    </td>
-                  </tr>
-                )}
+                {ADDEBITI.map(({ chiave, nome, aiuto, unita: u }) => {
+                  const spenta = tolte.includes(chiave);
+                  return (
+                    <tr key={chiave} className={spenta ? 'add-spenta' : ''}>
+                      <td className="add-voce-nome-cella"><b>{nome}</b><span>{aiuto}</span></td>
+                      <td>
+                        <CampoEuro id={`add-${chiave}`} valore={form[chiave]} onChange={(v) => cambia({ [chiave]: v })} invalido={Boolean(mostra(chiave))} disabled={spenta} />
+                        <label htmlFor={`add-${chiave}`} className="add-vis-nascosta">{nome}</label>
+                        <span className="add-unita">{unita(u)}</span>
+                        {!spenta && mostra(chiave) && <span className="opt-errore-campo" role="alert">{mostra(chiave)}</span>}
+                        {!spenta && !mostra(chiave) && gratis(form[chiave]) && <span className="add-gratis">Importo 0: è gratis, non si mostra.</span>}
+                      </td>
+                      <td><Interruttore acceso={!spenta} onChange={(x) => (x ? rimetti(chiave) : togli(chiave))} nome={nome} etichetta="In uso" /></td>
+                      <td><Interruttore acceso={form.sito[chiave]} onChange={(x) => sito(chiave, x)} nome={nome} bloccato={spenta || gratis(form[chiave])} /></td>
+                    </tr>
+                  );
+                })}
+                <tr className={tolte.includes('ritardo') ? 'add-spenta' : ''}>
+                  <td className="add-voce-nome-cella">
+                    <b>{RITARDO.nome}</b>
+                    <span>{RITARDO.aiuto}</span>
+                    <span className="add-tolleranza">
+                      Tolleranza: {Number(orari?.tolleranzaMinuti) > 0 ? `${orari.tolleranzaMinuti} minuti di ritardo non si pagano` : 'nessuna, si paga subito'}.{' '}
+                      <a href="#/impostazioni-azienda">Cambia in Orari della sede</a>
+                    </span>
+                  </td>
+                  <td><span className="add-auto">Automatico</span></td>
+                  <td><Interruttore acceso={!tolte.includes('ritardo')} onChange={(x) => (x ? rimetti('ritardo') : togli('ritardo'))} nome={RITARDO.nome} etichetta="In uso" /></td>
+                  <td><Interruttore acceso={form.sito.ritardo} onChange={(x) => sito('ritardo', x)} nome={RITARDO.nome} bloccato={tolte.includes('ritardo')} /></td>
+                </tr>
               </tbody>
             </table>
-            {tolte.length > 0 && (
-              <div className="add-tolte">
-                <b>Voci tolte</b>
-                <span>Non si propongono al rientro e non compaiono sul sito. Le puoi rimettere.</span>
-                <ul>
-                  {tolte.map((k) => {
-                    const nome = k === 'ritardo' ? RITARDO.nome : ADDEBITI.find((a) => a.chiave === k)?.nome;
-                    return (
-                      <li key={k}>
-                        {nome}
-                        <button type="button" className="add-togli" onClick={() => rimetti(k)}>
-                          Rimetti<span className="add-vis-nascosta"> la voce {nome}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
           </section>
 
           <section className="opt-box add-box">
@@ -178,7 +153,7 @@ function AddebitiRientro() {
                       {MODI_VOCE.map((m) => <option key={m.valore} value={m.valore}>{m.testo}</option>)}
                     </select>
                   </div>
-                  <button type="button" className="add-cestino" title="Togli questa voce" aria-label={`Togli la voce ${v.nome || i + 1}`} onClick={() => cambia({ voci: form.voci.filter((_, j) => j !== i) })}>
+                  <button type="button" className="add-cestino" title="Elimina questa voce" aria-label={`Elimina la voce ${v.nome || i + 1}`} onClick={() => setDaEliminare(v.id)}>
                     <Trash2 size={20} aria-hidden="true" />
                   </button>
                 </div>
@@ -194,9 +169,20 @@ function AddebitiRientro() {
                 )}
                 {!mostra(`voci.${i}.importo`) && gratis(v.importo) && <span className="add-gratis">Importo 0: è gratis, non si mostra al cliente.</span>}
                 <div className="add-voce-sito">
+                  <span>In uso:</span>
+                  <Interruttore acceso={v.attiva !== false} onChange={(x) => voce(i, { attiva: x })} nome={v.nome || `voce ${i + 1}`} etichetta="In uso" />
                   <span>Il cliente la vede sul sito:</span>
-                  <Interruttore acceso={v.sito} onChange={(x) => voce(i, { sito: x })} nome={v.nome || `voce ${i + 1}`} bloccato={gratis(v.importo)} />
+                  <Interruttore acceso={v.sito} onChange={(x) => voce(i, { sito: x })} nome={v.nome || `voce ${i + 1}`} bloccato={v.attiva === false || gratis(v.importo)} />
                 </div>
+                {daEliminare === v.id && (
+                  <div className="add-conferma" role="alertdialog" aria-label="Conferma eliminazione">
+                    <span>Eliminare «{v.nome || 'questa voce'}» per sempre? Non si può annullare. Se vuoi solo non usarla per ora, spegni «In uso».</span>
+                    <span className="add-conferma-az">
+                      <button type="button" className="opt-btn" onClick={() => setDaEliminare(null)}>Annulla</button>
+                      <button type="button" className="opt-btn add-elimina" onClick={() => { cambia({ voci: form.voci.filter((_, j) => j !== i) }); setDaEliminare(null); }}>Elimina</button>
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
             <div className="add-aggiungi">

@@ -36,8 +36,8 @@ describe('listino penali e addebiti', () => {
       ],
     });
     expect(n.voci).toEqual([
-      { id: 'a', nome: 'Fumo', importo: 80, modo: 'giorno', descrizione: 'Vietato fumare', sito: false },
-      { id: 'c', nome: 'Sabbia', importo: 0, modo: 'volta', descrizione: '', sito: true },
+      { id: 'a', nome: 'Fumo', importo: 80, modo: 'giorno', descrizione: 'Vietato fumare', sito: false, attiva: true },
+      { id: 'c', nome: 'Sabbia', importo: 0, modo: 'volta', descrizione: '', sito: true, attiva: true },
     ]);
   });
 

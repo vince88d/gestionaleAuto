@@ -57,6 +57,7 @@ function normalizzaVoci(grezze) {
       modo: v?.modo === 'giorno' ? 'giorno' : 'volta',
       descrizione: String(v?.descrizione ?? '').trim(),
       sito: v?.sito !== false,
+      attiva: v?.attiva !== false,
     }))
     .filter((v) => v.nome && !viste.has(v.id) && viste.add(v.id));
 }
@@ -114,14 +115,14 @@ export function addebitiPerForm(dati) {
 export const preparaAddebiti = (form) => normalizzaAddebiti(form);
 
 // Una voce libera nuova, per il pulsante «Aggiungi una voce».
-export const nuovaVoce = () => ({ id: nuovoId(), nome: '', importo: '', modo: 'volta', descrizione: '', sito: true });
+export const nuovaVoce = () => ({ id: nuovoId(), nome: '', importo: '', modo: 'volta', descrizione: '', sito: true, attiva: true });
 
 // Righe «Altri addebiti dal listino» del rientro: voci che non nascono dalla
 // riconsegna (pulizia, multa, oggetto) e le voci libere. `giorni` = giorni del
 // noleggio, per le voci «al giorno».
 export function vociLibereListino(prezzi, giorni = 1) {
   const g = Math.max(1, Math.round(Number(giorni) || 1));
-  return (prezzi?.voci || []).filter((v) => v.importo > 0).map((v) => ({
+  return (prezzi?.voci || []).filter((v) => v.attiva !== false && v.importo > 0).map((v) => ({
     id: `listino:${v.id}`,
     nome: v.nome,
     dettaglio: v.modo === 'giorno' ? `${testoEuro(v.importo)} € × ${g} ${g === 1 ? 'giorno' : 'giorni'}` : 'Voce del listino',
@@ -142,7 +143,7 @@ export function vociPerSito(dati, tolleranza) {
     righe.push({ id: chiave, nome, testo: `${testoEuro(n[chiave])} €${unita.includes('/') ? ` ${unita.replace('€ / ', 'per ')}` : ''}` });
   });
   n.voci.forEach((v) => {
-    if (!v.sito || !(v.importo > 0)) return;
+    if (!v.attiva || !v.sito || !(v.importo > 0)) return;
     righe.push({ id: v.id, nome: v.nome, testo: `${testoEuro(v.importo)} €${v.modo === 'giorno' ? ' al giorno' : ''}` });
   });
   if (n.sito.ritardo) {
