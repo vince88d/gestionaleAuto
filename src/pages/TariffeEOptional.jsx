@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { CircleAlert, CirclePlus, Euro, Globe, Shield, User } from 'lucide-react';
+import { CircleAlert, CirclePlus, Euro, Gauge, Globe, Shield, User } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ComeFunziona from '../components/ComeFunziona';
 import Aiuto from '../components/Aiuto';
 import { ascoltaModalitaSito, salvaModalitaSito } from '../lib/firestoreSito';
 import Tariffe from './Tariffe';
+import ChilometriFormule from './ChilometriFormule';
 import CatalogoOptional from './CatalogoOptional';
 import ProtezioniCategorie from './ProtezioniCategorie';
 import AddebitiRientro from './AddebitiRientro';
@@ -14,6 +15,7 @@ import './TariffeEOptional.css';
 
 const SCHEDE = [
   { id: 'tariffe', etichetta: 'Prezzo al giorno', Icona: Euro },
+  { id: 'km', etichetta: 'Chilometri', Icona: Gauge },
   { id: 'optional', etichetta: 'Extra', Icona: CirclePlus },
   { id: 'protezioni', etichetta: 'Protezioni e cauzione', Icona: Shield },
   { id: 'eta', etichetta: 'Età dei conducenti', Icona: User },
@@ -141,6 +143,7 @@ function TariffeEOptional() {
       </div>
       <div role="tabpanel">
         {scheda === 'tariffe' && <Tariffe incorporata onModifiche={setPrezziNonSalvati} />}
+        {scheda === 'km' && <ChilometriFormule onVaiAPenali={() => setScheda('addebiti')} />}
         {scheda === 'optional' && <CatalogoOptional />}
         {scheda === 'protezioni' && <ProtezioniCategorie />}
         {scheda === 'eta' && <EtaConducenti />}

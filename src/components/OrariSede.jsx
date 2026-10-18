@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { AlertTriangle, Clock, Save, X } from 'lucide-react';
+import { AlertTriangle, CalendarOff, Clock, Save, Timer, X } from 'lucide-react';
 import { ascoltaOrari, salvaOrari } from '../lib/firestoreOrari';
 import { GIORNI, oreImpostazioni, testoChiusure, testoSettimana, validaOrari, preparaOrari } from '../utils/orari';
 import SezioneImpostazioni from './SezioneImpostazioni';
@@ -14,6 +14,22 @@ const entroLe = (t) => {
   const m = 9 * 60 + Math.max(0, Math.min(180, Number(t) || 0));
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 };
+
+// Gruppo di impostazioni con titolo e una riga che dice a cosa serve.
+function Blocco({ icona: Icona, titolo, testo, children }) {
+  return (
+    <section className="or-blocco">
+      <header className="or-blocco-testa">
+        <span className="or-blocco-icona" aria-hidden="true"><Icona size={18} /></span>
+        <div>
+          <h3 className="or-blocco-titolo">{titolo}</h3>
+          <p className="or-blocco-desc">{testo}</p>
+        </div>
+      </header>
+      {children}
+    </section>
+  );
+}
 
 function SceltaOra({ valore, onChange, etichetta }) {
   return (
@@ -108,6 +124,7 @@ function OrariSede({ aperta = true, onToggle }) {
         </div>
       )}
 
+      <Blocco icona={Clock} titolo="Orari di apertura" testo="Per ogni giorno, in quali ore la sede è aperta. Il sito fa scegliere ritiro e riconsegna solo in questi orari.">
       <div className="or-settimana">
         {GIORNI.map(([k, nome]) => {
           const g = form.settimana[k];
@@ -151,9 +168,10 @@ function OrariSede({ aperta = true, onToggle }) {
       <div className="or-azioni">
         <button type="button" className="or-link" onClick={copiaLunedi}>Copia gli orari del lunedì su tutti i giorni feriali</button>
       </div>
+      </Blocco>
 
-      <p className="or-sotto">Chiusure straordinarie</p>
-      {form.chiusure.length === 0 && <p className="or-nota">Nessuna: aggiungi festivi o ferie, sul sito non si potranno scegliere.</p>}
+      <Blocco icona={CalendarOff} titolo="Chiusure straordinarie" testo="Giorni in cui la sede è chiusa fuori dal solito orario: festivi, ferie. Sul sito non si potranno scegliere per ritiro e riconsegna.">
+      {form.chiusure.length === 0 && <p className="or-nota">Nessuna chiusura aggiunta.</p>}
       <div className="or-chiusure">
         {form.chiusure.map((c, i) => (
           <div key={i} className="or-chiusura">
@@ -179,7 +197,9 @@ function OrariSede({ aperta = true, onToggle }) {
         </button>
       </div>
 
-      <p className="or-sotto">Riconsegna</p>
+      </Blocco>
+
+      <Blocco icona={Timer} titolo="Tolleranza sulla riconsegna" testo="Quanti minuti di ritardo non si pagano. Vale quando si prenota e quando si riceve l’auto.">
       <label className="or-riga">
         Tolleranza:
         <input
@@ -191,9 +211,10 @@ function OrariSede({ aperta = true, onToggle }) {
           onChange={(e) => setForm((f) => ({ ...f, tolleranzaMinuti: e.target.value }))}
         />
         minuti
-        <span className="or-nota">Oltre, al rientro si conta un giorno in più (es. ritiro alle 9:00, riconsegna entro le {entroLe(form.tolleranzaMinuti)}).</span>
       </label>
+      <p className="or-nota or-esempio">Oltre, al rientro si conta un giorno in più (es. ritiro alle 9:00, riconsegna entro le {entroLe(form.tolleranzaMinuti)}). Come si paga il ritardo si decide in «Tariffe e optional → Penali e addebiti».</p>
       {mostra('tolleranza') && <span className="imp-errore">{errori.tolleranza}</span>}
+      </Blocco>
 
       <p className="or-anteprima">
         Sul sito si legge: <b>{testoSettimana(anteprima)}</b>

@@ -119,7 +119,7 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
     }
     const proposte = proponiAddebiti({
       prenotazione, prezzi, dataRientro, oraRientro, carburante, chiaviTornate: datiPasso1.chiaviTornate,
-      nonTornati: nonTornati.map((nome) => ({ nome, addebita: statoMancante(nome).addebita })), danno, tolleranza,
+      nonTornati: nonTornati.map((nome) => ({ nome, addebita: statoMancante(nome).addebita })), danno, tolleranza, km,
     });
     // Tornando indietro e cambiando qualcosa si tiene quello che e' stato
     // scritto nelle righe che ci sono ancora; le altre voci sono nuove.
@@ -271,7 +271,9 @@ function RientroInterno({ isOpen, onClose, onConferma, prenotazione, prezzi, tol
                       </label>
                       {no && (
                         <div className="rn-voce-opzioni">
-                          <label><input type="checkbox" checked={m.addebita} onChange={(e) => cambiaMancante(v, { addebita: e.target.checked })} /> Addebita al cliente ({euro(prezzi.oggettoMancante)})</label>
+                          {!(prezzi.tolte || []).includes('oggettoMancante') && (
+                            <label><input type="checkbox" checked={m.addebita} onChange={(e) => cambiaMancante(v, { addebita: e.target.checked })} /> Addebita al cliente ({euro(prezzi.oggettoMancante)})</label>
+                          )}
                           <label><input type="checkbox" checked={m.togli} onChange={(e) => cambiaMancante(v, { togli: e.target.checked })} /> Togli dalla dotazione dell'auto <span className="rn-leggero">(la prossima consegna non lo dà per presente)</span></label>
                         </div>
                       )}

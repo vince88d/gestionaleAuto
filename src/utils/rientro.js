@@ -8,6 +8,7 @@ import { calcolaGiorniNoleggio } from './giorniNoleggio';
 import { leggiEuro } from './protezioni';
 import { riassuntoDotazione, normalizzaVoci } from './dotazione';
 import { vociLibereListino } from './addebiti';
+import { kmInPiu } from './chilometri';
 
 export const LIVELLI = ['1/4', '1/2', '3/4', 'Pieno'];
 const arrotonda = (n) => Math.round(n * 100) / 100;
@@ -49,6 +50,38 @@ export function giorniInPiu({ prenotazione = {}, dataRientro, oraRientro, toller
   return Math.max(0, effettivi - previsti);
 }
 
+// Minuti di ritardo rispetto a data e ora di fine della prenotazione (0 se in
+// orario); null se mancano le ore (allora si contano solo i giorni).
+export function minutiDiRitardo({ prenotazione = {}, dataRientro, oraRientro }) {
+  const quando = (d, o) => {
+    const m = /^(\d{2}):(\d{2})$/.exec(o || '');
+    const g = /^(\d{4})-(\d{2})-(\d{2})$/.exec(giorno(d));
+    if (!m || !g) return null;
+    return Date.UTC(Number(g[1]), Number(g[2]) - 1, Number(g[3]), Number(m[1]), Number(m[2])) / 60000;
+  };
+  const previsto = quando(prenotazione.dataFine, prenotazione.oraFine);
+  const effettivo = quando(dataRientro, oraRientro);
+  return previsto === null || effettivo === null ? null : Math.max(0, effettivo - previsto);
+}
+
+// Importo del ritardo, secondo il metodo scelto in «Penali e addebiti».
+// { ore, importo } con ore = ore iniziate oltre la tolleranza; null se non
+// serve un calcolo a ore (metodo «giorno intero», oppure mancano le ore).
+export function ritardoAOre({ prenotazione = {}, dataRientro, oraRientro, tolleranza, ritardo, prezzoGiorno }) {
+  if (!ritardo || ritardo.metodo === 'giorno') return null;
+  const minuti = minutiDiRitardo({ prenotazione, dataRientro, oraRientro });
+  const toll = Number(tolleranza ?? prenotazione.tolleranzaMinuti ?? 0) || 0;
+  if (minuti === null || minuti <= toll) return minuti === null ? null : { ore: 0, importo: 0 };
+  const ore = Math.ceil((minuti - toll) / 60);
+  const giorniPieni = Math.floor(ore / 24);
+  const resto = ore % 24;
+  const costoOra = ritardo.metodo === 'ore' ? (prezzoGiorno * ritardo.percentuale) / 100 : ritardo.euroOra;
+  const tetto = ritardo.metodo === 'ore' || ritardo.tetto;
+  const parziale = tetto ? Math.min(resto * costoOra, prezzoGiorno) : resto * costoOra;
+  const pieni = tetto ? giorniPieni * prezzoGiorno : giorniPieni * 24 * costoOra;
+  return { ore, importo: arrotonda(pieni + parziale) };
+}
+
 // Ora entro cui si poteva rientrare senza giorni in piu' ("9:29"), o null.
 export function rientroEntro(prenotazione = {}, tolleranza) {
   const m = /^(\d{2}):(\d{2})$/.exec(prenotazione.oraFine || '');
@@ -67,12 +100,26 @@ export const tettoDanno = (prenotazione) => (typeof prenotazione?.protezione?.da
 // `prezzi` sono quelli di «Penali e addebiti» (normalizzati).
 export function proponiAddebiti({
   prenotazione = {}, prezzi, dataRientro, oraRientro, carburante, chiaviTornate,
-  nonTornati = [], danno = '', tolleranza,
+  nonTornati = [], danno = '', tolleranza, km,
 }) {
   const righe = [];
+  const tolta = (k) => (prezzi.tolte || []).includes(k);
   const giorni = giorniInPiu({ prenotazione, dataRientro, oraRientro, tolleranza });
-  if (giorni > 0) {
-    const prezzoGiorno = parseFloat(prenotazione.prezzoGiornaliero) || 0;
+  const prezzoGiorno = parseFloat(prenotazione.prezzoGiornaliero) || 0;
+  const aOre = ritardoAOre({ prenotazione, dataRientro, oraRientro, tolleranza, ritardo: prezzi.ritardo, prezzoGiorno });
+  if (!tolta('ritardo') && aOre && aOre.ore > 0) {
+    const euro = (n) => n.toLocaleString('it-IT', { minimumFractionDigits: 2 });
+    const r = prezzi.ritardo;
+    righe.push({
+      id: 'ritardo',
+      nome: `Ritardo: ${aOre.ore} ${aOre.ore === 1 ? 'ora' : 'ore'}`,
+      dettaglio: r.metodo === 'ore'
+        ? `${aOre.ore} ${aOre.ore === 1 ? 'ora' : 'ore'} oltre la tolleranza × ${r.percentuale.toLocaleString('it-IT')}% di ${euro(prezzoGiorno)} € (prezzo al giorno della prenotazione)`
+        : `${aOre.ore} ${aOre.ore === 1 ? 'ora' : 'ore'} oltre la tolleranza × ${euro(r.euroOra)} € all'ora${r.tetto ? ' (al massimo un giorno intero)' : ''}`,
+      importo: aOre.importo,
+      attiva: true,
+    });
+  } else if (!tolta('ritardo') && !aOre && giorni > 0) {
     righe.push({
       id: 'ritardo',
       nome: `Ritardo: ${giorni} ${giorni === 1 ? 'giorno' : 'giorni'} in più`,
@@ -82,12 +129,25 @@ export function proponiAddebiti({
     });
   }
   const quarti = quartiMancanti(prenotazione.schedaVeicolo?.carburante, carburante);
-  if (quarti > 0) {
+  if (quarti > 0 && !tolta('rifornimentoQuarto')) {
     righe.push({
       id: 'rifornimento',
       nome: 'Rifornimento',
       dettaglio: `Consegnata ${prenotazione.schedaVeicolo?.carburante}, tornata a ${carburante} · ${quarti} ${quarti === 1 ? 'quarto' : 'quarti'} × ${prezzi.rifornimentoQuarto.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €`,
       importo: arrotonda(quarti * prezzi.rifornimentoQuarto),
+      attiva: true,
+    });
+  }
+  // Km oltre quelli inclusi nella formula scelta (mai con «Km illimitati»).
+  const percorsi = kmPercorsi(prenotazione.schedaVeicolo?.kmIniziali, km);
+  const oltre = kmInPiu(prenotazione.chilometri, percorsi, prezzi.kmInPiu);
+  if (oltre.km > 0 && !tolta('kmInPiu')) {
+    const euroKm = typeof prenotazione.chilometri?.euroKmInPiu === 'number' ? prenotazione.chilometri.euroKmInPiu : prezzi.kmInPiu;
+    righe.push({
+      id: 'kmInPiu',
+      nome: 'Km in più',
+      dettaglio: `${oltre.km.toLocaleString('it-IT')} km oltre i ${prenotazione.chilometri.kmInclusi.toLocaleString('it-IT')} inclusi (${prenotazione.chilometri.nome}) × ${euroKm.toLocaleString('it-IT', { minimumFractionDigits: 2 })} € al km`,
+      importo: oltre.importo,
       attiva: true,
     });
   }
@@ -101,12 +161,12 @@ export function proponiAddebiti({
       attiva: true,
     });
   }
-  nonTornati.filter((n) => n.addebita).forEach((n) => {
+  nonTornati.filter((n) => n.addebita && !tolta('oggettoMancante')).forEach((n) => {
     righe.push({ id: `mancante:${n.nome}`, nome: `${n.nome} non tornato`, dettaglio: 'Oggetto della dotazione mancante', importo: prezzi.oggettoMancante, attiva: true });
   });
   const consegnate = Number(riassuntoDotazione(prenotazione.schedaVeicolo).chiaviConsegnate) || 0;
   const mancanoChiavi = consegnate > 0 && chiaviTornate != null ? Math.max(0, consegnate - Number(chiaviTornate)) : 0;
-  if (mancanoChiavi > 0) {
+  if (mancanoChiavi > 0 && !tolta('chiave')) {
     righe.push({
       id: 'chiave',
       nome: mancanoChiavi === 1 ? 'Chiave non restituita' : `${mancanoChiavi} chiavi non restituite`,
@@ -116,8 +176,8 @@ export function proponiAddebiti({
     });
   }
   // «Altri addebiti dal listino»: da spuntare solo se servono.
-  righe.push({ id: 'pulizia', nome: 'Pulizia straordinaria', dettaglio: "Spunta se l'auto è tornata molto sporca", importo: prezzi.pulizia, attiva: false, gruppo: 'listino' });
-  if (prezzi.gestioneMulta > 0) {
+  if (!tolta('pulizia')) righe.push({ id: 'pulizia', nome: 'Pulizia straordinaria', dettaglio: "Spunta se l'auto è tornata molto sporca", importo: prezzi.pulizia, attiva: false, gruppo: 'listino' });
+  if (prezzi.gestioneMulta > 0 && !tolta('gestioneMulta')) {
     righe.push({ id: 'multa', nome: 'Gestione multa', dettaglio: 'Spese per ogni verbale ricevuto', importo: prezzi.gestioneMulta, attiva: false, gruppo: 'listino' });
   }
   const giorniNoleggio = calcolaGiorniNoleggio(

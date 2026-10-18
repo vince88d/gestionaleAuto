@@ -9,6 +9,7 @@
 import { COPERTURE, normalizzaProtezione, protezioneImpostata, prezzoProtezione } from './protezioni';
 import { normalizzaOptional, prezzoOptional } from './optional';
 import { normalizzaEtaConducenti, supplementoGiovane, valutaEta } from './etaConducenti';
+import { chilometriPrenotazione, trovaFormula } from './chilometri';
 
 const giorno = (valore) => (valore ? String(valore).slice(0, 10) : '');
 const arrotonda = (n) => Math.round(n * 100) / 100;
@@ -28,6 +29,8 @@ export function scelteIniziali(prenotazione) {
   return {
     sceltaProtezione: prenotazione?.protezione?.tipo === 'totale' ? 'totale' : 'base',
     sceltaOptional,
+    // Formula dei km (null = quella di partenza).
+    sceltaKm: prenotazione?.chilometri?.formulaId ?? null,
   };
 }
 
@@ -70,6 +73,8 @@ export function preventivoPrenotazione({
   prezzoGiornaliero, giorni, protezione, sceltaProtezione = 'base', catalogo = [],
   sceltaOptional = {}, optionalSalvati = [], occupati = new Map(),
   etaConducenti, etaConducente = null,
+  // Formule dei km (utils/chilometri.js): null = nessuna formula (prenotazioni di prima).
+  formuleKm = null, sceltaKm = null, euroKmInPiu = 0, chilometriSalvati = null,
 }) {
   const totaleNoleggio = arrotonda((parseFloat(prezzoGiornaliero) || 0) * giorni);
 
@@ -131,9 +136,22 @@ export function preventivoPrenotazione({
     });
   }
 
+  // Km: la formula scelta, con i valori di adesso. In modifica, se resta quella
+  // gia' salvata, valgono i suoi km e prezzi (anche se nel frattempo e' cambiata).
+  let chilometri = null;
+  if (formuleKm) {
+    const tengoSalvata = chilometriSalvati?.formulaId && (sceltaKm === null || sceltaKm === chilometriSalvati.formulaId);
+    chilometri = tengoSalvata
+      ? chilometriPrenotazione(
+        { id: chilometriSalvati.formulaId, km: chilometriSalvati.kmGiorno ?? null, supplemento: chilometriSalvati.supplementoGiorno || 0 },
+        giorni, chilometriSalvati.euroKmInPiu ?? euroKmInPiu,
+      )
+      : chilometriPrenotazione(trovaFormula(formuleKm, sceltaKm), giorni, euroKmInPiu);
+  }
+
   const prezzoTotale = arrotonda(
     totaleNoleggio + (protezioneScelta?.prezzo || 0) + optional.reduce((s, o) => s + o.totale, 0)
-    + (giovaneConducente?.importo || 0),
+    + (giovaneConducente?.importo || 0) + (chilometri?.importo || 0),
   );
   return {
     totaleNoleggio,
@@ -142,6 +160,7 @@ export function preventivoPrenotazione({
     optional,
     etaConducente: eta,
     giovaneConducente,
+    chilometri,
     prezzoTotale,
   };
 }

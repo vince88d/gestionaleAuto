@@ -16,7 +16,7 @@ export const riassuntoCliente = (p = {}) => unisci([p.cliente, p.codiceFiscale, 
 export function riassuntoNoleggio(p = {}) {
   const prezzo = prezzoPrenotazione(p);
   const auto = daAssegnare(p) ? `${p.categoria || 'Categoria'} · auto da scegliere` : unisci([p.veicolo || p.categoria, p.targa]);
-  return unisci([auto, `${formattaData(p.dataInizio)} → ${formattaData(p.dataFine)}`, prezzo ? `€ ${prezzo}` : '']);
+  return unisci([auto, `${formattaData(p.dataInizio)} → ${formattaData(p.dataFine)}`, p.chilometri?.kmGiorno ? p.chilometri.nome : '', prezzo ? `€ ${prezzo}` : '']);
 }
 
 export function riassuntoProtezioneExtra(p = {}) {

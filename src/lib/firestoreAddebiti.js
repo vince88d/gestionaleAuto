@@ -17,8 +17,11 @@ export function ascoltaAddebiti(onDati, onErrore) {
 }
 
 export async function salvaAddebiti(form) {
+  const dati = preparaAddebiti(form);
   await setDoc(doc(db, ...ADDEBITI_DOC), {
-    ...preparaAddebiti(form),
+    ...dati,
+    // Il sito non conosce «In uso»: una voce spenta e' come una voce non mostrata.
+    voci: dati.voci.map((v) => ({ ...v, sito: v.sito && v.attiva })),
     aggiornatoIl: serverTimestamp(),
     aggiornatoDa: auth.currentUser?.email || '',
   });

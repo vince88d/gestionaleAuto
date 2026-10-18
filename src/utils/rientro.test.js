@@ -1,7 +1,7 @@
 import { normalizzaAddebiti } from './addebiti';
 import {
   quartiMancanti, kmPercorsi, giorniInPiu, rientroEntro, proponiAddebiti, addebitiAttivi,
-  totaleAddebiti, erroriAddebiti, esitoCauzione, tettoDanno,
+  totaleAddebiti, erroriAddebiti, esitoCauzione, tettoDanno, ritardoAOre,
 } from './rientro';
 import { ADDEBITI_DI_PARTENZA } from './addebiti';
 
@@ -47,6 +47,27 @@ describe('ritardo', () => {
     expect(rientroEntro(pren)).toBe('9:29');
     expect(rientroEntro({})).toBeNull();
     expect(rientroEntro({ oraFine: '23:45', tolleranzaMinuti: 29 })).toBeNull();
+  });
+});
+
+describe('km in più al rientro', () => {
+  const conKm = (chilometri) => ({
+    prenotazione: { dataInizio: '2026-10-14', dataFine: '2026-10-15', schedaVeicolo: { kmIniziali: 45200 }, chilometri },
+    prezzi: ADDEBITI_DI_PARTENZA, dataRientro: '2026-10-15', carburante: '', nonTornati: [],
+  });
+  it('210 km fatti su 200 inclusi: 10 km × 0,25 €, gia\' attiva', () => {
+    const r = proponiAddebiti({ ...conKm({ nome: '200 km al giorno', kmInclusi: 200, euroKmInPiu: 0.25 }), km: '45410' });
+    expect(r.find((x) => x.id === 'kmInPiu')).toMatchObject({ importo: 2.5, attiva: true });
+    expect(r.find((x) => x.id === 'kmInPiu').dettaglio).toMatch(/10 km oltre i 200 inclusi/);
+  });
+  it('nessuna riga con i km illimitati, dentro i km inclusi o senza formula', () => {
+    expect(proponiAddebiti({ ...conKm({ nome: 'Km illimitati', kmInclusi: null }), km: '49000' }).some((x) => x.id === 'kmInPiu')).toBe(false);
+    expect(proponiAddebiti({ ...conKm({ nome: '200 km al giorno', kmInclusi: 200, euroKmInPiu: 0.25 }), km: '45300' }).some((x) => x.id === 'kmInPiu')).toBe(false);
+    expect(proponiAddebiti({ ...conKm(undefined), km: '49000' }).some((x) => x.id === 'kmInPiu')).toBe(false);
+  });
+  it('senza prezzo salvato usa quello del listino', () => {
+    const r = proponiAddebiti({ ...conKm({ nome: '100 km al giorno', kmInclusi: 100 }), km: '45320' });
+    expect(r.find((x) => x.id === 'kmInPiu').importo).toBe(5);
   });
 });
 
@@ -170,5 +191,36 @@ describe('costruzione del rientro', () => {
     expect(dotazioneDopoRientro({ dotazione: ['Cric', 'Triangolo'] }, ['triangolo'])).toEqual({ dotazione: ['Cric'] });
     expect(dotazioneDopoRientro({ dotazione: ['Cric'] }, ['Triangolo'])).toBeNull();
     expect(dotazioneDopoRientro({}, ['Cric'])).toBeNull();
+  });
+});
+
+describe('ritardo a ore', () => {
+  const prenotazione = { dataInizio: '2026-11-01', dataFine: '2026-11-02', oraInizio: '10:00', oraFine: '10:00', prezzoGiornaliero: 60 };
+  const base = { prenotazione, tolleranza: 29, prezzoGiorno: 60 };
+  const ore = { metodo: 'ore', percentuale: 33, euroOra: 10, tetto: true };
+  const fissa = { metodo: 'oraFissa', percentuale: 33, euroOra: 10, tetto: true };
+
+  test('in orario o dentro la tolleranza non si paga', () => {
+    expect(ritardoAOre({ ...base, dataRientro: '2026-11-02', oraRientro: '10:20', ritardo: ore })).toEqual({ ore: 0, importo: 0 });
+  });
+  test('«giorno intero» non usa il calcolo a ore', () => {
+    expect(ritardoAOre({ ...base, dataRientro: '2026-11-02', oraRientro: '13:00', ritardo: { ...ore, metodo: 'giorno' } })).toBeNull();
+  });
+  test('a ore: ogni ora iniziata oltre la tolleranza, fino al giorno intero', () => {
+    // 10:00 + 29' di tolleranza; rientro 11:15 = 75' di ritardo, 46' oltre = 1 ora
+    expect(ritardoAOre({ ...base, dataRientro: '2026-11-02', oraRientro: '11:15', ritardo: ore })).toEqual({ ore: 1, importo: 19.8 });
+    // 12:40 = 160', 131' oltre = 3 ore -> 59,4 (< 60)
+    expect(ritardoAOre({ ...base, dataRientro: '2026-11-02', oraRientro: '12:40', ritardo: ore })).toEqual({ ore: 3, importo: 59.4 });
+    // 14:00 = 240', 211' oltre = 4 ore -> tetto 60
+    expect(ritardoAOre({ ...base, dataRientro: '2026-11-02', oraRientro: '14:00', ritardo: ore })).toEqual({ ore: 4, importo: 60 });
+  });
+  test('importo fisso per ora, con e senza tetto', () => {
+    const q = { ...base, dataRientro: '2026-11-02', oraRientro: '18:00' }; // 480', 451' oltre = 8 ore
+    expect(ritardoAOre({ ...q, ritardo: fissa })).toEqual({ ore: 8, importo: 60 });
+    expect(ritardoAOre({ ...q, ritardo: { ...fissa, tetto: false } })).toEqual({ ore: 8, importo: 80 });
+  });
+  test('oltre le 24 ore: giorni interi piu\' il resto', () => {
+    // 2 novembre 10:00 -> 3 novembre 12:00 = 1560', 1531' oltre = 26 ore = 1 giorno + 2 ore
+    expect(ritardoAOre({ ...base, dataRientro: '2026-11-03', oraRientro: '12:00', ritardo: ore })).toEqual({ ore: 26, importo: 99.6 });
   });
 });

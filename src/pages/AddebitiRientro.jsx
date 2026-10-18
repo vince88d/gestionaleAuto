@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { X } from 'lucide-react';
+import { Timer, Trash2 } from 'lucide-react';
 import { ascoltaAddebiti, salvaAddebiti } from '../lib/firestoreAddebiti';
 import { useOrari } from '../lib/firestoreOrari';
 import {
-  ADDEBITI, MODI_VOCE, RITARDO, addebitiPerForm, nuovaVoce, preparaAddebiti, validaAddebiti, vociPerSito,
+  ADDEBITI, METODI_RITARDO, MODI_VOCE, RITARDO, addebitiPerForm, nuovaVoce, preparaAddebiti, validaAddebiti, vociPerSito,
 } from '../utils/addebiti';
-import { Campo, CampoEuro } from '../components/CampiForm';
+import { CampoEuro } from '../components/CampiForm';
+import { leggiEuro } from '../utils/protezioni';
+import { ritardoAOre } from '../utils/rientro';
 import './CatalogoOptional.css';
 import './AddebitiRientro.css';
 
@@ -22,6 +24,7 @@ function AddebitiRientro() {
   const [tentato, setTentato] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const modificatoRef = useRef(false);
+  const [daEliminare, setDaEliminare] = useState(null);
   const orari = useOrari();
 
   const modificato = Boolean(form && salvati) && JSON.stringify(form) !== JSON.stringify(addebitiPerForm(salvati));
@@ -44,6 +47,22 @@ function AddebitiRientro() {
   const cambia = (campi) => setForm((f) => ({ ...f, ...campi }));
   const sito = (chiave, valore) => setForm((f) => ({ ...f, sito: { ...f.sito, [chiave]: valore } }));
   const voce = (i, campi) => setForm((f) => ({ ...f, voci: f.voci.map((v, j) => (j === i ? { ...v, ...campi } : v)) }));
+  const tolte = form.tolte || [];
+  const cambiaRitardo = (campi) => setForm((f) => ({ ...f, ritardo: { ...f.ritardo, ...campi } }));
+  const ritardoPronto = preparaAddebiti(form).ritardo;
+  const r = form.ritardo;
+  const riassuntoRitardo = r.metodo === 'ore' ? `${r.percentuale}% all’ora` : r.metodo === 'oraFissa' ? `${r.euroOra} € all’ora` : '1 giorno';
+  const tolleranzaMin = Number(orari?.tolleranzaMinuti) || 0;
+  const PREZZO_ESEMPIO = 60;
+  const esempiRitardo = [1, 2, 3, 6, 12].map((h) => ({
+    h,
+    ...ritardoAOre({
+      prenotazione: { dataFine: '2026-01-02', oraFine: '10:00' }, dataRientro: '2026-01-02', oraRientro: `${10 + h}:00`,
+      tolleranza: 0, ritardo: ritardoPronto, prezzoGiorno: PREZZO_ESEMPIO,
+    }) || { ore: h, importo: PREZZO_ESEMPIO },
+  }));
+  const togli = (k) => setForm((f) => ({ ...f, tolte: [...(f.tolte || []), k] }));
+  const rimetti = (k) => setForm((f) => ({ ...f, tolte: (f.tolte || []).filter((x) => x !== k), sito: { ...f.sito, [k]: true } }));
   const anteprima = vociPerSito(preparaAddebiti(form), orari?.tolleranzaMinuti);
 
   const salva = async (e) => {
@@ -63,44 +82,132 @@ function AddebitiRientro() {
     }
   };
 
-  const MostraSulSito = ({ chiave, nome }) => (
-    <label className="opt-spunta add-sito">
-      <input type="checkbox" checked={form.sito[chiave]} onChange={(e) => sito(chiave, e.target.checked)} aria-label={`Mostra sul sito: ${nome}`} />
-      Mostra sul sito
+  const Interruttore = ({ acceso, onChange, nome, bloccato, etichetta = 'Mostra sul sito' }) => (
+    <label className={`add-tg ${acceso && !bloccato ? 'add-tg--on' : ''} ${bloccato ? 'add-tg--dis' : ''}`}>
+      <input type="checkbox" role="switch" checked={acceso && !bloccato} disabled={bloccato} onChange={(e) => onChange(e.target.checked)} aria-label={`${etichetta}: ${nome}`} />
+      <span className="add-tg-sw" aria-hidden="true" />
+      {acceso && !bloccato ? 'Sì' : 'No'}
     </label>
   );
+  const gratis = (valore) => leggiEuro(valore) === 0;
+  const unita = (u) => (u === '€' ? 'una volta' : u.replace('€ / ', 'per '));
 
   return (
     <form className="opt" onSubmit={salva} noValidate aria-label="Penali e addebiti">
-      <section className="opt-box add-box">
-        <div className="opt-box-testa">
-          <h2 className="opt-box-titolo">Penali e addebiti</h2>
-        </div>
-        <p className="opt-nota">
-          Si scrivono una volta: quando ricevi l’auto vengono proposti già compilati e li puoi cambiare caso per caso.
-          Con «Mostra sul sito» il cliente li legge nelle condizioni, prima di pagare.
-        </p>
-        <div className="add-campi">
-          {ADDEBITI.map(({ chiave, nome, aiuto, unita }) => (
-            <Campo key={chiave} id={`add-${chiave}`} titolo={nome} aiuto={aiuto} errore={mostra(chiave)}>
-              <div className="add-riga">
-                <CampoEuro id={`add-${chiave}`} valore={form[chiave]} onChange={(v) => cambia({ [chiave]: v })} invalido={Boolean(mostra(chiave))} />
-                {unita !== '€' && <span className="add-unita">{unita.replace('€ ', '')}</span>}
-              </div>
-              <MostraSulSito chiave={chiave} nome={nome} />
-            </Campo>
-          ))}
+      <p className="add-intro">
+        Si scrivono una volta: quando ricevi l’auto vengono proposti già compilati e li puoi cambiare caso per caso.
+        Con <b>«Il cliente la vede sul sito»</b> su Sì, li legge nelle condizioni prima di prenotare.
+      </p>
+      <div className="add-lay">
+        <div className="add-colonna">
+          <section className="opt-box add-box">
+            <div className="add-testa">
+              <h2 className="opt-box-titolo">Addebiti fissi</h2>
+              <p>Importi che il gestionale propone al rientro dell’auto.</p>
+            </div>
+            <table className="add-tab">
+              <thead><tr><th scope="col">Voce</th><th scope="col">Importo</th><th scope="col">In uso</th><th scope="col">Il cliente la vede sul sito</th></tr></thead>
+              <tbody>
+                {ADDEBITI.map(({ chiave, nome, aiuto, unita: u }) => {
+                  const spenta = tolte.includes(chiave);
+                  return (
+                    <tr key={chiave} className={spenta ? 'add-spenta' : ''}>
+                      <td className="add-voce-nome-cella"><b>{nome}</b><span>{aiuto}</span></td>
+                      <td>
+                        <CampoEuro id={`add-${chiave}`} valore={form[chiave]} onChange={(v) => cambia({ [chiave]: v })} invalido={Boolean(mostra(chiave))} disabled={spenta} />
+                        <label htmlFor={`add-${chiave}`} className="add-vis-nascosta">{nome}</label>
+                        <span className="add-unita">{unita(u)}</span>
+                        {!spenta && mostra(chiave) && <span className="opt-errore-campo" role="alert">{mostra(chiave)}</span>}
+                        {!spenta && !mostra(chiave) && gratis(form[chiave]) && <span className="add-gratis">Importo 0: è gratis, non si mostra.</span>}
+                      </td>
+                      <td><Interruttore acceso={!spenta} onChange={(x) => (x ? rimetti(chiave) : togli(chiave))} nome={nome} etichetta="In uso" /></td>
+                      <td><Interruttore acceso={form.sito[chiave]} onChange={(x) => sito(chiave, x)} nome={nome} bloccato={spenta || gratis(form[chiave])} /></td>
+                    </tr>
+                  );
+                })}
+                <tr className={tolte.includes('ritardo') ? 'add-spenta' : ''}>
+                  <td className="add-voce-nome-cella">
+                    <b>{RITARDO.nome}</b>
+                    <span>{RITARDO.aiuto}</span>
+                  </td>
+                  <td><span className="add-auto">{riassuntoRitardo}</span></td>
+                  <td><Interruttore acceso={!tolte.includes('ritardo')} onChange={(x) => (x ? rimetti('ritardo') : togli('ritardo'))} nome={RITARDO.nome} etichetta="In uso" /></td>
+                  <td><Interruttore acceso={form.sito.ritardo} onChange={(x) => sito('ritardo', x)} nome={RITARDO.nome} bloccato={tolte.includes('ritardo')} /></td>
+                </tr>
+                {!tolte.includes('ritardo') && (
+                  <tr className="add-come-riga">
+                    <td colSpan={4}>
+                      <fieldset className="add-come">
+                        <legend>Come si calcola il ritardo</legend>
+                        <div className="add-toll" role="note">
+                          <Timer size={22} aria-hidden="true" />
+                          <div>
+                            <b>Tolleranza: {tolleranzaMin > 0 ? `${tolleranzaMin} minuti` : 'nessuna'}</b>
+                            <span>{tolleranzaMin > 0 ? `I primi ${tolleranzaMin} minuti di ritardo non si pagano.` : 'Il ritardo si paga fin dal primo minuto.'} Poi scatta il metodo scelto qui sotto.</span>
+                          </div>
+                          <a href="#/impostazioni-azienda">Cambia in Orari della sede</a>
+                        </div>
+                        <p className="add-come-d">Scegli un metodo. Al rientro il gestionale propone già l’importo, e lo puoi sempre cambiare.</p>
+                        <div className="add-metodi">
+                          {METODI_RITARDO.map((m) => (
+                            <label key={m.valore} className={`add-metodo ${form.ritardo.metodo === m.valore ? 'add-metodo--on' : ''}`}>
+                              <span className="add-metodo-testa">
+                                <input type="radio" name="metodo-ritardo" value={m.valore} checked={form.ritardo.metodo === m.valore} onChange={() => cambiaRitardo({ metodo: m.valore })} />
+                                <b>{m.nome}</b>
+                              </span>
+                              <span>{m.testo}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {form.ritardo.metodo === 'ore' && (
+                          <div className="add-par">
+                            <label htmlFor="rit-perc">Per ogni ora si paga il</label>
+                            <div className="add-perc">
+                              <input id="rit-perc" className="opt-input" type="text" inputMode="decimal" value={form.ritardo.percentuale} aria-invalid={mostra('ritardo.percentuale') ? true : undefined} onChange={(e) => cambiaRitardo({ percentuale: e.target.value })} />
+                              <span aria-hidden="true">%</span>
+                            </div>
+                            <span>del prezzo giornaliero</span>
+                          </div>
+                        )}
+                        {form.ritardo.metodo === 'oraFissa' && (
+                          <>
+                            <div className="add-par">
+                              <label htmlFor="rit-ora">Per ogni ora si pagano</label>
+                              <CampoEuro id="rit-ora" valore={form.ritardo.euroOra} onChange={(v) => cambiaRitardo({ euroOra: v })} invalido={Boolean(mostra('ritardo.euroOra'))} />
+                            </div>
+                            <label className="opt-spunta add-sito">
+                              <input type="checkbox" checked={form.ritardo.tetto} onChange={(e) => cambiaRitardo({ tetto: e.target.checked })} />
+                              Non più del prezzo di un giorno <span className="add-fac">(consigliato: il ritardo non costa più di un giorno in più)</span>
+                            </label>
+                          </>
+                        )}
+                        {(mostra('ritardo.percentuale') || mostra('ritardo.euroOra')) && (
+                          <span className="opt-errore-campo" role="alert">{errori['ritardo.percentuale'] || errori['ritardo.euroOra']}</span>
+                        )}
+                        {form.ritardo.metodo !== 'giorno' && (
+                          <table className="add-es">
+                            <caption>Esempio con un’auto a {PREZZO_ESEMPIO} € al giorno (le ore contano oltre la tolleranza; ogni ora iniziata vale un’ora)</caption>
+                            <thead><tr><th scope="col">Ritardo</th><th scope="col">Si paga</th></tr></thead>
+                            <tbody>
+                              {esempiRitardo.map((e) => (
+                                <tr key={e.h}><td>{e.h} {e.h === 1 ? 'ora' : 'ore'}</td><td><b>{e.importo.toLocaleString('it-IT', { maximumFractionDigits: 2 })} €</b></td></tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </fieldset>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </section>
 
-          <div className="opt-campo">
-            <span className="opt-titolo-campo">{RITARDO.nome}</span>
-            <span className="opt-aiuto">{RITARDO.aiuto}</span>
-            <span className="add-auto">automatico</span>
-            <MostraSulSito chiave="ritardo" nome={RITARDO.nome} />
-          </div>
-
-          <div className="opt-campo">
-            <span className="opt-titolo-campo">Le tue voci</span>
-            <span className="opt-aiuto">Altre penali o costi che applichi (es. fumo nell’auto, sabbia, pedaggi non pagati).</span>
+          <section className="opt-box add-box">
+            <div className="add-testa">
+              <h2 className="opt-box-titolo">Le tue voci</h2>
+              <p>Aggiungi le penali e i costi che applichi tu, per esempio fumo nell’auto, sabbia, pedaggi non pagati.</p>
+            </div>
             {form.voci.map((v, i) => (
               <div key={v.id} className="add-voce">
                 <div className="add-voce-riga">
@@ -121,40 +228,61 @@ function AddebitiRientro() {
                       {MODI_VOCE.map((m) => <option key={m.valore} value={m.valore}>{m.testo}</option>)}
                     </select>
                   </div>
-                  <button type="button" className="add-togli" aria-label={`Togli la voce ${v.nome || i + 1}`} onClick={() => cambia({ voci: form.voci.filter((_, j) => j !== i) })}>
-                    <X size={18} aria-hidden="true" />
+                  <button type="button" className="add-cestino" title="Elimina questa voce" aria-label={`Elimina la voce ${v.nome || i + 1}`} onClick={() => setDaEliminare(v.id)}>
+                    <Trash2 size={20} aria-hidden="true" />
                   </button>
                 </div>
                 <div>
-                  <label htmlFor={`add-voce-desc-${i}`} className="add-voce-et">Cosa vede il cliente (facoltativo)</label>
+                  <label htmlFor={`add-voce-desc-${i}`} className="add-voce-et">Cosa legge il cliente <span className="add-fac">(facoltativo)</span></label>
                   <input
                     id={`add-voce-desc-${i}`} type="text" className="opt-input" value={v.descrizione} placeholder="Es. È vietato fumare nei veicoli."
                     onChange={(e) => voce(i, { descrizione: e.target.value })}
                   />
                 </div>
-                <label className="opt-spunta add-sito">
-                  <input type="checkbox" checked={v.sito} onChange={(e) => voce(i, { sito: e.target.checked })} aria-label={`Mostra sul sito: ${v.nome || `voce ${i + 1}`}`} />
-                  Mostra sul sito
-                </label>
                 {(mostra(`voci.${i}.nome`) || mostra(`voci.${i}.importo`)) && (
                   <span className="opt-errore-campo" role="alert">{errori[`voci.${i}.nome`] || errori[`voci.${i}.importo`]}</span>
                 )}
+                {!mostra(`voci.${i}.importo`) && gratis(v.importo) && <span className="add-gratis">Importo 0: è gratis, non si mostra al cliente.</span>}
+                <div className="add-voce-sito">
+                  <span>In uso:</span>
+                  <Interruttore acceso={v.attiva !== false} onChange={(x) => voce(i, x ? { attiva: true, sito: true } : { attiva: false })} nome={v.nome || `voce ${i + 1}`} etichetta="In uso" />
+                  <span>Il cliente la vede sul sito:</span>
+                  <Interruttore acceso={v.sito} onChange={(x) => voce(i, { sito: x })} nome={v.nome || `voce ${i + 1}`} bloccato={v.attiva === false || gratis(v.importo)} />
+                </div>
+                {daEliminare === v.id && (
+                  <div className="add-conferma" role="alertdialog" aria-label="Conferma eliminazione">
+                    <span>Eliminare «{v.nome || 'questa voce'}» per sempre? Non si può annullare. Se vuoi solo non usarla per ora, spegni «In uso».</span>
+                    <span className="add-conferma-az">
+                      <button type="button" className="opt-btn" onClick={() => setDaEliminare(null)}>Annulla</button>
+                      <button type="button" className="opt-btn add-elimina" onClick={() => { cambia({ voci: form.voci.filter((_, j) => j !== i) }); setDaEliminare(null); }}>Elimina</button>
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
-            <button type="button" className="add-link" onClick={() => cambia({ voci: [...form.voci, nuovaVoce()] })}>+ Aggiungi una voce</button>
-          </div>
-
-          <div className="opt-esempio add-anteprima">
-            <b>Come lo vede il cliente sul sito</b> (nelle condizioni, riga «Penali e costi aggiuntivi»)
-            <br />
-            {anteprima.length > 0
-              ? anteprima.map((r) => `${r.nome} ${r.testo}`).join(' · ')
-              : 'Niente: nessuna voce è accesa, la riga non compare.'}
-          </div>
-          <p className="opt-aiuto">Importo 0 = gratis: la voce non si mostra. Cambiando un importo le riconsegne già registrate non cambiano.</p>
+            <div className="add-aggiungi">
+              <button type="button" className="opt-btn" onClick={() => cambia({ voci: [...form.voci, nuovaVoce()] })}>+ Aggiungi una voce</button>
+            </div>
+          </section>
         </div>
-        <div className="add-piede">
-          {tentato && Object.keys(errori).length > 0 && <span className="opt-errore add-piede-errore">Controlla i campi segnati.</span>}
+
+        <aside className="add-anteprima" aria-label="Cosa legge il cliente">
+          <h3>Cosa legge il cliente</h3>
+          <p className="add-anteprima-d">Nelle condizioni sul sito, riga «Penali e costi aggiuntivi». Si aggiorna mentre scrivi.</p>
+          {anteprima.length > 0 ? (
+            <ul>
+              {anteprima.map((r) => <li key={r.id}><b>{r.nome}</b><small>{r.testo}</small></li>)}
+            </ul>
+          ) : <p className="add-anteprima-d">Niente: nessuna voce è accesa, la riga non compare.</p>}
+          <p className="add-anteprima-d">Cambiando un importo le riconsegne già registrate non cambiano.</p>
+        </aside>
+      </div>
+
+      <div className="add-barra">
+        <span className={modificato ? 'add-stato add-stato--mod' : 'add-stato'} role="status">
+          {tentato && Object.keys(errori).length > 0 ? 'Controlla i campi segnati.' : modificato ? 'Modifiche non salvate' : 'Tutto salvato'}
+        </span>
+        <span className="add-azioni">
           {modificato && (
             <button type="button" className="opt-btn" onClick={() => { setForm(addebitiPerForm(salvati)); setTentato(false); }} disabled={salvando}>
               Annulla modifiche
@@ -163,8 +291,8 @@ function AddebitiRientro() {
           <button type="submit" className="opt-btn opt-btn--salva" disabled={!modificato || salvando}>
             {salvando ? 'Salvo…' : 'Salva'}
           </button>
-        </div>
-      </section>
+        </span>
+      </div>
     </form>
   );
 }

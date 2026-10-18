@@ -21,6 +21,8 @@ export const pagataSulSito = (p) => Boolean(p && (p.paymentIntentId || p.origine
 export function controllaPrenotazione({
   dati, originale = null, veicoli = [], prenotazioni = [], holds = [], oggi, protezioni = {}, catalogo = [], adesso,
   etaConducenti,
+  // Formule dei km e prezzo del km in piu' (scelta in dati.sceltaKm).
+  formuleKm = null, euroKmInPiu = 0,
 }) {
   const inizio = giorno(dati.dataInizio);
   const fine = giorno(dati.dataFine);
@@ -81,6 +83,10 @@ export function controllaPrenotazione({
       (Array.isArray(originale?.optional) ? originale.optional : []).filter((r) => r?.id).map((r) => [r.id, r.quantita]),
     ),
     optionalSalvati: originale?.optional,
+    formuleKm,
+    sceltaKm: dati.sceltaKm ?? null,
+    euroKmInPiu,
+    chilometriSalvati: originale?.chilometri ?? null,
     etaConducenti,
     etaConducente: dati.etaConducente !== undefined ? dati.etaConducente : originale?.etaConducente,
     occupati: pezziOccupati({

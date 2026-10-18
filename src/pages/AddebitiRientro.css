@@ -1,35 +1,125 @@
-/* Scheda "Penali e addebiti": usa la grafica di Optional (CatalogoOptional.css).
-   Mockup: formiarent-documenti/mockup/gestionale-listino-penali.html */
-.add-box { max-width: 760px; }
-.add-campi { display: flex; flex-direction: column; gap: 18px; padding: 4px 20px 8px; }
-.add-riga { display: flex; align-items: center; gap: 10px; }
-.add-riga .opt-euro { width: 160px; }
-.add-unita { font-size: 15px; color: #55616d; }
-.add-auto {
-  align-self: flex-start;
-  padding: 8px 14px;
-  border-radius: 10px;
-  background: #eef1f5;
-  color: #4d5b69;
-  font-size: 15px;
-  font-weight: 700;
-}
-.add-piede { padding: 16px 20px 20px; display: flex; justify-content: flex-end; }
+/* Scheda "Penali e addebiti": tabella voce / importo / «il cliente la vede»,
+   anteprima a destra, barra di salvataggio fissa. Usa la grafica di Optional.
+   Mockup: formiarent-documenti/mockup/gestionale-penali-v2.html */
+.add-intro { margin: 0 0 14px; padding: 12px 14px; border: 1px solid #c9dff1; border-radius: 10px; background: #eaf3fb; font-size: 15px; line-height: 1.5; color: #1f2d3a; }
+.add-lay { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.add-colonna { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.add-box { max-width: none; padding: 0; overflow: hidden; }
+.add-testa { padding: 18px 22px 12px; }
+.add-testa p { margin: 4px 0 0; font-size: 15px; color: #3b4856; line-height: 1.5; }
 
-.add-sito { margin-top: 2px; font-size: 14px; font-weight: 600; }
-.add-voce { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; padding: 14px; border: 1px solid #e3e8ee; border-radius: 12px; }
+.add-tab { width: 100%; border-collapse: collapse; }
+.add-tab th { text-align: left; padding: 9px 22px; background: #f7f9fb; border-top: 1px solid #e3e8ee; border-bottom: 1px solid #e3e8ee; font-size: 14px; font-weight: 700; color: #3b4856; }
+.add-tab td { padding: 14px 22px; border-bottom: 1px solid #eef1f5; vertical-align: top; }
+.add-tab tr:last-child td { border-bottom: none; }
+.add-voce-nome-cella b { display: block; font-size: 16px; color: #1f2d3a; }
+.add-voce-nome-cella span { display: block; margin-top: 2px; font-size: 14px; color: #5d6b79; line-height: 1.45; }
+.add-tab .opt-euro { width: 150px; }
+.add-unita { display: block; margin-top: 4px; font-size: 14px; color: #5d6b79; }
+.add-gratis { display: block; margin-top: 4px; font-size: 14px; color: #8a5a00; max-width: 190px; }
+.add-auto { display: inline-block; white-space: nowrap; padding: 8px 12px; border-radius: 8px; background: #eef1f5; color: #3b4856; font-size: 15px; font-weight: 700; }
+.add-vis-nascosta { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Interruttore con la scritta Sì / No: lo stato e' sempre scritto. */
+.add-tg { position: relative; display: inline-flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 600; color: #1f2d3a; cursor: pointer; }
+.add-tg input { position: absolute; inset: 0 auto 0 0; width: 44px; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.add-tg-sw { position: relative; flex: none; width: 44px; height: 24px; border-radius: 12px; background: #6b7886; transition: background 0.15s; }
+.add-tg-sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+.add-tg--on .add-tg-sw { background: #1a6fb0; }
+.add-tg--on .add-tg-sw::after { left: 23px; }
+.add-tg--dis { color: #5d6b79; cursor: not-allowed; }
+.add-tg--dis input { cursor: not-allowed; }
+.add-tg--dis .add-tg-sw { background: #c6ced6; }
+.add-tg input:focus-visible + .add-tg-sw { outline: 3px solid #5fb0f0; outline-offset: 2px; }
+
+/* Le tue voci */
+.add-voce { display: flex; flex-direction: column; gap: 10px; padding: 14px 22px; border-top: 1px solid #eef1f5; }
 .add-voce-riga { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; }
 .add-voce-nome { flex: 1 1 220px; }
 .add-voce-et { display: block; margin-bottom: 4px; font-size: 14px; font-weight: 700; color: #2c3e50; }
-.add-voce .opt-euro { width: 140px; }
-.add-voce select.opt-input { width: auto; min-width: 120px; background: #fff; }
+.add-fac { font-weight: 400; color: #5d6b79; }
+.add-voce .opt-euro { width: 150px; }
+.add-voce select.opt-input { width: auto; min-width: 150px; background: #fff; }
 .add-voce .opt-input[aria-invalid='true'] { border-color: #c0392b; }
-.add-togli { display: inline-flex; padding: 10px; border: none; border-radius: 8px; background: none; color: #5d6b79; cursor: pointer; }
-.add-togli:hover { background: #fdecea; color: #c0392b; }
-.add-link { align-self: flex-start; margin-top: 4px; padding: 6px 0; border: none; background: none; color: #1f6fb2; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
-.add-link:hover { text-decoration: underline; }
-.add-togli:focus-visible, .add-link:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
-.add-anteprima { line-height: 1.6; }
-.add-piede { align-items: center; gap: 10px; }
-.add-piede-errore { margin-right: auto; font-size: 14px; }
-@media (max-width: 720px) { .add-voce-riga { align-items: stretch; } }
+.add-voce-sito { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; }
+.add-togli { padding: 12px 6px; border: none; border-radius: 8px; background: none; color: #a93226; font: inherit; font-size: 15px; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.add-togli:hover { background: #fdecea; }
+.add-togli:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
+.add-aggiungi { padding: 14px 22px; border-top: 1px solid #e3e8ee; background: #fbfcfd; }
+
+/* Anteprima sempre visibile */
+.add-anteprima { position: sticky; top: 12px; padding: 16px 18px; border: 1px solid #e3e8ee; border-radius: 12px; background: #fff; }
+.add-anteprima h3 { margin: 0 0 2px; font-size: 16px; color: #1f2d3a; }
+.add-anteprima-d { margin: 0 0 10px; font-size: 14px; color: #5d6b79; line-height: 1.45; }
+.add-anteprima ul { margin: 0 0 10px; padding: 0; list-style: none; border: 1px solid #e3e8ee; border-radius: 10px; background: #fcfbfa; }
+.add-anteprima li { padding: 9px 12px; border-bottom: 1px solid #eee9e5; font-size: 14px; line-height: 1.4; color: #191716; }
+.add-anteprima li:last-child { border-bottom: none; }
+.add-anteprima li b { display: block; font-size: 14.5px; }
+.add-anteprima li small { font-size: 13px; color: #716b66; }
+
+/* Barra di salvataggio fissa in basso */
+.add-barra { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 14px 22px; border-top: 1px solid #e3e8ee; background: #fff; box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06); }
+.add-stato { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: #3b4856; }
+.add-stato--mod { color: #8a5a00; }
+.add-stato--mod::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #e0a800; }
+.add-azioni { display: flex; gap: 10px; }
+
+@media (max-width: 820px) {
+  .add-lay { grid-template-columns: 1fr; }
+  .add-anteprima { position: static; }
+  .add-tab thead { display: none; }
+  .add-tab, .add-tab tbody, .add-tab tr, .add-tab td { display: block; width: 100%; }
+  .add-tab td { padding: 6px 16px; border-bottom: none; }
+  .add-tab tr { padding: 10px 0; border-bottom: 1px solid #eef1f5; }
+  .add-voce-riga { align-items: stretch; }
+}
+
+.add-cestino { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; vertical-align: middle; border: 1.5px solid transparent; border-radius: 8px; background: none; color: #5d6b79; cursor: pointer; }
+.add-cestino:hover { background: #fdecea; color: #a93226; border-color: #f3c6c1; }
+.add-cestino:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
+.add-tolte { display: flex; flex-direction: column; gap: 4px; padding: 14px 22px; border-top: 1px solid #e3e8ee; background: #fbfcfd; font-size: 14px; color: #5d6b79; }
+.add-tolte b { font-size: 15px; color: #1f2d3a; }
+.add-tolte ul { margin: 6px 0 0; padding: 0; list-style: none; }
+.add-tolte li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 15px; color: #3b4856; }
+.add-tolte .add-togli { color: #1a6fb0; }
+.add-tolte .add-togli:hover { background: #eaf3fb; }
+
+.add-voce-nome-cella .add-tolleranza { margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: #f1f5f9; color: #3b4856; font-size: 14px; }
+.add-tolleranza a { color: #1a6fb0; font-weight: 600; }
+
+.add-spenta td { background: #f8f9fb; }
+.add-spenta .add-voce-nome-cella b, .add-spenta .add-voce-nome-cella > span { color: #7b8794; }
+.add-voce-sito { flex-wrap: wrap; }
+.add-conferma { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border: 1px solid #f3c6c1; border-radius: 10px; background: #fdf3f2; font-size: 15px; line-height: 1.45; color: #5c1f19; }
+.add-conferma-az { display: flex; gap: 10px; }
+.add-elimina { border-color: #a93226; background: #a93226; color: #fff; font-weight: 800; }
+.add-elimina:hover:not(:disabled) { background: #8c2a20; }
+
+/* Come si calcola il ritardo */
+.add-come-riga td { padding: 14px 22px 22px; border-bottom: none; }
+.add-come { min-width: 0; margin: 0; padding: 16px 18px 18px; border: 1px solid #d5dde6; border-radius: 12px; background: #f8fafc; }
+.add-come legend { float: left; width: 100%; margin: 0 0 4px; padding: 0 0 10px; border-bottom: 1px solid #e3e8ee; font-size: 17px; font-weight: 800; color: #1f2d3a; }
+.add-come legend + * { clear: both; }
+.add-come-d { margin: 0 0 10px; font-size: 14px; color: #5d6b79; }
+.add-metodi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.add-metodo { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 2px solid #e3e8ee; border-radius: 12px; background: #fff; font-size: 14px; line-height: 1.4; color: #3b4856; cursor: pointer; }
+.add-metodo--on { border-color: #1a6fb0; background: #f5faff; box-shadow: 0 0 0 3px #d6e8f7; }
+.add-metodo-testa { display: flex; align-items: center; gap: 8px; }
+.add-metodo-testa b { font-size: 15.5px; color: #1f2d3a; }
+.add-metodo input { width: 20px; height: 20px; margin: 0; accent-color: #1a6fb0; }
+.add-par { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 14px; font-size: 15.5px; }
+.add-perc { position: relative; width: 110px; }
+.add-perc .opt-input { padding-right: 30px; }
+.add-perc span { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); font-weight: 600; color: #55616d; }
+.add-par .opt-euro { width: 130px; }
+.add-es { width: 100%; margin-top: 14px; border: 1px solid #e3e8ee; border-collapse: collapse; background: #fff; font-size: 14.5px; }
+.add-es caption { padding-bottom: 6px; text-align: left; font-size: 13.5px; color: #5d6b79; }
+.add-es th { text-align: left; padding: 8px 12px; background: #f7f9fb; font-size: 13.5px; color: #3b4856; }
+.add-es td { padding: 8px 12px; border-top: 1px solid #eef1f5; }
+@media (max-width: 820px) { .add-metodi { grid-template-columns: 1fr; } }
+
+.add-toll { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 14px; padding: 12px 14px; border: 1px solid #b7d4ee; border-left: 5px solid #1a6fb0; border-radius: 10px; background: #eaf3fb; color: #0f3d63; }
+.add-toll > div { flex: 1 1 260px; display: flex; flex-direction: column; gap: 2px; }
+.add-toll b { font-size: 17px; font-weight: 800; }
+.add-toll span { font-size: 14.5px; line-height: 1.4; color: #1f2d3a; }
+.add-toll a { font-size: 14.5px; font-weight: 700; color: #1a6fb0; }

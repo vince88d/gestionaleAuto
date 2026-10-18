@@ -68,7 +68,35 @@ describe('pezzi', () => {
 
 test('scelte iniziali da una prenotazione salvata', () => {
   expect(scelteIniziali({ protezione: { tipo: 'totale' }, optional: [{ id: 's', quantita: 2 }] }))
-    .toEqual({ sceltaProtezione: 'totale', sceltaOptional: { s: 2 } });
-  expect(scelteIniziali(null)).toEqual({ sceltaProtezione: 'base', sceltaOptional: {} });
+    .toEqual({ sceltaProtezione: 'totale', sceltaOptional: { s: 2 }, sceltaKm: null });
+  expect(scelteIniziali(null)).toEqual({ sceltaProtezione: 'base', sceltaOptional: {}, sceltaKm: null });
+  expect(scelteIniziali({ chilometri: { formulaId: 'f2' } }).sceltaKm).toBe('f2');
   expect(totaleSceglibile(protezione)).toBe(true);
+});
+
+describe('formule dei km nel preventivo', () => {
+  const formuleKm = [
+    { id: 'base', km: 200, supplemento: 0, partenza: true },
+    { id: 'ill', km: null, supplemento: 12, partenza: false },
+  ];
+  it('di partenza: km inclusi, nessun supplemento', () => {
+    const p = preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 3, formuleKm, euroKmInPiu: 0.25 });
+    expect(p.chilometri).toMatchObject({ formulaId: 'base', kmInclusi: 600, importo: 0, euroKmInPiu: 0.25 });
+    expect(p.prezzoTotale).toBe(120);
+  });
+  it('illimitati: supplemento al giorno nel totale', () => {
+    const p = preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 3, formuleKm, sceltaKm: 'ill', euroKmInPiu: 0.25 });
+    expect(p.chilometri).toMatchObject({ nome: 'Km illimitati', kmInclusi: null, importo: 36 });
+    expect(p.prezzoTotale).toBe(156);
+  });
+  it('in modifica resta la formula salvata con i suoi prezzi, ricalcolata sui giorni nuovi', () => {
+    const salvata = { formulaId: 'vecchia', kmGiorno: 300, supplementoGiorno: 5, euroKmInPiu: 0.2 };
+    const p = preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 2, formuleKm, chilometriSalvati: salvata, euroKmInPiu: 0.25 });
+    expect(p.chilometri).toMatchObject({ formulaId: 'vecchia', kmInclusi: 600, importo: 10, euroKmInPiu: 0.2 });
+    // Cambiando formula valgono i prezzi di adesso.
+    expect(preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 2, formuleKm, sceltaKm: 'ill', chilometriSalvati: salvata }).chilometri.importo).toBe(24);
+  });
+  it('senza formule (prenotazioni di prima): niente km', () => {
+    expect(preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 2 }).chilometri).toBeNull();
+  });
 });

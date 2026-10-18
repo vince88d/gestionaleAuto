@@ -104,6 +104,9 @@ export function sezioniRientro(prenotazione = {}) {
     ['Periodo', `dal ${dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)} al ${dataEOra(prenotazione.dataFine, prenotazione.oraFine)}`],
     ['Rientrata', `${dataEOra(r.dataRientro, r.oraRientro)}${ritardo}`],
     ['Km', r.kmConsegna != null ? `${nKm(r.kmConsegna)} -> ${nKm(r.km)}${percorsi !== null ? ` (${nKm(percorsi)} km)` : ''}` : nKm(r.km)],
+    ...(prenotazione.chilometri?.nome
+      ? [['Formula km', `${prenotazione.chilometri.nome}${prenotazione.chilometri.kmInclusi ? ` · ${nKm(prenotazione.chilometri.kmInclusi)} km inclusi` : ''}`]]
+      : []),
     ['Carburante', r.carburanteConsegna ? `${r.carburanteConsegna} -> ${r.carburante}` : r.carburante],
   ];
   if (r.chiaviConsegnate) generali.push(['Chiavi', `${r.chiaviConsegnate} consegnate, ${r.chiaviTornate ?? '-'} tornate`]);

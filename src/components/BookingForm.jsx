@@ -15,6 +15,7 @@ import { pezziOccupati, preventivoPrenotazione, scelteIniziali, totaleSceglibile
 import { protezioneImpostata, euro as euroTondo } from '../utils/protezioni';
 import { normalizzaOptional } from '../utils/optional';
 import { haScelteDaFare, testoScelte } from '../utils/riepilogoScelte';
+import { ciSonoScelte, nomeFormula } from '../utils/chilometri';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { confrontaConListino } from '../utils/prezzoListino';
 import { cercaClienti } from '../utils/validaCliente';
@@ -118,6 +119,9 @@ function BookingForm({
   catalogo = [],
   // Eta' minima/massima e supplemento giovane conducente (lib/firestoreEtaConducenti.js).
   etaConducenti = null,
+  // Formule dei km (lib/firestoreChilometri.js) e prezzo del km in piu'.
+  formuleKm = null,
+  euroKmInPiu = 0,
 }) {
   const dispatch = useDispatch();
   const bookingId = initialValues?.id;
@@ -274,7 +278,14 @@ function BookingForm({
     occupati,
     etaConducenti,
     etaConducente: dati.etaConducente === 'oltre' ? null : dati.etaConducente,
+    formuleKm,
+    sceltaKm: scelte.sceltaKm,
+    euroKmInPiu,
+    chilometriSalvati: initialValues?.chilometri ?? null,
   });
+  // Km: si sceglie solo se ci sono almeno due formule (o la prenotazione ne ha gia' una).
+  const conKm = !sito && Boolean(formuleKm) && (ciSonoScelte(formuleKm) || Boolean(initialValues?.chilometri));
+  const kmScelti = sito ? initialValues?.chilometri : preventivo?.chilometri;
   // Domanda sull'eta': solo se il titolare ha messo delle regole (o se e' gia' salvata).
   const conEta = Boolean(etaConducenti) && (chiedeEta(etaConducenti) || initialValues?.etaConducente != null);
   const etaMassima = etaConducenti ? normalizzaEtaConducenti(etaConducenti).etaMassima : null;
@@ -391,6 +402,7 @@ function BookingForm({
       // Domanda 4: le scelte (il prezzo lo ricalcola controllaPrenotazione).
       sceltaProtezione,
       sceltaOptional: scelte.sceltaOptional,
+      sceltaKm: scelte.sceltaKm,
       ...dati,
       // Prenotazione del sito: l'eta' e il supplemento pagati non si toccano.
       etaConducente: sito ? undefined : (dati.etaConducente === 'oltre' ? '' : dati.etaConducente),
@@ -763,6 +775,31 @@ function BookingForm({
               salvata={initialValues}
               attiva={passi.quando && passi.auto && passi.chi}
             />
+            {conKm && (
+              <section className="np-sezione np-km" aria-labelledby="np-km-titolo">
+                <h3 className="np-sezione-titolo" id="np-km-titolo">Chilometri</h3>
+                <p className="np-aiuto">
+                  Quanti km può fare il cliente{giorni > 0 ? ` in ${giorni} ${giorni === 1 ? 'giorno' : 'giorni'}` : ''}.
+                  {euroKmInPiu > 0 && ` Oltre quelli inclusi si pagano ${euro(euroKmInPiu)} al km al rientro.`}
+                </p>
+                <div className="px-protezioni px-protezioni--km" role="radiogroup" aria-label="Formula dei chilometri">
+                  {formuleKm.map((f) => {
+                    const scelta = (kmScelti?.formulaId ?? formuleKm.find((x) => x.partenza)?.id) === f.id;
+                    const g = Math.max(1, giorni || 1);
+                    return (
+                      <label key={f.id} className={`px-scheda ${scelta ? 'px-scheda--scelta' : ''}`}>
+                        <input type="radio" name="np-km" checked={scelta} onChange={() => setScelte((x) => ({ ...x, sceltaKm: f.id }))} />
+                        <span className="px-nome">{nomeFormula(f)}</span>
+                        <span className="px-prezzo">
+                          {f.km === null ? 'Nessun limite' : `${(f.km * g).toLocaleString('it-IT')} km inclusi`}
+                          <span> · {f.supplemento > 0 ? `+${euro(f.supplemento)} al giorno${giorni > 0 ? ` · +${euro(f.supplemento * g)}` : ''}` : 'Incluso'}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
           </div>
           {haScelte4 && passi.quando && passi.auto && passi.chi && !guardato4 && !in4 && (
             <button type="button" className="np-pillola" onClick={() => vaiA(4)}>
@@ -787,6 +824,12 @@ function BookingForm({
               <dt>Cliente</dt>
               <dd className="np-capitalizza">{dati.cliente.trim() || <span className="np-vuoto">da scegliere</span>}</dd>
             </div>
+            {(conKm || (sito && kmScelti)) && kmScelti && (
+              <div>
+                <dt>Km</dt>
+                <dd>{kmScelti.nome}{kmScelti.kmInclusi ? ` · ${kmScelti.kmInclusi.toLocaleString('it-IT')} inclusi` : ''}</dd>
+              </div>
+            )}
           </dl>
 
           {haScelte4 && (
