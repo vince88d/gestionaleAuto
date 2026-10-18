@@ -93,7 +93,7 @@ export function controllaPatente(scadenza, { ritiro, riconsegna }) {
 // Dati per l'anagrafica presi da una prenotazione (es. arrivata dal sito, che
 // salva nome e cognome insieme in `cliente`): alla consegna il cliente entra
 // in anagrafica.
-export function clienteDaPrenotazione(prenotazione, { patente, scadenzaPatente } = {}) {
+export function clienteDaPrenotazione(prenotazione, { patente, scadenzaPatente, rilascioPatente } = {}) {
   const [nome = '', ...resto] = String(prenotazione.cliente || '').trim().split(/\s+/);
   return {
     nome: prenotazione.nomeCliente || nome,
@@ -103,6 +103,7 @@ export function clienteDaPrenotazione(prenotazione, { patente, scadenzaPatente }
     telefono: prenotazione.telefono || '',
     patente: (patente || prenotazione.patente || '').trim().toUpperCase(),
     scadenzaPatente: scadenzaPatente || '',
+    rilascioPatente: rilascioPatente || prenotazione.rilascioPatente || '',
     origine: prenotazione.origine === 'sito' ? 'sito' : 'gestionale',
   };
 }

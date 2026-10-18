@@ -1087,6 +1087,7 @@ return (
         ...consegnaDi,
         patente: consegnaDi.patente || clienteConsegna?.patente || (documentiConsegna.patente || '').trim().toUpperCase(),
         codiceFiscale: cfConsegna,
+        rilascioPatente: consegnaDi.rilascioPatente || clienteConsegna?.rilascioPatente || documentiConsegna.rilascioPatente || '',
       }}
       scadenzaPatente={clienteConsegna?.scadenzaPatente || documentiConsegna.scadenzaPatente || ''}
       schedaVeicolo={schedaVeicolo}

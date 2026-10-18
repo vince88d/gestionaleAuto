@@ -10,7 +10,7 @@ const prenotazione = {
   id: 'p1', cliente: 'Mario Rossi', veicolo: 'Fiat Panda', targa: 'AA111AA', dataInizio: '2099-10-12', dataFine: '2099-10-15',
   codiceFiscale: 'RSSMRA80A01H501U', patente: 'AB1234567',
 };
-const cliente = { scadenzaPatente: '2099-12-31' };
+const cliente = { scadenzaPatente: '2099-12-31', rilascioPatente: '2015-05-01' };
 
 function Prova({ onSave, scheda = { carburante: '', kmIniziali: '', danni: '' } }) {
   const [s, setS] = useState(scheda);
@@ -69,4 +69,22 @@ test('un danno segnato sullo schema senza descrizione blocca; scrivendola si va 
   expect(screen.queryByText(/^Manca:/)).toBeNull();
   avanti();
   expect(onSave).toHaveBeenCalledTimes(1);
+});
+
+test('a un neopatentato non si consegna un\'auto troppo potente', () => {
+  const onSave = jest.fn();
+  const potente = { targa: 'AA111AA', carburante: 'Diesel', potenzaKw: 110, taraKg: 1300 };
+  function Neo() {
+    const [s, setS] = useState({ carburante: 'Pieno', kmIniziali: '1000', danni: '' });
+    return (
+      <SchedaModalOpen
+        isOpen onRequestClose={jest.fn()} prenotazione={{ ...prenotazione, rilascioPatente: '2099-01-01' }} cliente={{ scadenzaPatente: '2099-12-31' }}
+        veicolo={potente} schedaVeicolo={s} setSchedaVeicolo={setS} documenti={{}} onDocumentiChange={jest.fn()} onSave={onSave}
+      />
+    );
+  }
+  render(<Neo />);
+  expect(screen.getByText(/Auto non adatta a un neopatentato/)).toBeInTheDocument();
+  avanti();
+  expect(onSave).not.toHaveBeenCalled();
 });

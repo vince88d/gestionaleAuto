@@ -209,7 +209,7 @@ export async function salvaPrenotazione(dati, originale = null) {
 // 'aggiornato' o null (anagrafica non toccata o non riuscita).
 // `cauzioneBloccata` (se la prenotazione ha una cauzione): spunta del
 // promemoria "Ho bloccato la cauzione", servira' al rientro.
-export async function registraConsegna({ prenotazione, scheda, patente, scadenzaPatente, codiceFiscale, ip, cauzioneBloccata }) {
+export async function registraConsegna({ prenotazione, scheda, patente, scadenzaPatente, rilascioPatente, codiceFiscale, ip, cauzioneBloccata }) {
   const campi = {
     schedaVeicolo: scheda || {},
     consegnataIl: new Date().toISOString(),
@@ -218,6 +218,7 @@ export async function registraConsegna({ prenotazione, scheda, patente, scadenza
   if (typeof cauzioneBloccata === 'boolean') campi.cauzioneBloccata = cauzioneBloccata;
   const patentePulita = (patente || '').trim().toUpperCase();
   if (patentePulita) campi.patente = patentePulita;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(rilascioPatente || '')) campi.rilascioPatente = rilascioPatente;
   const cfPulito = normalizzaCodiceFiscale(codiceFiscale);
   if (/^[A-Z0-9]{16}$/.test(cfPulito)) campi.codiceFiscale = cfPulito;
 
@@ -227,7 +228,7 @@ export async function registraConsegna({ prenotazione, scheda, patente, scadenza
   try {
     cliente = await aggiornaAnagraficaAllaConsegna(
       { ...prenotazione, ...campi },
-      { patente: patentePulita, scadenzaPatente },
+      { patente: patentePulita, scadenzaPatente, rilascioPatente: campi.rilascioPatente || '' },
     );
   } catch (error) {
     // La consegna e' salvata: l'anagrafica e' secondaria.
@@ -251,7 +252,7 @@ async function aggiornaAnagraficaAllaConsegna(prenotazione, documenti) {
   }
   // Solo i campi vuoti: quello che lo staff ha gia' scritto non si tocca.
   const daCompletare = Object.fromEntries(
-    ['patente', 'scadenzaPatente', 'email', 'telefono']
+    ['patente', 'scadenzaPatente', 'rilascioPatente', 'email', 'telefono']
       .filter((campo) => dati[campo] && !esistente[campo])
       .map((campo) => [campo, dati[campo]])
   );

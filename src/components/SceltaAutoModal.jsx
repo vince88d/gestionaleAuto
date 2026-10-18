@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Modal from 'react-modal';
 import { X } from 'lucide-react';
 import { dataEOra, formattaData } from '../utils/scadenze';
+import { controlloAbbinamento } from '../utils/neopatentati';
 import '../styles/Prenotazione.css';
 
 const descrizione = (v) => [
@@ -14,13 +15,17 @@ const descrizione = (v) => [
 // pagato solo la categoria. `consegnaSubito`: il ritiro e' oggi o gia'
 // passato, quindi il pulsante principale sceglie e apre subito la consegna.
 export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaSubito, onClose, onConferma }) {
-  const [targa, setTarga] = useState(veicoliLiberi.length === 1 ? veicoliLiberi[0].targa : '');
+  // Neopatentato (data di rilascio dal sito o dal cliente): le auto non adatte
+  // restano in elenco, grigie e con il motivo, ma non si scelgono.
+  const controllo = (v) => controlloAbbinamento({ veicolo: v, rilascio: prenotazione?.rilascioPatente, ritiro: prenotazione?.dataInizio });
+  const adatte = veicoliLiberi.filter((v) => controllo(v).ok);
+  const [targa, setTarga] = useState(adatte.length === 1 ? adatte[0].targa : '');
   const [salvataggio, setSalvataggio] = useState(false);
 
   if (!prenotazione) return null;
 
   const conferma = async (consegna) => {
-    const veicolo = veicoliLiberi.find((v) => v.targa === targa);
+    const veicolo = adatte.find((v) => v.targa === targa);
     if (!veicolo) return;
     setSalvataggio(true);
     try {
@@ -65,23 +70,32 @@ export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaS
             </div>
           ) : (
             <section className="pz-sezione">
+              {controllo(veicoliLiberi[0]).neopatentato && (
+                <div className="sa-neopat" role="status">
+                  <b>Cliente neopatentato</b> (patente del {formattaData(prenotazione.rilascioPatente)}): per legge guida solo auto fino a 75 kW per tonnellata e 105 kW. Le auto non adatte sono in grigio.
+                </div>
+              )}
               <h3 className="pz-titolo-sezione">
                 Auto «{categoria}» libere in queste date ({veicoliLiberi.length})
               </h3>
               <div className="sa-lista" role="radiogroup" aria-label="Auto libere">
-                {veicoliLiberi.map((v) => (
-                  <label key={v.targa} className={`sa-voce ${targa === v.targa ? 'sa-voce--scelta' : ''}`}>
+                {veicoliLiberi.map((v) => {
+                  const c = controllo(v);
+                  return (
+                  <label key={v.targa} className={`sa-voce ${targa === v.targa ? 'sa-voce--scelta' : ''} ${c.ok ? '' : 'sa-voce--no'}`}>
                     <input
-                      type="radio" name="sa-auto" value={v.targa}
+                      type="radio" name="sa-auto" value={v.targa} disabled={!c.ok}
                       checked={targa === v.targa} onChange={() => setTarga(v.targa)}
                     />
                     <span className="sa-testi">
                       <span className="sa-nome">{[v.marca, v.modello].filter(Boolean).join(' ') || v.targa}</span>
                       {descrizione(v) && <span className="sa-det">{descrizione(v)}</span>}
+                      {!c.ok && <span className="sa-motivo">{c.messaggio}</span>}
                     </span>
                     <span className="sa-targa">{v.targa}</span>
                   </label>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}

@@ -9,6 +9,7 @@ import { controllaPatente } from '../utils/validaCliente';
 import { codiceFiscaleValido } from '../utils/nuovaPrenotazione';
 import { erroriConsegna, riassuntoErrori } from '../utils/controlloConsegna';
 import { controlloEtaConsegna } from '../utils/etaConducenti';
+import { controlloAbbinamento } from '../utils/neopatentati';
 import { pagataSulSito } from '../utils/regolePrenotazione';
 import ControlloDotazione from './ControlloDotazione';
 import SchemaDanni from './SchemaDanni';
@@ -69,6 +70,13 @@ function SchedaVeicoloModal({
   const scadenzaInAnagrafica = cliente?.scadenzaPatente || '';
   const chiediScadenza = Boolean(prenotazione) && !scadenzaInAnagrafica;
   const scadenzaPatente = scadenzaInAnagrafica || documenti.scadenzaPatente || '';
+  // Data di rilascio: dalla prenotazione o dall'anagrafica, altrimenti si chiede (limiti neopatentati).
+  const rilascioNoto = prenotazione?.rilascioPatente || cliente?.rilascioPatente || '';
+  const chiediRilascio = Boolean(prenotazione) && !rilascioNoto;
+  const rilascioPatente = rilascioNoto || documenti.rilascioPatente || '';
+  const neopatentati = prenotazione && veicolo
+    ? controlloAbbinamento({ veicolo, rilascio: rilascioPatente, ritiro: giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio })
+    : null;
   const esitoPatente = prenotazione
     ? controllaPatente(scadenzaPatente, {
         ritiro: giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio,
@@ -82,6 +90,7 @@ function SchedaVeicoloModal({
     chiediCodiceFiscale, codiceFiscaleValido: codiceFiscaleValido(documenti.codiceFiscale),
     chiediPatente, patente: documenti.patente,
     chiediScadenza, scadenzaPatente: documenti.scadenzaPatente,
+    chiediRilascio, rilascioPatente: documenti.rilascioPatente,
     carburante: schedaVeicolo.carburante, km: schedaVeicolo.kmIniziali,
     danniSenzaDescrizione: senzaDescrizione(segniConsegna).length,
   }) : [];
@@ -120,7 +129,7 @@ function SchedaVeicoloModal({
 
   // Porta lo sguardo sul primo campo mancante: scorre fin li' e lo seleziona.
   const vaiAlCampo = (campo) => {
-    const id = { codiceFiscale: 'consegna-codice-fiscale', patente: 'consegna-patente', scadenzaPatente: 'consegna-scadenza-patente', km: 'consegna-km' }[campo];
+    const id = { codiceFiscale: 'consegna-codice-fiscale', patente: 'consegna-patente', scadenzaPatente: 'consegna-scadenza-patente', rilascioPatente: 'consegna-rilascio-patente', km: 'consegna-km' }[campo];
     const elemento = campo === 'carburante'
       ? document.querySelector('#consegna-carburante-scelte button')
       : campo === 'danni'
@@ -138,11 +147,16 @@ function SchedaVeicoloModal({
       chiediCodiceFiscale, codiceFiscaleValido: codiceFiscaleValido(documenti.codiceFiscale),
       chiediPatente, patente: documenti.patente,
       chiediScadenza, scadenzaPatente: documenti.scadenzaPatente,
+      chiediRilascio, rilascioPatente: documenti.rilascioPatente,
       carburante: schedaVeicolo.carburante, km: schedaVeicolo.kmIniziali,
     danniSenzaDescrizione: senzaDescrizione(segniConsegna).length,
     });
     if (mancanti.length > 0) {
       vaiAlCampo(mancanti[0].campo);
+      return;
+    }
+    if (neopatentati && !neopatentati.ok) {
+      toast.error(neopatentati.messaggio);
       return;
     }
     if (esitoPatente.blocca) {
@@ -181,7 +195,7 @@ function SchedaVeicoloModal({
         <div className="pz-corpo">
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Documenti del cliente</h3>
-            {(chiediPatente || chiediScadenza || chiediCodiceFiscale) ? (
+            {(chiediPatente || chiediScadenza || chiediCodiceFiscale || chiediRilascio) ? (
               <div className="pz-griglia pz-griglia--2">
                 {chiediCodiceFiscale && (
                   <label className={`pz-campo pz-intera ${erroreDi('codiceFiscale') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-codice-fiscale">
@@ -240,6 +254,25 @@ function SchedaVeicoloModal({
                     <strong style={{ fontSize: 14, lineHeight: '40px' }}>{formattaData(scadenzaPatente)}</strong>
                   </div>
                 )}
+                {chiediRilascio ? (
+                  <label className={`pz-campo ${erroreDi('rilascioPatente') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-rilascio-patente">
+                    <span className="pz-etichetta">Patente rilasciata il <span className="pz-obbligatorio">*</span></span>
+                    <input
+                      id="consegna-rilascio-patente"
+                      type="date"
+                      value={documenti.rilascioPatente || ''}
+                      onChange={(e) => aggiornaDocumento('rilascioPatente', e.target.value)}
+                      required
+                      aria-invalid={Boolean(erroreDi('rilascioPatente'))}
+                    />
+                    {erroreDi('rilascioPatente') && <p className="pz-errore" role="alert">{erroreDi('rilascioPatente')}</p>}
+                  </label>
+                ) : (
+                  <div className="pz-campo">
+                    <span className="pz-etichetta">Patente rilasciata il</span>
+                    <strong style={{ fontSize: 14, lineHeight: '40px' }}>{formattaData(rilascioPatente)}</strong>
+                  </div>
+                )}
                 <p className="pz-aiuto pz-intera">
                   Controlla la patente in sede. I dati vanno anche nella scheda del cliente
                   {cliente ? '' : ', che verrà aggiunto ai Clienti'}.
@@ -250,7 +283,15 @@ function SchedaVeicoloModal({
                 <div className="pz-intera"><dt>Codice fiscale</dt><dd>{prenotazione?.codiceFiscale}</dd></div>
                 <div><dt>Numero patente</dt><dd>{patenteNota}</dd></div>
                 <div><dt>Scadenza patente</dt><dd>{formattaData(scadenzaPatente)}</dd></div>
+                <div><dt>Patente rilasciata il</dt><dd>{formattaData(rilascioPatente)}</dd></div>
               </dl>
+            )}
+            {neopatentati?.neopatentato && (
+              <p className={`pz-avviso pz-avviso--${neopatentati.ok ? 'attenzione' : 'errore'}`} role={neopatentati.ok ? undefined : 'alert'} style={{ marginTop: 12 }}>
+                {neopatentati.ok
+                  ? `Cliente neopatentato (limiti fino al ${neopatentati.finoAl.split('-').reverse().join('/')}): questa auto è adatta (${neopatentati.idoneita.motivo}). Controlla la data di rilascio sul documento.`
+                  : neopatentati.messaggio}
+              </p>
             )}
             {esitoPatente.blocca && <p className="pz-avviso pz-avviso--errore" role="alert" style={{ marginTop: 12 }}>{esitoPatente.blocca}</p>}
             {esitoPatente.avviso && <p className="pz-avviso pz-avviso--attenzione" style={{ marginTop: 12 }}>{esitoPatente.avviso}</p>}
