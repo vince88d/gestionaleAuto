@@ -94,3 +94,25 @@
 .add-conferma-az { display: flex; gap: 10px; }
 .add-elimina { border-color: #a93226; background: #a93226; color: #fff; font-weight: 800; }
 .add-elimina:hover:not(:disabled) { background: #8c2a20; }
+
+/* Come si calcola il ritardo */
+.add-come-riga td { padding: 0 22px 18px; border-bottom: none; }
+.add-come { margin: 0; padding: 16px; border: 1px solid #e3e8ee; border-radius: 12px; background: #fbfcfd; }
+.add-come legend { padding: 0 6px; font-size: 15px; font-weight: 800; color: #1f2d3a; }
+.add-come-d { margin: 0 0 10px; font-size: 14px; color: #5d6b79; }
+.add-metodi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.add-metodo { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 2px solid #e3e8ee; border-radius: 12px; background: #fff; font-size: 14px; line-height: 1.4; color: #3b4856; cursor: pointer; }
+.add-metodo--on { border-color: #1a6fb0; background: #f5faff; box-shadow: 0 0 0 3px #d6e8f7; }
+.add-metodo-testa { display: flex; align-items: center; gap: 8px; }
+.add-metodo-testa b { font-size: 15.5px; color: #1f2d3a; }
+.add-metodo input { width: 20px; height: 20px; margin: 0; accent-color: #1a6fb0; }
+.add-par { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 14px; font-size: 15.5px; }
+.add-perc { position: relative; width: 110px; }
+.add-perc .opt-input { padding-right: 30px; }
+.add-perc span { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); font-weight: 600; color: #55616d; }
+.add-par .opt-euro { width: 130px; }
+.add-es { width: 100%; margin-top: 14px; border: 1px solid #e3e8ee; border-collapse: collapse; background: #fff; font-size: 14.5px; }
+.add-es caption { padding-bottom: 6px; text-align: left; font-size: 13.5px; color: #5d6b79; }
+.add-es th { text-align: left; padding: 8px 12px; background: #f7f9fb; font-size: 13.5px; color: #3b4856; }
+.add-es td { padding: 8px 12px; border-top: 1px solid #eef1f5; }
+@media (max-width: 820px) { .add-metodi { grid-template-columns: 1fr; } }

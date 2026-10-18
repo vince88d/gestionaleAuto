@@ -4,10 +4,11 @@ import { Trash2 } from 'lucide-react';
 import { ascoltaAddebiti, salvaAddebiti } from '../lib/firestoreAddebiti';
 import { useOrari } from '../lib/firestoreOrari';
 import {
-  ADDEBITI, MODI_VOCE, RITARDO, addebitiPerForm, nuovaVoce, preparaAddebiti, validaAddebiti, vociPerSito,
+  ADDEBITI, METODI_RITARDO, MODI_VOCE, RITARDO, addebitiPerForm, nuovaVoce, preparaAddebiti, validaAddebiti, vociPerSito,
 } from '../utils/addebiti';
 import { CampoEuro } from '../components/CampiForm';
 import { leggiEuro } from '../utils/protezioni';
+import { ritardoAOre } from '../utils/rientro';
 import './CatalogoOptional.css';
 import './AddebitiRientro.css';
 
@@ -47,6 +48,16 @@ function AddebitiRientro() {
   const sito = (chiave, valore) => setForm((f) => ({ ...f, sito: { ...f.sito, [chiave]: valore } }));
   const voce = (i, campi) => setForm((f) => ({ ...f, voci: f.voci.map((v, j) => (j === i ? { ...v, ...campi } : v)) }));
   const tolte = form.tolte || [];
+  const cambiaRitardo = (campi) => setForm((f) => ({ ...f, ritardo: { ...f.ritardo, ...campi } }));
+  const ritardoPronto = preparaAddebiti(form).ritardo;
+  const PREZZO_ESEMPIO = 60;
+  const esempiRitardo = [1, 2, 3, 6, 12].map((h) => ({
+    h,
+    ...ritardoAOre({
+      prenotazione: { dataFine: '2026-01-02', oraFine: '10:00' }, dataRientro: '2026-01-02', oraRientro: `${10 + h}:00`,
+      tolleranza: 0, ritardo: ritardoPronto, prezzoGiorno: PREZZO_ESEMPIO,
+    }) || { ore: h, importo: PREZZO_ESEMPIO },
+  }));
   const togli = (k) => setForm((f) => ({ ...f, tolte: [...(f.tolte || []), k] }));
   const rimetti = (k) => setForm((f) => ({ ...f, tolte: (f.tolte || []).filter((x) => x !== k), sito: { ...f.sito, [k]: true } }));
   const anteprima = vociPerSito(preparaAddebiti(form), orari?.tolleranzaMinuti);
@@ -120,10 +131,67 @@ function AddebitiRientro() {
                       <a href="#/impostazioni-azienda">Cambia in Orari della sede</a>
                     </span>
                   </td>
-                  <td><span className="add-auto">Automatico</span></td>
+                  <td><span className="add-auto">{METODI_RITARDO.find((m) => m.valore === form.ritardo.metodo)?.nome}</span></td>
                   <td><Interruttore acceso={!tolte.includes('ritardo')} onChange={(x) => (x ? rimetti('ritardo') : togli('ritardo'))} nome={RITARDO.nome} etichetta="In uso" /></td>
                   <td><Interruttore acceso={form.sito.ritardo} onChange={(x) => sito('ritardo', x)} nome={RITARDO.nome} bloccato={tolte.includes('ritardo')} /></td>
                 </tr>
+                {!tolte.includes('ritardo') && (
+                  <tr className="add-come-riga">
+                    <td colSpan={4}>
+                      <fieldset className="add-come">
+                        <legend>Come si calcola il ritardo</legend>
+                        <p className="add-come-d">Scegli un metodo. Al rientro il gestionale propone già l’importo, e lo puoi sempre cambiare.</p>
+                        <div className="add-metodi">
+                          {METODI_RITARDO.map((m) => (
+                            <label key={m.valore} className={`add-metodo ${form.ritardo.metodo === m.valore ? 'add-metodo--on' : ''}`}>
+                              <span className="add-metodo-testa">
+                                <input type="radio" name="metodo-ritardo" value={m.valore} checked={form.ritardo.metodo === m.valore} onChange={() => cambiaRitardo({ metodo: m.valore })} />
+                                <b>{m.nome}</b>
+                              </span>
+                              <span>{m.testo}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {form.ritardo.metodo === 'ore' && (
+                          <div className="add-par">
+                            <label htmlFor="rit-perc">Per ogni ora si paga il</label>
+                            <div className="add-perc">
+                              <input id="rit-perc" className="opt-input" type="text" inputMode="decimal" value={form.ritardo.percentuale} aria-invalid={mostra('ritardo.percentuale') ? true : undefined} onChange={(e) => cambiaRitardo({ percentuale: e.target.value })} />
+                              <span aria-hidden="true">%</span>
+                            </div>
+                            <span>del prezzo giornaliero</span>
+                          </div>
+                        )}
+                        {form.ritardo.metodo === 'oraFissa' && (
+                          <>
+                            <div className="add-par">
+                              <label htmlFor="rit-ora">Per ogni ora si pagano</label>
+                              <CampoEuro id="rit-ora" valore={form.ritardo.euroOra} onChange={(v) => cambiaRitardo({ euroOra: v })} invalido={Boolean(mostra('ritardo.euroOra'))} />
+                            </div>
+                            <label className="opt-spunta add-sito">
+                              <input type="checkbox" checked={form.ritardo.tetto} onChange={(e) => cambiaRitardo({ tetto: e.target.checked })} />
+                              Non più del prezzo di un giorno <span className="add-fac">(consigliato: il ritardo non costa più di un giorno in più)</span>
+                            </label>
+                          </>
+                        )}
+                        {(mostra('ritardo.percentuale') || mostra('ritardo.euroOra')) && (
+                          <span className="opt-errore-campo" role="alert">{errori['ritardo.percentuale'] || errori['ritardo.euroOra']}</span>
+                        )}
+                        {form.ritardo.metodo !== 'giorno' && (
+                          <table className="add-es">
+                            <caption>Esempio con un’auto a {PREZZO_ESEMPIO} € al giorno (le ore contano oltre la tolleranza; ogni ora iniziata vale un’ora)</caption>
+                            <thead><tr><th scope="col">Ritardo</th><th scope="col">Si paga</th></tr></thead>
+                            <tbody>
+                              {esempiRitardo.map((e) => (
+                                <tr key={e.h}><td>{e.h} {e.h === 1 ? 'ora' : 'ore'}</td><td><b>{e.importo.toLocaleString('it-IT', { maximumFractionDigits: 2 })} €</b></td></tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </fieldset>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </section>
@@ -170,7 +238,7 @@ function AddebitiRientro() {
                 {!mostra(`voci.${i}.importo`) && gratis(v.importo) && <span className="add-gratis">Importo 0: è gratis, non si mostra al cliente.</span>}
                 <div className="add-voce-sito">
                   <span>In uso:</span>
-                  <Interruttore acceso={v.attiva !== false} onChange={(x) => voce(i, { attiva: x })} nome={v.nome || `voce ${i + 1}`} etichetta="In uso" />
+                  <Interruttore acceso={v.attiva !== false} onChange={(x) => voce(i, x ? { attiva: true, sito: true } : { attiva: false })} nome={v.nome || `voce ${i + 1}`} etichetta="In uso" />
                   <span>Il cliente la vede sul sito:</span>
                   <Interruttore acceso={v.sito} onChange={(x) => voce(i, { sito: x })} nome={v.nome || `voce ${i + 1}`} bloccato={v.attiva === false || gratis(v.importo)} />
                 </div>

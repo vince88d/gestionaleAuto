@@ -22,8 +22,17 @@ export const ADDEBITI = [
 export const RITARDO = {
   chiave: 'ritardo',
   nome: 'Ritardo nella riconsegna',
-  aiuto: 'Automatico: giorni in più × prezzo al giorno della prenotazione, oltre la tolleranza (vedi la tolleranza qui sotto).',
+  aiuto: 'Quanto si paga se l’auto torna oltre l’ora concordata, passata la tolleranza.',
 };
+
+// Come si calcola il ritardo (il gestore sceglie uno di questi metodi e scrive
+// solo i numeri). Ore di ritardo = ore iniziate oltre la tolleranza.
+export const METODI_RITARDO = [
+  { valore: 'giorno', nome: 'Un giorno intero', testo: 'Qualsiasi ritardo oltre la tolleranza costa un giorno al prezzo della prenotazione.' },
+  { valore: 'ore', nome: 'A ore, poi giorno intero', testo: 'Ogni ora costa una parte del prezzo giornaliero, fino al giorno intero.' },
+  { valore: 'oraFissa', nome: 'Importo fisso per ora', testo: 'Una cifra tua per ogni ora di ritardo, uguale per tutte le auto.' },
+];
+export const RITARDO_DI_PARTENZA = { metodo: 'giorno', percentuale: 33, euroOra: 10, tetto: true };
 
 // Prezzi di partenza.
 export const ADDEBITI_DI_PARTENZA = { rifornimentoQuarto: 20, kmInPiu: 0.25, pulizia: 30, chiave: 150, oggettoMancante: 15, gestioneMulta: 30 };
@@ -71,8 +80,16 @@ export function normalizzaAddebiti(dati = {}) {
   // Voci di partenza che il gestore ha tolto: non si propongono al rientro e
   // non si mostrano sul sito, ma l'importo resta per poterle rimettere.
   const tolte = (Array.isArray(d.tolte) ? d.tolte : []).filter((k, i, a) => k in SITO_DI_PARTENZA && a.indexOf(k) === i);
+  const r = d.ritardo && typeof d.ritardo === 'object' ? d.ritardo : {};
+  const perc = importo(r.percentuale, RITARDO_DI_PARTENZA.percentuale);
   return {
     ...Object.fromEntries(ADDEBITI.map(({ chiave }) => [chiave, importo(d[chiave], ADDEBITI_DI_PARTENZA[chiave])])),
+    ritardo: {
+      metodo: METODI_RITARDO.some((m) => m.valore === r.metodo) ? r.metodo : RITARDO_DI_PARTENZA.metodo,
+      percentuale: perc > 0 && perc <= 100 ? perc : RITARDO_DI_PARTENZA.percentuale,
+      euroOra: importo(r.euroOra, RITARDO_DI_PARTENZA.euroOra),
+      tetto: r.tetto !== false,
+    },
     sito: Object.fromEntries(Object.entries(SITO_DI_PARTENZA).map(([k, base]) => [k, !tolte.includes(k) && (typeof sito[k] === 'boolean' ? sito[k] : base)])),
     tolte,
     voci: normalizzaVoci(d.voci),
@@ -89,6 +106,17 @@ export function validaAddebiti(form = {}) {
     if (n === null) errori[chiave] = 'Scrivi l\'importo (anche 0).';
     else if (Number.isNaN(n) || n < 0) errori[chiave] = 'Scrivi un importo, es. 20';
   });
+  const r = form.ritardo || {};
+  if (!(form.tolte || []).includes('ritardo')) {
+    if (r.metodo === 'ore') {
+      const n = leggiEuro(r.percentuale);
+      if (n === null || Number.isNaN(n) || n <= 0 || n > 100) errori['ritardo.percentuale'] = 'Scrivi una percentuale da 1 a 100, es. 33';
+    }
+    if (r.metodo === 'oraFissa') {
+      const n = leggiEuro(r.euroOra);
+      if (n === null || Number.isNaN(n) || n <= 0) errori['ritardo.euroOra'] = 'Scrivi quanto costa ogni ora, es. 10';
+    }
+  }
   (form.voci || []).forEach((v, i) => {
     if (!String(v.nome ?? '').trim()) errori[`voci.${i}.nome`] = 'Scrivi il nome.';
     const n = leggiEuro(v.importo);
@@ -105,6 +133,7 @@ export function addebitiPerForm(dati) {
   const n = normalizzaAddebiti(dati);
   return {
     ...Object.fromEntries(ADDEBITI.map(({ chiave }) => [chiave, testoEuro(n[chiave])])),
+    ritardo: { metodo: n.ritardo.metodo, percentuale: testoEuro(n.ritardo.percentuale), euroOra: testoEuro(n.ritardo.euroOra), tetto: n.ritardo.tetto },
     sito: { ...n.sito },
     tolte: [...n.tolte],
     voci: n.voci.map((v) => ({ ...v, importo: testoEuro(v.importo) })),
@@ -132,6 +161,14 @@ export function vociLibereListino(prezzi, giorni = 1) {
   }));
 }
 
+// Frase del ritardo per il cliente, secondo il metodo scelto.
+export function testoRitardo(r = RITARDO_DI_PARTENZA, tolleranza) {
+  const oltre = Number(tolleranza) > 0 ? `oltre ${tolleranza} minuti ` : '';
+  if (r.metodo === 'ore') return `${oltre}si paga ogni ora il ${testoEuro(r.percentuale)}% del prezzo giornaliero, fino a un giorno intero`;
+  if (r.metodo === 'oraFissa') return `${oltre}si pagano ${testoEuro(r.euroOra)} € per ogni ora${r.tetto ? ', fino a un giorno intero' : ''}`;
+  return `${oltre}si paga un giorno in più`;
+}
+
 // Testi per l'anteprima «Come lo vede il cliente»: [{ id, nome, testo }] delle
 // voci da mostrare sul sito (importo 0 = gratis, non si mostra; il ritardo si
 // mostra sempre se acceso).
@@ -147,11 +184,7 @@ export function vociPerSito(dati, tolleranza) {
     righe.push({ id: v.id, nome: v.nome, testo: `${testoEuro(v.importo)} €${v.modo === 'giorno' ? ' al giorno' : ''}` });
   });
   if (n.sito.ritardo) {
-    righe.push({
-      id: 'ritardo',
-      nome: RITARDO.nome,
-      testo: Number(tolleranza) > 0 ? `oltre ${tolleranza} minuti si paga un giorno in più` : 'si paga un giorno in più',
-    });
+    righe.push({ id: 'ritardo', nome: RITARDO.nome, testo: testoRitardo(n.ritardo, tolleranza) });
   }
   return righe;
 }

@@ -50,6 +50,38 @@ export function giorniInPiu({ prenotazione = {}, dataRientro, oraRientro, toller
   return Math.max(0, effettivi - previsti);
 }
 
+// Minuti di ritardo rispetto a data e ora di fine della prenotazione (0 se in
+// orario); null se mancano le ore (allora si contano solo i giorni).
+export function minutiDiRitardo({ prenotazione = {}, dataRientro, oraRientro }) {
+  const quando = (d, o) => {
+    const m = /^(\d{2}):(\d{2})$/.exec(o || '');
+    const g = /^(\d{4})-(\d{2})-(\d{2})$/.exec(giorno(d));
+    if (!m || !g) return null;
+    return Date.UTC(Number(g[1]), Number(g[2]) - 1, Number(g[3]), Number(m[1]), Number(m[2])) / 60000;
+  };
+  const previsto = quando(prenotazione.dataFine, prenotazione.oraFine);
+  const effettivo = quando(dataRientro, oraRientro);
+  return previsto === null || effettivo === null ? null : Math.max(0, effettivo - previsto);
+}
+
+// Importo del ritardo, secondo il metodo scelto in «Penali e addebiti».
+// { ore, importo } con ore = ore iniziate oltre la tolleranza; null se non
+// serve un calcolo a ore (metodo «giorno intero», oppure mancano le ore).
+export function ritardoAOre({ prenotazione = {}, dataRientro, oraRientro, tolleranza, ritardo, prezzoGiorno }) {
+  if (!ritardo || ritardo.metodo === 'giorno') return null;
+  const minuti = minutiDiRitardo({ prenotazione, dataRientro, oraRientro });
+  const toll = Number(tolleranza ?? prenotazione.tolleranzaMinuti ?? 0) || 0;
+  if (minuti === null || minuti <= toll) return minuti === null ? null : { ore: 0, importo: 0 };
+  const ore = Math.ceil((minuti - toll) / 60);
+  const giorniPieni = Math.floor(ore / 24);
+  const resto = ore % 24;
+  const costoOra = ritardo.metodo === 'ore' ? (prezzoGiorno * ritardo.percentuale) / 100 : ritardo.euroOra;
+  const tetto = ritardo.metodo === 'ore' || ritardo.tetto;
+  const parziale = tetto ? Math.min(resto * costoOra, prezzoGiorno) : resto * costoOra;
+  const pieni = tetto ? giorniPieni * prezzoGiorno : giorniPieni * 24 * costoOra;
+  return { ore, importo: arrotonda(pieni + parziale) };
+}
+
 // Ora entro cui si poteva rientrare senza giorni in piu' ("9:29"), o null.
 export function rientroEntro(prenotazione = {}, tolleranza) {
   const m = /^(\d{2}):(\d{2})$/.exec(prenotazione.oraFine || '');
@@ -71,10 +103,23 @@ export function proponiAddebiti({
   nonTornati = [], danno = '', tolleranza, km,
 }) {
   const righe = [];
-  const giorni = giorniInPiu({ prenotazione, dataRientro, oraRientro, tolleranza });
   const tolta = (k) => (prezzi.tolte || []).includes(k);
-  if (giorni > 0 && !tolta('ritardo')) {
-    const prezzoGiorno = parseFloat(prenotazione.prezzoGiornaliero) || 0;
+  const giorni = giorniInPiu({ prenotazione, dataRientro, oraRientro, tolleranza });
+  const prezzoGiorno = parseFloat(prenotazione.prezzoGiornaliero) || 0;
+  const aOre = ritardoAOre({ prenotazione, dataRientro, oraRientro, tolleranza, ritardo: prezzi.ritardo, prezzoGiorno });
+  if (!tolta('ritardo') && aOre && aOre.ore > 0) {
+    const euro = (n) => n.toLocaleString('it-IT', { minimumFractionDigits: 2 });
+    const r = prezzi.ritardo;
+    righe.push({
+      id: 'ritardo',
+      nome: `Ritardo: ${aOre.ore} ${aOre.ore === 1 ? 'ora' : 'ore'}`,
+      dettaglio: r.metodo === 'ore'
+        ? `${aOre.ore} ${aOre.ore === 1 ? 'ora' : 'ore'} oltre la tolleranza × ${r.percentuale.toLocaleString('it-IT')}% di ${euro(prezzoGiorno)} € (prezzo al giorno della prenotazione)`
+        : `${aOre.ore} ${aOre.ore === 1 ? 'ora' : 'ore'} oltre la tolleranza × ${euro(r.euroOra)} € all'ora${r.tetto ? ' (al massimo un giorno intero)' : ''}`,
+      importo: aOre.importo,
+      attiva: true,
+    });
+  } else if (!tolta('ritardo') && !aOre && giorni > 0) {
     righe.push({
       id: 'ritardo',
       nome: `Ritardo: ${giorni} ${giorni === 1 ? 'giorno' : 'giorni'} in più`,

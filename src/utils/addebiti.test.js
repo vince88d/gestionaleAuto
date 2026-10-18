@@ -5,7 +5,7 @@ import {
 
 describe('listino penali e addebiti', () => {
   it('parte dai prezzi di partenza, senza voci libere', () => {
-    expect(normalizzaAddebiti(undefined)).toEqual({ ...ADDEBITI_DI_PARTENZA, sito: SITO_DI_PARTENZA, tolte: [], voci: [] });
+    expect(normalizzaAddebiti(undefined)).toEqual({ ...ADDEBITI_DI_PARTENZA, sito: SITO_DI_PARTENZA, tolte: [], ritardo: { metodo: "giorno", percentuale: 33, euroOra: 10, tetto: true }, voci: [] });
   });
 
   it('legge gli importi all\'italiana e scarta quelli sbagliati', () => {
