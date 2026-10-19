@@ -36,6 +36,16 @@ const numero = (v) => {
 };
 const una = (n) => Math.round(n * 10) / 10;
 const virgola = (n) => n.toLocaleString('it-IT', { maximumFractionDigits: 1 });
+// Per le frasi di rifiuto: mai un valore che sembri nel limite (75,02 non diventa «75»).
+const viraSu = (n) => (Math.ceil(n * 100) / 100).toLocaleString('it-IT', { maximumFractionDigits: 2 });
+
+// kW per tonnellata ESATTO, senza arrotondare: il confronto con la legge
+// («superiore a 75») si fa su questo, l'arrotondamento e' solo per mostrare.
+const kwTEsatto = (potenzaKw, taraKg) => {
+  const p = numero(potenzaKw);
+  const t = numero(taraKg);
+  return p === null || t === null ? null : (p * 1000) / t; // p*1000/t, non p/(t/1000): niente errori da virgola mobile sul limite
+};
 
 // kW per tonnellata (un decimale), o null se mancano potenza o tara.
 export function kwPerTonnellata(potenzaKw, taraKg) {
@@ -51,11 +61,12 @@ export function idoneitaNeopatentati(veicolo = {}) {
   const limiti = limitiPer(veicolo.carburante);
   const kw = numero(veicolo.potenzaKw);
   const kwT = kwPerTonnellata(veicolo.potenzaKw, veicolo.taraKg);
-  if (kw === null || kwT === null) {
+  const esatto = kwTEsatto(veicolo.potenzaKw, veicolo.taraKg);
+  if (kw === null || kwT === null || esatto === null) {
     return { esito: 'nd', kwT, kw, limiti, motivo: 'Mancano potenza e tara: completa la scheda del veicolo.' };
   }
   const motivi = [];
-  if (kwT > limiti.kwPerTonnellata) motivi.push(`${virgola(kwT)} kW/t, oltre il limite di ${limiti.kwPerTonnellata}`);
+  if (esatto > limiti.kwPerTonnellata) motivi.push(`${viraSu(esatto)} kW/t, oltre il limite di ${limiti.kwPerTonnellata}`);
   if (kw > limiti.kwMax) motivi.push(`${virgola(kw)} kW, oltre il limite di ${limiti.kwMax}`);
   if (motivi.length > 0) return { esito: 'no', kwT, kw, limiti, motivo: motivi.join(' e ') };
   return { esito: 'si', kwT, kw, limiti, motivo: `${virgola(kwT)} kW/t (limite ${limiti.kwPerTonnellata}) e ${virgola(kw)} kW (limite ${limiti.kwMax})` };

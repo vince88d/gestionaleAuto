@@ -21,7 +21,7 @@ describe('neopatentati', () => {
     expect(idoneitaNeopatentati(panda).esito).toBe('si');
     const no = idoneitaNeopatentati(potente);
     expect(no.esito).toBe('no');
-    expect(no.motivo).toMatch(/84,6 kW\/t, oltre il limite di 75/);
+    expect(no.motivo).toMatch(/84,62 kW\/t, oltre il limite di 75/);
     expect(no.motivo).toMatch(/110 kW, oltre il limite di 105/);
     expect(idoneitaNeopatentati({ carburante: 'Benzina', potenzaKw: 66 }).esito).toBe('nd');
   });
@@ -33,6 +33,20 @@ describe('neopatentati', () => {
     expect(idoneitaNeopatentati({ potenzaKw: 80, taraKg: 1000 }).esito).toBe('no');
     // esattamente sul limite e' consentito
     expect(idoneitaNeopatentati({ potenzaKw: 75, taraKg: 1000 }).esito).toBe('si');
+  });
+
+  test('il confronto e\' sul valore esatto, non arrotondato', () => {
+    // 88 kW / 1173 kg = 75,02 kW/t: oltre il limite anche se arrotondato fa 75,0
+    const poco = idoneitaNeopatentati({ potenzaKw: 88, taraKg: 1173 });
+    expect(poco.esito).toBe('no');
+    expect(poco.motivo).toMatch(/75,03 kW\/t, oltre il limite di 75/);
+    // 90 kW / 1200 kg = 75 esatti: consentito (nessun errore di virgola mobile)
+    expect(idoneitaNeopatentati({ potenzaKw: 90, taraKg: 1200 }).esito).toBe('si');
+    // 105 kW (con peso alto) consentito, 105,1 no
+    expect(idoneitaNeopatentati({ potenzaKw: 105, taraKg: 1400 }).esito).toBe('si');
+    expect(idoneitaNeopatentati({ potenzaKw: 105.1, taraKg: 1500 }).esito).toBe('no');
+    // appena sotto il limite
+    expect(idoneitaNeopatentati({ potenzaKw: 101, taraKg: 1347 }).esito).toBe('si');
   });
 
   test('fine dei 3 anni', () => {
