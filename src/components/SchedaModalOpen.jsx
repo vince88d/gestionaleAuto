@@ -9,7 +9,7 @@ import { controllaPatente } from '../utils/validaCliente';
 import { codiceFiscaleValido } from '../utils/nuovaPrenotazione';
 import { erroriConsegna, riassuntoErrori } from '../utils/controlloConsegna';
 import { controlloEtaConsegna } from '../utils/etaConducenti';
-import { controlloAbbinamento, AVVISO_CONTROLLO, AVVISO_ELETTRICHE_IBRIDE, eElettricaOIbrida } from '../utils/neopatentati';
+import { controlloAbbinamento, statoVelocita, testoVelocita, AVVISO_CONTROLLO, AVVISO_ELETTRICHE_IBRIDE, eElettricaOIbrida } from '../utils/neopatentati';
 import { pagataSulSito } from '../utils/regolePrenotazione';
 import ControlloDotazione from './ControlloDotazione';
 import SchemaDanni from './SchemaDanni';
@@ -77,6 +77,7 @@ function SchedaVeicoloModal({
   const neopatentati = prenotazione && veicolo
     ? controlloAbbinamento({ veicolo, rilascio: rilascioPatente, ritiro: giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio })
     : null;
+  const velocita = prenotazione ? statoVelocita(rilascioPatente, giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio) : { soggetto: null, finoAl: null };
   const esitoPatente = prenotazione
     ? controllaPatente(scadenzaPatente, {
         ritiro: giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio,
@@ -292,6 +293,11 @@ function SchedaVeicoloModal({
                   ? `Cliente neopatentato (limiti fino al ${neopatentati.finoAl.split('-').reverse().join('/')}): questa auto risulta nei limiti secondo i dati del veicolo (${neopatentati.idoneita.motivo}). Controlla la data di rilascio sul documento.`
                   : neopatentati.messaggio}
                 <br /><small>{AVVISO_CONTROLLO}{eElettricaOIbrida(veicolo?.carburante) ? ` ${AVVISO_ELETTRICHE_IBRIDE}` : ''}</small>
+              </p>
+            )}
+            {velocita.soggetto === true && (
+              <p className="pz-avviso pz-avviso--attenzione" role="status" style={{ marginTop: 12 }}>
+                <b>Ricorda al cliente i limiti di velocità.</b> {testoVelocita(velocita.finoAl)}
               </p>
             )}
             {esitoPatente.blocca && <p className="pz-avviso pz-avviso--errore" role="alert" style={{ marginTop: 12 }}>{esitoPatente.blocca}</p>}

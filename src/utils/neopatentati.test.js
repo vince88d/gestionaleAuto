@@ -1,5 +1,5 @@
 import {
-  kwPerTonnellata, idoneitaNeopatentati, neopatentatoFinoAl, statoPatente, testoDurataPatente, controlloAbbinamento, limitiPer, eElettricaOIbrida, AVVISO_CONTROLLO, registroControllo, LIMITI_NEOPATENTATI,
+  kwPerTonnellata, idoneitaNeopatentati, neopatentatoFinoAl, statoPatente, testoDurataPatente, controlloAbbinamento, limitiPer, eElettricaOIbrida, AVVISO_CONTROLLO, registroControllo, LIMITI_NEOPATENTATI, statoVelocita, testoVelocita,
 } from './neopatentati';
 
 const panda = { carburante: 'Benzina', potenzaKw: 66, taraKg: 1050 };
@@ -132,5 +132,23 @@ describe('tipo di veicolo', () => {
   });
   test('il registro ricorda il tipo', () => {
     expect(registroControllo({ veicolo: { tipoVeicolo: 'furgone', potenzaKw: 70, taraKg: 1500 }, rilascio: '2025-03-14', ritiro: '2026-10-20' }).veicolo.tipoVeicolo).toBe('furgone');
+  });
+});
+
+describe('limiti di velocita', () => {
+  test('valgono 3 anni per tutte le patenti, anche prima del 14/12/2024', () => {
+    expect(statoVelocita('2024-03-01', '2026-10-20')).toEqual({ soggetto: true, finoAl: '2027-03-01' });
+    expect(statoVelocita('2025-03-14', '2026-10-20').soggetto).toBe(true);
+    // la potenza invece non riguarda le patenti prima del 14/12/2024
+    expect(statoPatente('2024-03-01', '2026-10-20').neopatentato).toBe(false);
+  });
+  test('scaduti, o data mancante', () => {
+    expect(statoVelocita('2023-10-20', '2026-10-20').soggetto).toBe(false);
+    expect(statoVelocita('2023-10-21', '2026-10-20').soggetto).toBe(true);
+    expect(statoVelocita('', '2026-10-20').soggetto).toBeNull();
+  });
+  test('testo e registro', () => {
+    expect(testoVelocita('2027-03-01')).toMatch(/Fino al 01\/03\/2027.*100 km\/h.*90 km\/h/);
+    expect(registroControllo({ veicolo: panda, rilascio: '2024-03-01', ritiro: '2026-10-20' }).limiteVelocita).toEqual({ soggetto: true, finoAl: '2027-03-01' });
   });
 });

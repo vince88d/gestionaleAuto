@@ -24,7 +24,7 @@ import {
   DURATE_RAPIDE, dateRapide, giorniDelNoleggio, statoPassi, validaNuovaPrenotazione, datiDaCliente, documentiCompleti,
 } from '../utils/nuovaPrenotazione';
 import { useOrari } from '../lib/firestoreOrari';
-import { controlloAbbinamento, statoPatente, testoDurataPatente, AVVISO_CONTROLLO } from '../utils/neopatentati';
+import { controlloAbbinamento, statoPatente, testoDurataPatente, AVVISO_CONTROLLO, statoVelocita, testoVelocita } from '../utils/neopatentati';
 import { chiedeEta, opzioniEtaGestionale, normalizzaEtaConducenti, testoSupplemento } from '../utils/etaConducenti';
 import { oreDelMenu, oraBreve, oraPerGiorno, oreSelezionabili, avvisoFuoriOrario, avvisoGiornoInPiu } from '../utils/orari';
 import './BookingForm.css';
@@ -252,6 +252,7 @@ function BookingForm({
   // Neopatentati: se la patente ha meno di 3 anni l'auto deve rispettare i limiti di legge.
   const abbinamento = controlloAbbinamento({ veicolo: veicoloScelto, rilascio: dati.rilascioPatente, ritiro: dati.dataInizio });
   const patente = statoPatente(dati.rilascioPatente, dati.dataInizio);
+  const velocita = statoVelocita(dati.rilascioPatente, dati.dataInizio);
   const motivoNonAdatta = (v) => {
     const c = controlloAbbinamento({ veicolo: v, rilascio: dati.rilascioPatente, ritiro: dati.dataInizio });
     return c.ok ? '' : c.messaggio;
@@ -589,6 +590,12 @@ function BookingForm({
                   <p className="np-aiuto">{AVVISO_CONTROLLO}</p>
                 </div>
               )}
+              {velocita.soggetto === true && patente.neopatentato !== true && (
+                <div className="np-avviso-ora" role="status">
+                  <p><b>Patente da meno di 3 anni.</b> Nessun limite sulla potenza dell'auto, ma ricordalo al cliente: {testoVelocita(velocita.finoAl)}</p>
+                </div>
+              )}
+              {velocita.soggetto === true && patente.neopatentato === true && <p className="np-aiuto">{testoVelocita(velocita.finoAl)}</p>}
               {patente.neopatentato === null && <p className="np-aiuto">Se il cliente ha preso la patente da meno di 3 anni, scrivi la data: le auto troppo potenti non si potranno scegliere.</p>}
             </div>
             <SceltaVeicolo

@@ -177,6 +177,7 @@ export function registroControllo({ veicolo = {}, rilascio, ritiro, operatore = 
     giornoRitiro: giorno(ritiro),
     neopatentato: stato.neopatentato,
     finoAl: stato.finoAl,
+    limiteVelocita: statoVelocita(rilascio, ritiro),
     esito, // 'si' | 'no' | 'nd' | 'non-applicabile' | 'data-patente-mancante'
     veicolo: {
       targa: veicolo.targa || '',
@@ -188,4 +189,24 @@ export function registroControllo({ veicolo = {}, rilascio, ritiro, operatore = 
       limiti: idoneita.limiti,
     },
   };
+}
+
+// Limiti di velocita' (art. 117, comma 2): per i primi 3 anni dalla patente
+// (A2, A, B1, B) non si superano 100 km/h in autostrada e 90 km/h sulle strade
+// extraurbane principali. Vale per TUTTE le patenti entro i 3 anni, anche quelle
+// rilasciate prima del 14/12/2024 (a differenza dei limiti di potenza). Non blocca
+// niente: e' un promemoria per lo staff e per il cliente.
+export const LIMITI_VELOCITA = { autostradaKmh: 100, extraurbaneKmh: 90, anni: 3 };
+
+// { soggetto: true|false|null, finoAl } — null se manca la data di rilascio.
+export function statoVelocita(rilascio, ritiro) {
+  const r = giorno(rilascio);
+  const t = giorno(ritiro);
+  if (!DATA.test(r) || !DATA.test(t)) return { soggetto: null, finoAl: null };
+  const finoAl = neopatentatoFinoAl(r);
+  return { soggetto: t < finoAl, finoAl };
+}
+
+export function testoVelocita(finoAl) {
+  return `Fino al ${dataIt(finoAl)} (3 anni dal rilascio della patente) non si superano ${LIMITI_VELOCITA.autostradaKmh} km/h in autostrada e ${LIMITI_VELOCITA.extraurbaneKmh} km/h sulle strade extraurbane principali (art. 117, comma 2, Codice della Strada).`;
 }

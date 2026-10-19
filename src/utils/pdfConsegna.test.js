@@ -58,3 +58,14 @@ test('il PDF con foto dal telefono: etichette, didascalia e foto che non si scar
   expect(doc.getPageCount()).toBeGreaterThanOrEqual(1);
   if (process.env.PDF_PROVA) require('fs').writeFileSync(`${process.env.PDF_PROVA}-foto.pdf`, Buffer.from(pdf));
 });
+
+test('il PDF di consegna per chi ha la patente da meno di 3 anni si genera (limiti di velocità)', async () => {
+  const d = new Date(); d.setFullYear(d.getFullYear() - 1);
+  const rilascioPatente = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const pdf = await generaRiepilogoPdf({
+    id: 'k7f3a2c9', cliente: 'Mario Rossi', veicolo: 'Panda', targa: 'AA111AA', dataInizio: rilascioPatente.replace(/^\d{4}/, String(d.getFullYear() + 1)), dataFine: rilascioPatente.replace(/^\d{4}/, String(d.getFullYear() + 1)), rilascioPatente,
+  }, { carburante: '3/4', kmIniziali: '45000' }, { azienda: { nome: 'Formia Rent' } });
+  const doc = await PDFDocument.load(pdf);
+  expect(doc.getPageCount()).toBeGreaterThanOrEqual(1);
+  if (process.env.PDF_PROVA) require('fs').writeFileSync(`${process.env.PDF_PROVA}-velocita.pdf`, Buffer.from(pdf));
+});
