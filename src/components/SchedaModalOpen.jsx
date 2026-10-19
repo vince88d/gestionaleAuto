@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import Modal from 'react-modal';
 import { toast } from 'react-toastify';
-import { Upload, X } from 'lucide-react';
+import { AlertTriangle, Car, Upload, X } from 'lucide-react';
 import { caricaFotoDanno } from '../lib/storageFoto';
 import FotoDalTelefono from './FotoDalTelefono';
 import { formattaData, giornoLocale } from '../utils/scadenze';
@@ -55,6 +55,9 @@ function SchedaVeicoloModal({
   veicolo,
   // Regole sull'eta' (lib/firestoreEtaConducenti.js): promemoria sull'eta' dichiarata.
   etaConducenti = null,
+  // Consegna bloccata (neopatentato con auto non adatta): cambiare auto o modificare la prenotazione.
+  onCambiaAuto,
+  onModifica,
 }) {
   const [uploading, setUploading] = useState(false);
   // Dopo il primo «Avanti» i campi mancanti si segnano e si aggiornano mentre si compilano.
@@ -78,6 +81,7 @@ function SchedaVeicoloModal({
     ? controlloAbbinamento({ veicolo, rilascio: rilascioPatente, ritiro: giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio })
     : null;
   const velocita = prenotazione ? statoVelocita(rilascioPatente, giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio) : { soggetto: null, finoAl: null };
+  const abbinamentoBloccato = Boolean(neopatentati?.neopatentato && !neopatentati.ok);
   const esitoPatente = prenotazione
     ? controllaPatente(scadenzaPatente, {
         ritiro: giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio,
@@ -287,11 +291,27 @@ function SchedaVeicoloModal({
                 <div><dt>Patente rilasciata il</dt><dd>{formattaData(rilascioPatente)}</dd></div>
               </dl>
             )}
-            {neopatentati?.neopatentato && (
-              <p className={`pz-avviso pz-avviso--${neopatentati.ok ? 'attenzione' : 'errore'}`} role={neopatentati.ok ? undefined : 'alert'} style={{ marginTop: 12 }}>
-                {neopatentati.ok
-                  ? `Cliente neopatentato (limiti fino al ${neopatentati.finoAl.split('-').reverse().join('/')}): questa auto risulta nei limiti secondo i dati del veicolo (${neopatentati.idoneita.motivo}). Controlla la data di rilascio sul documento.`
-                  : neopatentati.messaggio}
+            {neopatentati?.neopatentato && !neopatentati.ok && (
+              <div className="pz-blocco" role="alert">
+                <p className="pz-blocco-titolo">
+                  <AlertTriangle size={18} aria-hidden="true" />
+                  {neopatentati.idoneita?.esito === 'no' ? 'Questa auto non si può consegnare a un neopatentato' : 'Questa auto è da verificare per un neopatentato'}
+                </p>
+                <p className="pz-blocco-motivo">{neopatentati.messaggio}</p>
+                <div className="pz-blocco-azioni">
+                  {onCambiaAuto && (
+                    <button type="button" className="vd-btn vd-btn--scegli" onClick={onCambiaAuto}>
+                      <Car size={17} aria-hidden="true" /> Scegli un&apos;altra auto
+                    </button>
+                  )}
+                  {onModifica && <button type="button" className="vd-btn" onClick={onModifica}>Modifica la prenotazione</button>}
+                </div>
+                <p className="pz-blocco-piccolo">{AVVISO_CONTROLLO}</p>
+              </div>
+            )}
+            {neopatentati?.neopatentato && neopatentati.ok && (
+              <p className="pz-avviso pz-avviso--attenzione" style={{ marginTop: 12 }}>
+                {`Cliente neopatentato (limiti fino al ${neopatentati.finoAl.split('-').reverse().join('/')}): questa auto risulta nei limiti secondo i dati del veicolo (${neopatentati.idoneita.motivo}). Controlla la data di rilascio sul documento.`}
                 <br /><small>{AVVISO_CONTROLLO}{eElettricaOIbrida(veicolo?.carburante) ? ` ${AVVISO_ELETTRICHE_IBRIDE}` : ''}</small>
               </p>
             )}
@@ -388,8 +408,9 @@ function SchedaVeicoloModal({
 
         <footer className="pz-piede">
           {errori.length > 0 && <span className="pz-piede-nota pz-piede-nota--errore" role="alert">{riassuntoErrori(errori)}</span>}
+          {abbinamentoBloccato && <span className="pz-piede-nota">Per andare avanti scegli un&apos;altra auto.</span>}
           <button type="button" className="vd-btn" onClick={onRequestClose}>Annulla</button>
-          <button type="submit" className="vd-btn vd-btn--primario" disabled={uploading || Boolean(esitoPatente.blocca)}>
+          <button type="submit" className="vd-btn vd-btn--primario" disabled={uploading || Boolean(esitoPatente.blocca) || abbinamentoBloccato}>
             {uploading ? 'Attendi…' : 'Avanti: riepilogo e contratto'}
           </button>
         </footer>

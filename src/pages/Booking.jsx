@@ -48,6 +48,7 @@ import {
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { colonneProtezioneExtra, INTESTAZIONI_PROTEZIONE_EXTRA } from '../utils/archivio';
 import { daAssegnare, veicoliLiberiPerPrenotazione } from '../utils/assegnazioneVeicolo';
+import { autoDaCambiare, categoriaPrenotazione } from '../utils/cambioAuto';
 import { prenotazioniSuVeicoloSospeso } from '../utils/disponibilitaCategoria';
 import { giornoLocale, formattaData } from '../utils/scadenze';
 import { quandoPrenotazione } from '../utils/quandoPrenotazione';
@@ -256,7 +257,7 @@ useEffect(() => {
     let prenotazione = null;
     if (id) {
       prenotazione = prenotazioni.find((p) => p.id === id);
-      if (!prenotazione || ((azione === 'consegna' || azione === 'assegna') && availableVehicles.length === 0)) return; // dati in arrivo
+      if (!prenotazione || ((azione === 'consegna' || azione === 'assegna' || azione === 'cambia') && availableVehicles.length === 0)) return; // dati in arrivo
     }
     azioneEseguita.current = location.key;
     ricordaProvenienza(azione ? da : null);
@@ -267,6 +268,7 @@ useEffect(() => {
     if (azione === 'consegna') avviaConsegna(prenotazione);
     if (azione === 'dettagli') openInfoModal(prenotazione);
     if (azione === 'assegna') apriSceltaAuto(prenotazione);
+    if (azione === 'cambia') cambiaAuto(prenotazione);
     if (azione === 'concludi') {
       setInfoModalOpen(false);
       setModalIsOpen(false);
@@ -574,6 +576,46 @@ useEffect(() => {
     } catch (err) {
       console.error('Errore scelta auto:', err);
       toast.error("Impossibile salvare l'auto scelta, riprova.");
+    }
+  };
+
+  // Cambio dell'auto di una prenotazione (es. neopatentato con un'auto troppo
+  // potente): stessa categoria, prezzo invariato. Parte dalla riga, dalla
+  // Dashboard, dai dettagli o dalla consegna bloccata.
+  const [cambioAutoDi, setCambioAutoDi] = useState(null);
+  const cambioDa = useRef(null); // 'consegna' | 'dettagli' | null
+
+  const cambiaAuto = (prenotazione, { da = null } = {}) => {
+    cambioDa.current = da;
+    setInfoModalOpen(false);
+    setModalIsOpen(false);
+    setSchedaModalOpen(false);
+    setRiepilogoOpen(false);
+    setConsegnaDi(null);
+    setCambioAutoDi(prenotazione);
+  };
+
+  const fineCambioAuto = (prenotazione) => {
+    setCambioAutoDi(null);
+    if (cambioDa.current === 'consegna') avviaConsegna(prenotazione);
+    else if (cambioDa.current === 'dettagli') openInfoModal(prenotazione);
+    else fineFlusso();
+  };
+
+  const confermaCambioAuto = async ({ veicolo, consegna }) => {
+    try {
+      const aggiornata = await assegnaVeicolo({ prenotazione: cambioAutoDi, veicolo });
+      dispatch(updatePrenotazione(aggiornata));
+      toast.success(`Auto cambiata: ${[veicolo.marca, veicolo.modello].filter(Boolean).join(' ')} (${veicolo.targa})`);
+      if (consegna || cambioDa.current === 'consegna') {
+        setCambioAutoDi(null);
+        avviaConsegna(aggiornata);
+      } else {
+        fineCambioAuto(aggiornata);
+      }
+    } catch (err) {
+      console.error('Errore cambio auto:', err);
+      toast.error("Impossibile cambiare l'auto, riprova.");
     }
   };
 
@@ -932,8 +974,9 @@ return (
                 const fase = faseLavoro(p, oggi);
                 const giorniNoleggio = calcGiorni(p.dataInizio, p.dataFine, p.oraInizio, p.oraFine, p.tolleranzaMinuti);
                 const quando = quandoPrenotazione(p, oggi, giorniNoleggio);
+                const cambio = autoDaCambiare(p, availableVehicles, oggi);
                 return (
-                  <tr key={p.id} onClick={() => openInfoModal(p)} className={`bk-riga bk-riga--${daAssegnare(p) ? 'scegli' : fase}`}>
+                  <tr key={p.id} onClick={() => openInfoModal(p)} className={`bk-riga bk-riga--${daAssegnare(p) || cambio ? 'scegli' : fase}`}>
                     <td className="bk-fase-cella" aria-hidden="true" />
                     <td>
                       <span className="bk-principale">{p.cliente || '—'}</span>
@@ -952,9 +995,14 @@ return (
                       <span className="bk-secondario">{quando.secondaria}</span>
                     </td>
                     <td>
-                      <span className={`fase-badge fase-badge--${daAssegnare(p) ? 'scegli' : fase}`}>
-                        {daAssegnare(p) ? 'Auto da scegliere' : ETICHETTA_FASE[fase]}
+                      <span className={`fase-badge fase-badge--${daAssegnare(p) || cambio ? 'scegli' : fase}`}>
+                        {daAssegnare(p) ? 'Auto da scegliere' : cambio ? (cambio.esito === 'no' ? 'Auto da cambiare' : 'Auto da verificare') : ETICHETTA_FASE[fase]}
                       </span>
+                      {cambio && (
+                        <span className="bk-promemoria bk-promemoria--urgente">
+                          {cambio.esito === 'no' ? 'Non adatta a un neopatentato' : 'Mancano potenza e tara'}
+                        </span>
+                      )}
                     </td>
                     <td className="bk-destra">
                       <span className="bk-principale">
@@ -967,7 +1015,12 @@ return (
                           <Car size={15} aria-hidden="true" /> <span className="bk-btn-testo">Scegli l&apos;auto</span>
                         </button>
                       )}
-                      {puoConsegnare(p) && (
+                      {cambio && puoConsegnare(p) && (
+                        <button type="button" className="bk-btn bk-btn--piccolo bk-btn--scegli" onClick={() => cambiaAuto(p)} title={cambio.messaggio}>
+                          <Car size={15} aria-hidden="true" /> <span className="bk-btn-testo">Cambia auto</span>
+                        </button>
+                      )}
+                      {!cambio && puoConsegnare(p) && (
                         <button type="button" className="bk-btn bk-btn--piccolo bk-btn--consegna" onClick={() => avviaConsegna(p)} title="Consegna il veicolo">
                           <KeyRound size={15} aria-hidden="true" /> <span className="bk-btn-testo">Consegna</span>
                         </button>
@@ -1047,6 +1100,8 @@ return (
     }}
     onConsegna={avviaConsegna}
     onScegliAuto={(p) => apriSceltaAuto(p, { daDettagli: true })}
+    daCambiare={dettagliPrenotazione ? autoDaCambiare(dettagliPrenotazione, availableVehicles, giornoLocale()) : null}
+    onCambiaAuto={(p) => cambiaAuto(p, { da: 'dettagli' })}
     onConcludi={(p) => {
      setInfoModalOpen(false);          
     setModalIsOpen(false);            
@@ -1065,6 +1120,21 @@ return (
         onConferma={confermaSceltaAuto}
       />
     )}
+    {cambioAutoDi && (
+      <SceltaAutoModal
+        key={`cambio-${cambioAutoDi.id}`}
+        cambio
+        prenotazione={cambioAutoDi}
+        categoria={categoriaPrenotazione(cambioAutoDi, availableVehicles)}
+        veicoliLiberi={veicoliLiberiPerPrenotazione(
+          { ...cambioAutoDi, categoria: categoriaPrenotazione(cambioAutoDi, availableVehicles) }, availableVehicles, prenotazioni,
+        ).filter((v) => v.targa !== cambioAutoDi.targa)}
+        consegnaSubito={cambioDa.current === 'consegna' || ritiroEntroOggi(cambioAutoDi, giornoLocale())}
+        onClose={() => fineCambioAuto(cambioAutoDi)}
+        onConferma={confermaCambioAuto}
+        onModifica={() => { const p = cambioAutoDi; setCambioAutoDi(null); apriModifica(p); }}
+      />
+    )}
     <SchedaVeicoloModal
     isOpen={schedaModalOpen}
     onRequestClose={chiudiConsegna}
@@ -1077,6 +1147,8 @@ return (
     onSave={handleSaveSchedaVeicolo}
     veicolo={consegnaDi ? availableVehicles.find((v) => v.targa === consegnaDi.targa) : null}
     etaConducenti={etaConducenti}
+    onCambiaAuto={() => cambiaAuto(consegnaDi, { da: 'consegna' })}
+    onModifica={() => { const p = consegnaDi; setSchedaModalOpen(false); setRiepilogoOpen(false); setConsegnaDi(null); apriModifica(p); }}
   />
 
   {consegnaDi && (

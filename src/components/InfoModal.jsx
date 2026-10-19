@@ -23,7 +23,7 @@ import { useAzienda } from '../lib/firestoreAzienda';
 import SezioneImpostazioni from './SezioneImpostazioni';
 import { useSchedeAperte } from '../utils/useSchedeAperte';
 import {
-  schedeAperteIniziali, riassuntoCliente, riassuntoNoleggio, riassuntoProtezioneExtra,
+  schedeAperteIniziali, clienteDaCompletare, riassuntoCliente, riassuntoNoleggio, riassuntoProtezioneExtra,
   riassuntoConsegna, riassuntoRientro, riassuntoDanni,
 } from '../utils/riassuntiPrenotazione';
 
@@ -31,8 +31,10 @@ import {
 
 // Riquadro in cima ai dettagli: la cosa da fare adesso, con il pulsante
 // grande. Modifica e annullamento restano in basso come azioni secondarie.
-function ProssimoPasso({ prenotazione, onScegliAuto, onConsegna, onConcludi }) {
-  const passo = prossimoPasso(prenotazione);
+function ProssimoPasso({ prenotazione, onScegliAuto, onConsegna, onConcludi, daCambiare, onCambiaAuto }) {
+  const base = prossimoPasso(prenotazione);
+  // Auto non adatta al cliente: prima si cambia l'auto, poi si consegna.
+  const passo = daCambiare && base === 'consegna' && onCambiaAuto ? 'cambia' : base;
   const auto = [prenotazione.veicolo, prenotazione.targa].filter(Boolean).join(' ');
   const riconsegna = prenotazione.oraFine
     ? `${formattaData(prenotazione.dataFine)} entro le ${oraBreve(prenotazione.oraFine)}`
@@ -48,6 +50,14 @@ function ProssimoPasso({ prenotazione, onScegliAuto, onConsegna, onConcludi }) {
       pulsante: <><Car size={18} aria-hidden="true" /> Scegli l&apos;auto</>,
       classe: 'vd-btn--scegli',
       azione: onScegliAuto,
+    },
+    cambia: daCambiare && onCambiaAuto && {
+      tono: 'scegli',
+      titolo: "Cambia l'auto prima di consegnare",
+      spiega: daCambiare.messaggio,
+      pulsante: <><Car size={18} aria-hidden="true" /> Cambia auto</>,
+      classe: 'vd-btn--scegli',
+      azione: onCambiaAuto,
     },
     consegna: onConsegna && {
       tono: 'consegna',
@@ -82,7 +92,7 @@ function ProssimoPasso({ prenotazione, onScegliAuto, onConsegna, onConcludi }) {
   );
 }
 
-function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, onConsegna, onScegliAuto, soloLettura = false }) {
+function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onConcludi, onConsegna, onScegliAuto, daCambiare = null, onCambiaAuto, soloLettura = false }) {
   const printRef = useRef();
   const { dati: azienda } = useAzienda();
   // Schede richiudibili: si apre da sola quella che serve in quel momento
@@ -197,6 +207,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
     annullata: 'Annullata',
   }[prenotazione.status] || (senzaAuto ? 'Auto da scegliere' : consegnata ? 'Consegnata' : 'Da consegnare');
 
+  const datiClienteMancanti = clienteDaCompletare(prenotazione);
   const statoTono = prenotazione.status === 'annullata' ? 'attenzione' : prenotazione.status === 'completata' || consegnata ? 'ok' : 'neutro';
 
   return (
@@ -211,6 +222,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
       <div className="pz">
         <header className="pz-testa">
           <div>
+            <p className="pz-sopratitolo">Prenotazione · {statoTesto}</p>
             <h2 className="pz-titolo">{prenotazione.cliente || 'Prenotazione'}</h2>
             <span className="pz-sottotitolo">
               {(senzaAuto ? prenotazione.categoria : prenotazione.veicolo) || prenotazione.categoria}{prenotazione.targa ? ` · ${prenotazione.targa}` : ''}
@@ -230,6 +242,8 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
               onScegliAuto={onScegliAuto}
               onConsegna={onConsegna}
               onConcludi={onConcludi}
+              daCambiare={daCambiare}
+              onCambiaAuto={onCambiaAuto}
             />
           )}
 
@@ -239,9 +253,12 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
             </button>
           </div>
 
+          {/* Prima della consegna conta l'auto, le date e il prezzo: il Noleggio sta sopra il Cliente. */}
+          {consegnata || prenotazione.status === 'completata' || prenotazione.status === 'annullata' ? <>
           <SezioneImpostazioni
             className="imp-acc--compatta" Icona={User} titolo="Cliente"
-            riassunto={riassuntoCliente(prenotazione)} aperta={schede.aperta('cliente')} onToggle={schede.toggle('cliente')}
+            riassunto={riassuntoCliente(prenotazione)} stato={datiClienteMancanti ? { testo: 'Da completare', tono: 'attenzione' } : null}
+            aperta={schede.aperta('cliente')} onToggle={schede.toggle('cliente')}
           >
             <dl className="pz-dati">
               <div><dt>Nome</dt><dd>{prenotazione.cliente || '—'}</dd></div>
@@ -285,6 +302,57 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
               <div><dt>Stato</dt><dd>{statoTesto}</dd></div>
             </dl>
           </SezioneImpostazioni>
+
+          </> : <>
+          <SezioneImpostazioni
+            className="imp-acc--compatta" Icona={Car} titolo="Noleggio"
+            riassunto={riassuntoNoleggio(prenotazione)} stato={{ testo: statoTesto, tono: statoTono }}
+            aperta={schede.aperta('noleggio')} onToggle={schede.toggle('noleggio')}
+          >
+            <dl className="pz-dati">
+              {senzaAuto ? (
+                <>
+                  <div><dt>{prenotazione.richiestaSenzaPagamento ? 'Categoria chiesta' : 'Categoria pagata'}</dt><dd>{prenotazione.categoria || '—'}</dd></div>
+                  <div><dt>Auto</dt><dd className="pz-da-scegliere">Da scegliere</dd></div>
+                </>
+              ) : (
+                <>
+                  <div><dt>Veicolo</dt><dd>{prenotazione.veicolo || '—'}</dd></div>
+                  <div><dt>Targa</dt><dd>{prenotazione.targa || '—'}</dd></div>
+                </>
+              )}
+              <div><dt>Prezzo</dt><dd className="pz-prezzo">€ {prezzoPrenotazione(prenotazione) || '—'}</dd></div>
+              <div><dt>Ritiro</dt><dd>{dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)}</dd></div>
+              <div><dt>Riconsegna</dt><dd>{prenotazione.oraFine ? `${formattaData(prenotazione.dataFine)} entro le ${oraBreve(prenotazione.oraFine)}` : formattaData(prenotazione.dataFine)}</dd></div>
+              {prenotazione.chilometri?.nome && (
+                <div>
+                  <dt>Chilometri</dt>
+                  <dd>
+                    {prenotazione.chilometri.nome}
+                    {prenotazione.chilometri.kmInclusi ? ` · ${prenotazione.chilometri.kmInclusi.toLocaleString('it-IT')} km inclusi` : ''}
+                    {prenotazione.chilometri.kmInclusi && prenotazione.chilometri.euroKmInPiu
+                      ? ` · poi ${prenotazione.chilometri.euroKmInPiu.toLocaleString('it-IT', { minimumFractionDigits: 2 })} € al km` : ''}
+                  </dd>
+                </div>
+              )}
+              <div><dt>Stato</dt><dd>{statoTesto}</dd></div>
+            </dl>
+          </SezioneImpostazioni>
+
+          <SezioneImpostazioni
+            className="imp-acc--compatta" Icona={User} titolo="Cliente"
+            riassunto={riassuntoCliente(prenotazione)} stato={datiClienteMancanti ? { testo: 'Da completare', tono: 'attenzione' } : null}
+            aperta={schede.aperta('cliente')} onToggle={schede.toggle('cliente')}
+          >
+            <dl className="pz-dati">
+              <div><dt>Nome</dt><dd>{prenotazione.cliente || '—'}</dd></div>
+              <div><dt>Codice fiscale</dt><dd>{prenotazione.codiceFiscale || '—'}</dd></div>
+              <div><dt>Patente</dt><dd>{prenotazione.patente || '—'}</dd></div>
+              <div className="pz-intera"><dt>Email</dt><dd>{prenotazione.emailCliente || '—'}</dd></div>
+            </dl>
+          </SezioneImpostazioni>
+
+          </>}
 
           {conProtezioneExtra && (
             <SezioneImpostazioni

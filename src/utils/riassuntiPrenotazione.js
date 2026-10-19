@@ -11,7 +11,18 @@ export const SCHEDE_PRENOTAZIONE = ['cliente', 'noleggio', 'protezione', 'conseg
 
 const unisci = (parti) => parti.filter(Boolean).join(' · ');
 
-export const riassuntoCliente = (p = {}) => unisci([p.cliente, p.codiceFiscale, p.emailCliente]) || 'Dati del cliente non indicati';
+// Prima della consegna servono codice fiscale e patente (si possono scrivere
+// anche alla consegna): quelli che mancano si dicono nel riassunto della scheda.
+const datiMancanti = (p = {}) => (p.status === 'attiva' && !eConsegnata(p)
+  ? [!p.codiceFiscale && 'codice fiscale', !p.patente && 'patente'].filter(Boolean)
+  : []);
+export const clienteDaCompletare = (p = {}) => datiMancanti(p).length > 0;
+
+export const riassuntoCliente = (p = {}) => {
+  const mancanti = datiMancanti(p);
+  if (mancanti.length > 0) return unisci([p.cliente, `${mancanti.join(' e ')} da inserire alla consegna`]);
+  return unisci([p.cliente, p.codiceFiscale, p.emailCliente]) || 'Dati del cliente non indicati';
+};
 
 export function riassuntoNoleggio(p = {}) {
   const prezzo = prezzoPrenotazione(p);
@@ -49,7 +60,7 @@ export function schedeAperteIniziali(p = {}) {
   const aperte = {};
   if (p.status === 'completata') aperte.rientro = true;
   else if (p.status !== 'annullata' && eConsegnata(p)) aperte.consegna = true;
-  else { aperte.cliente = true; aperte.noleggio = true; }
+  else aperte.noleggio = true; // prima della consegna conta il Noleggio; il Cliente sta chiuso con il suo riassunto
   if (p.daRiparare) aperte.danni = true;
   return Object.fromEntries(SCHEDE_PRENOTAZIONE.map((id) => [id, Boolean(aperte[id])]));
 }

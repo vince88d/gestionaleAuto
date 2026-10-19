@@ -14,7 +14,10 @@ const descrizione = (v) => [
 // Finestra per scegliere quale auto dare a una prenotazione del sito, che ha
 // pagato solo la categoria. `consegnaSubito`: il ritiro e' oggi o gia'
 // passato, quindi il pulsante principale sceglie e apre subito la consegna.
-export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaSubito, onClose, onConferma }) {
+// `cambio`: l'auto c'e' gia' ma non va bene (es. neopatentato): si sceglie
+// un'altra auto della stessa categoria e, se non ce n'e' di adatte, si manda a
+// `onModifica` (cambiare categoria cambia il prezzo).
+export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaSubito, onClose, onConferma, cambio = false, categoria: categoriaCambio, onModifica }) {
   // Neopatentato (data di rilascio dal sito o dal cliente): le auto non adatte
   // restano in elenco, grigie e con il motivo, ma non si scelgono.
   const controllo = (v) => controlloAbbinamento({ veicolo: v, rilascio: prenotazione?.rilascioPatente, ritiro: prenotazione?.dataInizio });
@@ -35,7 +38,7 @@ export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaS
     }
   };
 
-  const categoria = prenotazione.categoria || 'categoria non indicata';
+  const categoria = (cambio ? categoriaCambio : prenotazione.categoria) || 'categoria non indicata';
 
   return (
     <Modal
@@ -49,9 +52,9 @@ export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaS
       <div className="pz">
         <header className="pz-testa">
           <div>
-            <h2 className="pz-titolo">Scegli l&apos;auto per {prenotazione.cliente || 'il cliente'}</h2>
+            <h2 className="pz-titolo">{cambio ? "Scegli un'altra auto per" : "Scegli l'auto per"} {prenotazione.cliente || 'il cliente'}</h2>
             <span className="pz-sottotitolo">
-              Categoria pagata: {categoria}
+              {cambio ? 'Categoria' : 'Categoria pagata:'} {categoria}
               {' · '}{dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)} → {dataEOra(prenotazione.dataFine, prenotazione.oraFine)}
             </span>
           </div>
@@ -63,10 +66,16 @@ export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaS
         <div className="pz-corpo">
           {veicoliLiberi.length === 0 ? (
             <div className="sa-vuoto" role="alert">
-              <strong>Nessuna auto «{categoria}» è libera dal {formattaData(prenotazione.dataInizio)} al {formattaData(prenotazione.dataFine)}.</strong>
+              <strong>{cambio ? "Nessun'altra auto" : 'Nessuna auto'} «{categoria}» è libera dal {formattaData(prenotazione.dataInizio)} al {formattaData(prenotazione.dataFine)}.</strong>
               <br />
-              Libera un&apos;auto spostando un altro noleggio, oppure riattiva un&apos;auto sospesa nella pagina Veicoli.
-              Se non si può, annulla e rimborsa il cliente dalla finestra dei dettagli.
+              {cambio
+                ? "Puoi cambiare categoria (o date) modificando la prenotazione: il prezzo verrà ricalcolato e lo vedrai prima di salvare."
+                : "Libera un'auto spostando un altro noleggio, oppure riattiva un'auto sospesa nella pagina Veicoli. Se non si può, annulla e rimborsa il cliente dalla finestra dei dettagli."}
+              {cambio && onModifica && (
+                <div style={{ marginTop: 12 }}>
+                  <button type="button" className="vd-btn vd-btn--primario" onClick={onModifica}>Modifica la prenotazione</button>
+                </div>
+              )}
             </div>
           ) : (
             <section className="pz-sezione">
@@ -97,6 +106,18 @@ export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaS
                   );
                 })}
               </div>
+              {cambio && adatte.length === 0 && (
+                <div className="sa-vuoto" role="status" style={{ marginTop: 12 }}>
+                  <strong>Nessuna auto «{categoria}» adatta a questo cliente è libera in queste date.</strong>
+                  <br />
+                  Puoi cambiare categoria (o date) modificando la prenotazione: il prezzo verrà ricalcolato e lo vedrai prima di salvare.
+                  {onModifica && (
+                    <div style={{ marginTop: 12 }}>
+                      <button type="button" className="vd-btn vd-btn--primario" onClick={onModifica}>Modifica la prenotazione</button>
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
           )}
         </div>
