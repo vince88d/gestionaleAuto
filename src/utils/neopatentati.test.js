@@ -1,5 +1,5 @@
 import {
-  kwPerTonnellata, idoneitaNeopatentati, neopatentatoFinoAl, statoPatente, testoDurataPatente, controlloAbbinamento, limitiPer, eElettricaOIbrida, AVVISO_CONTROLLO,
+  kwPerTonnellata, idoneitaNeopatentati, neopatentatoFinoAl, statoPatente, testoDurataPatente, controlloAbbinamento, limitiPer, eElettricaOIbrida, AVVISO_CONTROLLO, registroControllo, LIMITI_NEOPATENTATI,
 } from './neopatentati';
 
 const panda = { carburante: 'Benzina', potenzaKw: 66, taraKg: 1050 };
@@ -86,5 +86,24 @@ describe('neopatentati', () => {
     expect(controlloAbbinamento({ veicolo: potente, rilascio: '2019-01-01', ritiro }).ok).toBe(true);
     // senza data di rilascio non si blocca nulla
     expect(controlloAbbinamento({ veicolo: potente, rilascio: '', ritiro }).ok).toBe(true);
+  });
+});
+
+describe('registro del controllo', () => {
+  const adesso = new Date('2026-10-20T09:30:00Z');
+  test('neopatentato con auto oltre i limiti: dati, esito e versione della regola', () => {
+    const r = registroControllo({ veicolo: { targa: 'AB123CD', carburante: 'Benzina', potenzaKw: 88, taraKg: 1173 }, rilascio: '2025-03-14', ritiro: '2026-10-20', operatore: 'staff@example.com', adesso });
+    expect(r.esito).toBe('no');
+    expect(r.neopatentato).toBe(true);
+    expect(r.finoAl).toBe('2028-03-14');
+    expect(r.controllatoDa).toBe('staff@example.com');
+    expect(r.controllatoIl).toBe('2026-10-20T09:30:00.000Z');
+    expect(r.veicolo).toMatchObject({ targa: 'AB123CD', potenzaKw: 88, taraKg: 1173, kwPerTonnellata: 75.02, limiti: { kwPerTonnellata: 75, kwMax: 105 } });
+    expect(r.versioneRegola).toMatchObject({ aggiornatoAl: LIMITI_NEOPATENTATI.aggiornatoAl, anni: 3 });
+  });
+  test('non neopatentato, data mancante, dati mancanti', () => {
+    expect(registroControllo({ veicolo: panda, rilascio: '2019-01-01', ritiro: '2026-10-20', adesso }).esito).toBe('non-applicabile');
+    expect(registroControllo({ veicolo: panda, rilascio: '', ritiro: '2026-10-20', adesso }).esito).toBe('data-patente-mancante');
+    expect(registroControllo({ veicolo: { targa: 'X' }, rilascio: '2025-03-14', ritiro: '2026-10-20', adesso }).esito).toBe('nd');
   });
 });

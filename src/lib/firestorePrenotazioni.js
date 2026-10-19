@@ -9,6 +9,8 @@ import {
 import { clienteDaPrenotazione } from '../utils/validaCliente';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { senzaUndefined } from '../utils/senzaUndefined';
+import { registroControllo } from '../utils/neopatentati';
+import { giornoLocale } from '../utils/scadenze';
 
 const PRENOTAZIONI_COLLECTION = 'prenotazioni';
 
@@ -209,13 +211,19 @@ export async function salvaPrenotazione(dati, originale = null) {
 // 'aggiornato' o null (anagrafica non toccata o non riuscita).
 // `cauzioneBloccata` (se la prenotazione ha una cauzione): spunta del
 // promemoria "Ho bloccato la cauzione", servira' al rientro.
-export async function registraConsegna({ prenotazione, scheda, patente, scadenzaPatente, rilascioPatente, codiceFiscale, ip, cauzioneBloccata }) {
+export async function registraConsegna({ prenotazione, scheda, patente, scadenzaPatente, rilascioPatente, codiceFiscale, ip, cauzioneBloccata, veicolo }) {
   const campi = {
     schedaVeicolo: scheda || {},
     consegnataIl: new Date().toISOString(),
     ipConsegna: ip || null,
   };
   if (typeof cauzioneBloccata === 'boolean') campi.cauzioneBloccata = cauzioneBloccata;
+  // Registro del controllo neopatentati (dati usati e versione della regola).
+  if (veicolo) {
+    campi.controlloNeopatentati = registroControllo({
+      veicolo, rilascio: rilascioPatente, ritiro: giornoLocale(), operatore: auth.currentUser?.email || '',
+    });
+  }
   const patentePulita = (patente || '').trim().toUpperCase();
   if (patentePulita) campi.patente = patentePulita;
   if (/^\d{4}-\d{2}-\d{2}$/.test(rilascioPatente || '')) campi.rilascioPatente = rilascioPatente;

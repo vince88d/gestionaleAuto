@@ -134,3 +134,39 @@ export function controlloAbbinamento({ veicolo, rilascio, ritiro }) {
   }
   return { ...base, ok: false, messaggio: 'Auto da verificare per un neopatentato: mancano potenza e tara nella scheda del veicolo.' };
 }
+
+// Registro del controllo, da salvare nella prenotazione alla consegna: serve a
+// dimostrare con quali dati e con quale versione della regola e' stato fatto.
+// Se il dato (kW o tara) era sbagliato si vede cosa era scritto nella scheda.
+// Non contiene nulla di modificabile dopo: e' una fotografia del momento.
+export function registroControllo({ veicolo = {}, rilascio, ritiro, operatore = '', adesso = new Date() }) {
+  const stato = statoPatente(rilascio, ritiro);
+  const idoneita = idoneitaNeopatentati(veicolo);
+  const esatto = kwTEsatto(veicolo.potenzaKw, veicolo.taraKg);
+  let esito = 'non-applicabile';
+  if (stato.neopatentato === null) esito = 'data-patente-mancante';
+  else if (stato.neopatentato) esito = idoneita.esito;
+  return {
+    versioneRegola: {
+      fonte: LIMITI_NEOPATENTATI.fonte,
+      aggiornatoAl: LIMITI_NEOPATENTATI.aggiornatoAl,
+      inVigoreDal: LIMITI_NEOPATENTATI.inVigoreDal,
+      anni: LIMITI_NEOPATENTATI.anni,
+    },
+    controllatoIl: adesso.toISOString(),
+    controllatoDa: operatore || '',
+    rilascioPatente: giorno(rilascio),
+    giornoRitiro: giorno(ritiro),
+    neopatentato: stato.neopatentato,
+    finoAl: stato.finoAl,
+    esito, // 'si' | 'no' | 'nd' | 'non-applicabile' | 'data-patente-mancante'
+    veicolo: {
+      targa: veicolo.targa || '',
+      carburante: veicolo.carburante || '',
+      potenzaKw: numero(veicolo.potenzaKw),
+      taraKg: numero(veicolo.taraKg),
+      kwPerTonnellata: esatto === null ? null : Math.round(esatto * 100) / 100,
+      limiti: idoneita.limiti,
+    },
+  };
+}

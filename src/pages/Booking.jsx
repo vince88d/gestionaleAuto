@@ -1092,6 +1092,7 @@ return (
       scadenzaPatente={clienteConsegna?.scadenzaPatente || documentiConsegna.scadenzaPatente || ''}
       schedaVeicolo={schedaVeicolo}
       onConsegnaSalvata={handleConsegnaSalvata}
+      veicolo={availableVehicles.find((v) => v.targa === consegnaDi.targa)}
     />
   )}
   

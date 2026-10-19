@@ -20,7 +20,7 @@ import { FIRMA_NORMALE, normalizzaFirma } from '../utils/firmaVerbale';
 
 // Secondo passo della consegna: riepilogo, contratto, PDF ed email. "Conferma
 // consegna" salva la scheda sulla prenotazione (la prenotazione esiste gia').
-function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, scadenzaPatente, onConsegnaSalvata }) {
+function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, scadenzaPatente, onConsegnaSalvata, veicolo }) {
   const prezzoTotale = prezzoPrenotazione(formData);
   const { dati: azienda } = useAzienda();
   const [ipPubblico, setIpPubblico] = useState(null);
@@ -153,6 +153,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
             rilascioPatente: formData.rilascioPatente,
             scadenzaPatente,
             ip: ipPubblico || 'Non disponibile',
+            veicolo,
             ...(typeof cauzione === 'number' ? { cauzioneBloccata } : {}),
           });
           setConsegnaSalvata(true);
