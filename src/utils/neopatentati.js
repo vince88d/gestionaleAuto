@@ -92,7 +92,7 @@ export function idoneitaNeopatentati(veicolo = {}) {
   const motivi = [];
   if (esatto > limiti.kwPerTonnellata) motivi.push(`${viraSu(esatto)} kW/t, oltre il limite di ${limiti.kwPerTonnellata}`);
   if (limiti.kwMax !== null && kw > limiti.kwMax) motivi.push(`${virgola(kw)} kW, oltre il limite di ${limiti.kwMax}`);
-  if (motivi.length > 0) return { esito: 'no', kwT, kw, limiti, motivo: motivi.join(' e ') };
+  if (motivi.length > 0) return { esito: 'no', kwT, kw, limiti, motivo: motivi.join('; ') };
   return { esito: 'si', kwT, kw, limiti, motivo: limiti.kwMax === null ? `${virgola(kwT)} kW/t (limite ${limiti.kwPerTonnellata})` : `${virgola(kwT)} kW/t (limite ${limiti.kwPerTonnellata}) e ${virgola(kw)} kW (limite ${limiti.kwMax})` };
 }
 

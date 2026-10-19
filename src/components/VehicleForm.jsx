@@ -43,11 +43,13 @@ function SezioneNeopatentati({ formData, input, errori, onChange }) {
       <h3 className="vd-titolo-sezione">Potenza per i neopatentati</h3>
       <p className="vf-nota">Dal libretto: <b>P.2</b> è la potenza in kW (non i cavalli), <b>G</b> è la tara, cioè il peso a vuoto, in kg. Per le elettriche e le ibride usa i valori del libretto.</p>
       {eElettricaOIbrida(formData.carburante) && <p className="vf-nota" role="note">{AVVISO_ELETTRICHE_IBRIDE}</p>}
+      <div style={{ marginBottom: 14 }}>
       <Campo nome="tipoVeicolo" etichetta="Tipo di veicolo" errore={errori.tipoVeicolo} aiuto="Il limite dei 105 kW vale per le autovetture (libretto, campo J: M1). Furgoni e autocarri hanno solo il limite per tonnellata. Camper: per prudenza come le autovetture.">
         <select id="vf-tipoVeicolo" name="tipoVeicolo" value={formData.tipoVeicolo ?? 'autovettura'} onChange={onChange}>
           {TIPI_VEICOLO.map((t) => <option key={t.valore} value={t.valore}>{t.etichetta}</option>)}
         </select>
       </Campo>
+      </div>
       {tipoPer(formData.tipoVeicolo).soggetto && (
       <div className="vf-griglia vf-griglia--3">
         <Campo nome="potenzaKw" etichetta="Potenza (kW)" errore={errori.potenzaKw} aiuto="Libretto, campo P.2">
@@ -69,7 +71,7 @@ function SezioneNeopatentati({ formData, input, errori, onChange }) {
         {esito === 'no' && <><b>Oltre i limiti per i neopatentati</b><span>{idoneita.motivo}.</span></>}
         {esito === 'nd' && <><b>Da verificare</b><span>Scrivi potenza e tara: finché mancano, questa auto non si propone a chi ha la patente da meno di {LIMITI_NEOPATENTATI.anni} anni (limiti {limiti.kwPerTonnellata} kW/t{limiti.kwMax === null ? '' : ` e ${limiti.kwMax} kW`}).</span></>}
       </div>
-      <p className="vf-nota">{AVVISO_CONTROLLO}</p>
+      <p className="vf-nota" style={{ marginTop: 12 }}>{AVVISO_CONTROLLO}</p>
     </section>
   );
 }

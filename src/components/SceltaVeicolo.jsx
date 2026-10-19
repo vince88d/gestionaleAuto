@@ -164,7 +164,7 @@ function SceltaVeicolo({
                 {veicolo.prezzo && giorni > 0 ? (
                   <span className="sv-totale">€ {(Number(veicolo.prezzo) * giorni).toLocaleString('it-IT')} in tutto</span>
                 ) : null}
-                {ETICHETTA_STATO[stato] && <span className={`sv-stato sv-stato--${stato}`}>{ETICHETTA_STATO[stato]}</span>}
+                {ETICHETTA_STATO[stato] && <span className={`sv-stato sv-stato--${stato}`}>{stato === 'non-adatta' && /da verificare/i.test(motivo) ? 'Da verificare' : ETICHETTA_STATO[stato]}</span>}
               </span>
             </button>
           );
