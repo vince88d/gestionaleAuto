@@ -107,3 +107,30 @@ describe('registro del controllo', () => {
     expect(registroControllo({ veicolo: { targa: 'X' }, rilascio: '2025-03-14', ritiro: '2026-10-20', adesso }).esito).toBe('nd');
   });
 });
+
+describe('tipo di veicolo', () => {
+  const potenteKw = { potenzaKw: 110, taraKg: 1800 }; // 61 kW/t ma 110 kW
+  test('autovettura e camper: anche il limite dei 105 kW; senza tipo vale autovettura', () => {
+    expect(idoneitaNeopatentati({ ...potenteKw, tipoVeicolo: 'autovettura' }).esito).toBe('no');
+    expect(idoneitaNeopatentati({ ...potenteKw, tipoVeicolo: 'camper' }).esito).toBe('no');
+    expect(idoneitaNeopatentati({ ...potenteKw }).esito).toBe('no');
+  });
+  test('furgone: solo 75 kW/t, nessun limite in kW', () => {
+    const f = idoneitaNeopatentati({ ...potenteKw, tipoVeicolo: 'furgone' });
+    expect(f.esito).toBe('si');
+    expect(f.limiti.kwMax).toBeNull();
+    expect(f.motivo).not.toMatch(/105/);
+    expect(idoneitaNeopatentati({ potenzaKw: 90, taraKg: 1000, tipoVeicolo: 'furgone' }).esito).toBe('no');
+  });
+  test('moto e imbarcazione: non soggetti, anche senza potenza e tara', () => {
+    ['moto', 'imbarcazione'].forEach((tipoVeicolo) => {
+      const r = idoneitaNeopatentati({ tipoVeicolo });
+      expect(r.esito).toBe('si');
+      expect(r.soggetto).toBe(false);
+    });
+    expect(controlloAbbinamento({ veicolo: { tipoVeicolo: 'imbarcazione' }, rilascio: '2025-03-14', ritiro: '2026-10-20' }).ok).toBe(true);
+  });
+  test('il registro ricorda il tipo', () => {
+    expect(registroControllo({ veicolo: { tipoVeicolo: 'furgone', potenzaKw: 70, taraKg: 1500 }, rilascio: '2025-03-14', ritiro: '2026-10-20' }).veicolo.tipoVeicolo).toBe('furgone');
+  });
+});

@@ -585,7 +585,7 @@ function BookingForm({
               </label>
               {patente.neopatentato === true && (
                 <div className="np-avviso-ora" role="status">
-                  <p><b>Neopatentato: patente da {testoDurataPatente(dati.rilascioPatente, dati.dataInizio)}.</b> Fino al {patente.finoAl.split('-').reverse().join('/')} può guidare solo auto fino a 75 kW per tonnellata e 105 kW. Le auto oltre i limiti non si possono scegliere.</p>
+                  <p><b>Neopatentato: patente da {testoDurataPatente(dati.rilascioPatente, dati.dataInizio)}.</b> Fino al {patente.finoAl.split('-').reverse().join('/')} può guidare solo auto fino a 75 kW per tonnellata (e 105 kW per le autovetture). Le auto oltre i limiti non si possono scegliere.</p>
                   <p className="np-aiuto">{AVVISO_CONTROLLO}</p>
                 </div>
               )}

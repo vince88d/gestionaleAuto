@@ -33,6 +33,20 @@ export const AVVISO_CONTROLLO = 'Controllo di supporto basato sui dati del libre
 export const AVVISO_ELETTRICHE_IBRIDE = 'Elettriche e ibride: la norma è meno chiara su quale potenza contare. Controlla sul libretto e, se hai dubbi, usa il valore più alto.';
 export const eElettricaOIbrida = (alimentazione) => /elettric|ibrid|hybrid|plug/i.test(String(alimentazione || ''));
 
+// Tipo di veicolo: i limiti non valgono per tutti. I 75 kW/t riguardano gli
+// autoveicoli, i 105 kW solo le autovetture (categoria M1, libretto campo J).
+// Camper: per prudenza come le autovetture (un'autocaravan e' di norma M1);
+// se sul libretto non e' M1 basta cambiare `kwMax` qui sotto.
+// Senza tipo (veicoli vecchi) vale «autovettura»: la scelta piu' severa.
+export const TIPI_VEICOLO = [
+  { valore: 'autovettura', etichetta: 'Autovettura', soggetto: true, kwMax: true },
+  { valore: 'furgone', etichetta: 'Furgone / autocarro', soggetto: true, kwMax: false },
+  { valore: 'camper', etichetta: 'Camper', soggetto: true, kwMax: true },
+  { valore: 'moto', etichetta: 'Moto / scooter', soggetto: false, kwMax: false },
+  { valore: 'imbarcazione', etichetta: 'Imbarcazione / acquascooter / altro', soggetto: false, kwMax: false },
+];
+export const tipoPer = (valore) => TIPI_VEICOLO.find((t) => t.valore === valore) || TIPI_VEICOLO[0];
+
 export const limitiPer = (alimentazione) => LIMITI_NEOPATENTATI.alimentazioni[alimentazione] || LIMITI_NEOPATENTATI.alimentazioni.predefinito;
 
 const numero = (v) => {
@@ -64,7 +78,11 @@ export function kwPerTonnellata(potenzaKw, taraKg) {
 // { esito: 'si' | 'no' | 'nd', kwT, kw, limiti, motivo }
 // 'nd' = da verificare: mancano potenza o tara nella scheda.
 export function idoneitaNeopatentati(veicolo = {}) {
-  const limiti = limitiPer(veicolo.carburante);
+  const tipo = tipoPer(veicolo.tipoVeicolo);
+  const limiti = { ...limitiPer(veicolo.carburante), kwMax: tipo.kwMax ? limitiPer(veicolo.carburante).kwMax : null };
+  if (!tipo.soggetto) {
+    return { esito: 'si', soggetto: false, kwT: null, kw: null, limiti, motivo: `${tipo.etichetta}: non rientra nei limiti di potenza per i neopatentati` };
+  }
   const kw = numero(veicolo.potenzaKw);
   const kwT = kwPerTonnellata(veicolo.potenzaKw, veicolo.taraKg);
   const esatto = kwTEsatto(veicolo.potenzaKw, veicolo.taraKg);
@@ -73,9 +91,9 @@ export function idoneitaNeopatentati(veicolo = {}) {
   }
   const motivi = [];
   if (esatto > limiti.kwPerTonnellata) motivi.push(`${viraSu(esatto)} kW/t, oltre il limite di ${limiti.kwPerTonnellata}`);
-  if (kw > limiti.kwMax) motivi.push(`${virgola(kw)} kW, oltre il limite di ${limiti.kwMax}`);
+  if (limiti.kwMax !== null && kw > limiti.kwMax) motivi.push(`${virgola(kw)} kW, oltre il limite di ${limiti.kwMax}`);
   if (motivi.length > 0) return { esito: 'no', kwT, kw, limiti, motivo: motivi.join(' e ') };
-  return { esito: 'si', kwT, kw, limiti, motivo: `${virgola(kwT)} kW/t (limite ${limiti.kwPerTonnellata}) e ${virgola(kw)} kW (limite ${limiti.kwMax})` };
+  return { esito: 'si', kwT, kw, limiti, motivo: limiti.kwMax === null ? `${virgola(kwT)} kW/t (limite ${limiti.kwPerTonnellata})` : `${virgola(kwT)} kW/t (limite ${limiti.kwPerTonnellata}) e ${virgola(kw)} kW (limite ${limiti.kwMax})` };
 }
 
 const giorno = (v) => (v ? String(v).slice(0, 10) : '');
@@ -162,6 +180,7 @@ export function registroControllo({ veicolo = {}, rilascio, ritiro, operatore = 
     esito, // 'si' | 'no' | 'nd' | 'non-applicabile' | 'data-patente-mancante'
     veicolo: {
       targa: veicolo.targa || '',
+      tipoVeicolo: tipoPer(veicolo.tipoVeicolo).valore,
       carburante: veicolo.carburante || '',
       potenzaKw: numero(veicolo.potenzaKw),
       taraKg: numero(veicolo.taraKg),
