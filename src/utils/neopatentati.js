@@ -7,8 +7,8 @@
 // qui, in un posto solo, una riga per alimentazione (oggi tutte uguali), cosi'
 // se la legge cambia si cambia un numero. Funzioni pure, testate.
 // Dati dal libretto: potenza = campo P.2 (kW), tara = campo G (kg).
-// Per elettriche e ibride la potenza e' quella omologata del libretto (per le
-// ibride conta il motore termico, per le elettriche la potenza continua).
+// Per elettriche e ibride la norma non dice con chiarezza quale potenza contare:
+// si usa il valore del libretto e il gestore e' avvisato di controllarlo.
 // Mockup approvato: formiarent-documenti/mockup/gestionale-sito-neopatentati.html
 // Le stesse regole sono in formiarent/functions/src/neopatentati.ts e in
 // formiarent/src/lib/neopatentati.ts.
@@ -26,6 +26,12 @@ export const LIMITI_NEOPATENTATI = {
     Ibrido: { kwPerTonnellata: 75, kwMax: 105 },
   },
 };
+
+// Testi fissi: il software e' uno strumento di supporto, non una verifica legale.
+// Si mostrano accanto a ogni controllo (non dicono «adatta» come garanzia).
+export const AVVISO_CONTROLLO = 'Controllo di supporto basato sui dati del libretto inseriti da voi. La verifica finale (patente del cliente e idoneità dell\'auto) resta del noleggiatore.';
+export const AVVISO_ELETTRICHE_IBRIDE = 'Elettriche e ibride: la norma è meno chiara su quale potenza contare. Controlla sul libretto e, se hai dubbi, usa il valore più alto.';
+export const eElettricaOIbrida = (alimentazione) => /elettric|ibrid|hybrid|plug/i.test(String(alimentazione || ''));
 
 export const limitiPer = (alimentazione) => LIMITI_NEOPATENTATI.alimentazioni[alimentazione] || LIMITI_NEOPATENTATI.alimentazioni.predefinito;
 
@@ -124,7 +130,7 @@ export function controlloAbbinamento({ veicolo, rilascio, ritiro }) {
   const base = { neopatentato: true, finoAl: stato.finoAl, idoneita };
   if (idoneita.esito === 'si') return { ...base, ok: true, messaggio: '' };
   if (idoneita.esito === 'no') {
-    return { ...base, ok: false, messaggio: `Auto non adatta a un neopatentato (fino al ${dataIt(stato.finoAl)}): ${idoneita.motivo}.` };
+    return { ...base, ok: false, messaggio: `Auto oltre i limiti di legge per un neopatentato (fino al ${dataIt(stato.finoAl)}): ${idoneita.motivo}.` };
   }
   return { ...base, ok: false, messaggio: 'Auto da verificare per un neopatentato: mancano potenza e tara nella scheda del veicolo.' };
 }

@@ -4,7 +4,7 @@ import { Car, Upload, X } from 'lucide-react';
 import { SCADENZE_VEICOLO } from '../utils/scadenze';
 import { normalizzaTarga } from '../utils/validaVeicolo';
 import DotazioneVeicolo from './DotazioneVeicolo';
-import { idoneitaNeopatentati, kwPerTonnellata, LIMITI_NEOPATENTATI } from '../utils/neopatentati';
+import { idoneitaNeopatentati, kwPerTonnellata, LIMITI_NEOPATENTATI, AVVISO_CONTROLLO, AVVISO_ELETTRICHE_IBRIDE, eElettricaOIbrida } from '../utils/neopatentati';
 // vd-btn, vd-link, vd-titolo-sezione: stessi pulsanti e titoli della scheda veicolo.
 import '../styles/VehicleDetailModal.css';
 import '../styles/VehicleForm.css';
@@ -42,6 +42,7 @@ function SezioneNeopatentati({ formData, input, errori }) {
     <section className="vf-sezione">
       <h3 className="vd-titolo-sezione">Potenza per i neopatentati</h3>
       <p className="vf-nota">Dal libretto: <b>P.2</b> è la potenza in kW (non i cavalli), <b>G</b> è la tara, cioè il peso a vuoto, in kg. Per le elettriche e le ibride usa i valori del libretto.</p>
+      {eElettricaOIbrida(formData.carburante) && <p className="vf-nota" role="note">{AVVISO_ELETTRICHE_IBRIDE}</p>}
       <div className="vf-griglia vf-griglia--3">
         <Campo nome="potenzaKw" etichetta="Potenza (kW)" errore={errori.potenzaKw} aiuto="Libretto, campo P.2">
           {input('potenzaKw', { tipo: 'number', min: 1, step: 1, placeholder: 'Es. 66' })}
@@ -56,10 +57,11 @@ function SezioneNeopatentati({ formData, input, errori }) {
         </div>
       </div>
       <div className={`vf-esito vf-esito--${esito}`} role="status">
-        {esito === 'si' && <><b>Adatta ai neopatentati</b><span>{idoneita.motivo}.</span></>}
-        {esito === 'no' && <><b>Non adatta ai neopatentati</b><span>{idoneita.motivo}.</span></>}
+        {esito === 'si' && <><b>Nei limiti per i neopatentati (secondo i dati inseriti)</b><span>{idoneita.motivo}.</span></>}
+        {esito === 'no' && <><b>Oltre i limiti per i neopatentati</b><span>{idoneita.motivo}.</span></>}
         {esito === 'nd' && <><b>Da verificare</b><span>Scrivi potenza e tara: finché mancano, questa auto non si propone a chi ha la patente da meno di {LIMITI_NEOPATENTATI.anni} anni (limiti {limiti.kwPerTonnellata} kW/t e {limiti.kwMax} kW).</span></>}
       </div>
+      <p className="vf-nota">{AVVISO_CONTROLLO}</p>
     </section>
   );
 }

@@ -9,7 +9,7 @@ const ETICHETTA_STATO = {
   'categoria-piena': 'Categoria piena',
   sospeso: 'Sospeso',
   'da-verificare': '',
-  'non-adatta': 'Non adatta ai neopatentati',
+  'non-adatta': 'Oltre i limiti per neopatentati',
 };
 
 const NON_SCEGLIBILI = ['occupato', 'categoria-piena', 'sospeso', 'non-adatta'];

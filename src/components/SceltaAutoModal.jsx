@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Modal from 'react-modal';
 import { X } from 'lucide-react';
 import { dataEOra, formattaData } from '../utils/scadenze';
-import { controlloAbbinamento } from '../utils/neopatentati';
+import { controlloAbbinamento, AVVISO_CONTROLLO } from '../utils/neopatentati';
 import '../styles/Prenotazione.css';
 
 const descrizione = (v) => [
@@ -72,7 +72,7 @@ export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaS
             <section className="pz-sezione">
               {controllo(veicoliLiberi[0]).neopatentato && (
                 <div className="sa-neopat" role="status">
-                  <b>Cliente neopatentato</b> (patente del {formattaData(prenotazione.rilascioPatente)}): per legge guida solo auto fino a 75 kW per tonnellata e 105 kW. Le auto non adatte sono in grigio.
+                  <b>Cliente neopatentato</b> (patente del {formattaData(prenotazione.rilascioPatente)}): per legge guida solo auto fino a 75 kW per tonnellata e 105 kW. Le auto oltre i limiti sono in grigio. <small>{AVVISO_CONTROLLO}</small>
                 </div>
               )}
               <h3 className="pz-titolo-sezione">

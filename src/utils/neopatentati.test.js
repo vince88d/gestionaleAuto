@@ -1,5 +1,5 @@
 import {
-  kwPerTonnellata, idoneitaNeopatentati, neopatentatoFinoAl, statoPatente, testoDurataPatente, controlloAbbinamento, limitiPer,
+  kwPerTonnellata, idoneitaNeopatentati, neopatentatoFinoAl, statoPatente, testoDurataPatente, controlloAbbinamento, limitiPer, eElettricaOIbrida, AVVISO_CONTROLLO,
 } from './neopatentati';
 
 const panda = { carburante: 'Benzina', potenzaKw: 66, taraKg: 1050 };
@@ -47,6 +47,12 @@ describe('neopatentati', () => {
     expect(idoneitaNeopatentati({ potenzaKw: 105.1, taraKg: 1500 }).esito).toBe('no');
     // appena sotto il limite
     expect(idoneitaNeopatentati({ potenzaKw: 101, taraKg: 1347 }).esito).toBe('si');
+  });
+
+  test('avvisi: elettriche e ibride riconosciute, testo fisso presente', () => {
+    ['Elettrico', 'Ibrido', 'Ibrida plug-in', 'Hybrid'].forEach((a) => expect(eElettricaOIbrida(a)).toBe(true));
+    ['Benzina', 'Diesel', 'GPL', '', undefined].forEach((a) => expect(eElettricaOIbrida(a)).toBe(false));
+    expect(AVVISO_CONTROLLO).toMatch(/resta del noleggiatore/);
   });
 
   test('fine dei 3 anni', () => {

@@ -84,7 +84,7 @@ test('a un neopatentato non si consegna un\'auto troppo potente', () => {
     );
   }
   render(<Neo />);
-  expect(screen.getByText(/Auto non adatta a un neopatentato/)).toBeInTheDocument();
+  expect(screen.getByText(/Auto oltre i limiti di legge per un neopatentato/)).toBeInTheDocument();
   avanti();
   expect(onSave).not.toHaveBeenCalled();
 });

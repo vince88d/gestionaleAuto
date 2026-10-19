@@ -24,7 +24,7 @@ import {
   DURATE_RAPIDE, dateRapide, giorniDelNoleggio, statoPassi, validaNuovaPrenotazione, datiDaCliente, documentiCompleti,
 } from '../utils/nuovaPrenotazione';
 import { useOrari } from '../lib/firestoreOrari';
-import { controlloAbbinamento, statoPatente, testoDurataPatente } from '../utils/neopatentati';
+import { controlloAbbinamento, statoPatente, testoDurataPatente, AVVISO_CONTROLLO } from '../utils/neopatentati';
 import { chiedeEta, opzioniEtaGestionale, normalizzaEtaConducenti, testoSupplemento } from '../utils/etaConducenti';
 import { oreDelMenu, oraBreve, oraPerGiorno, oreSelezionabili, avvisoFuoriOrario, avvisoGiornoInPiu } from '../utils/orari';
 import './BookingForm.css';
@@ -585,7 +585,8 @@ function BookingForm({
               </label>
               {patente.neopatentato === true && (
                 <div className="np-avviso-ora" role="status">
-                  <p><b>Neopatentato: patente da {testoDurataPatente(dati.rilascioPatente, dati.dataInizio)}.</b> Fino al {patente.finoAl.split('-').reverse().join('/')} può guidare solo auto fino a 75 kW per tonnellata e 105 kW. Le auto non adatte non si possono scegliere.</p>
+                  <p><b>Neopatentato: patente da {testoDurataPatente(dati.rilascioPatente, dati.dataInizio)}.</b> Fino al {patente.finoAl.split('-').reverse().join('/')} può guidare solo auto fino a 75 kW per tonnellata e 105 kW. Le auto oltre i limiti non si possono scegliere.</p>
+                  <p className="np-aiuto">{AVVISO_CONTROLLO}</p>
                 </div>
               )}
               {patente.neopatentato === null && <p className="np-aiuto">Se il cliente ha preso la patente da meno di 3 anni, scrivi la data: le auto troppo potenti non si potranno scegliere.</p>}

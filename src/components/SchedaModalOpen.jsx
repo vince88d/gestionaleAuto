@@ -9,7 +9,7 @@ import { controllaPatente } from '../utils/validaCliente';
 import { codiceFiscaleValido } from '../utils/nuovaPrenotazione';
 import { erroriConsegna, riassuntoErrori } from '../utils/controlloConsegna';
 import { controlloEtaConsegna } from '../utils/etaConducenti';
-import { controlloAbbinamento } from '../utils/neopatentati';
+import { controlloAbbinamento, AVVISO_CONTROLLO, AVVISO_ELETTRICHE_IBRIDE, eElettricaOIbrida } from '../utils/neopatentati';
 import { pagataSulSito } from '../utils/regolePrenotazione';
 import ControlloDotazione from './ControlloDotazione';
 import SchemaDanni from './SchemaDanni';
@@ -289,8 +289,9 @@ function SchedaVeicoloModal({
             {neopatentati?.neopatentato && (
               <p className={`pz-avviso pz-avviso--${neopatentati.ok ? 'attenzione' : 'errore'}`} role={neopatentati.ok ? undefined : 'alert'} style={{ marginTop: 12 }}>
                 {neopatentati.ok
-                  ? `Cliente neopatentato (limiti fino al ${neopatentati.finoAl.split('-').reverse().join('/')}): questa auto è adatta (${neopatentati.idoneita.motivo}). Controlla la data di rilascio sul documento.`
+                  ? `Cliente neopatentato (limiti fino al ${neopatentati.finoAl.split('-').reverse().join('/')}): questa auto risulta nei limiti secondo i dati del veicolo (${neopatentati.idoneita.motivo}). Controlla la data di rilascio sul documento.`
                   : neopatentati.messaggio}
+                <br /><small>{AVVISO_CONTROLLO}{eElettricaOIbrida(veicolo?.carburante) ? ` ${AVVISO_ELETTRICHE_IBRIDE}` : ''}</small>
               </p>
             )}
             {esitoPatente.blocca && <p className="pz-avviso pz-avviso--errore" role="alert" style={{ marginTop: 12 }}>{esitoPatente.blocca}</p>}
