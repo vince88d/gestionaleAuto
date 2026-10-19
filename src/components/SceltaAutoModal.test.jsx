@@ -44,7 +44,11 @@ describe('cambio auto (neopatentato con auto non adatta)', () => {
     const onConferma = jest.fn().mockResolvedValue();
     render(<SceltaAutoModal cambio categoria="Berlina" prenotazione={neopat} veicoliLiberi={[tipo, bmw]} onClose={jest.fn()} onConferma={onConferma} onModifica={jest.fn()} />);
     expect(screen.getByText(/Scegli un'altra auto per/)).toBeTruthy();
-    expect(screen.getByRole('radio', { name: /CD456EF/ }).disabled).toBe(true); // BMW oltre i limiti
+    // la BMW (oltre i limiti) e' nascosta: se ne vede il numero e si puo' mostrare, ma non si sceglie
+    expect(screen.queryByRole('radio', { name: /CD456EF/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /1 auto non adatta nascosta/ }));
+    expect(screen.getByRole('radio', { name: /CD456EF/ }).disabled).toBe(true);
+    expect(screen.queryByRole('button', { name: /nascosta/ })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Scegli questa auto' }));
     await waitFor(() => expect(onConferma).toHaveBeenCalledWith({ veicolo: tipo, consegna: false }));
   });
@@ -62,4 +66,11 @@ describe('cambio auto (neopatentato con auto non adatta)', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/Nessun'altra auto «Berlina» è libera/);
     expect(screen.getByRole('button', { name: 'Modifica la prenotazione' })).toBeTruthy();
   });
+});
+
+test('scelta normale senza nessuna auto adatta: si mostrano tutte (grigie) per spiegare', () => {
+  const neopat = { ...prenotazione, rilascioPatente: '2025-03-14', dataInizio: '2026-10-19', dataFine: '2026-10-22' };
+  const potente = { marca: 'Ford', modello: 'Transit', targa: 'CD456EF', categoria: 'Furgone', potenzaKw: 140, taraKg: 1500 };
+  render(<SceltaAutoModal prenotazione={neopat} veicoliLiberi={[potente]} onClose={jest.fn()} onConferma={jest.fn()} />);
+  expect(screen.getByRole('radio', { name: /CD456EF/ }).disabled).toBe(true);
 });

@@ -22,6 +22,10 @@ export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaS
   // restano in elenco, grigie e con il motivo, ma non si scelgono.
   const controllo = (v) => controlloAbbinamento({ veicolo: v, rilascio: prenotazione?.rilascioPatente, ritiro: prenotazione?.dataInizio });
   const adatte = veicoliLiberi.filter((v) => controllo(v).ok);
+  // Come in Nuova prenotazione: le auto non adatte restano nascoste (con il
+  // numero e un pulsante per vederle, grigie e col motivo). Se non ce n'e'
+  // nessuna di adatta nella scelta normale, si mostrano tutte per spiegare.
+  const [mostraTutte, setMostraTutte] = useState(false);
   const [targa, setTarga] = useState(adatte.length === 1 ? adatte[0].targa : '');
   const [salvataggio, setSalvataggio] = useState(false);
 
@@ -39,6 +43,9 @@ export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaS
   };
 
   const categoria = (cambio ? categoriaCambio : prenotazione.categoria) || 'categoria non indicata';
+  const nascoste = veicoliLiberi.length - adatte.length;
+  const mostrale = mostraTutte || (adatte.length === 0 && !cambio);
+  const visibili = mostrale ? veicoliLiberi : adatte;
 
   return (
     <Modal
@@ -81,14 +88,14 @@ export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaS
             <section className="pz-sezione">
               {controllo(veicoliLiberi[0]).neopatentato && (
                 <div className="sa-neopat" role="status">
-                  <b>Cliente neopatentato</b> (patente del {formattaData(prenotazione.rilascioPatente)}): per legge guida solo auto fino a 75 kW per tonnellata (e 105 kW per le autovetture). Le auto oltre i limiti sono in grigio. <small>{AVVISO_CONTROLLO}</small>
+                  <b>Cliente neopatentato</b> (patente del {formattaData(prenotazione.rilascioPatente)}): per legge guida solo auto fino a 75 kW per tonnellata (e 105 kW per le autovetture). Le auto oltre i limiti non si possono scegliere. <small>{AVVISO_CONTROLLO}</small>
                 </div>
               )}
               <h3 className="pz-titolo-sezione">
-                Auto «{categoria}» libere in queste date ({veicoliLiberi.length})
+                Auto «{categoria}» libere in queste date ({visibili.length})
               </h3>
               <div className="sa-lista" role="radiogroup" aria-label="Auto libere">
-                {veicoliLiberi.map((v) => {
+                {visibili.map((v) => {
                   const c = controllo(v);
                   return (
                   <label key={v.targa} className={`sa-voce ${targa === v.targa ? 'sa-voce--scelta' : ''} ${c.ok ? '' : 'sa-voce--no'}`}>
@@ -106,6 +113,11 @@ export default function SceltaAutoModal({ prenotazione, veicoliLiberi, consegnaS
                   );
                 })}
               </div>
+              {nascoste > 0 && !mostrale && (
+                <button type="button" className="vd-link" style={{ marginTop: 10 }} onClick={() => setMostraTutte(true)}>
+                  {nascoste === 1 ? '1 auto non adatta nascosta' : `${nascoste} auto non adatte nascoste`} · mostra
+                </button>
+              )}
               {cambio && adatte.length === 0 && (
                 <div className="sa-vuoto" role="status" style={{ marginTop: 12 }}>
                   <strong>Nessuna auto «{categoria}» adatta a questo cliente è libera in queste date.</strong>
