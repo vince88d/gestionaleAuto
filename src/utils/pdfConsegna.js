@@ -3,7 +3,8 @@
 import { prezzoPrenotazione } from './dashboard';
 import { COPERTURE } from './protezioni';
 import { riassuntoDotazione } from './dotazione';
-import { dataEOra, formattaData } from './scadenze';
+import { dataEOra, formattaData, giornoLocale } from './scadenze';
+import { statoVelocita, testoVelocita, LIMITI_VELOCITA } from './neopatentati';
 import { nuovoFoglio } from './pdfLayout';
 import { calcolaGiorniNoleggio } from './giorniNoleggio';
 import { quartiCarburante } from './rientro';
@@ -141,6 +142,20 @@ export async function generaRiepilogoPdf(prenotazione, scheda = {}, opzioni = {}
       ['Totale noleggio', prezzo > 0 ? eur(prezzo, true) : ''],
     ]),
   );
+
+  // Patente da meno di 3 anni: limiti di velocita' di legge (promemoria nel verbale).
+  const velocita = statoVelocita(prenotazione.rilascioPatente, prenotazione.dataInizio > giornoLocale() ? prenotazione.dataInizio : giornoLocale());
+  if (velocita.soggetto === true) {
+    foglio.riquadroDati({
+      etichetta: 'Limiti di velocità (patente da meno di 3 anni)',
+      righe: [
+        ['In autostrada', `${LIMITI_VELOCITA.autostradaKmh} km/h`],
+        ['Strade extraurbane principali', `${LIMITI_VELOCITA.extraurbaneKmh} km/h`],
+        ['Valgono fino al', formattaData(velocita.finoAl)],
+      ],
+      nota: testoVelocita(velocita.finoAl),
+    });
+  }
 
   const dotazione = riassuntoDotazione(scheda);
   const quarti = quartiCarburante(scheda.carburante);

@@ -24,6 +24,7 @@ import {
   DURATE_RAPIDE, dateRapide, giorniDelNoleggio, statoPassi, validaNuovaPrenotazione, datiDaCliente, documentiCompleti,
 } from '../utils/nuovaPrenotazione';
 import { useOrari } from '../lib/firestoreOrari';
+import { controlloAbbinamento, statoPatente, testoDurataPatente, AVVISO_CONTROLLO, statoVelocita, testoVelocita } from '../utils/neopatentati';
 import { chiedeEta, opzioniEtaGestionale, normalizzaEtaConducenti, testoSupplemento } from '../utils/etaConducenti';
 import { oreDelMenu, oraBreve, oraPerGiorno, oreSelezionabili, avvisoFuoriOrario, avvisoGiornoInPiu } from '../utils/orari';
 import './BookingForm.css';
@@ -35,6 +36,8 @@ const CAMPI_VUOTI = {
   veicolo: '', targa: '', dataInizio: '', dataFine: '', oraInizio: '', oraFine: '', prezzoGiornaliero: '',
   // '' = nella fascia senza supplemento, 'oltre' = oltre l'eta' massima.
   etaConducente: '',
+  // Data di rilascio della patente ('AAAA-MM-GG'): per i limiti dei neopatentati.
+  rilascioPatente: '',
 };
 const nomeVeicolo = (v) => [v?.marca, v?.modello].filter(Boolean).join(' ') || v?.targa || '';
 const euro = (valore) => `${Number(valore || 0).toFixed(2).replace('.', ',')} €`;
@@ -246,7 +249,18 @@ function BookingForm({
   const avvisoRientro = dati.dataFine ? avvisoFuoriOrario(orari, dati.dataFine, dati.oraFine) : null;
   const giornoInPiu = orari ? avvisoGiornoInPiu(dati, tolleranza) : null;
   const passi = statoPassi(dati);
-  const errori = validaNuovaPrenotazione(dati);
+  // Neopatentati: se la patente ha meno di 3 anni l'auto deve rispettare i limiti di legge.
+  const abbinamento = controlloAbbinamento({ veicolo: veicoloScelto, rilascio: dati.rilascioPatente, ritiro: dati.dataInizio });
+  const patente = statoPatente(dati.rilascioPatente, dati.dataInizio);
+  const velocita = statoVelocita(dati.rilascioPatente, dati.dataInizio);
+  const motivoNonAdatta = (v) => {
+    const c = controlloAbbinamento({ veicolo: v, rilascio: dati.rilascioPatente, ritiro: dati.dataInizio });
+    return c.ok ? '' : c.messaggio;
+  };
+  const errori = {
+    ...validaNuovaPrenotazione(dati),
+    ...(veicoloScelto && !abbinamento.ok ? { targa: abbinamento.messaggio } : {}),
+  };
   const mostraErrore = (campo) => tentato && errori[campo];
   // Protezione della categoria dell'auto scelta ed extra (anche quelli tolti
   // dall'elenco ma gia' salvati su questa prenotazione).
@@ -565,7 +579,27 @@ function BookingForm({
           {/* 2. Quale auto */}
           <section id="np-sezione-2" className={`np-sezione ${passi.attivo === 2 ? 'np-sezione--attiva' : ''} ${mostraErrore('targa') ? 'np-sezione--errore' : ''}`}>
             <h3 className="np-sezione-titolo"><span className="np-numero">2.</span> Quale auto?</h3>
+            <div className="np-patente">
+              <label className="np-campo" htmlFor="np-rilascio-patente">
+                <span className="np-etichetta">Patente rilasciata il <span className="np-facoltativo">(facoltativo)</span></span>
+                <input id="np-rilascio-patente" type="date" value={dati.rilascioPatente} onChange={(e) => aggiorna({ rilascioPatente: e.target.value })} />
+              </label>
+              {patente.neopatentato === true && (
+                <div className="np-avviso-ora" role="status">
+                  <p><b>Neopatentato: patente da {testoDurataPatente(dati.rilascioPatente, dati.dataInizio)}.</b> Fino al {patente.finoAl.split('-').reverse().join('/')} può guidare solo auto fino a 75 kW per tonnellata (e 105 kW per le autovetture). Le auto oltre i limiti non si possono scegliere.</p>
+                  <p className="np-aiuto">{AVVISO_CONTROLLO}</p>
+                </div>
+              )}
+              {velocita.soggetto === true && patente.neopatentato !== true && (
+                <div className="np-avviso-ora" role="status">
+                  <p><b>Patente da meno di 3 anni.</b> Nessun limite sulla potenza dell'auto, ma ricordalo al cliente: {testoVelocita(velocita.finoAl)}</p>
+                </div>
+              )}
+              {velocita.soggetto === true && patente.neopatentato === true && <p className="np-aiuto">{testoVelocita(velocita.finoAl)}</p>}
+              {patente.neopatentato === null && <p className="np-aiuto">Se il cliente ha preso la patente da meno di 3 anni, scrivi la data: le auto troppo potenti non si potranno scegliere.</p>}
+            </div>
             <SceltaVeicolo
+              motivoNonAdatta={motivoNonAdatta}
               veicoli={veicoliSelezionabili}
               targaScelta={dati.targa}
               targaIniziale={initialValues?.targa}

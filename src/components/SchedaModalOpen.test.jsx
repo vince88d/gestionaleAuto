@@ -10,7 +10,7 @@ const prenotazione = {
   id: 'p1', cliente: 'Mario Rossi', veicolo: 'Fiat Panda', targa: 'AA111AA', dataInizio: '2099-10-12', dataFine: '2099-10-15',
   codiceFiscale: 'RSSMRA80A01H501U', patente: 'AB1234567',
 };
-const cliente = { scadenzaPatente: '2099-12-31' };
+const cliente = { scadenzaPatente: '2099-12-31', rilascioPatente: '2015-05-01' };
 
 function Prova({ onSave, scheda = { carburante: '', kmIniziali: '', danni: '' } }) {
   const [s, setS] = useState(scheda);
@@ -69,4 +69,46 @@ test('un danno segnato sullo schema senza descrizione blocca; scrivendola si va 
   expect(screen.queryByText(/^Manca:/)).toBeNull();
   avanti();
   expect(onSave).toHaveBeenCalledTimes(1);
+});
+
+test('a un neopatentato non si consegna un\'auto troppo potente', () => {
+  const onSave = jest.fn();
+  const potente = { targa: 'AA111AA', carburante: 'Diesel', potenzaKw: 110, taraKg: 1300 };
+  function Neo() {
+    const [s, setS] = useState({ carburante: 'Pieno', kmIniziali: '1000', danni: '' });
+    return (
+      <SchedaModalOpen
+        isOpen onRequestClose={jest.fn()} prenotazione={{ ...prenotazione, rilascioPatente: '2099-01-01' }} cliente={{ scadenzaPatente: '2099-12-31' }}
+        veicolo={potente} schedaVeicolo={s} setSchedaVeicolo={setS} documenti={{}} onDocumentiChange={jest.fn()} onSave={onSave}
+      />
+    );
+  }
+  render(<Neo />);
+  expect(screen.getByText(/Auto oltre i limiti di legge per un neopatentato/)).toBeInTheDocument();
+  avanti();
+  expect(onSave).not.toHaveBeenCalled();
+});
+
+test('consegna bloccata: «Avanti» spento e due azioni per risolvere', () => {
+  const onCambiaAuto = jest.fn();
+  const onModifica = jest.fn();
+  const potente = { targa: 'AA111AA', carburante: 'Diesel', potenzaKw: 110, taraKg: 1300 };
+  function Neo() {
+    const [s, setS] = useState({ carburante: 'Pieno', kmIniziali: '1000', danni: '' });
+    return (
+      <SchedaModalOpen
+        isOpen onRequestClose={jest.fn()} prenotazione={{ ...prenotazione, rilascioPatente: '2099-01-01' }} cliente={{ scadenzaPatente: '2099-12-31' }}
+        veicolo={potente} schedaVeicolo={s} setSchedaVeicolo={setS} documenti={{}} onDocumentiChange={jest.fn()} onSave={jest.fn()}
+        onCambiaAuto={onCambiaAuto} onModifica={onModifica}
+      />
+    );
+  }
+  render(<Neo />);
+  expect(screen.getByText('Questa auto non si può consegnare a un neopatentato')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Avanti: riepilogo e contratto/ })).toBeDisabled();
+  expect(screen.getByText("Per andare avanti scegli un'altra auto.")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /Scegli un'altra auto/ }));
+  expect(onCambiaAuto).toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Modifica la prenotazione' }));
+  expect(onModifica).toHaveBeenCalled();
 });

@@ -702,6 +702,8 @@
 .sv-stato--occupato { color: #c0392b; }
 .sv-stato--categoria-piena { color: #b45309; }
 .sv-stato--sospeso { color: #5d6b79; }
+.sv-stato--non-adatta { color: #a93226; }
+.sv-motivo { display: block; margin-top: 2px; font-size: 13px; line-height: 1.35; color: #a93226; }
 
 .sv-vuoto {
   grid-column: 1 / -1;
@@ -898,3 +900,18 @@
 /* «Apri tutte / Chiudi tutte» sopra le schede richiudibili dei dettagli */
 .pz-barra-schede { display: flex; justify-content: flex-end; margin: -4px 0 -4px; }
 .pz-barra-schede .vd-link { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; }
+
+/* Scelta dell'auto: neopatentati */
+.sa-voce--no { opacity: 0.75; background: #f4f6f8; border-style: dashed; cursor: not-allowed; }
+.sa-motivo { display: block; margin-top: 2px; font-size: 13px; line-height: 1.35; color: #a93226; }
+.sa-neopat { margin-bottom: 12px; padding: 10px 14px; border: 1px solid #f1d39a; border-radius: 10px; background: #fff6e0; font-size: 14.5px; line-height: 1.45; color: #6b4500; }
+
+
+/* Consegna bloccata (neopatentato con auto non adatta): avviso fisso con le azioni per risolvere */
+.pz-blocco { margin-top: 12px; padding: 16px 18px; border: 1px solid #f3b4ac; border-left: 6px solid #b0321f; border-radius: 12px; background: #fdf1ef; }
+.pz-blocco-titolo { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 17px; font-weight: 800; color: #7a1f12; }
+.pz-blocco-motivo { margin: 0 0 4px; font-size: 15px; line-height: 1.45; color: #5a1d14; }
+.pz-blocco-azioni { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.pz-blocco-azioni .vd-btn { min-height: 44px; padding: 0 16px; font-size: 15.5px; }
+.pz-blocco-piccolo { margin: 10px 0 0; font-size: 13.5px; line-height: 1.4; color: #6b5550; }
+.pz-sopratitolo { margin: 0 0 2px; font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: #5d6b79; }

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import Modal from 'react-modal';
 import { toast } from 'react-toastify';
-import { Upload, X } from 'lucide-react';
+import { AlertTriangle, Car, Upload, X } from 'lucide-react';
 import { caricaFotoDanno } from '../lib/storageFoto';
 import FotoDalTelefono from './FotoDalTelefono';
 import { formattaData, giornoLocale } from '../utils/scadenze';
@@ -9,6 +9,7 @@ import { controllaPatente } from '../utils/validaCliente';
 import { codiceFiscaleValido } from '../utils/nuovaPrenotazione';
 import { erroriConsegna, riassuntoErrori } from '../utils/controlloConsegna';
 import { controlloEtaConsegna } from '../utils/etaConducenti';
+import { controlloAbbinamento, statoVelocita, testoVelocita, AVVISO_CONTROLLO, AVVISO_ELETTRICHE_IBRIDE, eElettricaOIbrida } from '../utils/neopatentati';
 import { pagataSulSito } from '../utils/regolePrenotazione';
 import ControlloDotazione from './ControlloDotazione';
 import SchemaDanni from './SchemaDanni';
@@ -54,6 +55,9 @@ function SchedaVeicoloModal({
   veicolo,
   // Regole sull'eta' (lib/firestoreEtaConducenti.js): promemoria sull'eta' dichiarata.
   etaConducenti = null,
+  // Consegna bloccata (neopatentato con auto non adatta): cambiare auto o modificare la prenotazione.
+  onCambiaAuto,
+  onModifica,
 }) {
   const [uploading, setUploading] = useState(false);
   // Dopo il primo «Avanti» i campi mancanti si segnano e si aggiornano mentre si compilano.
@@ -69,6 +73,15 @@ function SchedaVeicoloModal({
   const scadenzaInAnagrafica = cliente?.scadenzaPatente || '';
   const chiediScadenza = Boolean(prenotazione) && !scadenzaInAnagrafica;
   const scadenzaPatente = scadenzaInAnagrafica || documenti.scadenzaPatente || '';
+  // Data di rilascio: dalla prenotazione o dall'anagrafica, altrimenti si chiede (limiti neopatentati).
+  const rilascioNoto = prenotazione?.rilascioPatente || cliente?.rilascioPatente || '';
+  const chiediRilascio = Boolean(prenotazione) && !rilascioNoto;
+  const rilascioPatente = rilascioNoto || documenti.rilascioPatente || '';
+  const neopatentati = prenotazione && veicolo
+    ? controlloAbbinamento({ veicolo, rilascio: rilascioPatente, ritiro: giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio })
+    : null;
+  const velocita = prenotazione ? statoVelocita(rilascioPatente, giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio) : { soggetto: null, finoAl: null };
+  const abbinamentoBloccato = Boolean(neopatentati?.neopatentato && !neopatentati.ok);
   const esitoPatente = prenotazione
     ? controllaPatente(scadenzaPatente, {
         ritiro: giornoLocale() > prenotazione.dataInizio ? giornoLocale() : prenotazione.dataInizio,
@@ -82,6 +95,7 @@ function SchedaVeicoloModal({
     chiediCodiceFiscale, codiceFiscaleValido: codiceFiscaleValido(documenti.codiceFiscale),
     chiediPatente, patente: documenti.patente,
     chiediScadenza, scadenzaPatente: documenti.scadenzaPatente,
+    chiediRilascio, rilascioPatente: documenti.rilascioPatente,
     carburante: schedaVeicolo.carburante, km: schedaVeicolo.kmIniziali,
     danniSenzaDescrizione: senzaDescrizione(segniConsegna).length,
   }) : [];
@@ -120,7 +134,7 @@ function SchedaVeicoloModal({
 
   // Porta lo sguardo sul primo campo mancante: scorre fin li' e lo seleziona.
   const vaiAlCampo = (campo) => {
-    const id = { codiceFiscale: 'consegna-codice-fiscale', patente: 'consegna-patente', scadenzaPatente: 'consegna-scadenza-patente', km: 'consegna-km' }[campo];
+    const id = { codiceFiscale: 'consegna-codice-fiscale', patente: 'consegna-patente', scadenzaPatente: 'consegna-scadenza-patente', rilascioPatente: 'consegna-rilascio-patente', km: 'consegna-km' }[campo];
     const elemento = campo === 'carburante'
       ? document.querySelector('#consegna-carburante-scelte button')
       : campo === 'danni'
@@ -138,11 +152,16 @@ function SchedaVeicoloModal({
       chiediCodiceFiscale, codiceFiscaleValido: codiceFiscaleValido(documenti.codiceFiscale),
       chiediPatente, patente: documenti.patente,
       chiediScadenza, scadenzaPatente: documenti.scadenzaPatente,
+      chiediRilascio, rilascioPatente: documenti.rilascioPatente,
       carburante: schedaVeicolo.carburante, km: schedaVeicolo.kmIniziali,
     danniSenzaDescrizione: senzaDescrizione(segniConsegna).length,
     });
     if (mancanti.length > 0) {
       vaiAlCampo(mancanti[0].campo);
+      return;
+    }
+    if (neopatentati && !neopatentati.ok) {
+      toast.error(neopatentati.messaggio);
       return;
     }
     if (esitoPatente.blocca) {
@@ -181,7 +200,7 @@ function SchedaVeicoloModal({
         <div className="pz-corpo">
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Documenti del cliente</h3>
-            {(chiediPatente || chiediScadenza || chiediCodiceFiscale) ? (
+            {(chiediPatente || chiediScadenza || chiediCodiceFiscale || chiediRilascio) ? (
               <div className="pz-griglia pz-griglia--2">
                 {chiediCodiceFiscale && (
                   <label className={`pz-campo pz-intera ${erroreDi('codiceFiscale') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-codice-fiscale">
@@ -240,6 +259,25 @@ function SchedaVeicoloModal({
                     <strong style={{ fontSize: 14, lineHeight: '40px' }}>{formattaData(scadenzaPatente)}</strong>
                   </div>
                 )}
+                {chiediRilascio ? (
+                  <label className={`pz-campo ${erroreDi('rilascioPatente') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-rilascio-patente">
+                    <span className="pz-etichetta">Patente rilasciata il <span className="pz-obbligatorio">*</span></span>
+                    <input
+                      id="consegna-rilascio-patente"
+                      type="date"
+                      value={documenti.rilascioPatente || ''}
+                      onChange={(e) => aggiornaDocumento('rilascioPatente', e.target.value)}
+                      required
+                      aria-invalid={Boolean(erroreDi('rilascioPatente'))}
+                    />
+                    {erroreDi('rilascioPatente') && <p className="pz-errore" role="alert">{erroreDi('rilascioPatente')}</p>}
+                  </label>
+                ) : (
+                  <div className="pz-campo">
+                    <span className="pz-etichetta">Patente rilasciata il</span>
+                    <strong style={{ fontSize: 14, lineHeight: '40px' }}>{formattaData(rilascioPatente)}</strong>
+                  </div>
+                )}
                 <p className="pz-aiuto pz-intera">
                   Controlla la patente in sede. I dati vanno anche nella scheda del cliente
                   {cliente ? '' : ', che verrà aggiunto ai Clienti'}.
@@ -250,7 +288,37 @@ function SchedaVeicoloModal({
                 <div className="pz-intera"><dt>Codice fiscale</dt><dd>{prenotazione?.codiceFiscale}</dd></div>
                 <div><dt>Numero patente</dt><dd>{patenteNota}</dd></div>
                 <div><dt>Scadenza patente</dt><dd>{formattaData(scadenzaPatente)}</dd></div>
+                <div><dt>Patente rilasciata il</dt><dd>{formattaData(rilascioPatente)}</dd></div>
               </dl>
+            )}
+            {neopatentati?.neopatentato && !neopatentati.ok && (
+              <div className="pz-blocco" role="alert">
+                <p className="pz-blocco-titolo">
+                  <AlertTriangle size={18} aria-hidden="true" />
+                  {neopatentati.idoneita?.esito === 'no' ? 'Questa auto non si può consegnare a un neopatentato' : 'Questa auto è da verificare per un neopatentato'}
+                </p>
+                <p className="pz-blocco-motivo">{neopatentati.messaggio}</p>
+                <div className="pz-blocco-azioni">
+                  {onCambiaAuto && (
+                    <button type="button" className="vd-btn vd-btn--scegli" onClick={onCambiaAuto}>
+                      <Car size={17} aria-hidden="true" /> Scegli un&apos;altra auto
+                    </button>
+                  )}
+                  {onModifica && <button type="button" className="vd-btn" onClick={onModifica}>Modifica la prenotazione</button>}
+                </div>
+                <p className="pz-blocco-piccolo">{AVVISO_CONTROLLO}</p>
+              </div>
+            )}
+            {neopatentati?.neopatentato && neopatentati.ok && (
+              <p className="pz-avviso pz-avviso--attenzione" style={{ marginTop: 12 }}>
+                {`Cliente neopatentato (limiti fino al ${neopatentati.finoAl.split('-').reverse().join('/')}): questa auto risulta nei limiti secondo i dati del veicolo (${neopatentati.idoneita.motivo}). Controlla la data di rilascio sul documento.`}
+                <br /><small>{AVVISO_CONTROLLO}{eElettricaOIbrida(veicolo?.carburante) ? ` ${AVVISO_ELETTRICHE_IBRIDE}` : ''}</small>
+              </p>
+            )}
+            {velocita.soggetto === true && (
+              <p className="pz-avviso pz-avviso--attenzione" role="status" style={{ marginTop: 12 }}>
+                <b>Ricorda al cliente i limiti di velocità.</b> {testoVelocita(velocita.finoAl)}
+              </p>
             )}
             {esitoPatente.blocca && <p className="pz-avviso pz-avviso--errore" role="alert" style={{ marginTop: 12 }}>{esitoPatente.blocca}</p>}
             {esitoPatente.avviso && <p className="pz-avviso pz-avviso--attenzione" style={{ marginTop: 12 }}>{esitoPatente.avviso}</p>}
@@ -340,8 +408,9 @@ function SchedaVeicoloModal({
 
         <footer className="pz-piede">
           {errori.length > 0 && <span className="pz-piede-nota pz-piede-nota--errore" role="alert">{riassuntoErrori(errori)}</span>}
+          {abbinamentoBloccato && <span className="pz-piede-nota">Per andare avanti scegli un&apos;altra auto.</span>}
           <button type="button" className="vd-btn" onClick={onRequestClose}>Annulla</button>
-          <button type="submit" className="vd-btn vd-btn--primario" disabled={uploading || Boolean(esitoPatente.blocca)}>
+          <button type="submit" className="vd-btn vd-btn--primario" disabled={uploading || Boolean(esitoPatente.blocca) || abbinamentoBloccato}>
             {uploading ? 'Attendi…' : 'Avanti: riepilogo e contratto'}
           </button>
         </footer>

@@ -28,9 +28,9 @@ test('consegna e rientro', () => {
 });
 
 test('si aprono da sole solo le schede che servono', () => {
-  expect(aperte({ status: 'attiva' })).toEqual(['cliente', 'noleggio']);
+  expect(aperte({ status: 'attiva' })).toEqual(['noleggio']); // prima della consegna: Noleggio aperto, Cliente chiuso
   expect(aperte({ status: 'attiva', consegnataIl: '2026-10-14' })).toEqual(['consegna']);
   expect(aperte({ status: 'completata', consegnataIl: '2026-10-14', rientro: {} })).toEqual(['rientro']);
-  expect(aperte({ status: 'annullata' })).toEqual(['cliente', 'noleggio']);
+  expect(aperte({ status: 'annullata' })).toEqual(['noleggio']);
   expect(aperte({ status: 'completata', daRiparare: true })).toEqual(['rientro', 'danni']);
 });

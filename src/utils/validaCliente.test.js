@@ -70,5 +70,5 @@ test('clienteDaPrenotazione separa nome e cognome e prende la patente della cons
   const c = clienteDaPrenotazione(
     { cliente: 'Anna Maria Verdi', codiceFiscale: 'vrdnmr90a41h501x', emailCliente: 'a@b.it', telefono: '333', origine: 'sito' },
     { patente: ' ab12 ', scadenzaPatente: '2030-01-01' });
-  expect(c).toEqual({ nome: 'Anna', cognome: 'Maria Verdi', codiceFiscale: 'VRDNMR90A41H501X', email: 'a@b.it', telefono: '333', patente: 'AB12', scadenzaPatente: '2030-01-01', origine: 'sito' });
+  expect(c).toEqual({ nome: 'Anna', cognome: 'Maria Verdi', codiceFiscale: 'VRDNMR90A41H501X', email: 'a@b.it', telefono: '333', patente: 'AB12', scadenzaPatente: '2030-01-01', rilascioPatente: '', origine: 'sito' });
 });

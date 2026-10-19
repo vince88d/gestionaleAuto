@@ -9,9 +9,10 @@ const ETICHETTA_STATO = {
   'categoria-piena': 'Categoria piena',
   sospeso: 'Sospeso',
   'da-verificare': '',
+  'non-adatta': 'Oltre i limiti per neopatentati',
 };
 
-const NON_SCEGLIBILI = ['occupato', 'categoria-piena', 'sospeso'];
+const NON_SCEGLIBILI = ['occupato', 'categoria-piena', 'sospeso', 'non-adatta'];
 const SENZA_CATEGORIA = 'Senza categoria';
 const nomeVeicolo = (v) => [v.marca, v.modello].filter(Boolean).join(' ') || v.targa;
 
@@ -29,6 +30,7 @@ function SceltaVeicolo({
   idEscluso,
   targaIniziale,
   giorni = 0,
+  motivoNonAdatta,
 }) {
   const oggi = giornoLocale();
   const [cerca, setCerca] = useState('');
@@ -41,8 +43,10 @@ function SceltaVeicolo({
   // prenotazione resta sempre sceglibile.
   const conStato = useMemo(() => veicoli.map((v) => {
     const stato = statoVeicoloNelPeriodo({ veicolo: v, inizio, fine, veicoli, prenotazioni, holds, idEscluso, oggi });
-    return { veicolo: v, stato: v.targa === targaIniziale ? 'libero' : stato };
-  }), [veicoli, inizio, fine, prenotazioni, holds, idEscluso, targaIniziale, oggi]);
+    // Limiti di legge per i neopatentati (utils/neopatentati.js): l'auto non adatta non si sceglie.
+    const motivo = v.targa !== targaIniziale && !NON_SCEGLIBILI.includes(stato) ? motivoNonAdatta?.(v) : '';
+    return { veicolo: v, stato: motivo ? 'non-adatta' : (v.targa === targaIniziale ? 'libero' : stato), motivo };
+  }), [veicoli, inizio, fine, prenotazioni, holds, idEscluso, targaIniziale, oggi, motivoNonAdatta]);
 
   // Auto ancora dal cliente oltre la data di fine (avviso sulla scheda).
   const ritardi = useMemo(() => Object.fromEntries(
@@ -124,7 +128,7 @@ function SceltaVeicolo({
               ? 'Nessun veicolo trovato.'
               : 'Nessun veicolo libero in queste date per questa categoria.'}
           </p>
-        ) : visibili.map(({ veicolo, stato }) => {
+        ) : visibili.map(({ veicolo, stato, motivo }) => {
           const scelto = veicolo.targa === targaScelta;
           const bloccato = NON_SCEGLIBILI.includes(stato) && !scelto;
           return (
@@ -136,7 +140,7 @@ function SceltaVeicolo({
               disabled={bloccato}
               className={`sv-veicolo ${scelto ? 'sv-veicolo--scelto' : ''}`}
               onClick={() => onScegli(veicolo)}
-              title={bloccato ? `${nomeVeicolo(veicolo)}: ${ETICHETTA_STATO[stato].toLowerCase()} in queste date` : nomeVeicolo(veicolo)}
+              title={bloccato ? (stato === 'non-adatta' ? motivo : `${nomeVeicolo(veicolo)}: ${ETICHETTA_STATO[stato].toLowerCase()} in queste date`) : nomeVeicolo(veicolo)}
             >
               <span className="sv-foto">
                 {veicolo.immagine ? <img src={veicolo.immagine} alt="" /> : <Car size={22} aria-hidden="true" />}
@@ -147,6 +151,7 @@ function SceltaVeicolo({
                   <span className="sv-targa">{veicolo.targa}</span>
                   {categoria === 'tutte' && veicolo.categoria && <span>{veicolo.categoria}</span>}
                 </span>
+                {stato === 'non-adatta' && <span className="sv-motivo">{motivo}</span>}
                 {ritardi[veicolo.targa] && (
                   <span className="sv-ritardo" title={`Non ancora rientrata: doveva tornare il ${formattaData(ritardi[veicolo.targa].dataFine)}`}>
                     <AlertTriangle size={14} aria-hidden="true" />
@@ -159,7 +164,7 @@ function SceltaVeicolo({
                 {veicolo.prezzo && giorni > 0 ? (
                   <span className="sv-totale">€ {(Number(veicolo.prezzo) * giorni).toLocaleString('it-IT')} in tutto</span>
                 ) : null}
-                {ETICHETTA_STATO[stato] && <span className={`sv-stato sv-stato--${stato}`}>{ETICHETTA_STATO[stato]}</span>}
+                {ETICHETTA_STATO[stato] && <span className={`sv-stato sv-stato--${stato}`}>{stato === 'non-adatta' && /da verificare/i.test(motivo) ? 'Da verificare' : ETICHETTA_STATO[stato]}</span>}
               </span>
             </button>
           );

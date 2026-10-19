@@ -170,9 +170,9 @@ describe('schede richiudibili', () => {
     schedaVeicolo: { kmIniziali: 48250, carburante: '3/4' },
   };
 
-  test('da consegnare: aperte Cliente e Noleggio, chiusa la Consegna con il suo riassunto', () => {
+  test('da consegnare: aperto il Noleggio, chiusi Cliente e Consegna con il loro riassunto', () => {
     render(<InfoModal isOpen prenotazione={{ ...prenotazioneDalSito, veicolo: 'Panda', targa: 'AA111AA' }} {...azioni} />);
-    expect(screen.getByRole('button', { name: /^Cliente/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /^Cliente/ })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('button', { name: /^Noleggio/ })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: /^Consegna/ })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByText('Non ancora consegnata')).toBeInTheDocument();
@@ -201,5 +201,29 @@ describe('schede richiudibili', () => {
     rerender(<InfoModal isOpen prenotazione={{ ...prenotazioneDalSito, id: 'p2' }} {...azioni} />);
     expect(screen.getByRole('button', { name: /^Consegna/ })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('button', { name: /^Noleggio/ })).toHaveAttribute('aria-expanded', 'true');
+  });
+});
+
+describe('dettagli: titolo e auto da cambiare', () => {
+  const daConsegnare = {
+    id: 'p9', status: 'attiva', cliente: 'Sara Blu', veicolo: 'Alfa Romeo Giulia', targa: 'AB222BB',
+    dataInizio: '2026-10-19', dataFine: '2026-10-22', rilascioPatente: '2025-03-14',
+  };
+
+  test('sopra il nome c\'e\' «Prenotazione · stato» e il Cliente dice cosa manca', () => {
+    render(<InfoModal isOpen prenotazione={daConsegnare} {...azioni} onConsegna={jest.fn()} />);
+    expect(screen.getByText('Prenotazione · Da consegnare')).toBeInTheDocument();
+    expect(screen.getByText(/codice fiscale e patente da inserire alla consegna/)).toBeInTheDocument();
+    expect(screen.getByText('Da completare')).toBeInTheDocument();
+  });
+
+  test('con l\'auto non adatta il prossimo passo e\' «Cambia l\'auto», non «Consegna»', () => {
+    const onCambiaAuto = jest.fn();
+    render(<InfoModal isOpen prenotazione={daConsegnare} {...azioni} onConsegna={jest.fn()} onCambiaAuto={onCambiaAuto}
+      daCambiare={{ esito: 'no', messaggio: 'Auto oltre i limiti di legge per un neopatentato.' }} />);
+    expect(screen.getByText("Cambia l'auto prima di consegnare")).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Consegna l'auto/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Cambia auto/ }));
+    expect(onCambiaAuto).toHaveBeenCalledWith(daConsegnare);
   });
 });

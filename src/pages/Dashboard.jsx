@@ -16,6 +16,7 @@ import { riepilogoDashboard, serieUltimi12Mesi, veicoliLiberiNelPeriodo } from '
 import { cambiaStatoRiparazione } from '../utils/danniVeicolo';
 import { dataEOra, formattaData, giornoLocale } from '../utils/scadenze';
 import { oraBreve } from '../utils/orari';
+import { autoDaCambiare } from '../utils/cambioAuto';
 import VehicleDetailModal from '../components/VehicleDetailModal';
 import RinnovaScadenzaModal from '../components/RinnovaScadenzaModal';
 import RichiesteSito from '../components/RichiesteSito';
@@ -271,10 +272,11 @@ function Dashboard() {
               <ul className="dash-lista">
                 {r.daConsegnare.map((p) => {
                   const ritardo = giorniTra(p.dataInizio, oggi);
+                  const cambio = autoDaCambiare(p, veicoli, oggi);
                   return (
                     <Riga
                       key={p.id}
-                      tono="blu"
+                      tono={cambio ? 'scegli' : 'blu'}
                       nome
                       principale={p.cliente || 'Cliente non indicato'}
                       secondaria={`${veicoloDellaPrenotazione(p)} · ${
@@ -283,12 +285,17 @@ function Dashboard() {
                           : `${p.oraInizio ? `alle ${oraBreve(p.oraInizio)} · ` : ''}fino al ${dataEOra(p.dataFine, p.oraFine)}`
                       }`}
                       secondariaAllerta={ritardo > 0}
+                      nota={cambio ? (cambio.esito === 'no' ? 'Auto non adatta a un neopatentato: va cambiata' : 'Auto da verificare: mancano potenza e tara nella scheda') : undefined}
                       onApri={() => vaiAPrenotazioni({ azione: 'dettagli', id: p.id })}
-                      azione={
+                      azione={cambio ? (
+                        <button type="button" className="dash-azione dash-azione--scegli" onClick={() => vaiAPrenotazioni({ azione: 'cambia', id: p.id })}>
+                          <Car size={16} aria-hidden="true" /> Cambia auto
+                        </button>
+                      ) : (
                         <button type="button" className="dash-azione dash-azione--primaria" onClick={() => vaiAPrenotazioni({ azione: 'consegna', id: p.id })}>
                           <KeyRound size={16} aria-hidden="true" /> Consegna l&apos;auto
                         </button>
-                      }
+                      )}
                     />
                   );
                 })}

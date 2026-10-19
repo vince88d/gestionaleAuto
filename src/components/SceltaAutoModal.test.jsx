@@ -34,3 +34,43 @@ test('ritiro in un altro giorno, una sola auto: gia\' scelta, solo "Scegli quest
   fireEvent.click(screen.getByRole('button', { name: 'Scegli questa auto' }));
   await waitFor(() => expect(onConferma).toHaveBeenCalledWith({ veicolo: ducato, consegna: false }));
 });
+
+describe('cambio auto (neopatentato con auto non adatta)', () => {
+  const neopat = { ...prenotazione, origine: undefined, categoria: 'Berlina', rilascioPatente: '2025-03-14', dataInizio: '2026-10-19', dataFine: '2026-10-22' };
+  const tipo = { marca: 'Fiat', modello: 'Tipo', targa: 'BA123CD', categoria: 'Berlina', potenzaKw: 74, taraKg: 1200 };
+  const bmw = { marca: 'BMW', modello: '320d', targa: 'CD456EF', categoria: 'Berlina', potenzaKw: 140, taraKg: 1500 };
+
+  test('titolo di cambio e l\'auto adatta si sceglie', async () => {
+    const onConferma = jest.fn().mockResolvedValue();
+    render(<SceltaAutoModal cambio categoria="Berlina" prenotazione={neopat} veicoliLiberi={[tipo, bmw]} onClose={jest.fn()} onConferma={onConferma} onModifica={jest.fn()} />);
+    expect(screen.getByText(/Scegli un'altra auto per/)).toBeTruthy();
+    // la BMW (oltre i limiti) e' nascosta: se ne vede il numero e si puo' mostrare, ma non si sceglie
+    expect(screen.queryByRole('radio', { name: /CD456EF/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /1 auto non adatta nascosta/ }));
+    expect(screen.getByRole('radio', { name: /CD456EF/ }).disabled).toBe(true);
+    expect(screen.queryByRole('button', { name: /nascosta/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Scegli questa auto' }));
+    await waitFor(() => expect(onConferma).toHaveBeenCalledWith({ veicolo: tipo, consegna: false }));
+  });
+
+  test('nessuna auto adatta: lo dice e manda a «Modifica la prenotazione»', () => {
+    const onModifica = jest.fn();
+    render(<SceltaAutoModal cambio categoria="Berlina" prenotazione={neopat} veicoliLiberi={[bmw]} onClose={jest.fn()} onConferma={jest.fn()} onModifica={onModifica} />);
+    expect(screen.getByText(/Nessuna auto «Berlina» adatta a questo cliente/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Modifica la prenotazione' }));
+    expect(onModifica).toHaveBeenCalled();
+  });
+
+  test('nessun\'altra auto libera: messaggio di cambio con «Modifica la prenotazione»', () => {
+    render(<SceltaAutoModal cambio categoria="Berlina" prenotazione={neopat} veicoliLiberi={[]} onClose={jest.fn()} onConferma={jest.fn()} onModifica={jest.fn()} />);
+    expect(screen.getByRole('alert').textContent).toMatch(/Nessun'altra auto «Berlina» è libera/);
+    expect(screen.getByRole('button', { name: 'Modifica la prenotazione' })).toBeTruthy();
+  });
+});
+
+test('scelta normale senza nessuna auto adatta: si mostrano tutte (grigie) per spiegare', () => {
+  const neopat = { ...prenotazione, rilascioPatente: '2025-03-14', dataInizio: '2026-10-19', dataFine: '2026-10-22' };
+  const potente = { marca: 'Ford', modello: 'Transit', targa: 'CD456EF', categoria: 'Furgone', potenzaKw: 140, taraKg: 1500 };
+  render(<SceltaAutoModal prenotazione={neopat} veicoliLiberi={[potente]} onClose={jest.fn()} onConferma={jest.fn()} />);
+  expect(screen.getByRole('radio', { name: /CD456EF/ }).disabled).toBe(true);
+});

@@ -273,3 +273,12 @@
   font-size: 13px;
   font-weight: 600;
 }
+
+/* Potenza per i neopatentati */
+.Modal.vf-modal .vf-nota { margin: 0 0 10px; font-size: 14px; line-height: 1.45; color: #4b5563; }
+.Modal.vf-modal .vf-calcolato { display: flex; align-items: center; min-height: 44px; padding: 0 12px; border: 1.5px solid #d5dde6; border-radius: 8px; background: #f1f4f7; font-size: 16px; font-weight: 700; color: #1f2d3a; }
+.Modal.vf-modal .vf-esito { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; padding: 12px 14px; border: 1px solid; border-radius: 10px; font-size: 14.5px; line-height: 1.45; }
+.Modal.vf-modal .vf-esito b { font-size: 15.5px; }
+.Modal.vf-modal .vf-esito--si { border-color: #b6dfc7; background: #e8f5ee; color: #14532d; }
+.Modal.vf-modal .vf-esito--no { border-color: #f1c3bd; background: #fdf0ee; color: #7a1f16; }
+.Modal.vf-modal .vf-esito--nd { border-color: #d5dde6; background: #f4f6f8; color: #3b4856; }

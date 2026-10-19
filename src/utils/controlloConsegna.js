@@ -8,6 +8,7 @@ export function erroriConsegna({
   chiediCodiceFiscale = false, codiceFiscaleValido = true,
   chiediPatente = false, patente = '',
   chiediScadenza = false, scadenzaPatente = '',
+  chiediRilascio = false, rilascioPatente = '',
   carburante = '', km = '',
   danniSenzaDescrizione = 0,
 } = {}) {
@@ -20,6 +21,9 @@ export function erroriConsegna({
   }
   if (chiediScadenza && !scadenzaPatente) {
     errori.push({ campo: 'scadenzaPatente', nome: 'scadenza patente', messaggio: 'Scegli la scadenza della patente.' });
+  }
+  if (chiediRilascio && !rilascioPatente) {
+    errori.push({ campo: 'rilascioPatente', nome: 'data di rilascio della patente', messaggio: 'Scrivi la data di rilascio della patente (serve per i limiti dei neopatentati).' });
   }
   if (!carburante) {
     errori.push({ campo: 'carburante', nome: 'carburante', messaggio: 'Scegli il livello del carburante.' });
