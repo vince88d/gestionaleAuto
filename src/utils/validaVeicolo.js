@@ -51,6 +51,7 @@ export function validaVeicolo(dati, flotta = [], idCorrente = null, annoCorrente
   const tara = numeroOVuoto(dati?.taraKg);
   if (tara !== '' && !(Number.isFinite(tara) && tara >= 300 && tara <= 10000)) errori.taraKg = 'Tara in kg tra 300 e 10000 (campo G del libretto).';
 
+  if (dati?.taraCampo && !['G', 'G1'].includes(dati.taraCampo)) errori.taraCampo = 'Scegli il campo del libretto dall\'elenco.';
   if (dati?.tipoVeicolo && !['autovettura', 'furgone', 'camper', 'moto', 'imbarcazione'].includes(dati.tipoVeicolo)) errori.tipoVeicolo = 'Scegli il tipo di veicolo dall\'elenco.';
 
   return errori;

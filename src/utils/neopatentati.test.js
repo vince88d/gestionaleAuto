@@ -1,5 +1,5 @@
 import {
-  kwPerTonnellata, idoneitaNeopatentati, neopatentatoFinoAl, statoPatente, testoDurataPatente, controlloAbbinamento, limitiPer, eElettricaOIbrida, AVVISO_CONTROLLO, registroControllo, LIMITI_NEOPATENTATI, statoVelocita, testoVelocita,
+  kwPerTonnellata, idoneitaNeopatentati, neopatentatoFinoAl, statoPatente, testoDurataPatente, controlloAbbinamento, limitiPer, massaPerRapporto, NOTA_TARA, eElettricaOIbrida, AVVISO_CONTROLLO, registroControllo, LIMITI_NEOPATENTATI, statoVelocita, testoVelocita,
 } from './neopatentati';
 
 const panda = { carburante: 'Benzina', potenzaKw: 66, taraKg: 1050 };
@@ -7,10 +7,23 @@ const potente = { carburante: 'Diesel', potenzaKw: 110, taraKg: 1300 };
 
 describe('neopatentati', () => {
   test('kW per tonnellata', () => {
-    expect(kwPerTonnellata(66, 1050)).toBe(62.9);
+    // campo G (senza conducente): si aggiungono 75 kg. Esempio ACI: 55 kW e 1050 kg = 48,9 kW/t
+    expect(kwPerTonnellata(55, 1050)).toBe(48.9);
+    expect(kwPerTonnellata(66, 1050, 'G')).toBe(58.7); // 66 / 1,125
+    // campo G.1 (massa in ordine di marcia, con conducente): niente da aggiungere
+    expect(kwPerTonnellata(66, 1050, 'G1')).toBe(62.9);
     expect(kwPerTonnellata('66', '1.050')).not.toBeNull();
     expect(kwPerTonnellata('', 1050)).toBeNull();
     expect(kwPerTonnellata(66, 0)).toBeNull();
+  });
+
+  test('peso usato per il rapporto: G aggiunge 75 kg, G.1 no, senza scelta vale G', () => {
+    expect(massaPerRapporto(1050, 'G')).toEqual({ kg: 1125, tara: 1050, aggiunti: 75 });
+    expect(massaPerRapporto(1050, undefined)).toEqual({ kg: 1125, tara: 1050, aggiunti: 75 });
+    expect(massaPerRapporto(1050, 'qualcosa')).toEqual({ kg: 1125, tara: 1050, aggiunti: 75 });
+    expect(massaPerRapporto(1050, 'G1')).toEqual({ kg: 1050, tara: 1050, aggiunti: 0 });
+    expect(massaPerRapporto('', 'G')).toBeNull();
+    expect(NOTA_TARA).toMatch(/75 kg convenzionali/);
   });
 
   test('limiti di legge: 75 kW/t e 105 kW per tutte le alimentazioni', () => {
@@ -21,7 +34,7 @@ describe('neopatentati', () => {
     expect(idoneitaNeopatentati(panda).esito).toBe('si');
     const no = idoneitaNeopatentati(potente);
     expect(no.esito).toBe('no');
-    expect(no.motivo).toMatch(/84,62 kW\/t, oltre il limite di 75/);
+    expect(no.motivo).toMatch(/80 kW\/t, oltre il limite di 75/); // 110 / 1,375
     expect(no.motivo).toMatch(/110 kW, oltre il limite di 105/);
     expect(idoneitaNeopatentati({ carburante: 'Benzina', potenzaKw: 66 }).esito).toBe('nd');
   });
@@ -30,23 +43,28 @@ describe('neopatentati', () => {
     // 100 kW su 1500 kg = 66,7 kW/t (ok) ma 110 kW supera i 105
     expect(idoneitaNeopatentati({ potenzaKw: 110, taraKg: 1800 }).esito).toBe('no');
     // 80 kW su 1000 kg = 80 kW/t supera 75 anche se sotto i 105 kW
-    expect(idoneitaNeopatentati({ potenzaKw: 80, taraKg: 1000 }).esito).toBe('no');
+    expect(idoneitaNeopatentati({ potenzaKw: 80, taraKg: 1000, taraCampo: 'G1' }).esito).toBe('no');
+    // lo stesso peso scritto nel campo G: 80 / 1,075 = 74,4 kW/t, consentito
+    expect(idoneitaNeopatentati({ potenzaKw: 80, taraKg: 1000, taraCampo: 'G' }).esito).toBe('si');
     // esattamente sul limite e' consentito
-    expect(idoneitaNeopatentati({ potenzaKw: 75, taraKg: 1000 }).esito).toBe('si');
+    expect(idoneitaNeopatentati({ potenzaKw: 75, taraKg: 1000, taraCampo: 'G1' }).esito).toBe('si');
   });
 
   test('il confronto e\' sul valore esatto, non arrotondato', () => {
     // 88 kW / 1173 kg = 75,02 kW/t: oltre il limite anche se arrotondato fa 75,0
-    const poco = idoneitaNeopatentati({ potenzaKw: 88, taraKg: 1173 });
+    const poco = idoneitaNeopatentati({ potenzaKw: 88, taraKg: 1173, taraCampo: 'G1' });
     expect(poco.esito).toBe('no');
     expect(poco.motivo).toMatch(/75,03 kW\/t, oltre il limite di 75/);
     // 90 kW / 1200 kg = 75 esatti: consentito (nessun errore di virgola mobile)
-    expect(idoneitaNeopatentati({ potenzaKw: 90, taraKg: 1200 }).esito).toBe('si');
+    expect(idoneitaNeopatentati({ potenzaKw: 90, taraKg: 1200, taraCampo: 'G1' }).esito).toBe('si');
+    // con il campo G il peso e' 75 kg in piu': 90 kW su 1125 + 75 kg = 75 esatti
+    expect(idoneitaNeopatentati({ potenzaKw: 90, taraKg: 1125, taraCampo: 'G' }).esito).toBe('si');
+    expect(idoneitaNeopatentati({ potenzaKw: 90.1, taraKg: 1125, taraCampo: 'G' }).esito).toBe('no');
     // 105 kW (con peso alto) consentito, 105,1 no
     expect(idoneitaNeopatentati({ potenzaKw: 105, taraKg: 1400 }).esito).toBe('si');
     expect(idoneitaNeopatentati({ potenzaKw: 105.1, taraKg: 1500 }).esito).toBe('no');
     // appena sotto il limite
-    expect(idoneitaNeopatentati({ potenzaKw: 101, taraKg: 1347 }).esito).toBe('si');
+    expect(idoneitaNeopatentati({ potenzaKw: 101, taraKg: 1347, taraCampo: 'G1' }).esito).toBe('si');
   });
 
   test('avvisi: elettriche e ibride riconosciute, testo fisso presente', () => {
@@ -92,14 +110,19 @@ describe('neopatentati', () => {
 describe('registro del controllo', () => {
   const adesso = new Date('2026-10-20T09:30:00Z');
   test('neopatentato con auto oltre i limiti: dati, esito e versione della regola', () => {
-    const r = registroControllo({ veicolo: { targa: 'AB123CD', carburante: 'Benzina', potenzaKw: 88, taraKg: 1173 }, rilascio: '2025-03-14', ritiro: '2026-10-20', operatore: 'staff@example.com', adesso });
+    const r = registroControllo({ veicolo: { targa: 'AB123CD', carburante: 'Benzina', potenzaKw: 88, taraKg: 1173, taraCampo: 'G1' }, rilascio: '2025-03-14', ritiro: '2026-10-20', operatore: 'staff@example.com', adesso });
     expect(r.esito).toBe('no');
     expect(r.neopatentato).toBe(true);
     expect(r.finoAl).toBe('2028-03-14');
     expect(r.controllatoDa).toBe('staff@example.com');
     expect(r.controllatoIl).toBe('2026-10-20T09:30:00.000Z');
-    expect(r.veicolo).toMatchObject({ targa: 'AB123CD', potenzaKw: 88, taraKg: 1173, kwPerTonnellata: 75.02, limiti: { kwPerTonnellata: 75, kwMax: 105 } });
+    expect(r.veicolo).toMatchObject({ targa: 'AB123CD', potenzaKw: 88, taraKg: 1173, taraCampo: 'G1', massaUsataKg: 1173, kwPerTonnellata: 75.02, limiti: { kwPerTonnellata: 75, kwMax: 105 } });
     expect(r.versioneRegola).toMatchObject({ aggiornatoAl: LIMITI_NEOPATENTATI.aggiornatoAl, anni: 3 });
+  });
+  test('con il campo G il registro dice con quale peso e stato calcolato', () => {
+    const r = registroControllo({ veicolo: { targa: 'X', potenzaKw: 55, taraKg: 1050, taraCampo: 'G' }, rilascio: '2025-03-14', ritiro: '2026-10-20', adesso });
+    expect(r.veicolo).toMatchObject({ taraKg: 1050, taraCampo: 'G', massaUsataKg: 1125, kwPerTonnellata: 48.89 });
+    expect(r.esito).toBe('si');
   });
   test('non neopatentato, data mancante, dati mancanti', () => {
     expect(registroControllo({ veicolo: panda, rilascio: '2019-01-01', ritiro: '2026-10-20', adesso }).esito).toBe('non-applicabile');

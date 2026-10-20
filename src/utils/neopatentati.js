@@ -15,10 +15,14 @@
 import { leggiEuro } from './protezioni';
 
 export const LIMITI_NEOPATENTATI = {
-  aggiornatoAl: '2026-10-18',
+  aggiornatoAl: '2026-10-19',
   fonte: 'Art. 117, comma 2-bis, Codice della Strada (L. 177/2024, in vigore dal 14/12/2024)',
   anni: 3,
   inVigoreDal: '2024-12-14',
+  // Il rapporto si calcola sulla tara COL conducente: 75 kg convenzionali
+  // (convenzione ACI/Ministero: kW / ((massa a vuoto + 75) / 1000)). Non e' nel testo
+  // dell'art. 117, che dice solo «riferita alla tara»: da verificare su libretti veri.
+  kgConducente: 75,
   // Una riga per alimentazione; `predefinito` vale per tutte le altre.
   alimentazioni: {
     predefinito: { kwPerTonnellata: 75, kwMax: 105 },
@@ -61,18 +65,37 @@ const viraSu = (n) => (Math.ceil(n * 100) / 100).toLocaleString('it-IT', { maxim
 
 // kW per tonnellata ESATTO, senza arrotondare: il confronto con la legge
 // («superiore a 75») si fa su questo, l'arrotondamento e' solo per mostrare.
-const kwTEsatto = (potenzaKw, taraKg) => {
-  const p = numero(potenzaKw);
+// `taraCampo` dice cosa c'e' scritto nel peso del libretto:
+//  - 'G' (o niente): massa a vuoto / tara, SENZA conducente -> si aggiungono 75 kg;
+//  - 'G1': massa in ordine di marcia, che include gia' il conducente -> non si aggiunge nulla.
+export const TARA_CAMPI = [
+  { valore: 'G', etichetta: 'Massa a vuoto / tara (campo G): aggiungo 75 kg del conducente' },
+  { valore: 'G1', etichetta: 'Massa in ordine di marcia (campo G.1): include già il conducente' },
+];
+export const taraCampoPer = (valore) => (valore === 'G1' ? 'G1' : 'G');
+
+// Peso usato per il rapporto: { kg, tara, aggiunti } o null se manca la tara.
+export function massaPerRapporto(taraKg, taraCampo) {
   const t = numero(taraKg);
-  return p === null || t === null ? null : (p * 1000) / t; // p*1000/t, non p/(t/1000): niente errori da virgola mobile sul limite
+  if (t === null) return null;
+  const aggiunti = taraCampoPer(taraCampo) === 'G' ? LIMITI_NEOPATENTATI.kgConducente : 0;
+  return { kg: t + aggiunti, tara: t, aggiunti };
+}
+
+const kwTEsatto = (potenzaKw, taraKg, taraCampo) => {
+  const p = numero(potenzaKw);
+  const m = massaPerRapporto(taraKg, taraCampo);
+  return p === null || m === null ? null : (p * 1000) / m.kg; // p*1000/kg, non p/(kg/1000): niente errori da virgola mobile sul limite
 };
 
 // kW per tonnellata (un decimale), o null se mancano potenza o tara.
-export function kwPerTonnellata(potenzaKw, taraKg) {
-  const p = numero(potenzaKw);
-  const t = numero(taraKg);
-  return p === null || t === null ? null : una(p / (t / 1000));
+export function kwPerTonnellata(potenzaKw, taraKg, taraCampo) {
+  const esatto = kwTEsatto(potenzaKw, taraKg, taraCampo);
+  return esatto === null ? null : una(esatto);
 }
+
+// Testo fisso accanto alla tara nella scheda del veicolo.
+export const NOTA_TARA = 'La legge usa la tara con il conducente a 75 kg convenzionali. Se il valore che scrivi non li comprende (campo G) il programma li aggiunge; se è la massa in ordine di marcia (campo G.1) no. Se il libretto ha già il rapporto kW/t stampato, controlla che coincida.';
 
 // Il veicolo puo' guidarlo un neopatentato?
 // { esito: 'si' | 'no' | 'nd', kwT, kw, limiti, motivo }
@@ -84,8 +107,8 @@ export function idoneitaNeopatentati(veicolo = {}) {
     return { esito: 'si', soggetto: false, kwT: null, kw: null, limiti, motivo: `${tipo.etichetta}: non rientra nei limiti di potenza per i neopatentati` };
   }
   const kw = numero(veicolo.potenzaKw);
-  const kwT = kwPerTonnellata(veicolo.potenzaKw, veicolo.taraKg);
-  const esatto = kwTEsatto(veicolo.potenzaKw, veicolo.taraKg);
+  const kwT = kwPerTonnellata(veicolo.potenzaKw, veicolo.taraKg, veicolo.taraCampo);
+  const esatto = kwTEsatto(veicolo.potenzaKw, veicolo.taraKg, veicolo.taraCampo);
   if (kw === null || kwT === null || esatto === null) {
     return { esito: 'nd', kwT, kw, limiti, motivo: 'Mancano potenza e tara: completa la scheda del veicolo.' };
   }
@@ -160,7 +183,8 @@ export function controlloAbbinamento({ veicolo, rilascio, ritiro }) {
 export function registroControllo({ veicolo = {}, rilascio, ritiro, operatore = '', adesso = new Date() }) {
   const stato = statoPatente(rilascio, ritiro);
   const idoneita = idoneitaNeopatentati(veicolo);
-  const esatto = kwTEsatto(veicolo.potenzaKw, veicolo.taraKg);
+  const esatto = kwTEsatto(veicolo.potenzaKw, veicolo.taraKg, veicolo.taraCampo);
+  const massa = massaPerRapporto(veicolo.taraKg, veicolo.taraCampo);
   let esito = 'non-applicabile';
   if (stato.neopatentato === null) esito = 'data-patente-mancante';
   else if (stato.neopatentato) esito = idoneita.esito;
@@ -185,6 +209,8 @@ export function registroControllo({ veicolo = {}, rilascio, ritiro, operatore = 
       carburante: veicolo.carburante || '',
       potenzaKw: numero(veicolo.potenzaKw),
       taraKg: numero(veicolo.taraKg),
+      taraCampo: taraCampoPer(veicolo.taraCampo),
+      massaUsataKg: massa ? massa.kg : null, // il peso con cui e' stato calcolato il rapporto
       kwPerTonnellata: esatto === null ? null : Math.round(esatto * 100) / 100,
       limiti: idoneita.limiti,
     },
