@@ -282,3 +282,23 @@
 .Modal.vf-modal .vf-esito--si { border-color: #b6dfc7; background: #e8f5ee; color: #14532d; }
 .Modal.vf-modal .vf-esito--no { border-color: #f1c3bd; background: #fdf0ee; color: #7a1f16; }
 .Modal.vf-modal .vf-esito--nd { border-color: #d5dde6; background: #f4f6f8; color: #3b4856; }
+
+/* Neopatentati: rapporto dal libretto o calcolato (mockup gestionale-neopatentati-rapporto.html) */
+.Modal.vf-modal .vf-passo { margin: 18px 0 6px; font-size: 12.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #1a6fb0; }
+.Modal.vf-modal .vf-stretto { max-width: 300px; }
+.Modal.vf-modal .vf-scelta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 12px; padding: 0; border: 0; min-width: 0; }
+.Modal.vf-modal .vf-opt { display: flex; align-items: flex-start; gap: 10px; min-height: 56px; padding: 11px 14px; border: 2px solid #e3e8ee; border-radius: 12px; background: #fff; font-size: 15px; line-height: 1.4; cursor: pointer; }
+.Modal.vf-modal .vf-opt input { width: 20px; height: 20px; margin: 2px 0 0; flex: none; accent-color: #1a6fb0; }
+.Modal.vf-modal .vf-opt b { display: block; font-size: 15.5px; color: #1f2d3a; }
+.Modal.vf-modal .vf-opt small { color: #5d6b79; font-size: 13px; }
+.Modal.vf-modal .vf-opt--on { border-color: #1a6fb0; background: #f3f8fc; }
+.Modal.vf-modal .vf-opt:focus-within { outline: 3px solid #9cc7ea; outline-offset: 2px; }
+.Modal.vf-modal .vf-libretto { margin: 8px 0 0; padding: 10px 14px; border: 1px dashed #9aa6b2; border-radius: 10px; background: #f7f9fb; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13.5px; line-height: 1.6; color: #3b4856; }
+.Modal.vf-modal .vf-libretto mark { background: #fff1b8; padding: 1px 3px; border-radius: 3px; font-weight: 700; }
+.Modal.vf-modal .vf-libretto-titolo { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-family: -apple-system, "Segoe UI", sans-serif; font-size: 12.5px; font-weight: 700; color: #5d6b79; }
+.Modal.vf-modal .vf-esito { flex-direction: row; align-items: flex-start; gap: 12px; }
+.Modal.vf-modal .vf-esito > div { display: flex; flex-direction: column; gap: 2px; }
+.Modal.vf-modal .vf-esito-icona { flex: none; margin-top: 1px; }
+.Modal.vf-modal .vf-esito-fonte { margin-top: 3px; font-size: 13px; opacity: .9; }
+.Modal.vf-modal .vf-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 760px) { .Modal.vf-modal .vf-scelta { grid-template-columns: 1fr; } }

@@ -51,6 +51,9 @@ export function validaVeicolo(dati, flotta = [], idCorrente = null, annoCorrente
   const tara = numeroOVuoto(dati?.taraKg);
   if (tara !== '' && !(Number.isFinite(tara) && tara >= 300 && tara <= 10000)) errori.taraKg = 'Tara in kg tra 300 e 10000 (massa a vuoto del libretto).';
 
+  const rapporto = numeroOVuoto(dati?.rapportoLibretto);
+  if (rapporto !== '' && !(Number.isFinite(rapporto) && rapporto >= 1 && rapporto <= 1000)) errori.rapportoLibretto = 'Rapporto in kW/t tra 1 e 1000 (pagina 3 del libretto: «RAPPORTO POTENZA/TARA = ...»).';
+
   if (dati?.taraCampo && !['G', 'G1'].includes(dati.taraCampo)) errori.taraCampo = 'Scegli il campo del libretto dall\'elenco.';
   if (dati?.tipoVeicolo && !['autovettura', 'furgone', 'camper', 'moto', 'imbarcazione'].includes(dati.tipoVeicolo)) errori.tipoVeicolo = 'Scegli il tipo di veicolo dall\'elenco.';
 
@@ -64,7 +67,7 @@ export function preparaVeicolo(dati) {
   ['marca', 'modello', 'colore', 'note'].forEach((campo) => {
     if (typeof pronto[campo] === 'string') pronto[campo] = pronto[campo].trim();
   });
-  ['anno', 'km', 'porte', 'potenzaKw', 'taraKg'].filter((c) => !['potenzaKw', 'taraKg'].includes(c) || c in pronto).forEach((campo) => {
+  ['anno', 'km', 'porte', 'potenzaKw', 'taraKg', 'rapportoLibretto'].filter((c) => !['potenzaKw', 'taraKg', 'rapportoLibretto'].includes(c) || c in pronto).forEach((campo) => {
     const valore = numeroOVuoto(pronto[campo]);
     pronto[campo] = Number.isNaN(valore) ? '' : valore;
   });
