@@ -1,5 +1,5 @@
 import {
-  kwPerTonnellata, idoneitaNeopatentati, neopatentatoFinoAl, statoPatente, testoDurataPatente, controlloAbbinamento, limitiPer, massaPerRapporto, NOTA_TARA, eElettricaOIbrida, AVVISO_CONTROLLO, registroControllo, LIMITI_NEOPATENTATI, statoVelocita, testoVelocita,
+  kwPerTonnellata, fonteRapporto, idoneitaNeopatentati, neopatentatoFinoAl, statoPatente, testoDurataPatente, controlloAbbinamento, limitiPer, massaPerRapporto, NOTA_TARA, eElettricaOIbrida, AVVISO_CONTROLLO, registroControllo, LIMITI_NEOPATENTATI, statoVelocita, testoVelocita,
 } from './neopatentati';
 
 const panda = { carburante: 'Benzina', potenzaKw: 66, taraKg: 1050 };
@@ -15,6 +15,53 @@ describe('neopatentati', () => {
     expect(kwPerTonnellata('66', '1.050')).not.toBeNull();
     expect(kwPerTonnellata('', 1050)).toBeNull();
     expect(kwPerTonnellata(66, 0)).toBeNull();
+  });
+
+  test('torna col «rapporto potenza/tara» stampato a pag. 3 di tre libretti veri (massa a vuoto + 75 kg)', () => {
+    // Range Rover: 183 kW, massa a vuoto 2430 kg, libretto 73,054
+    expect(kwPerTonnellata(183, 2430, 'G')).toBe(73.1);
+    // Mercedes X-Class: 190 kW, 2265 kg, libretto 81,197
+    expect(kwPerTonnellata(190, 2265, 'G')).toBe(81.2);
+    // VW Polo: 51 kW, 992 kg, libretto 47,798
+    expect(kwPerTonnellata(51, 992, 'G')).toBe(47.8);
+  });
+
+  describe('rapporto copiato dal libretto (facciata 3)', () => {
+    test('se c\'e\', vale quello e non serve la massa a vuoto', () => {
+      expect(kwPerTonnellata(110, '', 'G', 66.465)).toBe(66.5);
+      expect(fonteRapporto({ potenzaKw: 110, rapportoLibretto: 66.465 })).toBe('libretto');
+    });
+    test('ha la precedenza sul calcolo, anche se potenza e massa a vuoto ci sono', () => {
+      const v = { potenzaKw: 51, taraKg: 992, taraCampo: 'G', rapportoLibretto: 80 };
+      expect(idoneitaNeopatentati(v)).toMatchObject({ esito: 'no', fonte: 'libretto' });
+      expect(idoneitaNeopatentati({ ...v, rapportoLibretto: '' })).toMatchObject({ esito: 'si', fonte: 'calcolato' });
+    });
+    test('Audi Q3: rapporto nei limiti ma 110 kW oltre il tetto di 105 kW per le autovetture', () => {
+      const r = idoneitaNeopatentati({ tipoVeicolo: 'autovettura', potenzaKw: 110, rapportoLibretto: 66.465 });
+      expect(r.esito).toBe('no');
+      expect(r.motivo).toMatch(/110 kW, oltre il limite di 105/);
+      expect(r.motivo).not.toMatch(/kW\/t/);
+    });
+    test('limite sul valore stampato: 75 passa, 75,001 no', () => {
+      expect(idoneitaNeopatentati({ tipoVeicolo: 'furgone', potenzaKw: 60, rapportoLibretto: 75 }).esito).toBe('si');
+      expect(idoneitaNeopatentati({ tipoVeicolo: 'furgone', potenzaKw: 60, rapportoLibretto: 75.001 }).esito).toBe('no');
+    });
+    test('furgone: col rapporto basta, la potenza non e\' obbligatoria; autovettura senza potenza e\' da verificare', () => {
+      expect(idoneitaNeopatentati({ tipoVeicolo: 'furgone', rapportoLibretto: 70 }).esito).toBe('si');
+      const r = idoneitaNeopatentati({ tipoVeicolo: 'autovettura', rapportoLibretto: 70 });
+      expect(r.esito).toBe('nd');
+      expect(r.motivo).toMatch(/potenza/);
+    });
+    test('senza rapporto e senza massa a vuoto: da verificare, dice cosa scrivere', () => {
+      const r = idoneitaNeopatentati({ tipoVeicolo: 'autovettura', potenzaKw: 80 });
+      expect(r.esito).toBe('nd');
+      expect(r.motivo).toMatch(/rapporto potenza\/tara del libretto/);
+    });
+    test('il registro dice che il rapporto e\' dal libretto, senza massa usata', () => {
+      const r = registroControllo({ veicolo: { targa: 'AB123CD', potenzaKw: 190, taraKg: 2265, rapportoLibretto: 81.197 }, rilascio: '2025-03-14', ritiro: '2026-10-20', adesso: new Date('2026-10-20T10:00:00Z') });
+      expect(r.veicolo).toMatchObject({ fonteRapporto: 'libretto', rapportoLibretto: 81.197, massaUsataKg: null, kwPerTonnellata: 81.197 });
+      expect(r.esito).toBe('no');
+    });
   });
 
   test('peso usato per il rapporto: G aggiunge 75 kg, G.1 no, senza scelta vale G', () => {

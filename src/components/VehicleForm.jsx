@@ -1,6 +1,6 @@
 // src/components/VehicleForm.jsx
-import React from 'react';
-import { Car, Upload, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Car, Upload, X, CheckCircle2, XCircle, AlertTriangle, BookOpen } from 'lucide-react';
 import { SCADENZE_VEICOLO } from '../utils/scadenze';
 import { normalizzaTarga } from '../utils/validaVeicolo';
 import DotazioneVeicolo from './DotazioneVeicolo';
@@ -30,19 +30,33 @@ function Campo({ nome, etichetta, obbligatorio, errore, aiuto, children }) {
   );
 }
 
-// Potenza e tara dal libretto: il gestionale calcola i kW/t e dice se l'auto
-// e' adatta a un neopatentato (utils/neopatentati.js).
-// Mockup: formiarent-documenti/mockup/gestionale-sito-neopatentati.html
-function SezioneNeopatentati({ formData, input, errori, onChange }) {
-  const kwT = kwPerTonnellata(formData.potenzaKw, formData.taraKg, formData.taraCampo);
-  const massa = massaPerRapporto(formData.taraKg, formData.taraCampo);
-  const idoneita = idoneitaNeopatentati(formData);
-  const { esito, limiti } = idoneita;
-  const virgola = (n) => n.toLocaleString('it-IT', { maximumFractionDigits: 1 });
+// Neopatentati: potenza (sempre, serve per il tetto dei kW) e rapporto potenza/tara.
+// Il rapporto e' quello stampato dal Ministero sul libretto (pagina 3): si copia. Se il
+// libretto non lo riporta, si scrive la massa a vuoto e lo calcola il programma (+75 kg
+// del conducente). Mockup: formiarent-documenti/mockup/gestionale-neopatentati-rapporto.html
+function SezioneNeopatentati({ formData, input, errori, onChange, setFormData }) {
+  const [modo, setModo] = useState(() => {
+    if (formData.rapportoLibretto !== undefined && formData.rapportoLibretto !== '' && formData.rapportoLibretto !== null) return 'libretto';
+    return formData.taraKg ? 'calcolo' : 'libretto';
+  });
+  // Si valuta solo la strada scelta: l'altra non conta, anche se ha un vecchio valore.
+  const dati = modo === 'libretto' ? { ...formData, taraKg: '' } : { ...formData, rapportoLibretto: '' };
+  const kwT = kwPerTonnellata(dati.potenzaKw, dati.taraKg, dati.taraCampo, dati.rapportoLibretto);
+  const massa = modo === 'calcolo' ? massaPerRapporto(dati.taraKg, dati.taraCampo) : null;
+  const idoneita = idoneitaNeopatentati(dati);
+  const { esito, limiti, fonte } = idoneita;
+  const virgola = (n) => n.toLocaleString('it-IT', { maximumFractionDigits: 3 });
+  const scegli = (nuovo) => {
+    setModo(nuovo);
+    // Passando al calcolo il numero del libretto si toglie, altrimenti resterebbe in vigore di nascosto.
+    if (nuovo === 'calcolo') setFormData((prec) => ({ ...prec, rapportoLibretto: '' }));
+  };
+  const Icona = esito === 'si' ? CheckCircle2 : esito === 'no' ? XCircle : AlertTriangle;
+  const soggetto = tipoPer(formData.tipoVeicolo).soggetto;
   return (
     <section className="vf-sezione">
       <h3 className="vd-titolo-sezione">Potenza per i neopatentati</h3>
-      <p className="vf-nota">Dal libretto: <b>P.2</b> è la potenza in kW (non i cavalli), <b>G</b> è la tara (massa a vuoto) e <b>G.1</b> la massa in ordine di marcia, in kg: scrivi uno dei due e scegli sotto quale. Per le elettriche e le ibride usa i valori del libretto.</p>
+      <p className="vf-nota">Per chi ha la patente da meno di {LIMITI_NEOPATENTATI.anni} anni. Copia i dati dal libretto di circolazione. Per le elettriche e le ibride usa i valori del libretto.</p>
       {eElettricaOIbrida(formData.carburante) && <p className="vf-nota" role="note">{AVVISO_ELETTRICHE_IBRIDE}</p>}
       <div style={{ marginBottom: 14 }}>
       <Campo nome="tipoVeicolo" etichetta="Tipo di veicolo" errore={errori.tipoVeicolo} aiuto="Il limite dei 105 kW vale per le autovetture (libretto, campo J: M1). Furgoni e autocarri hanno solo il limite per tonnellata. Camper: per prudenza come le autovetture.">
@@ -51,37 +65,80 @@ function SezioneNeopatentati({ formData, input, errori, onChange }) {
         </select>
       </Campo>
       </div>
-      {tipoPer(formData.tipoVeicolo).soggetto && (
-      <div className="vf-griglia vf-griglia--3">
-        <Campo nome="potenzaKw" etichetta="Potenza (kW)" errore={errori.potenzaKw} aiuto="Libretto, campo P.2">
-          {input('potenzaKw', { tipo: 'number', min: 1, step: 1, placeholder: 'Es. 66' })}
-        </Campo>
-        <Campo nome="taraKg" etichetta="Tara (kg)" errore={errori.taraKg} aiuto="Libretto, campo G o G.1">
-          {input('taraKg', { tipo: 'number', min: 1, step: 1, placeholder: 'Es. 1050' })}
-        </Campo>
-        <div className="vf-campo">
-          <span className="vf-etichetta">Rapporto</span>
-          <output className="vf-calcolato" aria-live="polite">{kwT === null ? '—' : `${virgola(kwT)} kW/t`}</output>
-          <span className="vf-aiuto">
-            {massa ? `Calcolato con ${massa.kg.toLocaleString('it-IT')} kg${massa.aggiunti ? ` (tara ${massa.tara.toLocaleString('it-IT')} + ${massa.aggiunti} del conducente)` : ' (massa già col conducente)'}` : 'Calcolato da solo'}
-          </span>
-        </div>
-      </div>
-      )}
-      {tipoPer(formData.tipoVeicolo).soggetto && (
-        <div style={{ marginTop: 12 }}>
-          <Campo nome="taraCampo" etichetta="Su che campo del libretto hai letto il peso?" errore={errori.taraCampo} aiuto={NOTA_TARA}>
-            <select id="vf-taraCampo" name="taraCampo" value={taraCampoPer(formData.taraCampo)} onChange={onChange}>
-              {TARA_CAMPI.map((c) => <option key={c.valore} value={c.valore}>{c.etichetta}</option>)}
-            </select>
-          </Campo>
-        </div>
+      {soggetto && (
+        <>
+          <p className="vf-passo">1 · Potenza</p>
+          <div className="vf-stretto">
+            <Campo nome="potenzaKw" etichetta="Potenza (kW)" errore={errori.potenzaKw} aiuto="Libretto, campo P.2 (kW, non cavalli)">
+              {input('potenzaKw', { tipo: 'number', min: 1, step: 'any', inputMode: 'decimal', placeholder: 'Es. 110' })}
+            </Campo>
+          </div>
+
+          <p className="vf-passo">2 · Rapporto potenza/tara</p>
+          <fieldset className="vf-scelta">
+            <legend className="vf-sr">Il rapporto potenza/tara è sul libretto?</legend>
+            <label className={`vf-opt ${modo === 'libretto' ? 'vf-opt--on' : ''}`}>
+              <input type="radio" name="vf-modoRapporto" value="libretto" checked={modo === 'libretto'} onChange={() => scegli('libretto')} />
+              <span><b>C'è sul libretto</b><small>Lo copi com'è: è il dato del Ministero</small></span>
+            </label>
+            <label className={`vf-opt ${modo === 'calcolo' ? 'vf-opt--on' : ''}`}>
+              <input type="radio" name="vf-modoRapporto" value="calcolo" checked={modo === 'calcolo'} onChange={() => scegli('calcolo')} />
+              <span><b>Non c'è, calcolalo</b><small>Per libretti che non lo riportano</small></span>
+            </label>
+          </fieldset>
+
+          {modo === 'libretto' ? (
+            <>
+              <div className="vf-stretto">
+                <Campo nome="rapportoLibretto" etichetta="Rapporto potenza/tara (kW/t)" errore={errori.rapportoLibretto}>
+                  {input('rapportoLibretto', { tipo: 'number', min: 1, step: 'any', inputMode: 'decimal', placeholder: 'Es. 66,465' })}
+                </Campo>
+              </div>
+              <div className="vf-libretto">
+                <span className="vf-libretto-titolo"><BookOpen size={16} aria-hidden="true" /> Dove lo trovi: pagina 3 del libretto</span>
+                RAPPORTO POTENZA/TARA = <mark>66,465</mark> KW/T
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="vf-griglia vf-griglia--2">
+                <Campo nome="taraKg" etichetta="Massa a vuoto (kg)" errore={errori.taraKg} aiuto="Libretto, pagina 3: «MASSA A VUOTO = KG …» (a volte nel campo G). I 75 kg del conducente li aggiunge il programma.">
+                  {input('taraKg', { tipo: 'number', min: 1, step: 1, inputMode: 'numeric', placeholder: 'Es. 1050' })}
+                </Campo>
+                <div className="vf-campo">
+                  <span className="vf-etichetta">Rapporto calcolato</span>
+                  <output className="vf-calcolato" aria-live="polite">{kwT === null ? '—' : `${virgola(kwT)} kW/t`}</output>
+                  <span className="vf-aiuto">
+                    {massa ? `${formData.potenzaKw ? `${formData.potenzaKw} ÷ ` : ''}(${massa.tara.toLocaleString('it-IT')}${massa.aggiunti ? ` + ${massa.aggiunti} del conducente` : ' già col conducente'}) kg` : 'Si calcola da solo'}
+                  </span>
+                </div>
+              </div>
+              {taraCampoPer(formData.taraCampo) === 'G1' && (
+                <div style={{ marginTop: 12 }}>
+                  <Campo nome="taraCampo" etichetta="Su che campo del libretto hai letto il peso?" errore={errori.taraCampo} aiuto={NOTA_TARA}>
+                    <select id="vf-taraCampo" name="taraCampo" value={taraCampoPer(formData.taraCampo)} onChange={onChange}>
+                      {TARA_CAMPI.map((c) => <option key={c.valore} value={c.valore}>{c.etichetta}</option>)}
+                    </select>
+                  </Campo>
+                </div>
+              )}
+              <div className="vf-libretto">
+                <span className="vf-libretto-titolo"><BookOpen size={16} aria-hidden="true" /> Dove la trovi: pagina 3 del libretto</span>
+                MASSA A VUOTO = <mark>KG 0992</mark>
+              </div>
+            </>
+          )}
+        </>
       )}
       <div className={`vf-esito vf-esito--${esito}`} role="status">
-        {esito === 'si' && idoneita.soggetto === false && <><b>Non soggetto ai limiti dei neopatentati</b><span>{idoneita.motivo}.</span></>}
-        {esito === 'si' && idoneita.soggetto !== false && <><b>Nei limiti per i neopatentati (secondo i dati inseriti)</b><span>{idoneita.motivo}.</span></>}
-        {esito === 'no' && <><b>Oltre i limiti per i neopatentati</b><span>{idoneita.motivo}.</span></>}
-        {esito === 'nd' && <><b>Da verificare</b><span>Scrivi potenza e tara: finché mancano, questa auto non si propone a chi ha la patente da meno di {LIMITI_NEOPATENTATI.anni} anni (limiti {limiti.kwPerTonnellata} kW/t{limiti.kwMax === null ? '' : ` e ${limiti.kwMax} kW`}).</span></>}
+        <Icona size={20} aria-hidden="true" className="vf-esito-icona" />
+        <div>
+          {esito === 'si' && idoneita.soggetto === false && <><b>Non soggetto ai limiti dei neopatentati</b><span>{idoneita.motivo}.</span></>}
+          {esito === 'si' && idoneita.soggetto !== false && <><b>Nei limiti per i neopatentati (secondo i dati inseriti)</b><span>{idoneita.motivo}.</span></>}
+          {esito === 'no' && <><b>Oltre i limiti per i neopatentati</b><span>{idoneita.motivo}.</span></>}
+          {esito === 'nd' && <><b>Da verificare</b><span>{idoneita.motivo} Finché mancano, questa auto non si propone a chi ha la patente da meno di {LIMITI_NEOPATENTATI.anni} anni (limiti {limiti.kwPerTonnellata} kW/t{limiti.kwMax === null ? '' : ` e ${limiti.kwMax} kW`}).</span></>}
+          {soggetto && fonte && <small className="vf-esito-fonte">Fonte del rapporto: {fonte === 'libretto' ? 'libretto' : 'calcolato dal programma'}.</small>}
+        </div>
       </div>
       <p className="vf-nota" style={{ marginTop: 12 }}>{AVVISO_CONTROLLO}</p>
     </section>
@@ -249,7 +306,7 @@ const VehicleForm = ({
               </div>
             </section>
 
-            <SezioneNeopatentati formData={formData} input={input} errori={errori} onChange={onChange} />
+            <SezioneNeopatentati formData={formData} input={input} errori={errori} onChange={onChange} setFormData={setFormData} />
 
             <DotazioneVeicolo formData={formData} setFormData={setFormData} nonImpostata={dotazioneNonImpostata} />
 
