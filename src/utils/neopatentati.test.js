@@ -17,6 +17,15 @@ describe('neopatentati', () => {
     expect(kwPerTonnellata(66, 0)).toBeNull();
   });
 
+  test('torna col «rapporto potenza/tara» stampato a pag. 3 di tre libretti veri (massa a vuoto + 75 kg)', () => {
+    // Range Rover: 183 kW, massa a vuoto 2430 kg, libretto 73,054
+    expect(kwPerTonnellata(183, 2430, 'G')).toBe(73.1);
+    // Mercedes X-Class: 190 kW, 2265 kg, libretto 81,197
+    expect(kwPerTonnellata(190, 2265, 'G')).toBe(81.2);
+    // VW Polo: 51 kW, 992 kg, libretto 47,798
+    expect(kwPerTonnellata(51, 992, 'G')).toBe(47.8);
+  });
+
   test('peso usato per il rapporto: G aggiunge 75 kg, G.1 no, senza scelta vale G', () => {
     expect(massaPerRapporto(1050, 'G')).toEqual({ kg: 1125, tara: 1050, aggiunti: 75 });
     expect(massaPerRapporto(1050, undefined)).toEqual({ kg: 1125, tara: 1050, aggiunti: 75 });

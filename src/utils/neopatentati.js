@@ -69,7 +69,7 @@ const viraSu = (n) => (Math.ceil(n * 100) / 100).toLocaleString('it-IT', { maxim
 //  - 'G' (o niente): massa a vuoto / tara, SENZA conducente -> si aggiungono 75 kg;
 //  - 'G1': massa in ordine di marcia, che include gia' il conducente -> non si aggiunge nulla.
 export const TARA_CAMPI = [
-  { valore: 'G', etichetta: 'Massa a vuoto / tara (campo G): aggiungo 75 kg del conducente' },
+  { valore: 'G', etichetta: 'Massa a vuoto (campo G o «MASSA A VUOTO» a pag. 3): aggiungo 75 kg del conducente' },
   { valore: 'G1', etichetta: 'Massa in ordine di marcia (campo G.1): include già il conducente' },
 ];
 export const taraCampoPer = (valore) => (valore === 'G1' ? 'G1' : 'G');
@@ -95,7 +95,7 @@ export function kwPerTonnellata(potenzaKw, taraKg, taraCampo) {
 }
 
 // Testo fisso accanto alla tara nella scheda del veicolo.
-export const NOTA_TARA = 'La legge usa la tara con il conducente a 75 kg convenzionali. Se il valore che scrivi non li comprende (campo G) il programma li aggiunge; se è la massa in ordine di marcia (campo G.1) no. Se il libretto ha già il rapporto kW/t stampato, controlla che coincida.';
+export const NOTA_TARA = 'La legge usa la tara con il conducente a 75 kg convenzionali. Se il valore che scrivi non li comprende (la «massa a vuoto», nel campo G o scritta a pag. 3 del libretto) il programma li aggiunge; se è la massa in ordine di marcia (campo G.1) no. Se il libretto ha già il «rapporto potenza/tara» stampato a pag. 3, controlla che coincida.';
 
 // Il veicolo puo' guidarlo un neopatentato?
 // { esito: 'si' | 'no' | 'nd', kwT, kw, limiti, motivo }

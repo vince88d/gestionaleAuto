@@ -49,7 +49,7 @@ export function validaVeicolo(dati, flotta = [], idCorrente = null, annoCorrente
   const potenza = numeroOVuoto(dati?.potenzaKw);
   if (potenza !== '' && !(Number.isFinite(potenza) && potenza >= 1 && potenza <= 1000)) errori.potenzaKw = 'Potenza in kW tra 1 e 1000 (campo P.2 del libretto).';
   const tara = numeroOVuoto(dati?.taraKg);
-  if (tara !== '' && !(Number.isFinite(tara) && tara >= 300 && tara <= 10000)) errori.taraKg = 'Tara in kg tra 300 e 10000 (campo G del libretto).';
+  if (tara !== '' && !(Number.isFinite(tara) && tara >= 300 && tara <= 10000)) errori.taraKg = 'Tara in kg tra 300 e 10000 (massa a vuoto del libretto).';
 
   if (dati?.taraCampo && !['G', 'G1'].includes(dati.taraCampo)) errori.taraCampo = 'Scegli il campo del libretto dall\'elenco.';
   if (dati?.tipoVeicolo && !['autovettura', 'furgone', 'camper', 'moto', 'imbarcazione'].includes(dati.tipoVeicolo)) errori.tipoVeicolo = 'Scegli il tipo di veicolo dall\'elenco.';
