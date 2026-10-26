@@ -42,7 +42,7 @@ function SezioneNeopatentati({ formData, input, errori, onChange }) {
   return (
     <section className="vf-sezione">
       <h3 className="vd-titolo-sezione">Potenza per i neopatentati</h3>
-      <p className="vf-nota">Dal libretto: <b>P.2</b> è la potenza in kW (non i cavalli), la tara è la <b>massa a vuoto</b> (campo <b>G</b>; sui libretti recenti il campo G è spesso vuoto e il valore è scritto a pagina 3, «MASSA A VUOTO = KG ...»), oppure <b>G.1</b>, la massa in ordine di marcia, in kg: scrivi uno dei due e scegli sotto quale. Per le elettriche e le ibride usa i valori del libretto.</p>
+      <p className="vf-nota">Dal libretto: <b>P.2</b> è la potenza in kW (non i cavalli); la <b>massa a vuoto</b> è scritta a pagina 3 («MASSA A VUOTO = KG ...») o nel campo <b>G</b>. Per le elettriche e le ibride usa i valori del libretto.</p>
       {eElettricaOIbrida(formData.carburante) && <p className="vf-nota" role="note">{AVVISO_ELETTRICHE_IBRIDE}</p>}
       <div style={{ marginBottom: 14 }}>
       <Campo nome="tipoVeicolo" etichetta="Tipo di veicolo" errore={errori.tipoVeicolo} aiuto="Il limite dei 105 kW vale per le autovetture (libretto, campo J: M1). Furgoni e autocarri hanno solo il limite per tonnellata. Camper: per prudenza come le autovetture.">
@@ -56,19 +56,19 @@ function SezioneNeopatentati({ formData, input, errori, onChange }) {
         <Campo nome="potenzaKw" etichetta="Potenza (kW)" errore={errori.potenzaKw} aiuto="Libretto, campo P.2">
           {input('potenzaKw', { tipo: 'number', min: 1, step: 1, placeholder: 'Es. 66' })}
         </Campo>
-        <Campo nome="taraKg" etichetta="Tara (kg)" errore={errori.taraKg} aiuto="Libretto: campo G, «MASSA A VUOTO» a pag. 3, o G.1">
+        <Campo nome="taraKg" etichetta="Massa a vuoto (kg)" errore={errori.taraKg} aiuto="Scrivi il numero del libretto: i 75 kg del conducente li aggiunge il programma">
           {input('taraKg', { tipo: 'number', min: 1, step: 1, placeholder: 'Es. 1050' })}
         </Campo>
         <div className="vf-campo">
           <span className="vf-etichetta">Rapporto</span>
           <output className="vf-calcolato" aria-live="polite">{kwT === null ? '—' : `${virgola(kwT)} kW/t`}</output>
           <span className="vf-aiuto">
-            {massa ? `Calcolato con ${massa.kg.toLocaleString('it-IT')} kg${massa.aggiunti ? ` (tara ${massa.tara.toLocaleString('it-IT')} + ${massa.aggiunti} del conducente)` : ' (massa già col conducente)'}` : 'Calcolato da solo'}
+            {massa ? `Calcolato con ${massa.kg.toLocaleString('it-IT')} kg${massa.aggiunti ? ` (${massa.tara.toLocaleString('it-IT')} + ${massa.aggiunti} del conducente)` : ' (massa già col conducente)'}` : 'Calcolato da solo'}
           </span>
         </div>
       </div>
       )}
-      {tipoPer(formData.tipoVeicolo).soggetto && (
+      {tipoPer(formData.tipoVeicolo).soggetto && taraCampoPer(formData.taraCampo) === 'G1' && (
         <div style={{ marginTop: 12 }}>
           <Campo nome="taraCampo" etichetta="Su che campo del libretto hai letto il peso?" errore={errori.taraCampo} aiuto={NOTA_TARA}>
             <select id="vf-taraCampo" name="taraCampo" value={taraCampoPer(formData.taraCampo)} onChange={onChange}>
