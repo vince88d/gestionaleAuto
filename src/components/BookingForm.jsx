@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import DatePicker from 'react-datepicker';
 import { it } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
-import { Check, Search, UserPlus, Phone, Mail, ShieldCheck, FileWarning, ArrowDown, AlertTriangle } from 'lucide-react';
+import { Check, Search, UserPlus, Phone, Mail, ShieldCheck, FileWarning, ArrowDown, AlertTriangle, KeyRound, Info } from 'lucide-react';
 import ClienteFormModal from './ClienteFormModal';
 import SceltaVeicolo from './SceltaVeicolo';
 import SceltaProtezioneExtra from './SceltaProtezioneExtra';
@@ -402,8 +402,11 @@ function BookingForm({
     }
   };
 
-  const invia = (e) => {
+  // «Prenota e consegna ora»: salva e apre subito la consegna (ritiro oggi, auto scelta).
+  const consegnaSubitoRef = useRef(false);
+  const invia = (e, consegnaSubito = false) => {
     e.preventDefault();
+    consegnaSubitoRef.current = consegnaSubito;
     setTentato(true);
     if (Object.keys(errori).length > 0 || preventivo?.errore) return;
     // Mai guardata la sezione 4: un avviso breve, senza bloccare (una sola volta).
@@ -412,7 +415,8 @@ function BookingForm({
   };
 
   const eseguiInvio = () => {
-    onSubmit({
+    const consegnaSubito = consegnaSubitoRef.current;
+    const prenotazione = {
       // Domanda 4: le scelte (il prezzo lo ricalcola controllaPrenotazione).
       sceltaProtezione,
       sceltaOptional: scelte.sceltaOptional,
@@ -427,7 +431,9 @@ function BookingForm({
       emailCliente: dati.emailCliente.trim(),
       codiceFiscale: dati.codiceFiscale.trim().toUpperCase(),
       patente: dati.patente.trim().toUpperCase(),
-    });
+    };
+    if (consegnaSubito) onSubmit(prenotazione, { consegnaSubito: true });
+    else onSubmit(prenotazione);
   };
 
   // Protezione ed extra stanno in fondo alla pagina: si segna se l'operatore li
@@ -471,6 +477,8 @@ function BookingForm({
   };
 
   const erroriElenco = Object.keys(errori).map((k) => NOMI_ERRORI[k] || k);
+  // Cliente in ufficio: ritiro oggi, prenotazione nuova, auto gia' scelta (non una categoria).
+  const consegnaSubitoPossibile = !bookingId && !sito && Boolean(veicoloScelto) && dati.dataInizio === oggi;
 
   return (
     <form onSubmit={invia} className="pz pz-form np" noValidate>
@@ -960,9 +968,25 @@ function BookingForm({
             {preventivo?.errore && <p className="np-manca" role="alert">{preventivo.errore}</p>}
           </div>
 
-          <button type="submit" className="np-conferma" disabled={salvando}>
-            {salvando ? 'Salvataggio…' : bookingId ? 'Salva modifiche' : 'Conferma prenotazione'}
-          </button>
+          {consegnaSubitoPossibile && (
+            <p className="np-oggi">
+              <Info size={18} aria-hidden="true" />
+              <span>Il ritiro è oggi: se il cliente è in ufficio puoi consegnare subito l&apos;auto.</span>
+            </p>
+          )}
+          {consegnaSubitoPossibile ? (
+            <>
+              <button type="button" className="np-conferma" disabled={salvando} onClick={(e) => invia(e, true)}>
+                <KeyRound size={20} aria-hidden="true" />
+                {salvando ? 'Salvataggio…' : 'Prenota e consegna ora'}
+              </button>
+              <button type="submit" className="np-solo" disabled={salvando}>Solo prenota</button>
+            </>
+          ) : (
+            <button type="submit" className="np-conferma" disabled={salvando}>
+              {salvando ? 'Salvataggio…' : bookingId ? 'Salva modifiche' : 'Conferma prenotazione'}
+            </button>
+          )}
           {chiediConferma && !guardato4 && (
             <div className="np-chiedi" role="status">
               <b>Confermi così?</b>
@@ -981,7 +1005,10 @@ function BookingForm({
             <p className="np-manca" role="alert">Manca ancora: {erroriElenco.join(', ')}.</p>
           ) : (
             !bookingId && dati.dataInizio && (
-              <p className="np-dopo">Il {formattaData(dati.dataInizio)} la trovi in Dashboard, sotto «Da consegnare al cliente».</p>
+              <p className="np-dopo">
+                {consegnaSubitoPossibile ? '«Solo prenota» la salva: la consegna la fai dopo dalla Dashboard, ' : `Il ${formattaData(dati.dataInizio)} la trovi in Dashboard, `}
+                sotto «Da consegnare al cliente».
+              </p>
             )
           )}
           {onAnnulla && (

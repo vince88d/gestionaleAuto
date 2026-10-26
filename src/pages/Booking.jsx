@@ -450,7 +450,7 @@ useEffect(() => {
   
   // Salva subito la prenotazione (nuova o modificata). Km, carburante,
   // accessori e contratto si fanno dopo, il giorno del ritiro, con "Consegna".
-  const handleBookingSubmit = async (data) => {
+  const handleBookingSubmit = async (data, { consegnaSubito = false } = {}) => {
     if (salvandoPrenotazione) return;
     // Senza protezioni e optional la prenotazione resterebbe senza cauzione.
     if (!extra.pronti || !etaConducenti) {
@@ -492,6 +492,15 @@ useEffect(() => {
         prenotazioneCorrente,
       );
       dispatch(prenotazioneCorrente ? updatePrenotazione(salvata) : addPrenotazione(salvata));
+      // Cliente in ufficio: «Prenota e consegna ora» apre subito la consegna,
+      // senza passare dalla Dashboard. Chiusa la consegna si torna da dove si e' partiti.
+      if (consegnaSubito && !prenotazioneCorrente && puoConsegnare(salvata)) {
+        showFeedback('Prenotazione salvata. Ora la consegna dell\'auto.');
+        setEditingIndex(null);
+        moduloModificato.current = false;
+        avviaConsegna(salvata);
+        return;
+      }
       showFeedback(prenotazioneCorrente
         ? "Prenotazione modificata."
         : `Prenotazione salvata. Il ${formattaData(data.dataInizio)} la trovi in Dashboard, sotto «Da consegnare al cliente».`);

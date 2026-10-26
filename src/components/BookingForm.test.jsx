@@ -399,3 +399,45 @@ describe('protezione ed extra: non dimenticarli', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('prenota e consegna ora (cliente in ufficio)', () => {
+  const { giornoLocale } = jest.requireActual('../utils/scadenze');
+  const compila = () => {
+    fireEvent.click(screen.getByRole('button', { name: '1 settimana' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Panda/ }));
+    fireEvent.click(screen.getByRole('button', { name: /cliente nuovo/ }));
+    fireEvent.change(screen.getByLabelText('Nome e cognome'), { target: { value: 'Luca Neri' } });
+    fireEvent.change(screen.getByLabelText('Telefono'), { target: { value: '333 2222222' } });
+  };
+
+  test('ritiro in un altro giorno: un solo pulsante, come prima', () => {
+    apri({ dataInizio: '2099-03-10' });
+    compila();
+    expect(screen.queryByRole('button', { name: 'Prenota e consegna ora' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Solo prenota' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Conferma prenotazione' })).toBeInTheDocument();
+  });
+
+  test('ritiro oggi con l\'auto scelta: due pulsanti', () => {
+    const onSubmit = apri({ dataInizio: giornoLocale() });
+    // senza auto scelta la consegna subito non c'e'
+    expect(screen.queryByRole('button', { name: 'Prenota e consegna ora' })).toBeNull();
+    compila();
+    expect(screen.getByText(/Il ritiro è oggi/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Solo prenota' }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0]).toHaveLength(1); // niente richiesta di consegna
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prenota e consegna ora' }));
+    expect(onSubmit).toHaveBeenCalledTimes(2);
+    expect(onSubmit.mock.calls[1][1]).toEqual({ consegnaSubito: true });
+    expect(onSubmit.mock.calls[1][0]).toMatchObject({ targa: 'ABC004', cliente: 'Luca Neri' });
+  });
+
+  test('modifica di una prenotazione salvata: resta «Salva modifiche»', () => {
+    apri({ id: 'p1', dataInizio: giornoLocale(), dataFine: giornoLocale(), targa: 'ABC004', veicolo: 'Panda', cliente: 'Luca Neri', telefono: '333 2222222' });
+    expect(screen.queryByRole('button', { name: 'Prenota e consegna ora' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Salva modifiche' })).toBeInTheDocument();
+  });
+});
