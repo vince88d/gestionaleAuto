@@ -43,7 +43,7 @@ import { costruisciRientro, istanteRientro, dotazioneDopoRientro } from '../util
 import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
 import {
-  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, ritiroEntroOggi,
+  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, ritiroEntroOggi, eConsegnata,
 } from '../utils/regolePrenotazione';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { colonneProtezioneExtra, INTESTAZIONI_PROTEZIONE_EXTRA } from '../utils/archivio';
@@ -51,6 +51,8 @@ import { daAssegnare, veicoliLiberiPerPrenotazione } from '../utils/assegnazione
 import { autoDaCambiare, categoriaPrenotazione } from '../utils/cambioAuto';
 import { prenotazioniSuVeicoloSospeso } from '../utils/disponibilitaCategoria';
 import { giornoLocale, formattaData } from '../utils/scadenze';
+import { testoAnnullamento } from '../utils/annullamentoPrenotazione';
+import ConsegnaNonCompletataDialog from '../components/ConsegnaNonCompletataDialog';
 import { quandoPrenotazione } from '../utils/quandoPrenotazione';
 import{
   addPrenotazione,
@@ -169,11 +171,18 @@ function Bookings() {
   // finestra aperta da li' (annullando o finendo) si torna li', non al
   // calendario. Vuota se si e' partiti da Prenotazioni.
   const tornaA = useRef(null);
-  const ricordaProvenienza = (da) => { tornaA.current = da && da !== location.pathname ? da : null; };
+  // Stato da restituire alla pagina d'origine (es. la scheda del veicolo da riaprire).
+  const tornaStato = useRef(null);
+  const ricordaProvenienza = (da, daStato = null) => {
+    tornaA.current = da && da !== location.pathname ? da : null;
+    tornaStato.current = tornaA.current ? daStato : null;
+  };
   const fineFlusso = () => {
     const destinazione = tornaA.current;
+    const stato = tornaStato.current;
     tornaA.current = null;
-    if (destinazione) navigate(destinazione);
+    tornaStato.current = null;
+    if (destinazione) navigate(destinazione, stato ? { state: stato } : undefined);
   };
   // Il modulo dice se e' stato toccato: solo allora si chiede conferma.
   const moduloModificato = useRef(false);
@@ -250,7 +259,7 @@ useEffect(() => {
   // Si aspetta che prenotazioni e veicoli siano arrivati; poi si toglie lo
   // state, cosi' tornando indietro o ricaricando non si riapre la finestra.
   useEffect(() => {
-    const { azione, id, filtro, vista: vistaRichiesta, da } = location.state || {};
+    const { azione, id, filtro, vista: vistaRichiesta, da, daStato } = location.state || {};
     if (!azione && !filtro && !vistaRichiesta) return;
     if (azioneEseguita.current === location.key) return;
 
@@ -260,7 +269,7 @@ useEffect(() => {
       if (!prenotazione || ((azione === 'consegna' || azione === 'assegna' || azione === 'cambia') && availableVehicles.length === 0)) return; // dati in arrivo
     }
     azioneEseguita.current = location.key;
-    ricordaProvenienza(azione ? da : null);
+    ricordaProvenienza(azione ? da : null, azione ? daStato : null);
 
     if (filtro) setFiltroFase(filtro);
     if (vistaRichiesta) cambiaVista(vistaRichiesta);
@@ -498,6 +507,7 @@ useEffect(() => {
         showFeedback('Prenotazione salvata. Ora la consegna dell\'auto.');
         setEditingIndex(null);
         moduloModificato.current = false;
+        setConsegnaAppenaCreata(salvata.id);
         avviaConsegna(salvata);
         return;
       }
@@ -628,11 +638,38 @@ useEffect(() => {
     }
   };
 
+  // Prenotazione appena creata con «Prenota e consegna ora»: se la consegna si
+  // chiude senza essere finita, si chiede cosa fare (l'auto risulta occupata).
+  const [consegnaAppenaCreata, setConsegnaAppenaCreata] = useState(null);
+  const [consegnaNonCompletata, setConsegnaNonCompletata] = useState(false);
   const chiudiConsegna = () => {
+    if (consegnaDi && consegnaAppenaCreata === consegnaDi.id && !eConsegnata(consegnaDi)) {
+      setConsegnaNonCompletata(true);
+      return;
+    }
+    terminaConsegna();
+  };
+  const terminaConsegna = () => {
+    setConsegnaAppenaCreata(null);
+    setConsegnaNonCompletata(false);
     setSchedaModalOpen(false);
     setRiepilogoOpen(false);
     setConsegnaDi(null);
     fineFlusso();
+  };
+
+  const annullaDopoConsegna = async () => {
+    const prenotazione = consegnaDi;
+    if (!prenotazione) return;
+    try {
+      await eliminaPrenotazione(prenotazione.id);
+      dispatch(deletePrenotazione(prenotazione.id));
+      showFeedback("Prenotazione annullata: l'auto è di nuovo libera. La ritrovi nel Cestino per 6 mesi.");
+      terminaConsegna();
+    } catch (error) {
+      console.error('Errore annullamento dopo consegna:', error);
+      showFeedback('Non sono riuscito ad annullare la prenotazione, riprova.', 'error');
+    }
   };
 
   const handleSaveSchedaVeicolo = () => {
@@ -693,10 +730,10 @@ useEffect(() => {
       await eliminaPrenotazione(prenotazioneEliminata.id);
       dispatch(deletePrenotazione(prenotazioneEliminata.id));
       resetModal();
-      showFeedback("Prenotazione eliminata con successo.", "success");
+      showFeedback("Prenotazione annullata: l'auto è di nuovo libera. La ritrovi nel Cestino per 6 mesi.", "success");
     } catch (error) {
       console.error("Errore durante eliminazione:", error);
-      showFeedback("Errore nell'eliminazione", "error");
+      showFeedback("Non sono riuscito ad annullare la prenotazione, riprova.", "error");
     } finally {
       setDeleteIndex(null);
     }
@@ -1049,8 +1086,8 @@ return (
                           <CheckCircle size={15} aria-hidden="true" /> <span className="bk-btn-testo">Concludi</span>
                         </button>
                       )}
-                      <button type="button" className="bk-btn bk-btn--piccolo bk-btn--icona" onClick={() => openInfoModal(p)} aria-label="Dettagli" title="Dettagli">
-                        <Info size={16} aria-hidden="true" />
+                      <button type="button" className="bk-btn bk-btn--piccolo" onClick={() => openInfoModal(p)} aria-label="Dettagli" title="Dettagli">
+                        <Info size={16} aria-hidden="true" /> <span className="bk-btn-testo">Dettagli</span>
                       </button>
                     </td>
                   </tr>
@@ -1177,13 +1214,22 @@ return (
     />
   )}
   
+  <ConsegnaNonCompletataDialog
+    open={consegnaNonCompletata}
+    prenotazione={consegnaDi}
+    onRiprendi={() => setConsegnaNonCompletata(false)}
+    onPiuTardi={terminaConsegna}
+    onAnnulla={annullaDopoConsegna}
+  />
+
   <ConfirmDialog
     open={confirmOpen}
     onCancel={() => setConfirmOpen(false)}
     onConfirm={confermaEliminazione}
-    message="Sposto questa prenotazione nel Cestino: sparisce dalla tabella, resta recuperabile per 6 mesi poi viene cancellata per sempre."
-    title="Elimina Prenotazione"
-    confirmLabel="Elimina"
+    message={testoAnnullamento(deleteIndex !== null ? prenotazioni[deleteIndex] : null)}
+    title="Annullare la prenotazione?"
+    confirmLabel="Sì, annulla la prenotazione"
+    cancelLabel="No, la tengo"
     tone="danger"
   />
 

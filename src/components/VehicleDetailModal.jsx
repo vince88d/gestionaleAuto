@@ -5,7 +5,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import itLocale from "@fullcalendar/core/locales/it";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Car, CalendarPlus, Pencil, Trash2, X, Plus, ImageOff, AlertTriangle,
+  Car, CalendarPlus, ChevronRight, Pencil, Trash2, X, Plus, ImageOff, AlertTriangle,
   CalendarDays, Gauge, Palette, Fuel, Cog, DoorOpen, Euro, Wrench, PauseCircle, PlayCircle,
 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
@@ -214,6 +214,19 @@ const VehicleDetailModal = ({
     return [isGiornoOccupato(giorno) ? "vd-giorno--occupato" : "vd-giorno--libero"];
   };
 
+  // Stessa scheda «Dettagli» della Dashboard e di Prenotazioni; chiudendola si
+  // torna qui (alla scheda del veicolo, se la pagina la sa riaprire).
+  const apriDettagliPrenotazione = (prenotazione) => {
+    navigate("/booking", {
+      state: {
+        azione: "dettagli",
+        id: prenotazione.id,
+        da: location.pathname,
+        daStato: veicolo.id ? { apriVeicoloId: veicolo.id, scheda } : undefined,
+      },
+    });
+  };
+
   const apriPrenotazioneDaData = (dateStr) => {
     if (!dateStr) return;
 
@@ -223,6 +236,15 @@ const VehicleDetailModal = ({
     }
 
     if (isGiornoOccupato(dateStr)) {
+      // Giorno occupato da una prenotazione di questa auto: si apre per gestirla.
+      const occupante = prenotazioniValide.find(
+        (p) => p.targa === veicolo.targa
+          && String(p.dataInizio).slice(0, 10) <= dateStr && dateStr <= String(p.dataFine).slice(0, 10),
+      );
+      if (occupante) {
+        apriDettagliPrenotazione(occupante);
+        return;
+      }
       toast.info("Questo giorno non è prenotabile per il veicolo selezionato.");
       return;
     }
@@ -517,7 +539,7 @@ const VehicleDetailModal = ({
                     <span><i className="vd-legenda-punto vd-legenda-punto--libero" /> Libero</span>
                     <span><i className="vd-legenda-punto vd-legenda-punto--occupato" /> Occupato</span>
                     <span><i className="vd-legenda-punto vd-legenda-punto--oggi" /> Oggi</span>
-                    <span className="vd-legenda-nota">Clicca un giorno libero per creare una prenotazione.</span>
+                    <span className="vd-legenda-nota">Clicca un giorno libero per prenotare, un giorno occupato per aprire la prenotazione.</span>
                   </div>
                 </section>
 
@@ -532,6 +554,9 @@ const VehicleDetailModal = ({
                           </span>
                           <span className="vd-cliente">{p.cliente || "Cliente non indicato"}</span>
                           {p.dataInizio <= oggi && <span className="vd-etichetta vd-etichetta--info">In corso</span>}
+                          <button type="button" className="vd-btn" onClick={() => apriDettagliPrenotazione(p)} aria-label={`Dettagli della prenotazione di ${p.cliente || "cliente non indicato"}`}>
+                            Dettagli <ChevronRight size={16} aria-hidden="true" />
+                          </button>
                         </li>
                       ))}
                     </ul>

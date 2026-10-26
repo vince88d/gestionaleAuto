@@ -925,3 +925,6 @@
 
 /* Stato nella testata: piu' evidente quando e' sospesa. */
 .vd-stato--sospeso { font-size: 13px; padding: 4px 12px; }
+
+.vd-prenotazioni li { flex-wrap: wrap; }
+.vd-prenotazioni .vd-btn { min-height: 44px; }

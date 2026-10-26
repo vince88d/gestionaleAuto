@@ -8,7 +8,8 @@ jest.mock('@fullcalendar/daygrid', () => ({}));
 jest.mock('@fullcalendar/core/locales/it', () => ({}));
 jest.mock('react-redux', () => ({ useDispatch: () => jest.fn() }));
 // react-router-dom v7 non si carica nei test di Create React App: basta useNavigate.
-jest.mock('react-router-dom', () => ({ useNavigate: () => jest.fn(), useLocation: () => ({ pathname: '/vehicles' }) }), { virtual: true });
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({ useNavigate: () => mockNavigate, useLocation: () => ({ pathname: '/vehicles' }) }), { virtual: true });
 jest.mock('../lib/firestorePrenotazioni', () => ({
   isPrenotazioneVisibile: (p) => !['annullata', 'richiesta-sito', 'scaduta', 'pagamento-fallito'].includes(p.status),
   segnaDannoPrenotazioneRiparato: jest.fn(),
@@ -96,4 +97,14 @@ test('auto sospesa: fascia visibile da ogni scheda, niente Prenota, Rimetti a no
   expect(screen.getByText('Di nuovo a noleggio')).toBeInTheDocument();
   expect(screen.getByText('Prenota questa auto')).toBeInTheDocument();
   expect(screen.getByText('Sospendi dal noleggio')).toBeInTheDocument();
+});
+
+test('«Dettagli» su una prossima prenotazione apre la sua scheda e poi si torna alla scheda del veicolo', () => {
+  mockNavigate.mockClear();
+  apri();
+  fireEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Dettagli della prenotazione di Mario Rossi' }));
+  expect(mockNavigate).toHaveBeenCalledWith('/booking', {
+    state: { azione: 'dettagli', id: 'p1', da: '/vehicles', daStato: { apriVeicoloId: 'v1', scheda: 'calendario' } },
+  });
 });

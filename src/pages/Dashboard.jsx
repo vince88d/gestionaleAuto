@@ -61,7 +61,7 @@ function TitoloGruppo({ tono, children, conto, allerta = false }) {
 
 // Riga con testo a sinistra (cliccabile per aprire i dettagli) e un pulsante
 // d'azione a destra.
-function Riga({ tono, principale, secondaria, secondariaAllerta, nota, onApri, azione, nome = false }) {
+function Riga({ tono, principale, secondaria, secondariaAllerta, nota, onApri, azione, nome = false, senzaDettagli = false }) {
   return (
     <li className={`dash-riga dash-riga--${tono}`}>
       <button type="button" className="dash-riga-testi" onClick={onApri}>
@@ -69,6 +69,11 @@ function Riga({ tono, principale, secondaria, secondariaAllerta, nota, onApri, a
         <span className={`dash-riga-secondaria ${secondariaAllerta ? 'dash-scaduta' : ''}`}>{secondaria}</span>
         {nota && <span className="dash-riga-secondaria dash-scaduta">{nota}</span>}
       </button>
+      {!senzaDettagli && (
+        <button type="button" className="dash-azione dash-azione--dettagli" onClick={onApri} aria-label={`Dettagli della prenotazione di ${principale}`}>
+          Dettagli <ChevronRight size={16} aria-hidden="true" />
+        </button>
+      )}
       {azione}
     </li>
   );
@@ -386,6 +391,7 @@ function Dashboard() {
                     key={p.id}
                     tono="rosso"
                     nome
+                    senzaDettagli
                     principale={p.cliente || 'Cliente non indicato'}
                     secondaria={`${p.veicolo || p.categoria || '—'} · ${p.targa} · dal ${dataEOra(p.dataInizio, p.oraInizio)}`}
                     onApri={() => vaiAPrenotazioni({ azione: 'dettagli', id: p.id })}
