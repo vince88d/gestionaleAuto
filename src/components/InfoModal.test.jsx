@@ -59,6 +59,19 @@ test('dotazione alla consegna: presenti, mancanti, chiavi e nota', () => {
   expect(screen.getAllByText(/in officina/).length).toBeGreaterThan(0);
 });
 
+test('dopo la consegna il registro del controllo neopatentati si vede; senza registro no', () => {
+  const consegnata = { ...prenotazioneDalSito, consegnataIl: '2026-10-26T09:00:00Z', schedaVeicolo: { kmIniziali: '1000' } };
+  const registro = {
+    esito: 'no', controllatoIl: '2026-10-26T09:42:00', controllatoDa: 'staff@example.com', rilascioPatente: '2025-09-02', finoAl: '2028-09-02',
+    veicolo: { targa: 'KL456CD', potenzaKw: 110, kwPerTonnellata: 66.465, fonteRapporto: 'libretto', limiti: { kwPerTonnellata: 75, kwMax: 105 } },
+  };
+  const { unmount } = render(<InfoModal isOpen prenotazione={{ ...consegnata, controlloNeopatentati: registro }} {...azioni} />);
+  expect(screen.getAllByText('Auto non adatta ai neopatentati').length).toBeGreaterThan(0);
+  unmount();
+  render(<InfoModal isOpen prenotazione={consegnata} {...azioni} />);
+  expect(screen.queryByText('Controllo neopatentati')).toBeNull();
+});
+
 test('veicolo assegnato ma non consegnato: prossimo passo "Consegna l\'auto", non "Ricevi"', () => {
   const onConsegna = jest.fn();
   const assegnata = { ...prenotazioneDalSito, targa: 'AA111AA', veicolo: 'Fiat Panda' };
