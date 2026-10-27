@@ -932,6 +932,9 @@
 .pz-menu-voce small { display: block; font-size: 12px; font-weight: 400; }
 .pz-piede--menu { justify-content: flex-start; }
 .pz-piede .pz-menu-spazio { margin-left: auto; }
+/* Azioni che tolgono la prenotazione: separate da «Modifica» */
+.pz-altre-azioni { display: inline-flex; align-items: center; gap: 8px; margin-left: 4px; padding-left: 12px; border-left: 1px solid #d5dde6; }
+.pz-altre-azioni-titolo { font-size: 12px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #5d6b79; }
 
 /* «Apri tutte / Chiudi tutte» sopra le schede richiudibili dei dettagli */
 .pz-barra-schede { display: flex; justify-content: flex-end; margin: -4px 0 -4px; }

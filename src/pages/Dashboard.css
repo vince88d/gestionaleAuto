@@ -226,6 +226,7 @@
   padding: 10px 12px 10px 4px;
   border-radius: 12px;
   background: #f6f8fa;
+  flex-wrap: wrap;
 }
 
 .dash-riga--blu { background: #f2f8fd; border: 1px solid #cfe0f1; }
@@ -284,6 +285,8 @@
 .dash-azione:disabled { opacity: 0.6; cursor: wait; }
 .dash-azione:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
 
+.dash-azione--dettagli { border: 2px solid #9bbad3; color: #14568a; }
+.dash-azione--dettagli:hover { background: #eef5fb; }
 .dash-azione--primaria { border-color: #1f6fb2; background: #1f6fb2; color: #fff; }
 .dash-azione--primaria:hover { background: #185a91; }
 .dash-azione--verde { border-color: #1b7a4a; background: #1b7a4a; color: #fff; }

@@ -26,15 +26,16 @@ test('le info di una prenotazione del sito, senza scheda veicolo, si aprono senz
   expect(screen.queryByText('Accessori')).toBeNull();
 });
 
-test('una prenotazione pagata online mostra "Annulla e rimborsa" invece di "Elimina"', () => {
+test('una prenotazione pagata online mostra "Annulla e rimborsa" invece di "Annulla prenotazione"', () => {
   render(<InfoModal isOpen prenotazione={{ ...prenotazioneDalSito, paymentIntentId: 'pi_1' }} {...azioni} />);
   expect(screen.getByText('Annulla e rimborsa')).toBeTruthy();
-  expect(screen.queryByText('Elimina')).toBeNull();
+  expect(screen.queryByText('Annulla prenotazione')).toBeNull();
 });
 
-test('una prenotazione creata dal gestionale (senza pagamento online) mostra "Elimina"', () => {
+test('una prenotazione creata dal gestionale (senza pagamento online) mostra "Annulla prenotazione" tra le altre azioni', () => {
   render(<InfoModal isOpen prenotazione={{ ...prenotazioneDalSito, origine: undefined }} {...azioni} />);
-  expect(screen.getByText('Elimina')).toBeTruthy();
+  expect(screen.getByText('Annulla prenotazione')).toBeTruthy();
+  expect(screen.getByText('Altre azioni')).toBeTruthy();
 });
 
 test('consegne di prima con gli accessori: solo quelli presenti, non quelli spenti', () => {

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import Modal from 'react-modal';
 import './InfoModal.css';
-import { Pencil, Trash2, KeyRound, X, Download, FileText, Car, LogIn, Mail, Copy, User, ShieldCheck, ClipboardCheck, Undo2, AlertTriangle, ChevronsUpDown } from 'lucide-react';
+import { Pencil, Ban, KeyRound, X, Download, FileText, Car, LogIn, Mail, Copy, User, ShieldCheck, ClipboardCheck, Undo2, AlertTriangle, ChevronsUpDown } from 'lucide-react';
 import '../styles/Prenotazione.css';
 import { dataEOra, formattaData } from '../utils/scadenze';
 import { oraBreve } from '../utils/orari';
@@ -467,10 +467,13 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
           {!soloLettura && (
             <>
               <span className="pz-menu-spazio" />
-              <button type="button" className="vd-btn" onClick={() => onModifica(prenotazione)}><Pencil size={16} /> Modifica</button>
-              <button type="button" className="vd-btn vd-btn--pericolo" onClick={() => onElimina(prenotazione)}>
-                <Trash2 size={16} /> {isPagataOnline(prenotazione) ? 'Annulla e rimborsa' : 'Elimina'}
-              </button>
+              <button type="button" className="vd-btn" onClick={() => onModifica(prenotazione)}><Pencil size={16} aria-hidden="true" /> Modifica date o dati</button>
+              <span className="pz-altre-azioni" role="group" aria-label="Altre azioni">
+                <span className="pz-altre-azioni-titolo">Altre azioni</span>
+                <button type="button" className="vd-btn vd-btn--pericolo" onClick={() => onElimina(prenotazione)}>
+                  <Ban size={16} aria-hidden="true" /> {isPagataOnline(prenotazione) ? 'Annulla e rimborsa' : 'Annulla prenotazione'}
+                </button>
+              </span>
             </>
           )}
         </footer>
