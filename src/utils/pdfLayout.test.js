@@ -55,9 +55,9 @@ describe('colori e marchio', () => {
   it('colore d\'accento: scelto se leggibile sul bianco, altrimenti quello base', () => {
     expect(coloreAccento('#1f6b4a')).toEqual([31, 107, 74]);
     expect(coloreAccento('1f6b4a')).toEqual([31, 107, 74]);
-    expect(coloreAccento('#ffee00')).toEqual([31, 78, 121]); // giallo: poco contrasto
-    expect(coloreAccento('boh')).toEqual([31, 78, 121]);
-    expect(coloreAccento(undefined)).toEqual([31, 78, 121]);
+    expect(coloreAccento('#ffee00')).toEqual([34, 34, 34]); // giallo: poco contrasto
+    expect(coloreAccento('boh')).toEqual([34, 34, 34]);
+    expect(coloreAccento(undefined)).toEqual([34, 34, 34]);
   });
   it('iniziali del marchio', () => {
     expect(iniziali('Formia Rent')).toBe('FR');

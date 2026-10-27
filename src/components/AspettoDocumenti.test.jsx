@@ -25,8 +25,8 @@ test('senza logo ne\' colore: iniziali, colore di base e Salva spento', () => {
   expect(screen.getByText('nessun logo')).toBeInTheDocument();
   expect(anteprima()).toHaveTextContent('FR');
   expect(anteprima()).toHaveTextContent('Formia Rent');
-  expect(anteprima().style.getPropertyValue('--asp-acc')).toBe('#1f4e79');
-  expect(screen.getByRole('radio', { name: 'Colore Blu' })).toBeChecked();
+  expect(anteprima().style.getPropertyValue('--asp-acc')).toBe('#222222');
+  expect(screen.getByRole('radio', { name: 'Colore Nero' })).toBeChecked();
   expect(salva()).toBeDisabled();
 });
 
@@ -43,7 +43,7 @@ test('scegliendo un colore cambia l\'anteprima e si salva il codice', async () =
 test('«Colore di base» torna al colore di serie (si salva vuoto)', async () => {
   const onSalva = apri({ ...azienda, coloreAccento: '#8b2e2e' });
   fireEvent.click(screen.getByRole('button', { name: 'Colore di base' }));
-  expect(anteprima().style.getPropertyValue('--asp-acc')).toBe('#1f4e79');
+  expect(anteprima().style.getPropertyValue('--asp-acc')).toBe('#222222');
   fireEvent.click(salva());
   await waitFor(() => expect(onSalva).toHaveBeenCalledWith({ logo: '', coloreAccento: '' }));
 });
@@ -52,7 +52,7 @@ test('un colore troppo chiaro lo dice e nell\'anteprima si usa quello di base', 
   apri();
   fireEvent.change(screen.getByLabelText('Colore, codice esadecimale'), { target: { value: '#ffff00' } });
   expect(screen.getByText('Troppo chiaro')).toBeInTheDocument();
-  expect(anteprima().style.getPropertyValue('--asp-acc')).toBe('#1f4e79');
+  expect(anteprima().style.getPropertyValue('--asp-acc')).toBe('#222222');
 });
 
 test('un codice colore sbagliato non si salva', () => {
@@ -97,6 +97,6 @@ test('«Annulla modifiche» riporta com\'era', () => {
   apri();
   fireEvent.click(screen.getByRole('radio', { name: 'Colore Verde' }));
   fireEvent.click(screen.getByRole('button', { name: 'Annulla modifiche' }));
-  expect(screen.getByRole('radio', { name: 'Colore Blu' })).toBeChecked();
+  expect(screen.getByRole('radio', { name: 'Colore Nero' })).toBeChecked();
   expect(salva()).toBeDisabled();
 });
