@@ -42,7 +42,7 @@ export function vociProtezioneExtra(prenotazione = {}) {
   const km = prenotazione.chilometri;
   if (km?.nome) {
     const dettaglio = km.kmInclusi
-      ? `${Number(km.kmInclusi).toLocaleString('it-IT')} km inclusi${km.euroKmInPiu ? `, poi ${eur(km.euroKmInPiu, true)} al km` : ''}`
+      ? `${Number(km.kmInclusi).toLocaleString('it-IT')} km ${km.kmDichiarati ? 'dichiarati' : 'inclusi'}${km.euroKmInPiu ? `, poi ${eur(km.euroKmInPiu, true)} al km` : ''}`
       : 'Nessun limite';
     righe.push([`Chilometri: ${km.nome}`, dettaglio, km.importo > 0 ? eur(km.importo, true) : 'Inclusa']);
   }

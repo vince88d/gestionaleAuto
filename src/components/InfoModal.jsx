@@ -4,6 +4,7 @@ import './InfoModal.css';
 import { Pencil, Ban, KeyRound, X, Download, FileText, Printer, Car, LogIn, Mail, Copy, User, ShieldCheck, ClipboardCheck, Undo2, AlertTriangle, ChevronsUpDown } from 'lucide-react';
 import '../styles/Prenotazione.css';
 import { dataEOra, formattaData } from '../utils/scadenze';
+import { descrizioneChilometri } from '../utils/chilometri';
 import { oraBreve } from '../utils/orari';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -308,10 +309,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
                 <div>
                   <dt>Chilometri</dt>
                   <dd>
-                    {prenotazione.chilometri.nome}
-                    {prenotazione.chilometri.kmInclusi ? ` · ${prenotazione.chilometri.kmInclusi.toLocaleString('it-IT')} km inclusi` : ''}
-                    {prenotazione.chilometri.kmInclusi && prenotazione.chilometri.euroKmInPiu
-                      ? ` · poi ${prenotazione.chilometri.euroKmInPiu.toLocaleString('it-IT', { minimumFractionDigits: 2 })} € al km` : ''}
+                    {descrizioneChilometri(prenotazione.chilometri)}
                   </dd>
                 </div>
               )}
@@ -344,10 +342,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
                 <div>
                   <dt>Chilometri</dt>
                   <dd>
-                    {prenotazione.chilometri.nome}
-                    {prenotazione.chilometri.kmInclusi ? ` · ${prenotazione.chilometri.kmInclusi.toLocaleString('it-IT')} km inclusi` : ''}
-                    {prenotazione.chilometri.kmInclusi && prenotazione.chilometri.euroKmInPiu
-                      ? ` · poi ${prenotazione.chilometri.euroKmInPiu.toLocaleString('it-IT', { minimumFractionDigits: 2 })} € al km` : ''}
+                    {descrizioneChilometri(prenotazione.chilometri)}
                   </dd>
                 </div>
               )}

@@ -46,3 +46,19 @@
 .km-sc-pr--ok { color: #1e7e46; }
 .km-spazio { flex: 1; }
 @media (max-width: 760px) { .km-due { grid-template-columns: 1fr; } .km-lab { min-width: 0; width: 100%; } }
+.km-modo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 20px 0; }
+.km-opz--spenta { opacity: .6; cursor: not-allowed; }
+.km-avv { display: flex; gap: 10px; align-items: flex-start; margin: 12px 20px 0; padding: 11px 14px; border-radius: 10px; background: #eaf3fb; border: 1px solid #c9dff1; font-size: 14.5px; line-height: 1.55; color: #0f3d63; }
+.km-avv svg { color: #1a6fb0; margin-top: 2px; flex: none; }
+.km-avv--att { background: #fff6e0; border-color: #f1d39a; color: #5b3d00; }
+.km-avv--att svg { color: #8a5a00; }
+.km-tabella { margin-top: 12px; }
+.km-tabella td { vertical-align: middle; }
+.km-riga { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.km-cliente { font-size: 14px; color: #3b4856; }
+.km-togli { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; color: #a93226; font: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; cursor: pointer; min-height: 44px; }
+.km-esempio--riga { margin: 12px 20px 0; }
+.km-lista { margin: 0; padding-left: 20px; line-height: 1.7; font-size: 15px; color: #3b4856; }
+.km-piu { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 14px 20px 0; padding: 12px 14px; border: 1px solid #e3e8ee; border-radius: 10px; background: #f7f9fb; font-size: 15px; }
+.km-piu-nota { color: #5d6b79; }
+@media (max-width: 860px) { .km-col-cliente { display: none; } .km-modo { grid-template-columns: 1fr; } }

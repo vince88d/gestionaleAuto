@@ -105,7 +105,7 @@ export function sezioniRientro(prenotazione = {}) {
     ['Rientrata', `${dataEOra(r.dataRientro, r.oraRientro)}${ritardo}`],
     ['Km', r.kmConsegna != null ? `${nKm(r.kmConsegna)} -> ${nKm(r.km)}${percorsi !== null ? ` (${nKm(percorsi)} km)` : ''}` : nKm(r.km)],
     ...(prenotazione.chilometri?.nome
-      ? [['Formula km', `${prenotazione.chilometri.nome}${prenotazione.chilometri.kmInclusi ? ` · ${nKm(prenotazione.chilometri.kmInclusi)} km inclusi` : ''}`]]
+      ? [['Formula km', `${prenotazione.chilometri.nome}${prenotazione.chilometri.kmInclusi && !prenotazione.chilometri.kmDichiarati ? ` · ${nKm(prenotazione.chilometri.kmInclusi)} km inclusi` : ''}`]]
       : []),
     ['Carburante', r.carburanteConsegna ? `${r.carburanteConsegna} -> ${r.carburante}` : r.carburante],
   ];

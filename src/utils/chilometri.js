@@ -1,19 +1,25 @@
-// Formule dei chilometri (scheda «Chilometri» di Tariffe e optional): lo staff
-// decide quali formule offre (es. «200 km al giorno», «Km illimitati»), ognuna
-// con un supplemento al giorno uguale per tutte le categorie. Una e' «di
-// partenza»: e' compresa nel prezzo al giorno (supplemento 0) ed e' gia' scelta.
-// Il cliente sceglie la formula quando prenota (sito o banco); i km oltre
-// quelli inclusi si pagano al rientro, al prezzo «Km in piu'» di Penali e addebiti.
-// Documento impostazioni/chilometri → { formule: [{ id, km, supplemento, partenza }] }
+// Formule dei chilometri (scheda «Chilometri» di Tariffe e optional). Lo staff
+// decide COME il cliente indica i km quando prenota o chiede un preventivo:
+//  - modo «pacchetti»: il cliente sceglie tra le formule che lo staff inserisce
+//    (es. «200 km al giorno», «Km illimitati»), ognuna con un supplemento al
+//    giorno (0 = incluso nel prezzo; il supplemento conta solo con «Prezzi online»);
+//  - modo «dichiarati»: il cliente scrive quanti km pensa di fare IN TUTTO (o
+//    sceglie «Km illimitati» se lo staff lo permette) e lo staff fa il preventivo
+//    su quelli. Vale solo con il sito in «Solo richieste» (online serve un prezzo certo).
+// I km oltre quelli inclusi (quelli della formula, o i dichiarati) si pagano al
+// rientro, al prezzo «Km in piu'» di Penali e addebiti.
+// Documento impostazioni/chilometri → { modo, dichiaratiIllimitati, formule: [{ id, km, supplemento }] }
 // (km null = illimitati). Deve restare allineato a formiarent
 // (functions/src/chilometri.ts e src/lib/chilometri.ts). Funzioni pure, testate.
-// Mockup approvato: formiarent-documenti/mockup/gestionale-sito-km.html
+// Mockup approvato: formiarent-documenti/mockup/gestionale-km-formule-v4.html
 import { leggiEuro } from './protezioni';
 
 const arrotonda = (n) => Math.round(n * 100) / 100;
 
+export const KM_DICHIARATI_MAX = 99999;
+
 // Come oggi: una sola formula, km illimitati, nessuna scelta per il cliente.
-export const FORMULE_DI_PARTENZA = [{ id: 'illimitati', km: null, supplemento: 0, partenza: true }];
+export const FORMULE_DI_PARTENZA = [{ id: 'illimitati', km: null, supplemento: 0 }];
 
 let contatore = 0;
 const nuovoId = () => `f${Date.now().toString(36)}${(contatore += 1).toString(36)}`;
@@ -23,8 +29,19 @@ const kmValidi = (v) => {
   return Number.isInteger(n) && n > 0 ? n : null;
 };
 
-// Da Firestore (o dal form) a valori sicuri: almeno una formula, una sola di
-// partenza (se manca, la prima) e con supplemento 0.
+// Km dichiarati dal cliente: intero da 1 a KM_DICHIARATI_MAX, altrimenti null.
+export const kmDichiaratiValidi = (v) => {
+  const n = kmValidi(v);
+  return n !== null && n <= KM_DICHIARATI_MAX ? n : null;
+};
+
+// Meno km prima, gli illimitati per ultimi (stesso ordine sul sito).
+const ordina = (formule) => formule
+  .map((f, i) => ({ f, i }))
+  .sort((a, b) => ((a.f.km ?? Infinity) - (b.f.km ?? Infinity)) || (a.i - b.i))
+  .map(({ f }) => f);
+
+// Da Firestore (o dal form) a valori sicuri: almeno una formula, ordinate.
 export function normalizzaFormule(dati) {
   const grezze = Array.isArray(dati?.formule) ? dati.formule : [];
   const viste = new Set();
@@ -37,20 +54,24 @@ export function normalizzaFormule(dati) {
     if (viste.has(id)) return;
     viste.add(id);
     const s = leggiEuro(f?.supplemento);
-    formule.push({ id, km, supplemento: s === null || Number.isNaN(s) || s < 0 ? 0 : arrotonda(s), partenza: f?.partenza === true });
+    formule.push({ id, km, supplemento: s === null || Number.isNaN(s) || s < 0 ? 0 : arrotonda(s) });
   });
-  if (formule.length === 0) return { formule: FORMULE_DI_PARTENZA.map((f) => ({ ...f })) };
-  const iPartenza = Math.max(0, formule.findIndex((f) => f.partenza));
-  return { formule: formule.map((f, i) => ({ ...f, partenza: i === iPartenza, supplemento: i === iPartenza ? 0 : f.supplemento })) };
+  return {
+    modo: dati?.modo === 'dichiarati' ? 'dichiarati' : 'pacchetti',
+    dichiaratiIllimitati: dati?.dichiaratiIllimitati !== false,
+    formule: ordina(formule.length === 0 ? FORMULE_DI_PARTENZA.map((f) => ({ ...f })) : formule),
+  };
 }
 
-export const formulaDiPartenza = (formule) => formule.find((f) => f.partenza) || formule[0];
+// Il modo che vale davvero: «dichiarati» solo con il sito in «Solo richieste».
+export const modoEffettivo = (modo, modalitaSito) => (modo === 'dichiarati' && modalitaSito === 'richiesta' ? 'dichiarati' : 'pacchetti');
 
-// La formula con quell'id, altrimenti quella di partenza.
-export const trovaFormula = (formule, id) => formule.find((f) => f.id === id) || formulaDiPartenza(formule);
+// La formula con quell'id; senza id (o sconosciuto) la prima.
+export const trovaFormula = (formule, id) => formule.find((f) => f.id === id) || formule[0];
 
-// Il cliente sceglie solo se ci sono almeno due formule.
-export const ciSonoScelte = (formule) => formule.length > 1;
+// Il cliente deve scegliere (o scrivere i km) se i pacchetti sono almeno due,
+// o se il modo e' «dichiarati». `imp` = { modo, formule } normalizzato.
+export const ciSonoScelte = (imp) => imp?.modo === 'dichiarati' || (imp?.formule?.length ?? 0) > 1;
 
 const numero = (n) => n.toLocaleString('it-IT', { useGrouping: 'always' });
 
@@ -70,8 +91,37 @@ export function chilometriPrenotazione(formula, giorni, euroKmInPiu) {
     kmInclusi: kmInclusi(formula, g),
     supplementoGiorno: formula.supplemento,
     importo: arrotonda(formula.supplemento * g),
-    euroKmInPiu: formula.km === null ? null : arrotonda(Number(euroKmInPiu) || 0),
+    euroKmInPiu: formula.km === null ? null : arrotonda(euroKmInPiu),
   };
+}
+
+// Modo «dichiarati»: i km scritti dal cliente sono i km inclusi; il prezzo lo
+// scrive lo staff nel preventivo (qui nessun importo).
+export function chilometriDichiarati(km, euroKmInPiu) {
+  return {
+    formulaId: 'dichiarati',
+    nome: `${numero(km)} km dichiarati`,
+    kmGiorno: null,
+    kmDichiarati: km,
+    kmInclusi: km,
+    supplementoGiorno: 0,
+    importo: 0,
+    euroKmInPiu: arrotonda(euroKmInPiu),
+  };
+}
+
+// La scelta dei km (pacchetto o km dichiarati) → { chilometri } oppure { errore }.
+// `scelta` = { sceltaKm: id|'illimitati'|null, kmDichiarati: string|number|null }.
+export function sceglieChilometri(imp, scelta, giorni, euroKmInPiu) {
+  if (imp.modo === 'dichiarati') {
+    if (scelta.sceltaKm === 'illimitati' && imp.dichiaratiIllimitati) {
+      return { chilometri: chilometriPrenotazione({ id: 'illimitati', km: null, supplemento: 0 }, giorni, euroKmInPiu) };
+    }
+    const km = kmDichiaratiValidi(scelta.kmDichiarati);
+    if (km === null) return { errore: 'Scrivi quanti km farà in tutto il cliente (un numero intero, es. 1500).' };
+    return { chilometri: chilometriDichiarati(km, euroKmInPiu) };
+  }
+  return { chilometri: chilometriPrenotazione(trovaFormula(imp.formule, scelta.sceltaKm), giorni, euroKmInPiu) };
 }
 
 // Km in piu' al rientro: { km, importo } (km 0 = niente da pagare).
@@ -84,72 +134,62 @@ export function kmInPiu(chilometri, percorsi, euroKmInPiu) {
   return { km, importo: arrotonda(km * euro) };
 }
 
-// --- Scheda «Chilometri» a due passi ---------------------------------------
-// Passo 1: cosa e' compreso nel prezzo (la formula «di partenza»: illimitati o N
-// km al giorno). Passo 2, facoltativo: UNA opzione a pagamento (km illimitati o
-// piu' km al giorno) con un supplemento al giorno. Nel documento restano le
-// stesse formule di sempre (la prima di partenza + al massimo una in piu').
-// Mockup approvato: formiarent-documenti/mockup/gestionale-km-formule-v2.html (ipotesi A)
+// Testo per dettagli e verbali: «400 km al giorno · 1.200 km inclusi · poi 0,25 € al km».
+export function descrizioneChilometri(c) {
+  if (!c?.nome) return '';
+  const euroKm = c.kmInclusi && c.euroKmInPiu ? ` · poi ${c.euroKmInPiu.toLocaleString('it-IT', { minimumFractionDigits: 2 })} € al km` : '';
+  const inclusi = c.kmInclusi ? (c.kmDichiarati ? '' : ` · ${numero(c.kmInclusi)} km inclusi`) : '';
+  return `${c.nome}${inclusi}${euroKm}`;
+}
 
-const ID_OPZIONE = 'opzione';
+// --- Scheda «Chilometri» ---------------------------------------------------
 
+export const nuovaFormula = () => ({ id: nuovoId(), illimitati: false, km: '', supplemento: '0' });
+
+// Dal documento al form: righe con testi, per i campi.
 export function schemaPerScheda(dati) {
-  const { formule } = normalizzaFormule(dati);
-  const base = formulaDiPartenza(formule);
-  const altre = formule.filter((f) => f !== base);
-  const opz = altre[0];
+  const imp = normalizzaFormule(dati);
   return {
-    base: { id: base.id, illimitati: base.km === null, km: base.km === null ? '' : String(base.km) },
-    opzione: {
-      attiva: Boolean(opz),
-      id: opz?.id || ID_OPZIONE,
-      illimitati: opz ? opz.km === null : true,
-      km: opz && opz.km !== null ? String(opz.km) : '',
-      supplemento: opz ? opz.supplemento.toLocaleString('it-IT', { maximumFractionDigits: 2 }) : '',
-    },
-    // formule oltre la prima opzione: con questa scheda non si possono tenere
-    scartate: Math.max(0, altre.length - 1),
+    modo: imp.modo,
+    dichiaratiIllimitati: imp.dichiaratiIllimitati,
+    formule: imp.formule.map((f) => ({
+      id: f.id,
+      illimitati: f.km === null,
+      km: f.km === null ? '' : String(f.km),
+      supplemento: f.supplemento.toLocaleString('it-IT', { maximumFractionDigits: 2 }),
+    })),
   };
 }
 
-// Se i km compresi sono illimitati non c'e' nulla da aggiungere.
-export const opzionePossibile = (schema) => !schema.base.illimitati;
-
-// Errori per campo ("base.km", "opzione.km", "opzione.supplemento") — {} se si puo' salvare.
-export function validaSchema(schema) {
+// Errori per campo ("0.km", "1.supplemento", "doppie", "ordine") — {} se si puo' salvare.
+// In modo «dichiarati» l'elenco dei pacchetti non conta (resta salvato).
+export function validaSchema(schema, { conPrezzi = true } = {}) {
   const errori = {};
-  const { base, opzione } = schema;
-  const kmBase = kmValidi(base.km);
-  if (!base.illimitati && kmBase === null) errori['base.km'] = 'Scrivi i km al giorno, es. 200';
-  if (!opzionePossibile(schema) || !opzione.attiva) return errori;
-  if (!opzione.illimitati) {
-    const km = kmValidi(opzione.km);
-    if (km === null) errori['opzione.km'] = 'Scrivi i km al giorno, es. 300';
-    else if (kmBase !== null && km <= kmBase) errori['opzione.km'] = `Metti più km di quelli compresi (${numero(kmBase)}): altrimenti nessuno la sceglie.`;
+  if (schema.modo === 'dichiarati') return errori;
+  schema.formule.forEach((r, i) => {
+    if (!r.illimitati && kmValidi(r.km) === null) errori[`${i}.km`] = 'Scrivi i km al giorno, es. 200';
+    if (conPrezzi) {
+      const s = leggiEuro(r.supplemento);
+      if (s === null) errori[`${i}.supplemento`] = 'Scrivi il costo (anche 0).';
+      else if (Number.isNaN(s) || s < 0) errori[`${i}.supplemento`] = 'Scrivi un importo, es. 6';
+    }
+  });
+  const chiavi = schema.formule.map((r) => (r.illimitati ? 'illimitati' : String(kmValidi(r.km))));
+  if (new Set(chiavi).size !== chiavi.length) errori.doppie = 'Due pacchetti hanno gli stessi km: tienine uno solo.';
+  if (conPrezzi && !errori.doppie) {
+    const prezzi = ordina(schema.formule.map((r) => ({ km: r.illimitati ? null : kmValidi(r.km), s: leggiEuro(r.supplemento) })));
+    for (let i = 1; i < prezzi.length; i += 1) {
+      if (typeof prezzi[i].s === 'number' && typeof prezzi[i - 1].s === 'number' && prezzi[i].s < prezzi[i - 1].s) {
+        errori.ordine = 'Un pacchetto con più km non può costare meno di uno con meno km.';
+      }
+    }
   }
-  const s = leggiEuro(opzione.supplemento);
-  if (s === null) errori['opzione.supplemento'] = 'Scrivi quanto costa in più al giorno, es. 6';
-  else if (Number.isNaN(s) || s < 0) errori['opzione.supplemento'] = 'Scrivi un importo, es. 6';
-  else if (s === 0) errori['opzione.supplemento'] = 'Con 0 € nessuno sceglierebbe la formula compresa: metti un importo.';
   return errori;
 }
 
-// Da scheda a documento: { formule: [...] } normalizzato.
-export function schemaAFormule(schema) {
-  const { base, opzione } = schema;
-  const formule = [{ id: base.id, km: base.illimitati ? null : base.km, supplemento: 0, partenza: true }];
-  if (opzionePossibile(schema) && opzione.attiva) {
-    formule.push({
-      id: opzione.id === base.id ? ID_OPZIONE : opzione.id,
-      km: opzione.illimitati ? null : opzione.km,
-      supplemento: opzione.supplemento,
-      partenza: false,
-    });
-  }
-  return normalizzaFormule({ formule });
-}
-
-// Quello che vede il cliente: [{ nome, compresa, supplemento }] (anteprima).
-export const sceltePerCliente = (schema) => schemaAFormule(schema).formule.map((f) => ({
-  nome: nomeFormula(f), compresa: f.partenza, supplemento: f.supplemento,
-}));
+// Dal form al documento: { modo, dichiaratiIllimitati, formule } normalizzato.
+export const schemaAFormule = (schema) => normalizzaFormule({
+  modo: schema.modo,
+  dichiaratiIllimitati: schema.dichiaratiIllimitati,
+  formule: schema.formule.map((r) => ({ id: r.id, km: r.illimitati ? null : r.km, supplemento: r.supplemento })),
+});
