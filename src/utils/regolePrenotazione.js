@@ -85,6 +85,7 @@ export function controllaPrenotazione({
     optionalSalvati: originale?.optional,
     formuleKm,
     sceltaKm: dati.sceltaKm ?? null,
+    kmDichiarati: dati.kmDichiarati ?? null,
     euroKmInPiu,
     chilometriSalvati: originale?.chilometri ?? null,
     etaConducenti,

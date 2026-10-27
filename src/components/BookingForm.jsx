@@ -294,6 +294,7 @@ function BookingForm({
     etaConducente: dati.etaConducente === 'oltre' ? null : dati.etaConducente,
     formuleKm,
     sceltaKm: scelte.sceltaKm,
+    kmDichiarati: scelte.kmDichiarati,
     euroKmInPiu,
     chilometriSalvati: initialValues?.chilometri ?? null,
   });
@@ -421,6 +422,7 @@ function BookingForm({
       sceltaProtezione,
       sceltaOptional: scelte.sceltaOptional,
       sceltaKm: scelte.sceltaKm,
+      kmDichiarati: scelte.kmDichiarati,
       ...dati,
       // Prenotazione del sito: l'eta' e il supplemento pagati non si toccano.
       etaConducente: sito ? undefined : (dati.etaConducente === 'oltre' ? '' : dati.etaConducente),
@@ -820,26 +822,53 @@ function BookingForm({
             {conKm && (
               <section className="np-sezione np-km" aria-labelledby="np-km-titolo">
                 <h3 className="np-sezione-titolo" id="np-km-titolo">Chilometri</h3>
-                <p className="np-aiuto">
-                  Quanti km può fare il cliente{giorni > 0 ? ` in ${giorni} ${giorni === 1 ? 'giorno' : 'giorni'}` : ''}.
-                  {euroKmInPiu > 0 && ` Oltre quelli inclusi si pagano ${euro(euroKmInPiu)} al km al rientro.`}
-                </p>
-                <div className="px-protezioni px-protezioni--km" role="radiogroup" aria-label="Formula dei chilometri">
-                  {formuleKm.map((f) => {
-                    const scelta = (kmScelti?.formulaId ?? formuleKm.find((x) => x.partenza)?.id) === f.id;
-                    const g = Math.max(1, giorni || 1);
-                    return (
-                      <label key={f.id} className={`px-scheda ${scelta ? 'px-scheda--scelta' : ''}`}>
-                        <input type="radio" name="np-km" checked={scelta} onChange={() => setScelte((x) => ({ ...x, sceltaKm: f.id }))} />
-                        <span className="px-nome">{nomeFormula(f)}</span>
-                        <span className="px-prezzo">
-                          {f.km === null ? 'Nessun limite' : `${(f.km * g).toLocaleString('it-IT')} km inclusi`}
-                          <span> · {f.supplemento > 0 ? `+${euro(f.supplemento)} al giorno${giorni > 0 ? ` · +${euro(f.supplemento * g)}` : ''}` : 'Incluso'}</span>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
+                {formuleKm.modo === 'dichiarati' ? (
+                  <>
+                    <p className="np-aiuto">
+                      Il cliente dichiara quanti km pensa di fare in tutto: il preventivo si fa su quelli.
+                      {euroKmInPiu > 0 && ` I km oltre i dichiarati si pagano ${euro(euroKmInPiu)} al km al rientro.`}
+                    </p>
+                    <div className="np-km-dich">
+                      <label htmlFor="np-km-dich" className="np-km-dich-lab">Km dichiarati dal cliente</label>
+                      <span className="np-km-dich-campo">
+                        <input id="np-km-dich" type="text" inputMode="numeric" placeholder="Es. 1500" value={scelte.kmDichiarati}
+                          disabled={scelte.sceltaKm === 'illimitati'}
+                          onChange={(e) => setScelte((x) => ({ ...x, sceltaKm: 'dichiarati', kmDichiarati: e.target.value }))} />
+                        <span aria-hidden="true">km in tutto</span>
+                      </span>
+                      {formuleKm.dichiaratiIllimitati && (
+                        <label className="np-km-dich-ill">
+                          <input type="checkbox" checked={scelte.sceltaKm === 'illimitati'}
+                            onChange={(e) => setScelte((x) => ({ ...x, sceltaKm: e.target.checked ? 'illimitati' : 'dichiarati' }))} />
+                          Km illimitati
+                        </label>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="np-aiuto">
+                      Quanti km può fare il cliente{giorni > 0 ? ` in ${giorni} ${giorni === 1 ? 'giorno' : 'giorni'}` : ''}.
+                      {euroKmInPiu > 0 && ` Oltre quelli inclusi si pagano ${euro(euroKmInPiu)} al km al rientro.`}
+                    </p>
+                    <div className="px-protezioni px-protezioni--km" role="radiogroup" aria-label="Formula dei chilometri">
+                      {formuleKm.formule.map((f) => {
+                        const scelta = (kmScelti?.formulaId ?? formuleKm.formule[0]?.id) === f.id;
+                        const g = Math.max(1, giorni || 1);
+                        return (
+                          <label key={f.id} className={`px-scheda ${scelta ? 'px-scheda--scelta' : ''}`}>
+                            <input type="radio" name="np-km" checked={scelta} onChange={() => setScelte((x) => ({ ...x, sceltaKm: f.id }))} />
+                            <span className="px-nome">{nomeFormula(f)}</span>
+                            <span className="px-prezzo">
+                              {f.km === null ? 'Nessun limite' : `${(f.km * g).toLocaleString('it-IT')} km inclusi`}
+                              <span> · {f.supplemento > 0 ? `+${euro(f.supplemento)} al giorno${giorni > 0 ? ` · +${euro(f.supplemento * g)}` : ''}` : 'Incluso'}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </section>
             )}
           </div>

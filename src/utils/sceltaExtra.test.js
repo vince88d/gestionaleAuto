@@ -68,18 +68,19 @@ describe('pezzi', () => {
 
 test('scelte iniziali da una prenotazione salvata', () => {
   expect(scelteIniziali({ protezione: { tipo: 'totale' }, optional: [{ id: 's', quantita: 2 }] }))
-    .toEqual({ sceltaProtezione: 'totale', sceltaOptional: { s: 2 }, sceltaKm: null });
-  expect(scelteIniziali(null)).toEqual({ sceltaProtezione: 'base', sceltaOptional: {}, sceltaKm: null });
+    .toEqual({ sceltaProtezione: 'totale', sceltaOptional: { s: 2 }, sceltaKm: null, kmDichiarati: '' });
+  expect(scelteIniziali(null)).toEqual({ sceltaProtezione: 'base', sceltaOptional: {}, sceltaKm: null, kmDichiarati: '' });
   expect(scelteIniziali({ chilometri: { formulaId: 'f2' } }).sceltaKm).toBe('f2');
+  expect(scelteIniziali({ chilometri: { formulaId: 'dichiarati', kmDichiarati: 1500 } })).toMatchObject({ sceltaKm: 'dichiarati', kmDichiarati: '1500' });
   expect(totaleSceglibile(protezione)).toBe(true);
 });
 
 describe('formule dei km nel preventivo', () => {
-  const formuleKm = [
-    { id: 'base', km: 200, supplemento: 0, partenza: true },
-    { id: 'ill', km: null, supplemento: 12, partenza: false },
-  ];
-  it('di partenza: km inclusi, nessun supplemento', () => {
+  const formuleKm = { modo: 'pacchetti', dichiaratiIllimitati: true, formule: [
+    { id: 'base', km: 200, supplemento: 0 },
+    { id: 'ill', km: null, supplemento: 12 },
+  ] };
+  it('prima formula: km inclusi, nessun supplemento', () => {
     const p = preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 3, formuleKm, euroKmInPiu: 0.25 });
     expect(p.chilometri).toMatchObject({ formulaId: 'base', kmInclusi: 600, importo: 0, euroKmInPiu: 0.25 });
     expect(p.prezzoTotale).toBe(120);
@@ -95,6 +96,26 @@ describe('formule dei km nel preventivo', () => {
     expect(p.chilometri).toMatchObject({ formulaId: 'vecchia', kmInclusi: 600, importo: 10, euroKmInPiu: 0.2 });
     // Cambiando formula valgono i prezzi di adesso.
     expect(preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 2, formuleKm, sceltaKm: 'ill', chilometriSalvati: salvata }).chilometri.importo).toBe(24);
+  });
+  describe('modo km dichiarati', () => {
+    const dich = { modo: 'dichiarati', dichiaratiIllimitati: true, formule: formuleKm.formule };
+    it('i km scritti dal cliente sono i km inclusi, senza supplemento', () => {
+      const p = preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 3, formuleKm: dich, sceltaKm: 'dichiarati', kmDichiarati: '1500', euroKmInPiu: 0.25 });
+      expect(p.chilometri).toMatchObject({ formulaId: 'dichiarati', kmDichiarati: 1500, kmInclusi: 1500, importo: 0, euroKmInPiu: 0.25 });
+      expect(p.prezzoTotale).toBe(120);
+    });
+    it('senza km scritti: errore chiaro; con «Km illimitati» si va avanti', () => {
+      expect(preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 3, formuleKm: dich, kmDichiarati: '' }).errore).toMatch(/Scrivi quanti km/);
+      expect(preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 3, formuleKm: dich, sceltaKm: 'illimitati' }).chilometri).toMatchObject({ kmInclusi: null });
+    });
+    it('in modifica restano i km dichiarati salvati, anche se il modo e cambiato', () => {
+      const salvata = { formulaId: 'dichiarati', kmDichiarati: 1500, euroKmInPiu: 0.2 };
+      const p = preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 3, formuleKm: dich, chilometriSalvati: salvata, euroKmInPiu: 0.25 });
+      expect(p.chilometri).toMatchObject({ formulaId: 'dichiarati', kmInclusi: 1500, euroKmInPiu: 0.2 });
+      expect(preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 3, formuleKm, chilometriSalvati: salvata }).chilometri.formulaId).toBe('dichiarati');
+      // Se lo staff cambia il numero, vale il nuovo.
+      expect(preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 3, formuleKm: dich, sceltaKm: 'dichiarati', kmDichiarati: '2000', chilometriSalvati: salvata }).chilometri.kmInclusi).toBe(2000);
+    });
   });
   it('senza formule (prenotazioni di prima): niente km', () => {
     expect(preventivoPrenotazione({ prezzoGiornaliero: '40', giorni: 2 }).chilometri).toBeNull();

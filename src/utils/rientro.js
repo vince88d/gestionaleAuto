@@ -146,7 +146,7 @@ export function proponiAddebiti({
     righe.push({
       id: 'kmInPiu',
       nome: 'Km in più',
-      dettaglio: `${oltre.km.toLocaleString('it-IT')} km oltre i ${prenotazione.chilometri.kmInclusi.toLocaleString('it-IT')} inclusi (${prenotazione.chilometri.nome}) × ${euroKm.toLocaleString('it-IT', { minimumFractionDigits: 2 })} € al km`,
+      dettaglio: `${oltre.km.toLocaleString('it-IT')} km oltre i ${prenotazione.chilometri.kmInclusi.toLocaleString('it-IT')} ${prenotazione.chilometri.kmDichiarati ? 'dichiarati' : `inclusi (${prenotazione.chilometri.nome})`} × ${euroKm.toLocaleString('it-IT', { minimumFractionDigits: 2 })} € al km`,
       importo: oltre.importo,
       attiva: true,
     });
