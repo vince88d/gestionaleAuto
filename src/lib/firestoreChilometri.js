@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { db, auth } from '../components/firebase';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
-import { normalizzaFormule, preparaFormule } from '../utils/chilometri';
+import { normalizzaFormule } from '../utils/chilometri';
 
 // Formule dei chilometri (impostazioni/chilometri, vedi utils/chilometri.js).
 // Le contiene i supplementi (prezzi): le legge solo lo staff; il sito le riceve
@@ -12,9 +12,10 @@ export function ascoltaChilometri(onDati, onErrore) {
   return onSnapshot(doc(db, ...CHILOMETRI_DOC), (s) => onDati(normalizzaFormule(s.data())), onErrore);
 }
 
-export async function salvaChilometri(righe) {
+// `dati` = { formule: [...] } (da schemaAFormule).
+export async function salvaChilometri(dati) {
   await setDoc(doc(db, ...CHILOMETRI_DOC), {
-    ...preparaFormule(righe),
+    ...normalizzaFormule(dati),
     aggiornatoIl: serverTimestamp(),
     aggiornatoDa: auth.currentUser?.email || '',
   });

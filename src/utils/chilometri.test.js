@@ -1,6 +1,6 @@
 import {
   normalizzaFormule, formulaDiPartenza, trovaFormula, ciSonoScelte, nomeFormula, kmInclusi,
-  chilometriPrenotazione, kmInPiu, formulePerForm, validaFormule, preparaFormule, FORMULE_DI_PARTENZA,
+  chilometriPrenotazione, kmInPiu, schemaPerScheda, validaSchema, schemaAFormule, sceltePerCliente, opzionePossibile, FORMULE_DI_PARTENZA,
 } from './chilometri';
 
 const formule = normalizzaFormule({
@@ -58,18 +58,52 @@ describe('formule nella prenotazione', () => {
   });
 });
 
-describe('form della scheda Chilometri', () => {
-  it('dal salvato al form e ritorno', () => {
-    const righe = formulePerForm({ formule });
-    expect(righe[2]).toEqual({ id: 'c', illimitati: true, km: '', supplemento: '12,5', partenza: false });
-    expect(preparaFormule(righe).formule).toEqual(formule);
+describe('scheda Chilometri a due passi', () => {
+  const schemaBase = () => schemaPerScheda({ formule: [{ id: 'a', km: 200, supplemento: 0, partenza: true }] });
+  it('senza documento: km illimitati compresi, nessuna opzione', () => {
+    const sc = schemaPerScheda(undefined);
+    expect(sc.base).toEqual({ id: 'illimitati', illimitati: true, km: '' });
+    expect(sc.opzione.attiva).toBe(false);
+    expect(opzionePossibile(sc)).toBe(false);
+    expect(validaSchema(sc)).toEqual({});
   });
-  it('errori: km mancanti, supplemento sbagliato, formule doppie', () => {
-    expect(validaFormule([{ illimitati: false, km: '', supplemento: '', partenza: true }])).toEqual({ '0.km': 'Scrivi i km al giorno, es. 200' });
-    expect(validaFormule([
-      { illimitati: false, km: '200', supplemento: '0', partenza: true },
-      { illimitati: false, km: '200', supplemento: '-3', partenza: false },
-    ])).toEqual({ '1.supplemento': 'Scrivi un importo, es. 6', doppie: 'Due formule hanno gli stessi km: tienine una sola.' });
-    expect(validaFormule(formulePerForm({ formule }))).toEqual({});
+  it('dal salvato alla scheda e ritorno (partenza + una opzione)', () => {
+    const f = [{ id: 'a', km: 200, supplemento: 0, partenza: true }, { id: 'c', km: null, supplemento: 6, partenza: false }];
+    const sc = schemaPerScheda({ formule: f });
+    expect(sc.base).toEqual({ id: 'a', illimitati: false, km: '200' });
+    expect(sc.opzione).toEqual({ attiva: true, id: 'c', illimitati: true, km: '', supplemento: '6' });
+    expect(sc.scartate).toBe(0);
+    expect(schemaAFormule(sc).formule).toEqual(f);
+  });
+  it('piu di una opzione salvata: la scheda ne tiene una e dice quante ne scarta', () => {
+    expect(schemaPerScheda({ formule }).scartate).toBe(1);
+  });
+  it('opzione spenta: resta solo la formula compresa', () => {
+    const sc = schemaBase();
+    expect(schemaAFormule(sc).formule).toEqual([{ id: 'a', km: 200, supplemento: 0, partenza: true }]);
+    expect(sceltePerCliente(sc)).toEqual([{ nome: '200 km al giorno', compresa: true, supplemento: 0 }]);
+  });
+  it('con km illimitati compresi non si salva nessuna opzione', () => {
+    const sc = { ...schemaBase(), base: { id: 'a', illimitati: true, km: '' }, opzione: { attiva: true, id: 'opzione', illimitati: true, km: '', supplemento: '5' } };
+    expect(schemaAFormule(sc).formule).toHaveLength(1);
+    expect(validaSchema(sc)).toEqual({});
+  });
+  it('errori: km mancanti, opzione a 0 €, opzione con meno km di quelli compresi', () => {
+    const sc = schemaBase();
+    expect(validaSchema({ ...sc, base: { ...sc.base, km: '' } })).toEqual({ 'base.km': 'Scrivi i km al giorno, es. 200' });
+    const op = (campi) => ({ ...sc, opzione: { ...sc.opzione, attiva: true, ...campi } });
+    expect(validaSchema(op({ illimitati: true, supplemento: '0' }))['opzione.supplemento']).toMatch(/nessuno sceglierebbe/);
+    expect(validaSchema(op({ illimitati: true, supplemento: '' }))['opzione.supplemento']).toMatch(/Scrivi quanto costa/);
+    expect(validaSchema(op({ illimitati: false, km: '150', supplemento: '3' }))['opzione.km']).toMatch(/più km di quelli compresi/);
+    expect(validaSchema(op({ illimitati: false, km: '', supplemento: '3' }))['opzione.km']).toMatch(/Scrivi i km/);
+    expect(validaSchema(op({ illimitati: false, km: '300', supplemento: '3' }))).toEqual({});
+  });
+  it('anteprima cliente: compresa + opzione con supplemento', () => {
+    const sc = schemaBase();
+    const conOpzione = { ...sc, opzione: { ...sc.opzione, attiva: true, illimitati: true, supplemento: '6' } };
+    expect(sceltePerCliente(conOpzione)).toEqual([
+      { nome: '200 km al giorno', compresa: true, supplemento: 0 },
+      { nome: 'Km illimitati', compresa: false, supplemento: 6 },
+    ]);
   });
 });

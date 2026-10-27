@@ -84,34 +84,72 @@ export function kmInPiu(chilometri, percorsi, euroKmInPiu) {
   return { km, importo: arrotonda(km * euro) };
 }
 
-// --- Form della scheda «Chilometri» ---------------------------------------
+// --- Scheda «Chilometri» a due passi ---------------------------------------
+// Passo 1: cosa e' compreso nel prezzo (la formula «di partenza»: illimitati o N
+// km al giorno). Passo 2, facoltativo: UNA opzione a pagamento (km illimitati o
+// piu' km al giorno) con un supplemento al giorno. Nel documento restano le
+// stesse formule di sempre (la prima di partenza + al massimo una in piu').
+// Mockup approvato: formiarent-documenti/mockup/gestionale-km-formule-v2.html (ipotesi A)
 
-export const formulePerForm = (dati) => normalizzaFormule(dati).formule.map((f) => ({
-  id: f.id,
-  illimitati: f.km === null,
-  km: f.km === null ? '' : String(f.km),
-  supplemento: f.supplemento.toLocaleString('it-IT', { maximumFractionDigits: 2 }),
-  partenza: f.partenza,
-}));
+const ID_OPZIONE = 'opzione';
 
-export const nuovaFormula = () => ({ id: nuovoId(), illimitati: false, km: '', supplemento: '', partenza: false });
+export function schemaPerScheda(dati) {
+  const { formule } = normalizzaFormule(dati);
+  const base = formulaDiPartenza(formule);
+  const altre = formule.filter((f) => f !== base);
+  const opz = altre[0];
+  return {
+    base: { id: base.id, illimitati: base.km === null, km: base.km === null ? '' : String(base.km) },
+    opzione: {
+      attiva: Boolean(opz),
+      id: opz?.id || ID_OPZIONE,
+      illimitati: opz ? opz.km === null : true,
+      km: opz && opz.km !== null ? String(opz.km) : '',
+      supplemento: opz ? opz.supplemento.toLocaleString('it-IT', { maximumFractionDigits: 2 }) : '',
+    },
+    // formule oltre la prima opzione: con questa scheda non si possono tenere
+    scartate: Math.max(0, altre.length - 1),
+  };
+}
 
-// Errori per campo ("0.km", "1.supplemento", "doppie") — {} se si puo' salvare.
-export function validaFormule(righe = []) {
+// Se i km compresi sono illimitati non c'e' nulla da aggiungere.
+export const opzionePossibile = (schema) => !schema.base.illimitati;
+
+// Errori per campo ("base.km", "opzione.km", "opzione.supplemento") — {} se si puo' salvare.
+export function validaSchema(schema) {
   const errori = {};
-  righe.forEach((r, i) => {
-    if (!r.illimitati && kmValidi(r.km) === null) errori[`${i}.km`] = 'Scrivi i km al giorno, es. 200';
-    if (!r.partenza) {
-      const s = leggiEuro(r.supplemento);
-      if (s === null) errori[`${i}.supplemento`] = 'Scrivi il supplemento (anche 0).';
-      else if (Number.isNaN(s) || s < 0) errori[`${i}.supplemento`] = 'Scrivi un importo, es. 6';
-    }
-  });
-  const chiavi = righe.map((r) => (r.illimitati ? 'illimitati' : String(kmValidi(r.km))));
-  if (new Set(chiavi).size !== chiavi.length) errori.doppie = 'Due formule hanno gli stessi km: tienine una sola.';
+  const { base, opzione } = schema;
+  const kmBase = kmValidi(base.km);
+  if (!base.illimitati && kmBase === null) errori['base.km'] = 'Scrivi i km al giorno, es. 200';
+  if (!opzionePossibile(schema) || !opzione.attiva) return errori;
+  if (!opzione.illimitati) {
+    const km = kmValidi(opzione.km);
+    if (km === null) errori['opzione.km'] = 'Scrivi i km al giorno, es. 300';
+    else if (kmBase !== null && km <= kmBase) errori['opzione.km'] = `Metti più km di quelli compresi (${numero(kmBase)}): altrimenti nessuno la sceglie.`;
+  }
+  const s = leggiEuro(opzione.supplemento);
+  if (s === null) errori['opzione.supplemento'] = 'Scrivi quanto costa in più al giorno, es. 6';
+  else if (Number.isNaN(s) || s < 0) errori['opzione.supplemento'] = 'Scrivi un importo, es. 6';
+  else if (s === 0) errori['opzione.supplemento'] = 'Con 0 € nessuno sceglierebbe la formula compresa: metti un importo.';
   return errori;
 }
 
-export const preparaFormule = (righe = []) => normalizzaFormule({
-  formule: righe.map((r) => ({ id: r.id, km: r.illimitati ? null : r.km, supplemento: r.partenza ? 0 : r.supplemento, partenza: r.partenza })),
-});
+// Da scheda a documento: { formule: [...] } normalizzato.
+export function schemaAFormule(schema) {
+  const { base, opzione } = schema;
+  const formule = [{ id: base.id, km: base.illimitati ? null : base.km, supplemento: 0, partenza: true }];
+  if (opzionePossibile(schema) && opzione.attiva) {
+    formule.push({
+      id: opzione.id === base.id ? ID_OPZIONE : opzione.id,
+      km: opzione.illimitati ? null : opzione.km,
+      supplemento: opzione.supplemento,
+      partenza: false,
+    });
+  }
+  return normalizzaFormule({ formule });
+}
+
+// Quello che vede il cliente: [{ nome, compresa, supplemento }] (anteprima).
+export const sceltePerCliente = (schema) => schemaAFormule(schema).formule.map((f) => ({
+  nome: nomeFormula(f), compresa: f.partenza, supplemento: f.supplemento,
+}));

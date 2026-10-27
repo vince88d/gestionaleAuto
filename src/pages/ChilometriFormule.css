@@ -1,28 +1,48 @@
-/* Scheda «Chilometri» di Tariffe e optional (ChilometriFormule.jsx). Prefisso km-. */
+/* Scheda «Chilometri» di Tariffe e optional (ChilometriFormule.jsx), a due passi. Prefisso km-. */
 .main-content .km-titolo { display: flex; align-items: center; gap: 8px; }
 .km-intro { padding: 0 20px; }
-.km-tabella td { vertical-align: middle; }
-.km-radio { width: 20px; height: 20px; accent-color: #1a6fb0; cursor: pointer; }
-.km-riga { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
-.km-tabella th:first-child { width: 90px; white-space: nowrap; }
-.km-tabella th:nth-child(3) { width: 220px; }
-@media (max-width: 1100px) { .km-riga { flex-wrap: wrap; } }
-.km-seg { display: inline-flex; border: 1.5px solid #b9c4cf; border-radius: 9px; overflow: hidden; }
-.km-seg button { padding: 9px 12px; border: 0; background: #fff; color: #3b4856; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-.km-seg button + button { border-left: 1.5px solid #b9c4cf; }
-.km-seg .km-seg--on { background: #1a6fb0; color: #fff; }
-.km-seg button:focus-visible { outline: 3px solid #5fb0f0; outline-offset: -3px; }
-.km-campo { width: 200px; }
+.km-corpo { padding: 4px 20px 6px; }
+.km-passo { margin-top: 14px; padding: 16px 18px; border: 1px solid #e3e8ee; border-radius: 12px; background: #fff; }
+.km-passo-t { margin: 0 0 10px; font-size: 16.5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: #1f2d3a; }
+.km-num { display: inline-flex; width: 26px; height: 26px; border-radius: 50%; background: #1a6fb0; color: #fff; font-size: 14px; font-weight: 800; align-items: center; justify-content: center; }
+.km-facolt { font-weight: 600; font-size: 14.5px; color: #5d6b79; }
+.km-due { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.km-opz { display: flex; gap: 12px; align-items: flex-start; min-height: 64px; padding: 12px 14px; border: 2px solid #c3ccd6; border-radius: 12px; background: #fff; text-align: left; font: inherit; color: #1f2d3a; cursor: pointer; }
+.km-opz b { display: block; font-size: 16px; }
+.km-d { display: block; font-size: 14px; color: #3b4856; line-height: 1.45; font-weight: 400; }
+.km-opz--on { border-color: #1a6fb0; background: #f5faff; box-shadow: 0 0 0 3px #d6e8f7; }
+.km-opz:focus-visible, .km-sw:focus-visible, .km-seg button:focus-visible { outline: 3px solid #5fb0f0; outline-offset: 2px; }
+.km-ico { color: #1a6fb0; margin-top: 2px; flex: none; }
+.km-pal { display: inline-flex; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #7d8a97; align-items: center; justify-content: center; flex: none; margin-top: 3px; }
+.km-opz--on .km-pal { border-color: #1a6fb0; }
+.km-opz--on .km-pal::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #1a6fb0; }
+.km-rig { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.km-lab { font-size: 15px; font-weight: 600; min-width: 160px; color: #1f2d3a; }
+.km-campo { width: 220px; }
 .km-campo .opt-input { padding-right: 118px; }
 .km-campo .opt-euro-simbolo { white-space: nowrap; font-size: 14px; }
-.km-cliente { font-size: 14px; color: #3b4856; }
-.km-togli { border: 0; background: none; color: #a93226; font: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; cursor: pointer; }
-.km-doppie { margin: 8px 20px 0; }
-.km-piu {
-  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
-  margin: 14px 20px 0; padding: 12px 14px; border: 1px solid #e3e8ee; border-radius: 10px; background: #f7f9fb; font-size: 15px;
-}
-.km-piu-nota { color: #5d6b79; }
-.km-link { border: 0; background: none; color: #1a6fb0; font: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.km-esempio { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 11px 14px; border-radius: 10px; background: #f7f9fb; border: 1px solid #e3e8ee; font-size: 14.5px; line-height: 1.55; color: #3b4856; }
+.km-esempio svg { color: #1a6fb0; margin-top: 2px; flex: none; }
+.km-ass { margin: 0; font-size: 15px; color: #3b4856; line-height: 1.5; }
+.km-ass--s { margin-top: 10px; font-size: 14px; }
+.km-sw { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0; border: 0; background: none; font: inherit; font-size: 16px; font-weight: 700; color: #1f2d3a; cursor: pointer; }
+.km-sw i { width: 48px; height: 28px; border-radius: 999px; background: #8d99a6; position: relative; flex: none; }
+.km-sw i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; }
+.km-sw--on i { background: #1e7e46; }
+.km-sw--on i::after { left: 23px; }
+.km-seg { display: inline-flex; border: 1.5px solid #8d99a6; border-radius: 9px; overflow: hidden; }
+.km-seg button { min-height: 44px; padding: 0 14px; border: 0; background: #fff; color: #3b4856; font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; }
+.km-seg button + button { border-left: 1.5px solid #8d99a6; }
+.km-seg .km-seg--on { background: #1a6fb0; color: #fff; }
+.km-doppie { margin: 12px 0 0; }
+.km-link { border: 0; background: none; padding: 0; color: #1a6fb0; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.km-anteprima { margin: 14px 20px 6px; padding: 14px 16px; border: 1.5px dashed #9fb3c6; border-radius: 12px; background: #fbfdff; }
+.km-anteprima-t { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14px; font-weight: 800; color: #1a6fb0; text-transform: uppercase; letter-spacing: .03em; }
+.km-scelte { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.km-sc { border: 2px solid #e3e8ee; border-radius: 12px; padding: 12px 14px; background: #fff; }
+.km-sc--on { border-color: #1a6fb0; background: #f5faff; box-shadow: 0 0 0 3px #d6e8f7; }
+.km-sc b { display: block; font-size: 16px; margin-bottom: 4px; }
+.km-sc-pr { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 700; color: #1f2d3a; }
+.km-sc-pr--ok { color: #1e7e46; }
 .km-spazio { flex: 1; }
-@media (max-width: 860px) { .km-col-cliente { display: none; } }
+@media (max-width: 760px) { .km-due { grid-template-columns: 1fr; } .km-lab { min-width: 0; width: 100%; } }
