@@ -7,9 +7,9 @@ import { preparaLogo, dimensioniDaDataUrl, MESSAGGI_ERRORE_LOGO } from '../utils
 import SezioneImpostazioni from './SezioneImpostazioni';
 import './AspettoDocumenti.css';
 
-export const COLORE_BASE = '#1f4e79';
+export const COLORE_BASE = '#222222';
 export const TINTE = [
-  ['#1f4e79', 'Blu'], ['#2c6e49', 'Verde'], ['#8b2e2e', 'Rosso scuro'], ['#6b3fa0', 'Viola'],
+  ['#222222', 'Nero'], ['#1f4e79', 'Blu'], ['#2c6e49', 'Verde'], ['#8b2e2e', 'Rosso scuro'], ['#6b3fa0', 'Viola'],
   ['#b45309', 'Ambra'], ['#0f6b73', 'Petrolio'], ['#444b54', 'Grigio scuro'], ['#a1274b', 'Bordeaux'],
 ];
 
