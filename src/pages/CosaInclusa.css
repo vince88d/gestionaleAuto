@@ -1,0 +1,76 @@
+/* Scheda «Cosa è incluso» di Tariffe e optional: usa la grafica di Optional,
+   Addebiti ed Età (CatalogoOptional.css, AddebitiRientro.css, EtaConducenti.css).
+   Prefisso inc-. Mockup: formiarent-documenti/mockup/sito-patente-e-incluso.html */
+.inc-box { max-width: 760px; }
+.opt-nota.inc-intro { border-top: none; padding-bottom: 10px; font-size: 15px; }
+
+.inc-avviso {
+  margin: 8px 20px 4px;
+  padding: 10px 12px;
+  border: 1px solid #f0c75e;
+  border-radius: 10px;
+  background: #fff6e5;
+  color: #6b4a00;
+  font-size: 14px;
+}
+
+.inc-lista { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.inc-riga {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.inc-riga--auto { grid-template-columns: auto 1fr auto; background: #f7f9fb; padding: 11px 12px; }
+.inc-riga--errore { border-color: #f1b4ab; background: #fdf6f5; }
+.inc-lucchetto { color: #7b8794; }
+.inc-testo-auto { font-size: 15px; font-weight: 600; color: #26323d; }
+.inc-tag { padding: 3px 10px; border-radius: 999px; background: #eaf3fb; color: #0f3d63; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+
+.inc-ordine { display: inline-flex; flex-direction: column; }
+.inc-freccia { display: inline-flex; padding: 2px 4px; border: none; background: none; color: #5d6b79; cursor: pointer; border-radius: 6px; }
+.inc-freccia:hover:not(:disabled) { background: #eef1f5; color: #1f2d3a; }
+.inc-freccia:disabled { opacity: .3; cursor: default; }
+
+.inc-input { width: 100%; }
+.inc-box .opt-input[aria-invalid='true'] { border-color: #c0392b; }
+.inc-errore { grid-column: 1 / -1; }
+
+/* Interruttore acceso/spento (44 px di area di tocco con il margine). */
+.inc-interruttore {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  margin: 9px 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: #b8c1cb;
+  cursor: pointer;
+}
+.inc-interruttore::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .15s;
+}
+.inc-interruttore--on { background: #1e7e46; }
+.inc-interruttore--on::after { transform: translateX(20px); }
+.inc-interruttore:focus-visible { outline: 3px solid #1f6fb2; outline-offset: 2px; }
+
+.inc-corpo { display: flex; flex-direction: column; gap: 4px; padding: 6px 20px 18px; }
+.inc-corpo .eta-link { margin-top: 0; }
+.inc-corpo .opt-aiuto { margin: 2px 0 6px; }
+.inc-piede { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #e3e8ee; background: #fafbfc; }
+.inc-piede-errore { margin-right: auto; font-size: 14px; }
