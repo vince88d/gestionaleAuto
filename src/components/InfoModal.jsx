@@ -16,6 +16,7 @@ import { toast } from 'react-toastify';
 import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
 import DotazioneConsegnata from './DotazioneConsegnata';
 import RientroDettagli from './RientroDettagli';
+import RegistroNeopatentati from './RegistroNeopatentati';
 import { salvaVerbaleRientro } from '../utils/pdfRientro';
 import { bozzaEmail, testoRiepilogo } from '../utils/emailRiepilogo';
 import MenuPulsante from './MenuPulsante';
@@ -390,6 +391,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
                 {scheda.fotoDanni && (
                   <div className="pz-foto"><img src={scheda.fotoDanni} alt="Danni alla consegna" /></div>
                 )}
+                <RegistroNeopatentati registro={prenotazione.controlloNeopatentati} />
               </>
             ) : (
               <p className="pz-aiuto" style={{ fontSize: 14 }}>

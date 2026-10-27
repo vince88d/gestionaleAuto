@@ -402,6 +402,42 @@
   color: #1e3a8a;
 }
 
+/* Registro del controllo neopatentati (scheda Consegna) */
+.pz-dati--due { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.pz-esito {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.pz-esito > svg { flex: none; margin-top: 1px; }
+.pz-esito b { display: block; font-size: 15px; }
+.pz-esito small { display: block; margin-top: 3px; font-size: 13px; }
+.pz-esito--ok { background: #e8f5ee; border: 1px solid #b6dfc7; color: #14532d; }
+.pz-esito--no { background: #fdf0ee; border: 1px solid #f1c3bd; color: #7a1f16; }
+.pz-esito--nd { background: #fff6e0; border: 1px solid #f1d39a; color: #6b4500; }
+.pz-esito--neutro { background: #eef2f6; border: 1px solid #d5dde6; color: #3b4856; }
+.pz-esito--info { background: #eef5fb; border: 1px solid #c9dff1; color: #17476e; }
+
+.pz-regola {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border: 1px dashed #9aa6b2;
+  border-radius: 10px;
+  background: #f7f9fb;
+  color: #5d6b79;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .pz-dati--due { grid-template-columns: minmax(0, 1fr); }
+}
+
 .pz .pz-opzione {
   display: flex;
   align-items: flex-start;
