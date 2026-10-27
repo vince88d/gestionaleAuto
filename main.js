@@ -739,6 +739,51 @@ ipcMain.handle('salva-documenti-prenotazione', async (_, data) => {
   }
 });
 
+// Stampa senza salvare: le pagine del PDF si disegnano come immagini in una
+// pagina normale (public/stampa/stampa.html) e si apre la finestra di stampa del
+// sistema, come Cmd/Ctrl+P. La stampa diretta del visualizzatore PDF di Chromium
+// esce nera. Se qualcosa non va, il PDF si apre nel lettore del computer.
+// Niente resta nei documenti.
+ipcMain.handle('stampa-pdf', async (_, data) => {
+  let cartella = null;
+  let finestra = null;
+  const pulisci = () => { if (cartella) fsPromises.rm(cartella, { recursive: true, force: true }).catch(() => {}); };
+  try {
+    const buffer = Buffer.from(data?.pdf || []);
+    if (buffer.length === 0) return { success: false, error: 'PDF vuoto' };
+
+    try {
+      finestra = new BrowserWindow({ show: false, webPreferences: { sandbox: false } });
+      if (process.env.NODE_ENV === 'development') await finestra.loadURL('http://localhost:3000/stampa/stampa.html');
+      else await finestra.loadFile(path.join(__dirname, 'build', 'stampa', 'stampa.html'));
+      const pagine = await finestra.webContents.executeJavaScript(`window.prepara(${JSON.stringify(buffer.toString('base64'))})`);
+      if (!pagine) throw new Error('PDF senza pagine');
+      await new Promise((resolve, reject) => {
+        finestra.webContents.print({ silent: false, printBackground: true, margins: { marginType: 'none' } }, (ok, motivo) => {
+          // Annullare la finestra di stampa non e' un errore.
+          if (ok || /cancel/i.test(motivo || '')) resolve(); else reject(new Error(motivo || 'Stampa non riuscita'));
+        });
+      });
+      return { success: true };
+    } catch (erroreStampa) {
+      console.warn('Stampa diretta non riuscita, apro il PDF:', erroreStampa.message);
+      cartella = await fsPromises.mkdtemp(path.join(require('os').tmpdir(), 'gestionale-stampa-'));
+      const file = path.join(cartella, `${sanitizeFileName(data?.nome || 'Documento')}.pdf`);
+      await fsPromises.writeFile(file, buffer);
+      const errore = await shell.openPath(file);
+      if (errore) return { success: false, error: errore };
+      cartella = null; // il lettore sta usando il file: non cancellarlo
+      return { success: true, aperto: true };
+    } finally {
+      if (finestra && !finestra.isDestroyed()) finestra.close();
+      pulisci();
+    }
+  } catch (error) {
+    pulisci();
+    return { success: false, error: error.message };
+  }
+});
+
 // Apre la bozza nel programma di posta (mailto:). Se c'e' `mostraFile`, prima
 // mostra quel file (il PDF appena salvato) selezionato nella sua cartella, cosi'
 // basta trascinarlo nell'email.

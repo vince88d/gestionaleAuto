@@ -8,6 +8,7 @@ jest.mock('html2canvas', () => jest.fn());
 jest.mock('../utils/pdfRientro', () => ({
   ...jest.requireActual('../utils/pdfRientro'),
   salvaVerbaleRientro: jest.fn(),
+  stampaVerbaleRientro: jest.fn(),
 }));
 
 const azioni = { onClose: jest.fn(), onModifica: jest.fn(), onElimina: jest.fn(), onConcludi: jest.fn() };
@@ -148,9 +149,20 @@ describe('email di riepilogo', () => {
     window.electronAPI = { salvaDocumentiPrenotazione: jest.fn(), apriBozzaEmail: jest.fn() };
     render(<InfoModal isOpen prenotazione={{ ...rientrata, rientro: undefined, status: 'attiva' }} {...azioni} />);
     fireEvent.click(screen.getByRole('button', { name: /^documenti/i }));
-    expect(screen.getByRole('menuitem', { name: /verbale di rientro/i })).toBeDisabled();
+    screen.getAllByRole('menuitem', { name: /verbale di rientro/i }).forEach((voce) => expect(voce).toBeDisabled());
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  test('Documenti → Stampa senza salvare: apre il verbale di rientro senza chiedere dove salvare', async () => {
+    const { stampaVerbaleRientro } = require('../utils/pdfRientro');
+    stampaVerbaleRientro.mockResolvedValue({ success: true });
+    window.electronAPI = { salvaDocumentiPrenotazione: jest.fn(), stampaPdf: jest.fn(), apriBozzaEmail: jest.fn() };
+    render(<InfoModal isOpen prenotazione={rientrata} {...azioni} />);
+    fireEvent.click(screen.getByRole('button', { name: /^documenti/i }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Stampa senza salvare' })).getByRole('menuitem', { name: /rientro/i }));
+    await waitFor(() => expect(stampaVerbaleRientro).toHaveBeenCalled());
+    expect(window.electronAPI.salvaDocumentiPrenotazione).not.toHaveBeenCalled();
   });
 
   test('rientro: salva il PDF, poi apre la bozza con il file da mostrare', async () => {

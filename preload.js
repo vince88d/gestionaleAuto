@@ -46,5 +46,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   salvaDocumentiPrenotazione: (data) => ipcRenderer.invoke('salva-documenti-prenotazione', data),
   apriBozzaEmail: (data) => ipcRenderer.invoke('apri-bozza-email', data),
+  stampaPdf: (data) => ipcRenderer.invoke('stampa-pdf', data),
   confermaPrenotazione: (data) => ipcRenderer.invoke('conferma-prenotazione', data),
 });

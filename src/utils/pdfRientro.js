@@ -239,3 +239,10 @@ export async function salvaVerbaleRientro(prenotazione, azienda) {
     nomeBase: 'Verbale_rientro',
   });
 }
+
+// Stampa senza salvare: apre la finestra di stampa del sistema.
+export async function stampaVerbaleRientro(prenotazione, azienda) {
+  const foto = await leggiFotoVerbale(prenotazione.id, 'rientro');
+  const pdf = await generaVerbaleRientroPdf(prenotazione, { azienda, foto });
+  return window.electronAPI.stampaPdf({ pdf: Array.from(new Uint8Array(pdf)), nome: 'Verbale_rientro' });
+}

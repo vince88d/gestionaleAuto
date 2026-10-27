@@ -8,7 +8,7 @@ import { PassiConsegna } from './SchedaModalOpen';
 import { dataEOra } from '../utils/scadenze';
 import { registraConsegna, messaggioErrorePrenotazione } from '../lib/firestorePrenotazioni';
 import { prezzoPrenotazione } from '../utils/dashboard';
-import { salvaPdfConsegna } from '../utils/pdfConsegna';
+import { salvaPdfConsegna, stampaPdfConsegna } from '../utils/pdfConsegna';
 import { bozzaEmail } from '../utils/emailRiepilogo';
 import { useAzienda } from '../lib/firestoreAzienda';
 import { euro as euroTondo } from '../utils/protezioni';
@@ -56,31 +56,22 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
       .catch((err) => console.warn('Errore ottenendo IP pubblico:', err));
   }, []);
 
-  const handlePrint = () => {
-    const printContent = document.getElementById('riepilogo-print');
-    const printWindow = window.open('', '', 'width=800,height=600');
-    printWindow.document.write(`
-      <html>
-      <head>
-        <title>Riepilogo consegna</title>
-        <style>
-          body { font-family: sans-serif; padding: 24px; color: #2c3e50; }
-          h1 { font-size: 20px; margin: 0 0 16px; }
-          h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: #5d6b79; margin: 0 0 8px; }
-          section { border: 1px solid #ddd; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
-          dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 16px; margin: 0; }
-          dt { font-size: 11px; color: #5d6b79; } dd { margin: 2px 0 0; font-weight: 600; }
-          ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-          img { max-width: 240px; margin-top: 8px; }
-          .firma { margin-top: 48px; border-top: 1px solid #000; width: 260px; padding-top: 4px; }
-        </style>
-      </head>
-      <body><h1>Riepilogo consegna</h1>${printContent.innerHTML}<div class="firma">Firma del cliente</div></body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
-    printWindow.close();
+  // Stampa lo stesso verbale del PDF (testata con logo e dati dell'azienda,
+  // nero, testi a capo), senza salvarlo: si apre nel lettore PDF.
+  const handlePrint = async () => {
+    try {
+      const esito = await stampaPdfConsegna({
+        prenotazione: { ...formData, schedaVeicolo: datiScheda },
+        scheda: datiScheda,
+        azienda,
+        scadenzaPatente,
+      });
+      if (!esito?.success) toast.error(esito?.error || 'Non riesco ad aprire il documento.');
+      else if (esito.aperto) toast.info('Il documento è aperto: premi Stampa (Cmd/Ctrl+P) nel programma che si è aperto.');
+    } catch (error) {
+      console.error('Errore stampa:', error);
+      toast.error('Non riesco a preparare la stampa.');
+    }
   };
 
   // Documenti dopo la consegna: PDF (e contratto) ed email. Si possono rifare
@@ -343,7 +334,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
         </div>
 
         <footer className="pz-piede">
-          <button type="button" className="vd-btn" onClick={handlePrint}>
+          <button type="button" className="vd-btn" onClick={handlePrint} disabled={!window.electronAPI?.stampaPdf}>
             <Printer size={16} aria-hidden="true" /> Stampa
           </button>
           <span className="pz-piede-nota" />

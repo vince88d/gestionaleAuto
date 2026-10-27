@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Stampa</title>
+<style>
+  @page { size: A4; margin: 0; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  img { display: block; width: 210mm; height: 297mm; page-break-after: always; break-after: page; }
+  img:last-child { page-break-after: auto; break-after: auto; }
+</style>
+<script src="pdf.min.js"></script>
+</head>
+<body>
+<script>
+  // Disegna ogni pagina del PDF come immagine: la stampa di una pagina normale
+  // e' affidabile, quella del visualizzatore PDF di Chromium esce nera.
+  window.prepara = async (base64) => {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js';
+    const dati = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    const pdf = await pdfjsLib.getDocument({ data: dati, standardFontDataUrl: 'standard_fonts/' }).promise;
+    for (let n = 1; n <= pdf.numPages; n += 1) {
+      const pagina = await pdf.getPage(n);
+      const vista = pagina.getViewport({ scale: 2.2 });
+      const canvas = document.createElement('canvas');
+      canvas.width = vista.width;
+      canvas.height = vista.height;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await pagina.render({ canvasContext: ctx, viewport: vista }).promise;
+      const img = new Image();
+      img.src = canvas.toDataURL('image/png');
+      await img.decode();
+      document.body.appendChild(img);
+    }
+    return pdf.numPages;
+  };
+</script>
+</body>
+</html>

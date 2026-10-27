@@ -221,3 +221,10 @@ export async function salvaPdfConsegna({ prenotazione, scheda, contrattoPdf = nu
     nomeContratto,
   });
 }
+
+// Stampa senza salvare: apre la finestra di stampa del sistema.
+export async function stampaPdfConsegna({ prenotazione, scheda, azienda, scadenzaPatente }) {
+  const foto = await leggiFotoVerbale(prenotazione.id, 'consegna');
+  const riepilogo = await generaRiepilogoPdf(prenotazione, scheda || prenotazione.schedaVeicolo || {}, { azienda, scadenzaPatente, foto });
+  return window.electronAPI.stampaPdf({ pdf: Array.from(new Uint8Array(riepilogo)), nome: 'Verbale_consegna' });
+}

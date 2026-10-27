@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import Modal from 'react-modal';
 import './InfoModal.css';
-import { Pencil, Ban, KeyRound, X, Download, FileText, Car, LogIn, Mail, Copy, User, ShieldCheck, ClipboardCheck, Undo2, AlertTriangle, ChevronsUpDown } from 'lucide-react';
+import { Pencil, Ban, KeyRound, X, Download, FileText, Printer, Car, LogIn, Mail, Copy, User, ShieldCheck, ClipboardCheck, Undo2, AlertTriangle, ChevronsUpDown } from 'lucide-react';
 import '../styles/Prenotazione.css';
 import { dataEOra, formattaData } from '../utils/scadenze';
 import { oraBreve } from '../utils/orari';
@@ -11,13 +11,13 @@ import { isPagataOnline } from '../utils/pagamentoOnline';
 import { eConsegnata, prossimoPasso } from '../utils/regolePrenotazione';
 import { daAssegnare } from '../utils/assegnazioneVeicolo';
 import { prezzoPrenotazione } from '../utils/dashboard';
-import { salvaPdfConsegna } from '../utils/pdfConsegna';
+import { salvaPdfConsegna, stampaPdfConsegna } from '../utils/pdfConsegna';
 import { toast } from 'react-toastify';
 import ProtezioneExtraDettagli from './ProtezioneExtraDettagli';
 import DotazioneConsegnata from './DotazioneConsegnata';
 import RientroDettagli from './RientroDettagli';
 import RegistroNeopatentati from './RegistroNeopatentati';
-import { salvaVerbaleRientro } from '../utils/pdfRientro';
+import { salvaVerbaleRientro, stampaVerbaleRientro } from '../utils/pdfRientro';
 import { bozzaEmail, testoRiepilogo } from '../utils/emailRiepilogo';
 import MenuPulsante from './MenuPulsante';
 import { useAzienda } from '../lib/firestoreAzienda';
@@ -157,6 +157,20 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
     }
   };
 
+  // Stampa senza salvare: il verbale si apre nel lettore PDF, da cui si stampa.
+  const stampa = async (fase) => {
+    try {
+      const esito = fase === 'rientro'
+        ? await stampaVerbaleRientro(prenotazione, azienda)
+        : await stampaPdfConsegna({ prenotazione, azienda });
+      if (!esito?.success) toast.error(esito?.error || 'Non riesco ad aprire il documento.');
+      else if (esito.aperto) toast.info('Il documento è aperto: premi Stampa (Cmd/Ctrl+P) nel programma che si è aperto.');
+    } catch (error) {
+      console.error('Errore stampa:', error);
+      toast.error('Non riesco a preparare la stampa.');
+    }
+  };
+
   // Salva il PDF, mostra il file nella cartella e apre l'email di riepilogo al
   // cliente: l'allegato si trascina a mano (nessun servizio di invio).
   const inviaEmail = async (fase) => {
@@ -196,6 +210,7 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
   // Finché c'è un «Prossimo passo» il pulsante grande in alto è l'azione principale.
   const haProssimoPasso = !soloLettura && Boolean({ scegli: onScegliAuto, consegna: onConsegna, ricevi: onConcludi }[prossimoPasso(prenotazione)]);
   const conPdf = Boolean(window.electronAPI?.salvaDocumentiPrenotazione);
+  const conStampa = Boolean(window.electronAPI?.stampaPdf);
   const conEmail = Boolean(window.electronAPI?.apriBozzaEmail);
 
   const scheda = prenotazione.schedaVeicolo || {};
@@ -439,6 +454,12 @@ function InfoModal({ isOpen, onClose, prenotazione, onModifica, onElimina, onCon
                 { etichetta: 'Dettagli della prenotazione', icona: <Download size={16} aria-hidden="true" />, onClick: handleDownloadPDF },
                 { etichetta: 'Verbale di consegna', icona: <FileText size={16} aria-hidden="true" />, disattiva: !consegnata || !conPdf, nota: !consegnata ? 'non ancora avvenuta' : undefined, onClick: scaricaPdfConsegna },
                 { etichetta: 'Verbale di rientro', icona: <FileText size={16} aria-hidden="true" />, disattiva: !prenotazione.rientro || !conPdf, nota: !prenotazione.rientro ? 'non ancora avvenuto' : undefined, onClick: scaricaVerbaleRientro },
+              ],
+            }, {
+              titolo: 'Stampa senza salvare',
+              voci: [
+                { etichetta: 'Verbale di consegna', icona: <Printer size={16} aria-hidden="true" />, disattiva: !consegnata || !conStampa, nota: !consegnata ? 'non ancora avvenuta' : undefined, onClick: () => stampa('consegna') },
+                { etichetta: 'Verbale di rientro', icona: <Printer size={16} aria-hidden="true" />, disattiva: !prenotazione.rientro || !conStampa, nota: !prenotazione.rientro ? 'non ancora avvenuto' : undefined, onClick: () => stampa('rientro') },
               ],
             }]}
           />
