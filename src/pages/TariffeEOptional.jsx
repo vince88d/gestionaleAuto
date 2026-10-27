@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CircleAlert, CirclePlus, Euro, Gauge, Globe, Shield, User } from 'lucide-react';
+import { CircleAlert, CirclePlus, Euro, Gauge, Globe, ListChecks, Shield, User } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ComeFunziona from '../components/ComeFunziona';
@@ -11,6 +11,7 @@ import CatalogoOptional from './CatalogoOptional';
 import ProtezioniCategorie from './ProtezioniCategorie';
 import AddebitiRientro from './AddebitiRientro';
 import EtaConducenti from './EtaConducenti';
+import CosaInclusa from './CosaInclusa';
 import './TariffeEOptional.css';
 
 const SCHEDE = [
@@ -20,6 +21,7 @@ const SCHEDE = [
   { id: 'protezioni', etichetta: 'Protezioni e cauzione', Icona: Shield },
   { id: 'eta', etichetta: 'Età dei conducenti', Icona: User },
   { id: 'addebiti', etichetta: 'Penali e addebiti', Icona: CircleAlert },
+  { id: 'incluso', etichetta: 'Cosa è incluso', Icona: ListChecks },
 ];
 
 const SCELTE_SITO = [
@@ -148,6 +150,7 @@ function TariffeEOptional() {
         {scheda === 'protezioni' && <ProtezioniCategorie />}
         {scheda === 'eta' && <EtaConducenti />}
         {scheda === 'addebiti' && <AddebitiRientro />}
+        {scheda === 'incluso' && <CosaInclusa />}
       </div>
       <ConfirmDialog
         open={schedaInAttesa !== null}
