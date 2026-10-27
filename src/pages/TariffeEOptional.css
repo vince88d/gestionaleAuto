@@ -39,20 +39,24 @@
 .teo-scelta--attiva .teo-scelta-testi > .teo-scelta-eti { background: #e8f6ee; color: #1e7e46; }
 @media (max-width: 760px) { .teo-scelte { grid-template-columns: 1fr; } }
 
-.teo-schede { display: flex; flex-wrap: wrap; gap: 6px; margin: 22px 0 20px; border-bottom: 2px solid #e1e6ec; }
+.teo-schede { display: flex; flex-wrap: nowrap; gap: 2px; margin: 22px 0 20px; border-bottom: 2px solid #e1e6ec; }
+/* Sette schede stanno su una riga solo se c'è posto: su finestre strette vanno a capo. */
+@media (max-width: 1180px) { .teo-schede { flex-wrap: wrap; } }
 
 .teo-scheda {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  flex: none;
+  gap: 7px;
   margin: 0 0 -2px;
-  padding: 12px 18px;
+  padding: 12px 14px;
+  white-space: nowrap;
   border: none;
   border-bottom: 3px solid transparent;
   background: none;
   color: #4d5b69;
   font-family: inherit;
-  font-size: 16px;
+  font-size: 15.5px;
   font-weight: 600;
   cursor: pointer;
 }

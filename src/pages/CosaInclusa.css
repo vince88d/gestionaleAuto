@@ -69,8 +69,6 @@
 .inc-interruttore--on::after { transform: translateX(20px); }
 .inc-interruttore:focus-visible { outline: 3px solid #1f6fb2; outline-offset: 2px; }
 
-.inc-corpo { display: flex; flex-direction: column; gap: 4px; padding: 6px 20px 18px; }
-.inc-corpo .eta-link { margin-top: 0; }
-.inc-corpo .opt-aiuto { margin: 2px 0 6px; }
-.inc-piede { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #e3e8ee; background: #fafbfc; }
-.inc-piede-errore { margin-right: auto; font-size: 14px; }
+.add-campi .inc-lista { margin-bottom: 0; }
+.add-campi .eta-link { margin-top: 0; }
+.add-campi .opt-aiuto { margin: 0; }

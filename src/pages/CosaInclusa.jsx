@@ -93,7 +93,7 @@ function CosaInclusa() {
           </p>
         )}
 
-        <div className="inc-corpo">
+        <div className="add-campi">
           <ul className="inc-lista" aria-label="Voci automatiche">
             {AUTOMATICHE.map((a) => (
               <li key={a.id} className="inc-riga inc-riga--auto">
@@ -153,8 +153,8 @@ function CosaInclusa() {
           </div>
         </div>
 
-        <div className="inc-piede">
-          {tentato && Object.keys(errori).length > 0 && <span className="opt-errore inc-piede-errore">Controlla le voci segnate.</span>}
+        <div className="add-piede">
+          {tentato && Object.keys(errori).length > 0 && <span className="opt-errore add-piede-errore">Controlla le voci segnate.</span>}
           {modificato && (
             <button type="button" className="opt-btn" onClick={() => { setForm(inclusoPerForm(salvati.dati)); setTentato(false); }} disabled={salvando}>
               Annulla modifiche

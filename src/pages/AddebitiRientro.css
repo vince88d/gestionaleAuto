@@ -123,3 +123,12 @@
 .add-toll b { font-size: 17px; font-weight: 800; }
 .add-toll span { font-size: 14.5px; line-height: 1.4; color: #1f2d3a; }
 .add-toll a { font-size: 14.5px; font-weight: 700; color: #1a6fb0; }
+
+/* Parti comuni alle schede di Tariffe e optional che non sono tabelle (Età dei
+   conducenti, Formule km, Cosa è incluso): corpo con i campi, riga, piede con i
+   pulsanti. Erano state tolte per sbaglio nella nuova scheda Penali. */
+.add-campi { display: flex; flex-direction: column; gap: 18px; padding: 4px 20px 8px; }
+.add-riga { display: flex; align-items: center; gap: 10px; }
+.add-riga .opt-euro { width: 160px; }
+.add-piede { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 16px 20px 20px; }
+.add-piede-errore { margin-right: auto; font-size: 14px; }
