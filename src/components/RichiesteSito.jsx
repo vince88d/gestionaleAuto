@@ -196,7 +196,7 @@ export default function RichiesteSito({ prenotazioni, oggi }) {
                       ? 'Email inviata al cliente con il link per accettare e pagare.'
                       : 'Il preventivo è pronto ma l\'email non è partita (manca l\'indirizzo o la posta non risponde): usa «Copia link per WhatsApp» per mandarlo a mano.')
                     : (linkCopiato ? 'Link copiato: incollalo nel messaggio al cliente.' : 'Il preventivo è pronto, ma non riesco a copiare il link: usa «Copia link».')}
-                  {' '}L'auto è tenuta fino a <b>{scadenzaPreventivo(ore, Date.now())}</b>. Quando il cliente paga, la prenotazione passa da sola tra quelle attive.
+                  {' '}L'auto è tenuta fino a <b>{scadenzaPreventivo(0, esitoPreventivo.scadeIl)}</b>. Quando il cliente paga, la prenotazione passa da sola tra quelle attive.
                 </Dialog.Description>
                 <div className="confirm-dialog-actions">
                   <button type="button" className="confirm-dialog-btn confirm-dialog-btn-secondary"
