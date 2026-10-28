@@ -1,4 +1,6 @@
-import { richiesteDaGestire, tempoRimasto, sceltaRichiesta, leggiPrezzo } from './richiesteSito';
+import {
+  richiesteDaGestire, tempoRimasto, sceltaRichiesta, leggiPrezzo, ORE_PREVENTIVO, ORE_PREVENTIVO_DEFAULT, scadenzaPreventivo, preventivoInviato,
+} from './richiesteSito';
 
 const ORA = Date.parse('2026-10-17T12:00:00Z');
 const ts = (ms) => ({ toMillis: () => ms });
@@ -49,5 +51,21 @@ describe('leggiPrezzo', () => {
     expect(leggiPrezzo('')).toBeNull();
     expect(leggiPrezzo('-3')).toBeNull();
     expect(leggiPrezzo('abc')).toBeNull();
+  });
+});
+
+describe('preventivo con link', () => {
+  test('validita: 12, 24 o 48 ore, 24 di partenza', () => {
+    expect(ORE_PREVENTIVO).toEqual([12, 24, 48]);
+    expect(ORE_PREVENTIVO_DEFAULT).toBe(24);
+  });
+  test('scadenza scritta con giorno e ora italiani', () => {
+    const t = scadenzaPreventivo(24, Date.UTC(2026, 9, 28, 13, 30)); // 28/10 14:30 a Roma
+    expect(t).toMatch(/29 ottobre alle 14:30/);
+  });
+  test('preventivo inviato: importo solo se la richiesta nasce da un preventivo', () => {
+    expect(preventivoInviato({ daPreventivo: true, preventivo: { totale: 285 } })).toBe(285);
+    expect(preventivoInviato({ preventivo: { totale: 285 } })).toBeNull();
+    expect(preventivoInviato({})).toBeNull();
   });
 });

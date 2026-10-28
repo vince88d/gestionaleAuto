@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { Check, Clock, Inbox, Info, Phone, X } from 'lucide-react';
+import { Check, Clock, Copy, Inbox, Info, Mail, Phone, X } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 import Aiuto from './Aiuto';
 import { dataEOra } from '../utils/scadenze';
 import { euro } from '../utils/protezioni';
-import { leggiPrezzo, richiesteDaGestire, sceltaRichiesta, tempoRimasto } from '../utils/richiesteSito';
-import { confermaRichiestaSito, messaggioErroreRichiesta, rifiutaRichiestaSito } from '../lib/richiesteSito';
+import {
+  leggiPrezzo, ORE_PREVENTIVO, ORE_PREVENTIVO_DEFAULT, preventivoInviato, richiesteDaGestire, scadenzaPreventivo, sceltaRichiesta, tempoRimasto,
+} from '../utils/richiesteSito';
+import { confermaRichiestaSito, inviaPreventivoRichiesta, messaggioErroreRichiesta, rifiutaRichiestaSito } from '../lib/richiesteSito';
 import './BookingModal.css';
 import './RichiesteSito.css';
 
@@ -27,6 +29,11 @@ export default function RichiesteSito({ prenotazioni, oggi }) {
 
   const [daConfermare, setDaConfermare] = useState(null);
   const [prezzo, setPrezzo] = useState('');
+  // Preventivo con link: finestra con prezzo e validita'; dopo l'invio mostra l'esito.
+  const [daPreventivare, setDaPreventivare] = useState(null);
+  const [ore, setOre] = useState(ORE_PREVENTIVO_DEFAULT);
+  const [esitoPreventivo, setEsitoPreventivo] = useState(null);
+  const [linkCopiato, setLinkCopiato] = useState(false);
   const [daRifiutare, setDaRifiutare] = useState(null);
   const [inCorso, setInCorso] = useState(false);
   const [errore, setErrore] = useState(null);
@@ -37,6 +44,34 @@ export default function RichiesteSito({ prenotazioni, oggi }) {
     setDaConfermare(p);
     setPrezzo(typeof p.totaleListino === 'number' && p.totaleListino > 0 ? String(p.totaleListino).replace('.', ',') : '');
     setErrore(null);
+  };
+  const apriPreventivo = (p) => {
+    setDaPreventivare(p);
+    setPrezzo(typeof p.totaleListino === 'number' && p.totaleListino > 0 ? String(p.totaleListino).replace('.', ',') : '');
+    setOre(ORE_PREVENTIVO_DEFAULT);
+    setEsitoPreventivo(null);
+    setLinkCopiato(false);
+    setErrore(null);
+  };
+  // inviaEmail false: solo il link, copiato negli appunti per mandarlo a mano (WhatsApp).
+  const preventivo = async (inviaEmail) => {
+    const totale = leggiPrezzo(prezzo);
+    if (totale === null || totale < 1) { setErrore('Scrivi il prezzo concordato, almeno 1 €, ad esempio 285.'); return; }
+    setInCorso(true);
+    setErrore(null);
+    try {
+      const esito = await inviaPreventivoRichiesta(daPreventivare.id, totale, ore, inviaEmail);
+      let copiato = false;
+      if (!inviaEmail) {
+        try { await navigator.clipboard.writeText(esito.link); copiato = true; } catch { copiato = false; }
+      }
+      setLinkCopiato(copiato);
+      setEsitoPreventivo({ ...esito, inviaEmail });
+    } catch (err) {
+      setErrore(messaggioErroreRichiesta(err));
+    } finally {
+      setInCorso(false);
+    }
   };
   const conferma = async () => {
     const totale = leggiPrezzo(prezzo);
@@ -83,6 +118,7 @@ export default function RichiesteSito({ prenotazioni, oggi }) {
       {richieste.map(({ prenotazione: p, scadeMs, scaduta }) => {
         const tempo = scaduta ? { testo: 'Scaduta: conferma solo se l\'auto è ancora libera', urgente: true } : tempoRimasto(scadeMs, adesso);
         const scelta = sceltaRichiesta(p);
+        const inviato = preventivoInviato(p);
         return (
           <div key={p.id} className="ric-riga">
             <div className="ric-testi">
@@ -98,12 +134,15 @@ export default function RichiesteSito({ prenotazioni, oggi }) {
                 </a>
               )}
               <span className={`ric-tempo ${tempo.urgente ? 'ric-tempo--urgente' : ''}`}>
-                <Clock size={15} aria-hidden="true" /> {tempo.testo}
+                <Clock size={15} aria-hidden="true" /> {inviato !== null && !scaduta ? `Preventivo di ${euro(inviato)} inviato · ` : ''}{tempo.testo}
               </span>
             </div>
             <div className="ric-azioni">
               <button type="button" className="ric-btn ric-btn--si" onClick={() => apriConferma(p)}>
-                <Check size={18} aria-hidden="true" /> Conferma
+                <Check size={18} aria-hidden="true" /> Conferma, paga al ritiro
+              </button>
+              <button type="button" className="ric-btn ric-btn--prev" onClick={() => apriPreventivo(p)}>
+                <Mail size={18} aria-hidden="true" /> {inviato !== null ? 'Nuovo preventivo con link' : 'Invia preventivo con link'}
               </button>
               <button type="button" className="ric-btn ric-btn--no" onClick={() => setDaRifiutare(p)}>
                 <X size={18} aria-hidden="true" /> Rifiuta
@@ -140,6 +179,71 @@ export default function RichiesteSito({ prenotazioni, oggi }) {
                 </button>
               </div>
             </form>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={daPreventivare !== null} onOpenChange={(v) => { if (!v && !inCorso) setDaPreventivare(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="DialogOverlay" />
+          <Dialog.Content className="DialogContent confirm-dialog">
+            <Dialog.Title className="confirm-dialog-title">Preventivo per {daPreventivare?.cliente || 'questo cliente'}</Dialog.Title>
+            {esitoPreventivo ? (
+              <>
+                <Dialog.Description className="confirm-dialog-message">
+                  {esitoPreventivo.inviaEmail
+                    ? (esitoPreventivo.emailInviata
+                      ? 'Email inviata al cliente con il link per accettare e pagare.'
+                      : 'Il preventivo è pronto ma l\'email non è partita (manca l\'indirizzo o la posta non risponde): usa «Copia link per WhatsApp» per mandarlo a mano.')
+                    : (linkCopiato ? 'Link copiato: incollalo nel messaggio al cliente.' : 'Il preventivo è pronto, ma non riesco a copiare il link: usa «Copia link».')}
+                  {' '}L'auto è tenuta fino a <b>{scadenzaPreventivo(ore, Date.now())}</b>. Quando il cliente paga, la prenotazione passa da sola tra quelle attive.
+                </Dialog.Description>
+                <div className="confirm-dialog-actions">
+                  <button type="button" className="confirm-dialog-btn confirm-dialog-btn-secondary"
+                    onClick={async () => { try { await navigator.clipboard.writeText(esitoPreventivo.link); setLinkCopiato(true); } catch { setLinkCopiato(false); } }}>
+                    <Copy size={16} aria-hidden="true" /> {linkCopiato ? 'Link copiato' : 'Copia link'}
+                  </button>
+                  <button type="button" className="confirm-dialog-btn confirm-dialog-btn-primary" onClick={() => setDaPreventivare(null)}>Chiudi</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <Dialog.Description className="confirm-dialog-message">
+                  Il cliente riceve un link per vedere il preventivo, accettarlo e pagare online. Fino alla scadenza l'auto resta tenuta per lui.
+                </Dialog.Description>
+                <form onSubmit={(e) => { e.preventDefault(); preventivo(true); }}>
+                  <label className="ric-campo-etichetta" htmlFor="ric-prev-prezzo">Prezzo concordato (tutto compreso)</label>
+                  <p className="ric-campo-aiuto" id="ric-prev-aiuto">
+                    {daPreventivare?.chilometri?.kmDichiarati ? <>Il cliente ha dichiarato <b>{daPreventivare.chilometri.kmDichiarati} km</b>: il loro prezzo lo scrivi tu nel totale. </> : null}
+                    {typeof daPreventivare?.totaleListino === 'number' && daPreventivare.totaleListino > 0 && <>Da listino sarebbe {euro(daPreventivare.totaleListino)}.</>}
+                  </p>
+                  <div className="ric-campo">
+                    <input id="ric-prev-prezzo" inputMode="decimal" autoFocus aria-describedby="ric-prev-aiuto" value={prezzo}
+                      onChange={(e) => setPrezzo(e.target.value)} />
+                    <span aria-hidden="true">€</span>
+                  </div>
+                  <span className="ric-campo-etichetta" id="ric-prev-validita">Il preventivo è valido per</span>
+                  <div className="ric-seg" role="radiogroup" aria-labelledby="ric-prev-validita">
+                    {ORE_PREVENTIVO.map((o) => (
+                      <button key={o} type="button" role="radio" aria-checked={ore === o} className={`ric-seg-voce ${ore === o ? 'ric-seg-voce--on' : ''}`} onClick={() => setOre(o)}>
+                        {o} ore
+                      </button>
+                    ))}
+                  </div>
+                  <p className="ric-campo-aiuto">Scade <b>{scadenzaPreventivo(ore, Date.now())}</b>. Dopo, l'auto torna libera e il cliente non può più pagare.</p>
+                  {errore && <p className="ric-errore" role="alert">{errore}</p>}
+                  <div className="confirm-dialog-actions">
+                    <button type="button" onClick={() => setDaPreventivare(null)} disabled={inCorso} className="confirm-dialog-btn confirm-dialog-btn-secondary">Annulla</button>
+                    <button type="button" onClick={() => preventivo(false)} disabled={inCorso} className="confirm-dialog-btn confirm-dialog-btn-secondary">
+                      <Copy size={16} aria-hidden="true" /> Copia link per WhatsApp
+                    </button>
+                    <button type="submit" disabled={inCorso} className="confirm-dialog-btn confirm-dialog-btn-primary">
+                      {inCorso ? 'Invio in corso…' : 'Invia email con il link'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
