@@ -11,6 +11,8 @@ import {
   ascoltaPrenotazioniEliminate, ripristinaPrenotazione, eliminaPrenotazioneDefinitivo,
 } from '../lib/firestorePrenotazioni';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { Casella, BarraSelezione } from '../components/SelezioneMultipla';
+import { alterna, alternaTutti, soloPresenti, statoSelezione } from '../utils/selezione';
 import { formattaData } from '../utils/scadenze';
 import './Cestino.css';
 
@@ -40,7 +42,8 @@ function giorniRimasti(eliminatoIl) {
 
 // Una sezione del Cestino (Veicoli, Clienti o Prenotazioni): stessa struttura
 // per tutte e tre, cambia solo come si presenta ogni elemento.
-function Sezione({ titolo, Icona, elementi, etichetta, onRipristina, onElimina }) {
+function Sezione({ tipo, titolo, Icona, elementi, etichetta, onRipristina, onElimina, selezionati, onAlterna, onAlternaTutti }) {
+  const chiavi = elementi.map((e) => `${tipo}:${e.id}`);
   if (elementi.length === 0) {
     return (
       <section className="cst-sezione">
@@ -51,12 +54,20 @@ function Sezione({ titolo, Icona, elementi, etichetta, onRipristina, onElimina }
   }
   return (
     <section className="cst-sezione">
-      <h2 className="cst-sezione-titolo"><Icona size={18} aria-hidden="true" /> {titolo} <span className="cst-conteggio">({elementi.length})</span></h2>
+      <h2 className="cst-sezione-titolo">
+        <Icona size={18} aria-hidden="true" /> {titolo} <span className="cst-conteggio">({elementi.length})</span>
+        <label className="sel-tutto">
+          <Casella stato={statoSelezione(selezionati, chiavi)} onChange={() => onAlternaTutti(chiavi)} etichetta={`Seleziona tutto: ${titolo}`} />
+          Seleziona tutto
+        </label>
+      </h2>
       <ul className="cst-elenco">
         {elementi.map((elemento) => {
           const giorni = giorniRimasti(elemento.eliminatoIl);
+          const chiave = `${tipo}:${elemento.id}`;
           return (
-            <li key={elemento.id} className="cst-riga">
+            <li key={elemento.id} className={`cst-riga ${selezionati.has(chiave) ? 'cst-riga--scelta' : ''}`}>
+              <Casella stato={selezionati.has(chiave) ? 'tutti' : 'nessuno'} onChange={() => onAlterna(chiave)} etichetta={`Seleziona ${etichetta(elemento)}`} />
               <div className="cst-info">
                 <div className="cst-nome">{etichetta(elemento)}</div>
                 <div className="cst-meta">
@@ -91,6 +102,10 @@ function Cestino() {
   const [errore, setErrore] = useState('');
   // { tipo: 'veicolo'|'cliente'|'prenotazione', elemento, etichetta } | null
   const [daEliminare, setDaEliminare] = useState(null);
+  // Selezione multipla: chiavi 'tipo:id' di tutte le sezioni.
+  const [selezionati, setSelezionati] = useState(() => new Set());
+  const [inCorso, setInCorso] = useState(false);
+  const [eliminaSelezione, setEliminaSelezione] = useState(false);
 
   useEffect(() => ascoltaVeicoliEliminati(setVeicoli, (err) => {
     console.error('Errore lettura veicoli eliminati:', err);
@@ -135,6 +150,51 @@ function Cestino() {
     }
   };
 
+  // Si tengono solo gli elementi ancora nel Cestino (dopo un ripristino o un'eliminazione).
+  const presenti = [
+    ...veicoli.map((e) => `veicolo:${e.id}`),
+    ...clienti.map((e) => `cliente:${e.id}`),
+    ...prenotazioni.map((e) => `prenotazione:${e.id}`),
+  ];
+  const scelti = soloPresenti(selezionati, presenti);
+
+  // Applica un'azione a tutti i selezionati, uno per uno: un errore non ferma gli altri.
+  const perOgniScelto = async (azione) => {
+    setInCorso(true);
+    const lavori = [...scelti].map((chiave) => {
+      const [tipo, ...resto] = chiave.split(':');
+      return azione(tipo, resto.join(':'));
+    });
+    const esiti = await Promise.allSettled(lavori);
+    setInCorso(false);
+    const fallite = esiti.filter((e) => e.status === 'rejected');
+    fallite.forEach((e) => console.error('Errore azione multipla:', e.reason));
+    setSelezionati(new Set());
+    return { ok: esiti.length - fallite.length, fallite: fallite.length };
+  };
+  const esito = (ok, fallite, verbo) => {
+    if (ok > 0) toast.success(`${ok} ${ok === 1 ? 'elemento' : 'elementi'} ${verbo}.`);
+    if (fallite > 0) toast.error(`${fallite} non ${fallite === 1 ? 'è riuscito' : 'sono riusciti'}: riprova.`);
+  };
+  const ripristinaScelti = async () => {
+    const { ok, fallite } = await perOgniScelto((tipo, id) => {
+      if (tipo === 'veicolo') return ripristinaVeicolo(id);
+      if (tipo === 'cliente') return ripristinaCliente(id);
+      return ripristinaPrenotazione(id);
+    });
+    esito(ok, fallite, ok === 1 ? 'ripristinato' : 'ripristinati');
+  };
+  const eliminaScelti = async () => {
+    setEliminaSelezione(false);
+    const { ok, fallite } = await perOgniScelto((tipo, id) => {
+      if (tipo === 'veicolo') return eliminaVeicoloDefinitivo(id);
+      if (tipo === 'cliente') return eliminaClienteDefinitivo(id);
+      return eliminaPrenotazioneDefinitivo(id);
+    });
+    esito(ok, fallite, 'eliminati per sempre');
+  };
+  const proprieta = { selezionati: scelti, onAlterna: (k) => setSelezionati(alterna(scelti, k)), onAlternaTutti: (ks) => setSelezionati(alternaTutti(scelti, ks)) };
+
   return (
     <div className="cst">
       <div className="cst-toolbar">
@@ -149,6 +209,8 @@ function Cestino() {
       {errore && <p className="cst-errore">{errore}</p>}
 
       <Sezione
+        tipo="veicolo"
+        {...proprieta}
         titolo="Veicoli"
         Icona={Car}
         elementi={veicoli}
@@ -158,6 +220,8 @@ function Cestino() {
       />
 
       <Sezione
+        tipo="cliente"
+        {...proprieta}
         titolo="Clienti"
         Icona={Users}
         elementi={clienti}
@@ -167,12 +231,33 @@ function Cestino() {
       />
 
       <Sezione
+        tipo="prenotazione"
+        {...proprieta}
         titolo="Prenotazioni"
         Icona={CalendarDays}
         elementi={prenotazioni}
         etichetta={(p) => `${p.cliente || 'Cliente'} — ${p.targa || p.categoria || ''}`}
         onRipristina={(p) => ripristina('prenotazione', p, 'Prenotazione ripristinata.')}
         onElimina={(p) => setDaEliminare({ tipo: 'prenotazione', elemento: p })}
+      />
+
+      <BarraSelezione conteggio={scelti.size} onDeseleziona={() => setSelezionati(new Set())}>
+        <button type="button" className="sel-barra-btn" onClick={ripristinaScelti} disabled={inCorso}>
+          <RotateCcw size={15} aria-hidden="true" /> Ripristina ({scelti.size})
+        </button>
+        <button type="button" className="sel-barra-btn sel-barra-btn--pericolo" onClick={() => setEliminaSelezione(true)} disabled={inCorso}>
+          <Trash2 size={15} aria-hidden="true" /> Elimina definitivamente ({scelti.size})
+        </button>
+      </BarraSelezione>
+
+      <ConfirmDialog
+        open={eliminaSelezione}
+        onCancel={() => setEliminaSelezione(false)}
+        onConfirm={eliminaScelti}
+        title={`Eliminare per sempre ${scelti.size} ${scelti.size === 1 ? 'elemento' : 'elementi'}?`}
+        message="Questa volta non è recuperabile: i dati vengono cancellati definitivamente, non solo nascosti."
+        confirmLabel={`Elimina ${scelti.size} per sempre`}
+        tone="danger"
       />
 
       <ConfirmDialog

@@ -250,6 +250,11 @@ describe('auto non ancora rientrata', () => {
     ];
     expect(rientroInRitardo('AA111AA', lista, OGGI)).toBeNull();
   });
+
+  test('una prenotazione nel Cestino non conta come auto non rientrata', () => {
+    const nelCestino = { id: 'x', targa: 'AA111AA', dataInizio: '2026-09-15', dataFine: '2026-09-20', eliminato: true, ...consegnata };
+    expect(rientroInRitardo('AA111AA', [nelCestino], OGGI)).toBeNull();
+  });
 });
 
 describe('prossimoPasso', () => {

@@ -108,3 +108,7 @@
   color: #b91c1c;
 }
 .cst-btn--pericolo:hover { background: #fdecea; }
+
+.cst-riga { gap: 12px; }
+.cst-riga--scelta { background: #f5faff; }
+.cst .sel-tutto { margin-left: auto; }

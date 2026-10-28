@@ -7,6 +7,8 @@ import { togliDanniPrenotazioneCliente } from '../lib/firestoreClienti';
 import { updatePrenotazione, deletePrenotazione } from '../store/prenotazioniSlice';
 import InfoModal from '../components/InfoModal';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { Casella, BarraSelezione } from '../components/SelezioneMultipla';
+import { alterna, alternaTutti, soloPresenti, statoSelezione } from '../utils/selezione';
 import {
   eAnnullamento, dataAnnullamento, puoEliminareDaArchivio, CAMPI_RIPRISTINO, conflittoRipristino,
   cercaArchivio, ordinaPerRecenti, importiArchivio, anniDisponibili, filtraPeriodo, riepilogoConclusi,
@@ -54,6 +56,10 @@ function ArchivioPrenotazioni() {
   const [mese, setMese] = useState('');
   const [daRipristinare, setDaRipristinare] = useState(null);
   const [daEliminare, setDaEliminare] = useState(null);
+  // Selezione multipla (solo noleggi conclusi eliminabili): id delle prenotazioni.
+  const [selezionati, setSelezionati] = useState(() => new Set());
+  const [eliminaSelezione, setEliminaSelezione] = useState(false);
+  const [inCorso, setInCorso] = useState(false);
 
   // Le eliminate (soft delete) escono dall'Archivio: si vedono solo nel Cestino.
   const visibili = useMemo(() => prenotazioni.filter((p) => !p.eliminato), [prenotazioni]);
@@ -76,6 +82,24 @@ function ArchivioPrenotazioni() {
     const tipo = scheda === 'concluse' ? 'conclusi' : 'annullati';
     const parte = !anno ? 'tutto' : mese ? `${anno}-${mese}` : anno;
     scaricaCsv(`archivio-${tipo}-${parte}.csv`, testoCsv(righeCsv(elenco, tipo)));
+  };
+  // Selezionabili: i conclusi eliminabili di tutto l'elenco mostrato (anche nelle altre pagine).
+  const selezionabili = scheda === 'concluse' ? elenco.filter(puoEliminareDaArchivio).map((p) => p.id) : [];
+  const scelti = soloPresenti(selezionati, selezionabili);
+  const eliminaScelti = async () => {
+    setEliminaSelezione(false);
+    setInCorso(true);
+    const esiti = await Promise.allSettled([...scelti].map(async (id) => {
+      await eliminaPrenotazione(id);
+      dispatch(deletePrenotazione(id));
+    }));
+    setInCorso(false);
+    setSelezionati(new Set());
+    const fallite = esiti.filter((e) => e.status === 'rejected');
+    fallite.forEach((e) => console.error('Errore eliminazione prenotazione:', e.reason));
+    const ok = esiti.length - fallite.length;
+    if (ok > 0) toast.success(ok === 1 ? 'Noleggio eliminato.' : `${ok} noleggi eliminati.`);
+    if (fallite.length > 0) toast.error(`${fallite.length} non ${fallite.length === 1 ? 'è stato eliminato' : 'sono stati eliminati'}: riprova.`);
   };
   const numeroPagine = Math.ceil(elenco.length / RIGHE_PER_PAGINA);
   const paginaValida = Math.min(pagina, Math.max(numeroPagine, 1));
@@ -207,10 +231,24 @@ function ArchivioPrenotazioni() {
         )}
       </div>
 
+      {scelti.size > 0 && selezionabili.length > 0 && (
+        <p className="sel-info" aria-live="polite">
+          Selezionati <b>{scelti.size} di {selezionabili.length}</b> {selezionabili.length === 1 ? 'noleggio' : 'noleggi'} ({nomePeriodo}{cerca.trim() ? ', con la ricerca' : ''}), anche nelle altre pagine.
+          {scelti.size < selezionabili.length && (
+            <> <button type="button" className="sel-barra-link arc-link" onClick={() => setSelezionati(new Set(selezionabili))}>Seleziona tutti i {selezionabili.length}</button></>
+          )}
+        </p>
+      )}
+
       <div className="bk-elenco">
         <table className="bk-tabella">
           <thead>
             <tr>
+              {scheda === 'concluse' && (
+                <th className="arc-sel">
+                  <Casella stato={statoSelezione(scelti, selezionabili)} onChange={() => setSelezionati(alternaTutti(scelti, selezionabili))} etichetta="Seleziona tutti i noleggi mostrati" />
+                </th>
+              )}
               <th>Cliente</th>
               <th>Veicolo</th>
               <th>Periodo</th>
@@ -222,7 +260,7 @@ function ArchivioPrenotazioni() {
           <tbody>
             {daMostrare.length === 0 ? (
               <tr>
-                <td colSpan={6} className="bk-vuoto">
+                <td colSpan={7} className="bk-vuoto">
                   {cerca.trim()
                     ? `Nessun risultato per “${cerca.trim()}”.`
                     : scheda === 'concluse' ? `Nessun noleggio concluso in ${nomePeriodo}.` : `Nessuna prenotazione annullata in ${nomePeriodo}.`}
@@ -231,7 +269,14 @@ function ArchivioPrenotazioni() {
             ) : daMostrare.map((p) => {
               const { totale, rimborsato, trattenuto } = importiArchivio(p);
               return (
-                <tr key={p.id} className="bk-riga" onClick={() => setDettaglio(p)}>
+                <tr key={p.id} className={`bk-riga ${scelti.has(p.id) ? 'arc-riga--scelta' : ''}`} onClick={() => setDettaglio(p)}>
+                  {scheda === 'concluse' && (
+                    <td className="arc-sel" onClick={(e) => e.stopPropagation()}>
+                      {puoEliminareDaArchivio(p) && (
+                        <Casella stato={scelti.has(p.id) ? 'tutti' : 'nessuno'} onChange={() => setSelezionati(alterna(scelti, p.id))} etichetta={`Seleziona il noleggio di ${p.cliente || 'cliente'}`} />
+                      )}
+                    </td>
+                  )}
                   <td>
                     <span className="bk-principale">{p.cliente || '—'}</span>
                     {p.emailCliente && <span className="bk-secondario">{p.emailCliente}</span>}
@@ -300,6 +345,22 @@ function ArchivioPrenotazioni() {
           </div>
         )}
       </div>
+
+      <BarraSelezione conteggio={scelti.size} onDeseleziona={() => setSelezionati(new Set())}>
+        <button type="button" className="sel-barra-btn sel-barra-btn--pericolo" onClick={() => setEliminaSelezione(true)} disabled={inCorso}>
+          <Trash2 size={15} aria-hidden="true" /> Elimina ({scelti.size})
+        </button>
+      </BarraSelezione>
+
+      <ConfirmDialog
+        open={eliminaSelezione}
+        onCancel={() => setEliminaSelezione(false)}
+        onConfirm={eliminaScelti}
+        title={`Eliminare ${scelti.size} ${scelti.size === 1 ? 'noleggio' : 'noleggi'}?`}
+        message="Finiscono nel Cestino e restano recuperabili per 6 mesi, poi vengono cancellati per sempre. Spariscono dagli incassi della Dashboard e dallo storico dei clienti."
+        confirmLabel={`Elimina ${scelti.size}`}
+        tone="danger"
+      />
 
       <InfoModal
         isOpen={dettaglio !== null}

@@ -30,7 +30,7 @@ function giorniDa(oggi, data) {
 // la sua fine si allunga fino a oggi (prima risultava "libera" mentre era
 // ancora dal cliente).
 export const prenotazioniOccupanti = (prenotazioni, oggi) => (prenotazioni || [])
-  .filter((p) => p.status === 'attiva')
+  .filter((p) => p.status === 'attiva' && !p.eliminato)
   .map((p) => (oggi && puoConcludere(p) && giorno(p.dataFine) < oggi ? { ...p, dataFine: oggi } : p));
 
 export function veicoliLiberiNelPeriodo(veicoli, dataInizio, dataFine, prenotazioni, holds, oggi) {
