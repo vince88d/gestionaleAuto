@@ -50,3 +50,8 @@
 
 .arc-totali strong { color: #2c3e50; }
 .arc-totali-periodo { font-weight: 700; color: #2c3e50; margin-right: auto; }
+
+/* Selezione multipla */
+.arc-sel { width: 44px; text-align: center; }
+.arc-riga--scelta td { background: #f5faff; }
+.arc-link { color: #1a6fb0; }
