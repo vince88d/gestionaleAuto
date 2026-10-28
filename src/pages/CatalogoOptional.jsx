@@ -9,6 +9,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import CampoRicerca, { filtraPerTesto } from '../components/CampoRicerca';
 import { Campo, CampoEuro, Contatore } from '../components/CampiForm';
 import './CatalogoOptional.css';
+import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
 
 // Dal catalogo salvato ai campi del form (numeri come testo, vuoti per "nessuno").
 const perForm = (o) => ({
@@ -64,7 +65,10 @@ function CatalogoOptional() {
   const salva = async (e) => {
     e.preventDefault();
     setTentato(true);
-    if (Object.keys(errori).length > 0) return;
+    if (Object.keys(errori).length > 0) {
+      scorriAlPrimoErrore();
+      return;
+    }
     setSalvando(true);
     try {
       await salvaOptional(form);

@@ -5,6 +5,7 @@ import { ascoltaOrari, salvaOrari } from '../lib/firestoreOrari';
 import { GIORNI, oreImpostazioni, testoChiusure, testoSettimana, validaOrari, preparaOrari } from '../utils/orari';
 import SezioneImpostazioni from './SezioneImpostazioni';
 import './OrariSede.css';
+import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
 
 const FERIALI = ['mar', 'mer', 'gio', 'ven'];
 const POMERIGGIO = { da: '15:00', a: '19:00' };
@@ -90,7 +91,10 @@ function OrariSede({ aperta = true, onToggle }) {
 
   const salva = async () => {
     setTentato(true);
-    if (Object.keys(errori).length > 0) return;
+    if (Object.keys(errori).length > 0) {
+      scorriAlPrimoErrore();
+      return;
+    }
     setSalvando(true);
     try {
       await salvaOrari(form);

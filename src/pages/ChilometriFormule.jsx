@@ -11,6 +11,7 @@ import Aiuto from '../components/Aiuto';
 import './CatalogoOptional.css';
 import './AddebitiRientro.css';
 import './ChilometriFormule.css';
+import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
 
 const numero = (n) => n.toLocaleString('it-IT', { useGrouping: 'always' });
 
@@ -68,7 +69,10 @@ function ChilometriFormule({ onVaiAPenali }) {
   const salva = async (e) => {
     e.preventDefault();
     setTentato(true);
-    if (Object.keys(errori).length > 0) return;
+    if (Object.keys(errori).length > 0) {
+      scorriAlPrimoErrore();
+      return;
+    }
     setSalvando(true);
     try {
       await salvaChilometri(schemaAFormule(schema));

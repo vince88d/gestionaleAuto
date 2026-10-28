@@ -23,6 +23,7 @@ import { coloreScadenza, giornoLocale } from '../utils/scadenze';
 import { validaVeicolo, preparaVeicolo } from '../utils/validaVeicolo';
 import { DOTAZIONE_NUOVO_VEICOLO, CHIAVI_NUOVO_VEICOLO } from '../utils/dotazione';
 import { filtraPerCategorie, chipCategorie } from '../utils/filtroCategorie';
+import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
 import './Vehicle.css';
 
 Modal.setAppElement('#root');
@@ -215,6 +216,7 @@ function Vehicles() {
     setErroriForm(errori);
     if (Object.keys(errori).length > 0) {
       toast.error('Controlla i campi segnati in rosso.');
+      scorriAlPrimoErrore(e.currentTarget);
       return;
     }
 

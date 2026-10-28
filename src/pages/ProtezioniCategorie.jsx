@@ -12,6 +12,7 @@ import CampoRicerca, { filtraPerTesto } from '../components/CampoRicerca';
 import { Campo, CampoEuro } from '../components/CampiForm';
 import './CatalogoOptional.css';
 import './ProtezioniCategorie.css';
+import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
 
 const IMPORTI = [['danni', 'Danni'], ['furto', 'Furto'], ['cauzione', 'Cauzione']];
 // Pulsanti «?» accanto agli importi: le parole che il cliente (e lo staff) confonde.
@@ -98,7 +99,10 @@ function ProtezioniCategorie() {
   const salva = async (e) => {
     e.preventDefault();
     setTentato(true);
-    if (Object.keys(errori).length > 0) return;
+    if (Object.keys(errori).length > 0) {
+      scorriAlPrimoErrore();
+      return;
+    }
     setSalvando(true);
     try {
       await salvaProtezioni([aperta, ...copiaSu], preparaProtezione(form));

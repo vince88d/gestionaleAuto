@@ -7,6 +7,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { Check, Search, UserPlus, Phone, Mail, ShieldCheck, FileWarning, ArrowDown, AlertTriangle, KeyRound, Info } from 'lucide-react';
 import ClienteFormModal from './ClienteFormModal';
 import SceltaVeicolo from './SceltaVeicolo';
+import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
 import SceltaProtezioneExtra from './SceltaProtezioneExtra';
 import { addCliente } from '../store/clientiSlice';
 import { creaCliente, messaggioErroreCliente } from '../lib/firestoreClienti';
@@ -409,7 +410,10 @@ function BookingForm({
     e.preventDefault();
     consegnaSubitoRef.current = consegnaSubito;
     setTentato(true);
-    if (Object.keys(errori).length > 0 || preventivo?.errore) return;
+    if (Object.keys(errori).length > 0 || preventivo?.errore) {
+      scorriAlPrimoErrore(e.currentTarget);
+      return;
+    }
     // Mai guardata la sezione 4: un avviso breve, senza bloccare (una sola volta).
     if (haScelte4 && !guardato4) { setChiediConferma(true); return; }
     eseguiInvio();
