@@ -154,7 +154,8 @@ export function giorniOccupati({ targa, prenotazioni, idEscluso }) {
 // hanno la scheda ma non `consegnataIl`: valgono come consegnate.
 export const eConsegnata = (p) => Boolean(p?.consegnataIl || p?.schedaVeicolo?.kmIniziali);
 
-const conVeicolo = (p) => p?.status === 'attiva' && Boolean(p.targa) && !daAssegnare(p);
+// Una prenotazione nel Cestino (eliminato) non c'e' piu': niente consegna, rientro o avvisi.
+const conVeicolo = (p) => p?.status === 'attiva' && !p.eliminato && Boolean(p.targa) && !daAssegnare(p);
 
 // Si consegna un noleggio attivo con il veicolo assegnato e non ancora dato.
 export const puoConsegnare = (p) => conVeicolo(p) && !eConsegnata(p);
