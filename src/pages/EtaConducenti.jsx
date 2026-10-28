@@ -11,6 +11,7 @@ import { CampoEuro } from '../components/CampiForm';
 import './CatalogoOptional.css';
 import './AddebitiRientro.css';
 import './EtaConducenti.css';
+import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
 
 const da = (inizio, fine) => Array.from({ length: Math.max(0, fine - inizio + 1) }, (_, i) => inizio + i);
 
@@ -104,7 +105,10 @@ function EtaConducenti() {
   const salva = async (e) => {
     e.preventDefault();
     setTentato(true);
-    if (Object.keys(errori).length > 0) return;
+    if (Object.keys(errori).length > 0) {
+      scorriAlPrimoErrore();
+      return;
+    }
     setSalvando(true);
     try {
       await salvaEtaConducenti(form);

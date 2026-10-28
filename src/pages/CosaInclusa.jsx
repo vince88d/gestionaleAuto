@@ -9,6 +9,7 @@ import './CatalogoOptional.css';
 import './AddebitiRientro.css';
 import './EtaConducenti.css';
 import './CosaInclusa.css';
+import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
 
 // Le voci che il sito aggiunge da solo: dipendono da altre schede, non si scrivono qui.
 const AUTOMATICHE = [
@@ -62,7 +63,10 @@ function CosaInclusa() {
   const salva = async (e) => {
     e.preventDefault();
     setTentato(true);
-    if (Object.keys(errori).length > 0) return;
+    if (Object.keys(errori).length > 0) {
+      scorriAlPrimoErrore();
+      return;
+    }
     setSalvando(true);
     try {
       await salvaIncluso(form);

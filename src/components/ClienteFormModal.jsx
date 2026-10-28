@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Modal from 'react-modal';
 import { X } from 'lucide-react';
 import { preparaCliente, clientePerForm, validaCliente } from '../utils/validaCliente';
+import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
 import '../styles/Prenotazione.css';
 
 const TIPI_DOCUMENTO = [
@@ -60,7 +61,10 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
     const pronto = preparaCliente(azienda ? dati : { ...dati, ragioneSociale: '', piva: '', pec: '', codiceUnivoco: '' });
     const trovati = validaCliente(pronto, clienti, cliente?.id || null);
     setErrori(trovati);
-    if (Object.keys(trovati).length > 0) return;
+    if (Object.keys(trovati).length > 0) {
+      scorriAlPrimoErrore(e.currentTarget);
+      return;
+    }
     setSalvando(true);
     try {
       await onSalva(pronto);

@@ -11,6 +11,7 @@ import { leggiEuro } from '../utils/protezioni';
 import { ritardoAOre } from '../utils/rientro';
 import './CatalogoOptional.css';
 import './AddebitiRientro.css';
+import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
 
 // Scheda «Penali e addebiti» di Tariffe e optional: il listino. Importi fissi
 // che il gestionale propone, gia' compilati, quando si riceve l'auto (si
@@ -68,7 +69,10 @@ function AddebitiRientro() {
   const salva = async (e) => {
     e.preventDefault();
     setTentato(true);
-    if (Object.keys(errori).length > 0) return;
+    if (Object.keys(errori).length > 0) {
+      scorriAlPrimoErrore();
+      return;
+    }
     setSalvando(true);
     try {
       await salvaAddebiti(form);
