@@ -59,3 +59,22 @@ export function leggiPrezzo(testo) {
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.round(n * 100) / 100;
 }
+
+// Preventivo con link (vedi formiarent/functions/src/preventivo.ts): lo staff
+// sceglie per quante ore e' valido; in quel tempo l'auto resta tenuta per il cliente.
+export const ORE_PREVENTIVO = [12, 24, 48];
+export const ORE_PREVENTIVO_DEFAULT = 24;
+
+// «giovedì 29 ottobre alle 15:30»: quando scade un preventivo inviato adesso.
+export function scadenzaPreventivo(ore, adessoMs) {
+  const d = new Date(adessoMs + ore * 3600 * 1000);
+  const giorno = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Rome' });
+  const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' });
+  return `${giorno} alle ${ora}`;
+}
+
+// Il preventivo gia' inviato a questa richiesta (importo), o null.
+export function preventivoInviato(p) {
+  const t = p?.preventivo?.totale;
+  return p?.daPreventivo && typeof t === 'number' ? t : null;
+}

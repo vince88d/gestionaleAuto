@@ -5,10 +5,19 @@ import { functions } from '../components/firebase';
 // riservate allo staff, vedi formiarent/functions/src/richieste.ts). Il server
 // manda l'email al cliente e libera l'auto (rifiuto) o la prenota (conferma).
 const conferma = httpsCallable(functions, 'confermaRichiestaSito');
+const preventivo = httpsCallable(functions, 'inviaPreventivoRichiesta');
 const rifiuta = httpsCallable(functions, 'rifiutaRichiestaSito');
 
 export async function confermaRichiestaSito(prenotazioneId, totale) {
   await conferma({ prenotazioneId, totale });
+}
+
+// Preventivo con link: il cliente lo accetta e paga online entro `ore` ore.
+// Con inviaEmail false non parte nessuna email: serve solo il link da mandare
+// a mano (WhatsApp). Restituisce {link, scadeIl, emailInviata}.
+export async function inviaPreventivoRichiesta(prenotazioneId, totale, ore, inviaEmail = true) {
+  const risposta = await preventivo({ prenotazioneId, totale, ore, inviaEmail });
+  return risposta.data;
 }
 
 export async function rifiutaRichiestaSito(prenotazioneId) {
