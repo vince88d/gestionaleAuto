@@ -1,5 +1,5 @@
 import {
-  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, senzaUndefined, pagataSulSito,
+  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, senzaUndefined, pagataSulSito, origineSito,
   eConsegnata, faseLavoro, promemoria, prossimoPasso, ritiroEntroOggi,
 } from './regolePrenotazione';
 
@@ -339,5 +339,19 @@ describe('prenotazioni nel Cestino (eliminate)', () => {
     expect(statoVeicoloNelPeriodo({
       veicolo: furgone, inizio: '2099-10-13', fine: '2099-10-14', veicoli: [furgone], prenotazioni: [eliminata, viva], holds: [], oggi: '2099-01-01',
     })).toBe('occupato');
+  });
+});
+
+describe('origineSito', () => {
+  it('nessuna etichetta per le prenotazioni al banco', () => {
+    expect(origineSito({ id: 'a', cliente: 'Mario' })).toBeNull();
+    expect(origineSito(null)).toBeNull();
+  });
+  it('pagata se il cliente ha pagato online', () => {
+    expect(origineSito({ origine: 'sito', paymentIntentId: 'pi_1' })).toBe('pagata');
+    expect(origineSito({ paymentIntentId: 'pi_1' })).toBe('pagata');
+  });
+  it('al ritiro se e una richiesta senza pagamento confermata', () => {
+    expect(origineSito({ origine: 'sito', richiestaSenzaPagamento: true })).toBe('al-ritiro');
   });
 });

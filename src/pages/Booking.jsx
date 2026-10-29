@@ -13,7 +13,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { setClienti } from '../store/clientiSlice';
 import {
-  Search, Info, CheckCircle, AlertCircle, KeyRound, List, CalendarDays, Download, Car,
+  Search, Info, CheckCircle, AlertCircle, KeyRound, List, CalendarDays, Download, Car, Globe, X,
 } from 'lucide-react';
 import BookingModal from '../components/BookingModal';
 import "../components/BookingForm.css";
@@ -43,7 +43,7 @@ import { costruisciRientro, istanteRientro, dotazioneDopoRientro } from '../util
 import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
 import {
-  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, ritiroEntroOggi, eConsegnata,
+  controllaPrenotazione, puoConcludere, puoConsegnare, daConcludereInBlocco, faseLavoro, ritiroEntroOggi, eConsegnata, origineSito,
 } from '../utils/regolePrenotazione';
 import { prezzoPrenotazione } from '../utils/dashboard';
 import { colonneProtezioneExtra, INTESTAZIONI_PROTEZIONE_EXTRA } from '../utils/archivio';
@@ -145,6 +145,7 @@ function Bookings() {
   const [paginaPrenotazioni, setPaginaPrenotazioni] = useState(1);
   const [paginaClienti, setPaginaClienti] = useState(1);
   const [filtroFase, setFiltroFase] = useState('tutte');
+  const [soloDalSito, setSoloDalSito] = useState(false);
   // Elenco o calendario: si ricorda l'ultima scelta su questo computer.
   const [vista, setVista] = useState(leggiVista);
   const cambiaVista = (nuova) => {
@@ -219,7 +220,7 @@ function Bookings() {
   
   useEffect(() => {
   setPaginaPrenotazioni(1);
-}, [search, filtroFase]);
+}, [search, filtroFase, soloDalSito]);
 
 
   useEffect(() => {
@@ -866,7 +867,9 @@ const idSuVeicoloSospeso = new Set(
 const paroleCercate = search.toLowerCase().split(/\s+/).filter(Boolean);
 const perRicerca = (p) => [p.cliente, p.targa, p.veicolo, p.emailCliente, p.categoria]
   .filter(Boolean).join(' ').toLowerCase();
-const trovate = prenotazioniAttive.filter((p) => paroleCercate.every((parola) => perRicerca(p).includes(parola)));
+const cercate = prenotazioniAttive.filter((p) => paroleCercate.every((parola) => perRicerca(p).includes(parola)));
+const contaDalSito = cercate.filter((p) => origineSito(p)).length;
+const trovate = soloDalSito ? cercate.filter((p) => origineSito(p)) : cercate;
 const contaFase = (chiave) => (chiave === 'tutte' ? trovate.length : trovate.filter((p) => faseLavoro(p, oggi) === chiave).length);
 const prenotazioniAttiveFiltrate = trovate
   .filter((p) => filtroFase === 'tutte' || faseLavoro(p, oggi) === filtroFase)
@@ -955,6 +958,17 @@ return (
           {etichetta} <span className="bookings-filtro-conto">{contaFase(chiave)}</span>
         </button>
       ))}
+      <span className="bookings-filtri-sep" aria-hidden="true" />
+      <button
+        type="button"
+        aria-pressed={soloDalSito}
+        className={`bookings-filtro bookings-filtro--sito ${soloDalSito ? 'bookings-filtro--attivo' : ''}`}
+        onClick={() => setSoloDalSito((v) => !v)}
+        title="Mostra solo le prenotazioni arrivate dal sito"
+      >
+        <Globe size={15} aria-hidden="true" /> Dal sito <span className="bookings-filtro-conto">{contaDalSito}</span>
+        {soloDalSito && <X size={14} aria-label="Togli il filtro" />}
+      </button>
     </div>
     <button
       type="button"
@@ -1010,7 +1024,9 @@ return (
           {prenotazioniAttiveFiltrate.length === 0 ? (
             <tr>
               <td colSpan="7" className="bk-vuoto">
-                {ricercaAttiva ? `Nessuna prenotazione trovata per “${ricercaAttiva}”.` : 'Nessuna prenotazione in questo elenco.'}
+                {ricercaAttiva ? `Nessuna prenotazione trovata per “${ricercaAttiva}”.` : soloDalSito ? (
+                  <>Nessuna prenotazione dal sito in questo elenco. <button type="button" className="bk-link" onClick={() => setSoloDalSito(false)}>Togli il filtro «Dal sito»</button></>
+                ) : 'Nessuna prenotazione in questo elenco.'}
               </td>
             </tr>
           ) : (
@@ -1027,6 +1043,11 @@ return (
                     <td>
                       <span className="bk-principale">{p.cliente || '—'}</span>
                       {p.emailCliente && <span className="bk-secondario">{p.emailCliente}</span>}
+                      {origineSito(p) && (
+                        <span className={`bk-dal-sito ${origineSito(p) === 'pagata' ? 'bk-dal-sito--pagata' : ''}`}>
+                          <Globe size={12} aria-hidden="true" /> {origineSito(p) === 'pagata' ? 'Dal sito · pagata' : 'Dal sito · paga al ritiro'}
+                        </span>
+                      )}
                     </td>
                     <td>
                       <span className="bk-principale">{(daAssegnare(p) ? p.categoria : p.veicolo) || p.categoria || '—'}</span>
