@@ -123,3 +123,9 @@ export function serieUltimi12Mesi(prenotazioni, oggi) {
   });
   return mesi;
 }
+
+// «Oggi con i clienti»: righe visibili prima di «Mostra le altre» e quante delle
+// nascoste sono in ritardo. `elenco` e' gia' in ordine di data (le piu' vecchie,
+// cioe' quelle in ritardo, per prime); `inRitardo(p)` dice se una riga lo e'.
+export const RIGHE_OGGI_CON_I_CLIENTI = 5;
+export const ritardiNascosti = (elenco, limite, inRitardo) => elenco.slice(limite).filter(inRitardo).length;

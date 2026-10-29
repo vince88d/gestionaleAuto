@@ -12,7 +12,7 @@ import { updatePrenotazione } from '../store/prenotazioniSlice';
 import { isPrenotazioneVisibile, segnaDannoPrenotazioneRiparato } from '../lib/firestorePrenotazioni';
 import { readVeicoli, salvaVeicolo } from '../lib/firestoreVeicoli';
 import { useHolds } from '../lib/firestoreHolds';
-import { riepilogoDashboard, serieUltimi12Mesi, veicoliLiberiNelPeriodo } from '../utils/dashboard';
+import { riepilogoDashboard, serieUltimi12Mesi, veicoliLiberiNelPeriodo, ritardiNascosti, RIGHE_OGGI_CON_I_CLIENTI } from '../utils/dashboard';
 import { cambiaStatoRiparazione } from '../utils/danniVeicolo';
 import { dataEOra, formattaData, giornoLocale } from '../utils/scadenze';
 import { oraBreve } from '../utils/orari';
@@ -207,17 +207,23 @@ function Dashboard() {
   const daSistemare = r.daAssegnare.length + r.suVeicoloSospeso.length + r.danniDaRiparare.length
     + r.scadute.length + r.inScadenza.length;
 
-  // Primi RIGHE_VISIBILI elementi di un gruppo, o tutti se aperto.
-  const visibili = (nome, elenco) => (aperti[nome] ? elenco : elenco.slice(0, RIGHE_VISIBILI));
-  const MostraAltre = ({ nome, elenco }) => {
-    if (elenco.length <= RIGHE_VISIBILI) return null;
+  // Primi `limite` elementi di un gruppo, o tutti se aperto.
+  const visibili = (nome, elenco, limite = RIGHE_VISIBILI) => (aperti[nome] ? elenco : elenco.slice(0, limite));
+  // «Mostra le altre N»; `inRitardo` (solo consegne e rientri) aggiunge in rosso
+  // quante delle nascoste sono in ritardo.
+  const MostraAltre = ({ nome, elenco, limite = RIGHE_VISIBILI, inRitardo }) => {
+    if (elenco.length <= limite) return null;
     const aperto = aperti[nome];
+    const inRitardoNascoste = inRitardo ? ritardiNascosti(elenco, limite, inRitardo) : 0;
     return (
       <button type="button" className="dash-mostra" onClick={() => setAperti((a) => ({ ...a, [nome]: !aperto }))}>
-        {aperto ? 'Mostra meno' : `Mostra le altre ${elenco.length - RIGHE_VISIBILI}`}
+        {aperto ? 'Mostra meno' : `Mostra le altre ${elenco.length - limite}`}
+        {!aperto && inRitardoNascoste > 0 && <span className="dash-mostra-ritardo"> · {inRitardoNascoste} in ritardo</span>}
       </button>
     );
   };
+  const consegnaInRitardo = (p) => giorniTra(p.dataInizio, oggi) > 0;
+  const rientroInRitardo = (p) => giorniTra(p.dataFine, oggi) > 0;
 
   const rigaScadenza = (s, tono) => (
     <Riga
@@ -275,7 +281,7 @@ function Dashboard() {
             <TitoloGruppo tono="blu" conto={r.daConsegnare.length}>Da consegnare al cliente</TitoloGruppo>
             {r.daConsegnare.length > 0 ? (
               <ul className="dash-lista">
-                {r.daConsegnare.map((p) => {
+                {visibili('consegne', r.daConsegnare, RIGHE_OGGI_CON_I_CLIENTI).map((p) => {
                   const ritardo = giorniTra(p.dataInizio, oggi);
                   const cambio = autoDaCambiare(p, veicoli, oggi);
                   return (
@@ -308,13 +314,14 @@ function Dashboard() {
             ) : (
               <p className="dash-vuoto">Oggi non c&apos;è nessuna auto da consegnare.</p>
             )}
+            <MostraAltre nome="consegne" elenco={r.daConsegnare} limite={RIGHE_OGGI_CON_I_CLIENTI} inRitardo={consegnaInRitardo} />
           </div>
 
           <div className="dash-gruppo">
             <TitoloGruppo tono="verde" conto={r.daRicevere.length}>Da ricevere indietro</TitoloGruppo>
             {r.daRicevere.length > 0 ? (
               <ul className="dash-lista">
-                {r.daRicevere.map((p) => {
+                {visibili('rientri', r.daRicevere, RIGHE_OGGI_CON_I_CLIENTI).map((p) => {
                   const ritardo = giorniTra(p.dataFine, oggi);
                   return (
                     <Riga
@@ -339,6 +346,7 @@ function Dashboard() {
             ) : (
               <p className="dash-vuoto">Oggi non rientra nessuna auto.</p>
             )}
+            <MostraAltre nome="rientri" elenco={r.daRicevere} limite={RIGHE_OGGI_CON_I_CLIENTI} inRitardo={rientroInRitardo} />
           </div>
         </section>
 
