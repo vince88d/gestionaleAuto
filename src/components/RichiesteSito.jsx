@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { Check, Clock, Copy, Inbox, Info, Mail, Phone, X } from 'lucide-react';
+import { Check, Clock, Copy, Inbox, Info, Mail, Phone, Search, X } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 import Aiuto from './Aiuto';
 import { dataEOra } from '../utils/scadenze';
 import { euro } from '../utils/protezioni';
 import {
+  contaRichieste, filtraRichieste, RICHIESTE_GRANDI,
   leggiPrezzo, ORE_PREVENTIVO, ORE_PREVENTIVO_DEFAULT, preventivoInviato, richiesteDaGestire, scadenzaPreventivo, sceltaRichiesta, tempoRimasto,
 } from '../utils/richiesteSito';
 import { confermaRichiestaSito, inviaPreventivoRichiesta, messaggioErroreRichiesta, rifiutaRichiestaSito } from '../lib/richiesteSito';
@@ -18,7 +19,9 @@ import './RichiesteSito.css';
 // richiesta tiene l'auto per 24 ore: il tempo rimasto si vede.
 // Non mostra nulla se non ce ne sono.
 // Mockup: formiarent-documenti/mockup/gestionale-aiuti-e-richieste.html (parte C)
-export default function RichiesteSito({ prenotazioni, oggi }) {
+// grandi: quante richieste restano in grande (le altre vanno nell'elenco compatto);
+// la Dashboard ne mostra 1 per non coprire il resto.
+export default function RichiesteSito({ prenotazioni, oggi, grandi: quanteGrandi = RICHIESTE_GRANDI }) {
   // Si aggiorna ogni minuto per il conto alla rovescia.
   const [adesso, setAdesso] = useState(() => Date.now());
   useEffect(() => {
@@ -37,8 +40,29 @@ export default function RichiesteSito({ prenotazioni, oggi }) {
   const [daRifiutare, setDaRifiutare] = useState(null);
   const [inCorso, setInCorso] = useState(false);
   const [errore, setErrore] = useState(null);
+  // Tante richieste: le prime restano grandi, le altre sono in un elenco compatto
+  // che si apre con «Mostra le altre» (filtri, ricerca, clic su una riga = in grande).
+  const [altreAperte, setAltreAperte] = useState(false);
+  const [filtro, setFiltro] = useState('tutte');
+  const [cerca, setCerca] = useState('');
+  const [inGrande, setInGrande] = useState(null);
 
   if (richieste.length === 0) return null;
+
+  const grandi = richieste.slice(0, quanteGrandi);
+  const altre = richieste.slice(quanteGrandi);
+  const conto = contaRichieste(altre, adesso);
+  const altreFiltrate = filtraRichieste(altre, filtro, cerca, adesso);
+  const FILTRI = [
+    { chiave: 'tutte', etichetta: 'Tutte', n: altre.length },
+    { chiave: 'urgenti', etichetta: 'Scadono entro 3 ore', n: conto.urgenti, rosso: true },
+    { chiave: 'scadute', etichetta: 'Scadute', n: conto.scadute, rosso: true },
+  ];
+  const avvisoAltre = [
+    conto.urgenti > 0 ? `${conto.urgenti} ${conto.urgenti === 1 ? 'scade' : 'scadono'} entro 3 ore` : null,
+    conto.scadute > 0 ? `${conto.scadute} ${conto.scadute === 1 ? 'già scaduta' : 'già scadute'}` : null,
+  ].filter(Boolean).join(', ');
+  const ggmm = (d) => `${String(d || '').slice(8, 10)}/${String(d || '').slice(5, 7)}`;
 
   const apriConferma = (p) => {
     setDaConfermare(p);
@@ -99,6 +123,66 @@ export default function RichiesteSito({ prenotazioni, oggi }) {
     }
   };
 
+  const riga = ({ prenotazione: p, scadeMs, scaduta }) => {
+    const tempo = scaduta ? { testo: 'Scaduta: conferma solo se l\'auto è ancora libera', urgente: true } : tempoRimasto(scadeMs, adesso);
+    const scelta = sceltaRichiesta(p);
+    const inviato = preventivoInviato(p);
+    return (
+      <div key={p.id} className="ric-riga">
+        <div className="ric-testi">
+          <span className="ric-nome">{p.cliente || 'Cliente'}</span>
+          <span className="ric-det">
+            <b>{p.categoria || '—'}</b> · dal <b>{dataEOra(p.dataInizio, p.oraInizio)}</b> al <b>{dataEOra(p.dataFine, p.oraFine)}</b>
+            {scelta && <> · {scelta}</>}
+          </span>
+          {p.note && <span className="ric-det">Note: «{p.note}»</span>}
+          {p.telefono && (
+            <a className="ric-tel" href={`tel:${String(p.telefono).replace(/\s/g, '')}`}>
+              <Phone size={18} aria-hidden="true" /> {p.telefono}
+            </a>
+          )}
+          <span className={`ric-tempo ${tempo.urgente ? 'ric-tempo--urgente' : ''}`}>
+            <Clock size={15} aria-hidden="true" /> {inviato !== null && !scaduta ? `Preventivo di ${euro(inviato)} inviato · ` : ''}{tempo.testo}
+          </span>
+        </div>
+        <div className="ric-azioni">
+          <button type="button" className="ric-btn ric-btn--si" onClick={() => apriConferma(p)}>
+            <Check size={18} aria-hidden="true" /> Conferma, paga al ritiro
+          </button>
+          <button type="button" className="ric-btn ric-btn--prev" onClick={() => apriPreventivo(p)}>
+            <Mail size={18} aria-hidden="true" /> {inviato !== null ? 'Nuovo preventivo con link' : 'Invia preventivo con link'}
+          </button>
+          <button type="button" className="ric-btn ric-btn--no" onClick={() => setDaRifiutare(p)}>
+            <X size={18} aria-hidden="true" /> Rifiuta
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Riga compatta delle richieste dopo le prime: un clic la apre in grande.
+  const rigaCompatta = ({ prenotazione: p, scadeMs, scaduta }) => {
+    const tempo = scaduta ? { testo: 'Scaduta', urgente: true } : tempoRimasto(scadeMs, adesso);
+    const inviato = preventivoInviato(p);
+    return (
+      <div key={p.id} className="ric-comp">
+        <button type="button" className="ric-comp-testi" onClick={() => setInGrande(p.id)} aria-label={`Apri la richiesta di ${p.cliente || 'cliente'}`}>
+          <span className="ric-comp-nome">{p.cliente || 'Cliente'}</span>
+          <span className="ric-comp-det">
+            {p.categoria || '—'} · {ggmm(p.dataInizio)} → {ggmm(p.dataFine)}{p.telefono ? ` · ${p.telefono}` : ''}
+            {inviato !== null && !scaduta ? ` · preventivo ${euro(inviato)} inviato` : ''}
+          </span>
+        </button>
+        <span className={`ric-tempo ${tempo.urgente ? 'ric-tempo--urgente' : ''}`}>{tempo.testo.replace('Scade tra ', '')}</span>
+        <div className="ric-comp-azioni">
+          <button type="button" className="ric-btn ric-btn--si ric-btn--sm" onClick={() => apriConferma(p)}>Conferma</button>
+          <button type="button" className="ric-btn ric-btn--prev ric-btn--sm" onClick={() => apriPreventivo(p)}>Preventivo</button>
+          <button type="button" className="ric-btn ric-btn--no ric-btn--sm" onClick={() => setDaRifiutare(p)}>Rifiuta</button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <section className="ric" aria-label="Richieste dal sito da confermare">
       <div className="ric-testa">
@@ -115,42 +199,36 @@ export default function RichiesteSito({ prenotazioni, oggi }) {
         <span><b>Cosa fare:</b> chiama il cliente, digli il prezzo, poi premi «Conferma» se accetta o «Rifiuta» se non va bene.</span>
       </p>
 
-      {richieste.map(({ prenotazione: p, scadeMs, scaduta }) => {
-        const tempo = scaduta ? { testo: 'Scaduta: conferma solo se l\'auto è ancora libera', urgente: true } : tempoRimasto(scadeMs, adesso);
-        const scelta = sceltaRichiesta(p);
-        const inviato = preventivoInviato(p);
-        return (
-          <div key={p.id} className="ric-riga">
-            <div className="ric-testi">
-              <span className="ric-nome">{p.cliente || 'Cliente'}</span>
-              <span className="ric-det">
-                <b>{p.categoria || '—'}</b> · dal <b>{dataEOra(p.dataInizio, p.oraInizio)}</b> al <b>{dataEOra(p.dataFine, p.oraFine)}</b>
-                {scelta && <> · {scelta}</>}
-              </span>
-              {p.note && <span className="ric-det">Note: «{p.note}»</span>}
-              {p.telefono && (
-                <a className="ric-tel" href={`tel:${String(p.telefono).replace(/\s/g, '')}`}>
-                  <Phone size={18} aria-hidden="true" /> {p.telefono}
-                </a>
-              )}
-              <span className={`ric-tempo ${tempo.urgente ? 'ric-tempo--urgente' : ''}`}>
-                <Clock size={15} aria-hidden="true" /> {inviato !== null && !scaduta ? `Preventivo di ${euro(inviato)} inviato · ` : ''}{tempo.testo}
-              </span>
-            </div>
-            <div className="ric-azioni">
-              <button type="button" className="ric-btn ric-btn--si" onClick={() => apriConferma(p)}>
-                <Check size={18} aria-hidden="true" /> Conferma, paga al ritiro
+      {grandi.map(riga)}
+
+      {altre.length > 0 && !altreAperte && (
+        <button type="button" className="ric-mostra" onClick={() => setAltreAperte(true)}>
+          Mostra le altre {altre.length}{avvisoAltre && <span className="ric-mostra-avviso"> · {avvisoAltre}</span>}
+        </button>
+      )}
+
+      {altre.length > 0 && altreAperte && (
+        <>
+          <div className="ric-altre-titolo">Le altre {altre.length}, dalla più urgente <span>(scorri qui dentro)</span></div>
+          <div className="ric-strumenti">
+            {FILTRI.map(({ chiave, etichetta, n, rosso }) => (
+              <button key={chiave} type="button" aria-pressed={filtro === chiave}
+                className={`ric-chip ${filtro === chiave ? 'ric-chip--on' : ''} ${rosso ? 'ric-chip--rosso' : ''}`} onClick={() => setFiltro(chiave)}>
+                {etichetta} <b>{n}</b>
               </button>
-              <button type="button" className="ric-btn ric-btn--prev" onClick={() => apriPreventivo(p)}>
-                <Mail size={18} aria-hidden="true" /> {inviato !== null ? 'Nuovo preventivo con link' : 'Invia preventivo con link'}
-              </button>
-              <button type="button" className="ric-btn ric-btn--no" onClick={() => setDaRifiutare(p)}>
-                <X size={18} aria-hidden="true" /> Rifiuta
-              </button>
-            </div>
+            ))}
+            <label className="ric-cerca">
+              <Search size={16} aria-hidden="true" />
+              <input type="search" value={cerca} onChange={(e) => setCerca(e.target.value)} placeholder="Cerca per nome o telefono" aria-label="Cerca tra le altre richieste" />
+            </label>
           </div>
-        );
-      })}
+          <div className="ric-scorri" tabIndex={0} role="region" aria-label={`Altre ${altre.length} richieste, scorri per vederle`}>
+            {altreFiltrate.length === 0 && <p className="ric-nessuna">Nessuna richiesta corrisponde.</p>}
+            {altreFiltrate.map((r) => (r.prenotazione.id === inGrande ? riga(r) : rigaCompatta(r)))}
+          </div>
+          <button type="button" className="ric-mostra" onClick={() => { setAltreAperte(false); setInGrande(null); }}>Mostra meno</button>
+        </>
+      )}
 
       <Dialog.Root open={daConfermare !== null} onOpenChange={(v) => { if (!v && !inCorso) setDaConfermare(null); }}>
         <Dialog.Portal>

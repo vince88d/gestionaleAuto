@@ -45,3 +45,30 @@
 .ric-seg-voce { min-height: 44px; padding: 0 18px; border: 0; background: #fff; color: #3b4856; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .ric-seg-voce + .ric-seg-voce { border-left: 1.5px solid #8d99a6; }
 .ric-seg-voce--on { background: #1a6fb0; color: #fff; }
+
+/* Tante richieste: prime in grande, le altre compatte in un riquadro con scroll. */
+.ric-mostra { align-self: flex-start; padding: 6px 4px; border: 0; background: none; color: #1f6fb2; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.ric-mostra:hover { text-decoration: underline; }
+.ric-mostra-avviso { color: #a93226; }
+.ric-altre-titolo { margin-top: 4px; font-size: 15.5px; font-weight: 800; color: #0f3d63; }
+.ric-altre-titolo span { font-size: 13.5px; font-weight: 600; color: #5d6b79; }
+.ric-strumenti { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ric-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 13px; border: 1.5px solid #c5ced8; border-radius: 999px; background: #fff; color: #334155; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.ric-chip b { padding: 1px 8px; border-radius: 999px; background: #eef1f5; font-size: 12.5px; }
+.ric-chip--rosso { color: #a93226; border-color: #e5b3ad; }
+.ric-chip--on { background: #1a6fb0; border-color: #1a6fb0; color: #fff; }
+.ric-chip--on b { background: rgba(255, 255, 255, 0.25); color: #fff; }
+.ric-cerca { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; min-width: 240px; margin-left: auto; padding: 0 12px; border: 1.5px solid #c5ced8; border-radius: 9px; background: #fff; color: #5d6b79; }
+.ric-cerca:focus-within { border-color: #1a6fb0; box-shadow: 0 0 0 3px #d6e8f7; }
+.ric-cerca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 14px; color: #1f2d3a; }
+.ric-scorri { display: flex; flex-direction: column; gap: 6px; max-height: 392px; overflow-y: auto; padding: 4px 6px 4px 4px; border: 1px solid #dbe6f1; border-radius: 10px; background: #eef4fa; }
+.ric-scorri:focus-visible { outline: 3px solid #9cc3e3; }
+.ric-nessuna { margin: 8px; color: #5d6b79; font-size: 14.5px; }
+.ric-comp { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid #dbe6f1; border-radius: 10px; background: #fff; }
+.ric-comp-testi { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 0; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+.ric-comp-nome { font-size: 15.5px; font-weight: 800; color: #1e2a36; text-transform: capitalize; }
+.ric-comp-det { font-size: 13.5px; color: #3b4856; overflow-wrap: anywhere; }
+.ric-comp-testi:hover .ric-comp-nome { text-decoration: underline; }
+.ric-comp-azioni { display: flex; gap: 6px; }
+.ric-btn--sm { min-width: 0; min-height: 36px; padding: 6px 12px; font-size: 14px; }
+@media (max-width: 760px) { .ric-comp { flex-wrap: wrap; } .ric-comp-azioni { width: 100%; } .ric-cerca { margin-left: 0; width: 100%; } }

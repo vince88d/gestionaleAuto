@@ -55,3 +55,57 @@ test('rifiuta dopo la conferma', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Sì, rifiuta' }));
   await waitFor(() => expect(mockRifiuta).toHaveBeenCalledWith('r1'));
 });
+
+describe('tante richieste', () => {
+  const molte = Array.from({ length: 50 }, (_, i) => ({
+    ...richiesta, id: `m${i}`, cliente: `Cliente ${i}`, telefono: `333 000 ${String(i).padStart(4, '0')}`, scadeIl: tra(1 + i * 0.4),
+  }));
+
+  test('mostra in grande solo le prime 3 e un link per le altre con l\'avviso delle urgenti', () => {
+    render(<RichiesteSito prenotazioni={molte} oggi="2026-10-17" />);
+    expect(screen.getAllByRole('button', { name: /Conferma, paga al ritiro/ })).toHaveLength(3);
+    const link = screen.getByRole('button', { name: /Mostra le altre 47/ });
+    expect(link).toHaveTextContent(/scadono entro 3 ore/);
+    expect(screen.queryByRole('region', { name: /Altre 47 richieste/ })).not.toBeInTheDocument();
+  });
+
+  test('apre le altre in un riquadro scorrevole, le filtra e le cerca', () => {
+    render(<RichiesteSito prenotazioni={molte} oggi="2026-10-17" />);
+    fireEvent.click(screen.getByRole('button', { name: /Mostra le altre 47/ }));
+    expect(screen.getByRole('region', { name: /Altre 47 richieste/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^Apri la richiesta di/ })).toHaveLength(47);
+
+    fireEvent.click(screen.getByRole('button', { name: /Scadono entro 3 ore/ }));
+    const urgenti = screen.getAllByRole('button', { name: /^Apri la richiesta di/ }).length;
+    expect(urgenti).toBeGreaterThan(0);
+    expect(urgenti).toBeLessThan(47);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Tutte/ }));
+    fireEvent.change(screen.getByLabelText('Cerca tra le altre richieste'), { target: { value: 'Cliente 30' } });
+    expect(screen.getAllByRole('button', { name: /^Apri la richiesta di/ })).toHaveLength(1);
+    fireEvent.change(screen.getByLabelText('Cerca tra le altre richieste'), { target: { value: 'zzz' } });
+    expect(screen.getByText('Nessuna richiesta corrisponde.')).toBeInTheDocument();
+  });
+
+  test('un clic su una riga compatta la apre in grande; «Mostra meno» richiude', () => {
+    render(<RichiesteSito prenotazioni={molte} oggi="2026-10-17" />);
+    fireEvent.click(screen.getByRole('button', { name: /Mostra le altre 47/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apri la richiesta di Cliente 10' }));
+    expect(screen.getAllByRole('button', { name: /Conferma, paga al ritiro/ })).toHaveLength(4);
+    fireEvent.click(screen.getByRole('button', { name: 'Mostra meno' }));
+    expect(screen.getAllByRole('button', { name: /Conferma, paga al ritiro/ })).toHaveLength(3);
+  });
+
+  test('con 3 richieste o meno non cambia niente', () => {
+    render(<RichiesteSito prenotazioni={molte.slice(0, 3)} oggi="2026-10-17" />);
+    expect(screen.getAllByRole('button', { name: /Conferma, paga al ritiro/ })).toHaveLength(3);
+    expect(screen.queryByRole('button', { name: /Mostra le altre/ })).not.toBeInTheDocument();
+  });
+});
+
+test('con grandi=1 (Dashboard) resta in grande solo la più urgente', () => {
+  const tre = [0, 1, 2].map((i) => ({ ...richiesta, id: `d${i}`, cliente: `Cliente ${i}`, scadeIl: tra(5 + i) }));
+  render(<RichiesteSito prenotazioni={tre} oggi="2026-10-17" grandi={1} />);
+  expect(screen.getAllByRole('button', { name: /Conferma, paga al ritiro/ })).toHaveLength(1);
+  expect(screen.getByRole('button', { name: /Mostra le altre 2/ })).toBeInTheDocument();
+});

@@ -8,6 +8,7 @@ import {
 import { auth } from './firebase';
 import { useAzienda } from '../lib/firestoreAzienda';
 import { dimensioniDaDataUrl, quasiQuadrato } from '../utils/logoAzienda';
+import { testoNumeroMenu } from '../utils/richiesteSito';
 import './Sidebar.css';
 
 // Nome del prodotto, mostrato in piccolo sotto il nome dell'azienda cliente.
@@ -36,7 +37,9 @@ function iniziali(nome) {
   return (parole[0][0] + parole[1][0]).toUpperCase();
 }
 
-function Sidebar({ collapsed, toggleSidebar }) {
+// richiesteDaConfermare: quante richieste dal sito aspettano una risposta; il numero
+// rosso su «Prenotazioni» si vede da ogni pagina (menu chiuso: pallino).
+function Sidebar({ collapsed, toggleSidebar, richiesteDaConfermare = 0 }) {
   // Nome da Impostazioni, in tempo reale (anche se lo cambia un'altra postazione).
   const { dati: azienda } = useAzienda();
   const navigate = useNavigate();
@@ -96,6 +99,14 @@ function Sidebar({ collapsed, toggleSidebar }) {
               <NavLink to={to} end={end} draggable={false} title={collapsed ? etichetta : undefined}>
                 <Icona size={19} className="nav-icona" aria-hidden="true" />
                 {!collapsed && <span>{etichetta}</span>}
+                {to === '/booking' && richiesteDaConfermare > 0 && (
+                  collapsed
+                    ? <span className="nav-pallino" aria-hidden="true" />
+                    : <span className="nav-numero" aria-hidden="true">{testoNumeroMenu(richiesteDaConfermare)}</span>
+                )}
+                {to === '/booking' && richiesteDaConfermare > 0 && (
+                  <span className="sr-only"> {richiesteDaConfermare} richieste dal sito da confermare</span>
+                )}
               </NavLink>
             </li>
           ))}
