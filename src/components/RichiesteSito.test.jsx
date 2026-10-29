@@ -102,3 +102,10 @@ describe('tante richieste', () => {
     expect(screen.queryByRole('button', { name: /Mostra le altre/ })).not.toBeInTheDocument();
   });
 });
+
+test('con grandi=1 (Dashboard) resta in grande solo la più urgente', () => {
+  const tre = [0, 1, 2].map((i) => ({ ...richiesta, id: `d${i}`, cliente: `Cliente ${i}`, scadeIl: tra(5 + i) }));
+  render(<RichiesteSito prenotazioni={tre} oggi="2026-10-17" grandi={1} />);
+  expect(screen.getAllByRole('button', { name: /Conferma, paga al ritiro/ })).toHaveLength(1);
+  expect(screen.getByRole('button', { name: /Mostra le altre 2/ })).toBeInTheDocument();
+});

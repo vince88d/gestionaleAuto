@@ -69,3 +69,4 @@
       display: none;
     }
   }
+.avviso-richieste-link { margin-top: 6px; padding: 0; border: 0; background: none; color: #1a6fb0; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; }

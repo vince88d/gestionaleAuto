@@ -293,3 +293,16 @@
 .logout-btn:hover {
   background: #3d5166;
 }
+
+/* Segnale delle richieste dal sito su «Prenotazioni». */
+.sidebar nav ul li a .nav-numero {
+  margin-left: auto; min-width: 22px; padding: 1px 8px; border-radius: 999px;
+  background: #d93025; color: #fff; font-size: 12px; font-weight: 800; text-align: center; line-height: 1.5;
+}
+.sidebar nav ul li a .nav-pallino {
+  position: absolute; top: 8px; right: 10px; width: 11px; height: 11px; border-radius: 50%;
+  background: #d93025; border: 2px solid #1f3347;
+}
+.sidebar nav ul li a .sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}

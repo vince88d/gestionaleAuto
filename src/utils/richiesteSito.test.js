@@ -1,6 +1,6 @@
 import {
   richiesteDaGestire, tempoRimasto, sceltaRichiesta, leggiPrezzo, ORE_PREVENTIVO, ORE_PREVENTIVO_DEFAULT, scadenzaPreventivo, preventivoInviato,
-  contaRichieste, filtraRichieste,
+  contaRichieste, filtraRichieste, testoNumeroMenu, titoloConRichieste, richiesteNuove, avvisoNuoveRichieste,
 } from './richiesteSito';
 
 const ORA = Date.parse('2026-10-17T12:00:00Z');
@@ -93,5 +93,26 @@ describe('tante richieste: conta e filtra', () => {
   });
   test('ricerca e filtro insieme', () => {
     expect(filtraRichieste(elenco, 'urgenti', 'neri', ora)).toHaveLength(0);
+  });
+});
+
+describe('segnale delle richieste', () => {
+  test('numero nel menu: «99+» oltre 99', () => {
+    expect(testoNumeroMenu(4)).toBe('4');
+    expect(testoNumeroMenu(99)).toBe('99');
+    expect(testoNumeroMenu(100)).toBe('99+');
+  });
+  test('titolo della scheda con il numero solo se ci sono richieste', () => {
+    expect(titoloConRichieste('Gestionale Auto', 0)).toBe('Gestionale Auto');
+    expect(titoloConRichieste('Gestionale Auto', 3)).toBe('(3) Gestionale Auto');
+  });
+  test('richieste nuove e testo dell\'avviso', () => {
+    const r = (id, cliente) => ({ prenotazione: { id, cliente, categoria: 'Camper', dataInizio: '2026-10-31' } });
+    const elenco = [r('a', 'Anna'), r('b', 'Giulia'), r('c', 'Paolo')];
+    const nuove = richiesteNuove(elenco, new Set(['a', 'b']));
+    expect(nuove.map((x) => x.prenotazione.id)).toEqual(['c']);
+    expect(avvisoNuoveRichieste(nuove)).toEqual({ titolo: 'Nuova richiesta dal sito', dettaglio: 'Paolo · Camper · dal 31/10' });
+    expect(avvisoNuoveRichieste(elenco).titolo).toBe('3 nuove richieste dal sito');
+    expect(avvisoNuoveRichieste([])).toBeNull();
   });
 });

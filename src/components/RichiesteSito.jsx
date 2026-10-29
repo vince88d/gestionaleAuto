@@ -19,7 +19,9 @@ import './RichiesteSito.css';
 // richiesta tiene l'auto per 24 ore: il tempo rimasto si vede.
 // Non mostra nulla se non ce ne sono.
 // Mockup: formiarent-documenti/mockup/gestionale-aiuti-e-richieste.html (parte C)
-export default function RichiesteSito({ prenotazioni, oggi }) {
+// grandi: quante richieste restano in grande (le altre vanno nell'elenco compatto);
+// la Dashboard ne mostra 1 per non coprire il resto.
+export default function RichiesteSito({ prenotazioni, oggi, grandi: quanteGrandi = RICHIESTE_GRANDI }) {
   // Si aggiorna ogni minuto per il conto alla rovescia.
   const [adesso, setAdesso] = useState(() => Date.now());
   useEffect(() => {
@@ -47,8 +49,8 @@ export default function RichiesteSito({ prenotazioni, oggi }) {
 
   if (richieste.length === 0) return null;
 
-  const grandi = richieste.slice(0, RICHIESTE_GRANDI);
-  const altre = richieste.slice(RICHIESTE_GRANDI);
+  const grandi = richieste.slice(0, quanteGrandi);
+  const altre = richieste.slice(quanteGrandi);
   const conto = contaRichieste(altre, adesso);
   const altreFiltrate = filtraRichieste(altre, filtro, cerca, adesso);
   const FILTRI = [

@@ -247,7 +247,7 @@ function Dashboard() {
         <h1 className="dash-saluto">{saluto()}</h1>
       </header>
 
-      <RichiesteSito prenotazioni={tuttePrenotazioni} oggi={oggi} />
+      <RichiesteSito prenotazioni={tuttePrenotazioni} oggi={oggi} grandi={1} />
 
       <div className="dash-stat">
         {stats.map(({ titolo, valore, extra, link, Icona, tono, onClick }) => (

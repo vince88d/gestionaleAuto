@@ -41,3 +41,26 @@ test('un logo largo non va nel menu: restano le iniziali', () => {
   expect(container.querySelector('.brand-badge img')).toBeNull();
   expect(container.querySelector('.brand-badge').textContent).toBe('FR');
 });
+
+test('numero rosso su Prenotazioni con le richieste dal sito da confermare', () => {
+  mockAzienda.dati = { nome: 'Formia Rent' };
+  const { container } = render(<Sidebar collapsed={false} toggleSidebar={jest.fn()} richiesteDaConfermare={4} />);
+  expect(container.querySelector('.nav-numero').textContent).toBe('4');
+  expect(screen.getByText(/4 richieste dal sito da confermare/)).toBeInTheDocument();
+});
+
+test('oltre 99 richieste il numero diventa 99+; senza richieste non c\'è niente', () => {
+  mockAzienda.dati = { nome: 'Formia Rent' };
+  const { container, rerender } = render(<Sidebar collapsed={false} toggleSidebar={jest.fn()} richiesteDaConfermare={120} />);
+  expect(container.querySelector('.nav-numero').textContent).toBe('99+');
+  rerender(<Sidebar collapsed={false} toggleSidebar={jest.fn()} richiesteDaConfermare={0} />);
+  expect(container.querySelector('.nav-numero')).toBeNull();
+  expect(container.querySelector('.nav-pallino')).toBeNull();
+});
+
+test('menu chiuso: pallino al posto del numero', () => {
+  mockAzienda.dati = { nome: 'Formia Rent' };
+  const { container } = render(<Sidebar collapsed toggleSidebar={jest.fn()} richiesteDaConfermare={2} />);
+  expect(container.querySelector('.nav-pallino')).not.toBeNull();
+  expect(container.querySelector('.nav-numero')).toBeNull();
+});
