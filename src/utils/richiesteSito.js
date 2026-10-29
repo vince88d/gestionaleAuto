@@ -78,3 +78,35 @@ export function preventivoInviato(p) {
   const t = p?.preventivo?.totale;
   return p?.daPreventivo && typeof t === 'number' ? t : null;
 }
+
+// Tante richieste (Dashboard e Prenotazioni): le prime RICHIESTE_GRANDI restano
+// in grande, le altre vanno in un elenco compatto con filtri e ricerca.
+// `elenco` e' quello di richiesteDaGestire.
+export const RICHIESTE_GRANDI = 3;
+export const ORE_URGENTE = 3;
+
+const urgente = (r, adessoMs) => !r.scaduta && r.scadeMs !== null && r.scadeMs - adessoMs < ORE_URGENTE * 3600 * 1000;
+
+// Quante scadono entro 3 ore e quante sono gia' scadute.
+export function contaRichieste(elenco, adessoMs) {
+  return {
+    urgenti: elenco.filter((r) => urgente(r, adessoMs)).length,
+    scadute: elenco.filter((r) => r.scaduta).length,
+  };
+}
+
+// filtro: 'tutte' | 'urgenti' | 'scadute'. ricerca: parte del nome o del telefono.
+export function filtraRichieste(elenco, filtro, ricerca, adessoMs) {
+  const testo = String(ricerca || '').trim().toLowerCase();
+  const cifre = testo.replace(/\D/g, '');
+  return elenco.filter((r) => {
+    if (filtro === 'urgenti' && !urgente(r, adessoMs)) return false;
+    if (filtro === 'scadute' && !r.scaduta) return false;
+    if (!testo) return true;
+    const nome = String(r.prenotazione.cliente || '').toLowerCase();
+    const telefono = String(r.prenotazione.telefono || '').replace(/\D/g, '');
+    // Il telefono si cerca solo se si scrive un numero (niente falsi risultati cercando un nome).
+    const eNumero = /^[\d\s+()-]+$/.test(testo);
+    return nome.includes(testo) || (eNumero && cifre.length > 0 && telefono.includes(cifre));
+  });
+}

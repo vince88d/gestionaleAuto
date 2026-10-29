@@ -1,5 +1,6 @@
 import {
   richiesteDaGestire, tempoRimasto, sceltaRichiesta, leggiPrezzo, ORE_PREVENTIVO, ORE_PREVENTIVO_DEFAULT, scadenzaPreventivo, preventivoInviato,
+  contaRichieste, filtraRichieste,
 } from './richiesteSito';
 
 const ORA = Date.parse('2026-10-17T12:00:00Z');
@@ -67,5 +68,30 @@ describe('preventivo con link', () => {
     expect(preventivoInviato({ daPreventivo: true, preventivo: { totale: 285 } })).toBe(285);
     expect(preventivoInviato({ preventivo: { totale: 285 } })).toBeNull();
     expect(preventivoInviato({})).toBeNull();
+  });
+});
+
+describe('tante richieste: conta e filtra', () => {
+  const ora = 1_000_000_000_000;
+  const r = (id, cliente, telefono, oreRimaste, scaduta = false) => ({
+    prenotazione: { id, cliente, telefono }, scadeMs: ora + oreRimaste * 3600e3, scaduta,
+  });
+  const elenco = [r('a', 'Anna Verdi', '333 111 2222', 1), r('b', 'Marco Neri', '333 999 0000', 10), r('c', 'Luca Bianchi', '320 555 1234', -1, true)];
+
+  test('conta urgenti (entro 3 ore, non scadute) e scadute', () => {
+    expect(contaRichieste(elenco, ora)).toEqual({ urgenti: 1, scadute: 1 });
+  });
+  test('filtra per urgenza', () => {
+    expect(filtraRichieste(elenco, 'urgenti', '', ora).map((x) => x.prenotazione.id)).toEqual(['a']);
+    expect(filtraRichieste(elenco, 'scadute', '', ora).map((x) => x.prenotazione.id)).toEqual(['c']);
+    expect(filtraRichieste(elenco, 'tutte', '', ora)).toHaveLength(3);
+  });
+  test('cerca per nome o per telefono, anche con spazi', () => {
+    expect(filtraRichieste(elenco, 'tutte', 'neri', ora).map((x) => x.prenotazione.id)).toEqual(['b']);
+    expect(filtraRichieste(elenco, 'tutte', '555 12', ora).map((x) => x.prenotazione.id)).toEqual(['c']);
+    expect(filtraRichieste(elenco, 'tutte', 'zzz', ora)).toHaveLength(0);
+  });
+  test('ricerca e filtro insieme', () => {
+    expect(filtraRichieste(elenco, 'urgenti', 'neri', ora)).toHaveLength(0);
   });
 });
