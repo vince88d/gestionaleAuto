@@ -430,3 +430,5 @@
 .dash-riga--scegli { background: #fff7ed; border: 1px solid #fed7aa; }
 .dash-azione--scegli { border-color: #b45309; background: #b45309; color: #fff; }
 .dash-azione--scegli:hover { background: #92400e; }
+
+.dash-mostra-ritardo { color: #a93226; }

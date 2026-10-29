@@ -1,4 +1,4 @@
-import { riepilogoDashboard, serieUltimi12Mesi, prezzoPrenotazione, veicoliLiberiNelPeriodo } from './dashboard';
+import { riepilogoDashboard, serieUltimi12Mesi, prezzoPrenotazione, veicoliLiberiNelPeriodo, ritardiNascosti, RIGHE_OGGI_CON_I_CLIENTI } from './dashboard';
 
 jest.mock('../lib/firestorePrenotazioni', () => ({
   STATI_PRENOTAZIONE_NON_CONFERMATE: ['richiesta-sito', 'scaduta', 'pagamento-fallito'],
@@ -138,5 +138,17 @@ describe('auto sospese nella dashboard', () => {
 
   test('senza sospesi non c\'e niente da riassegnare', () => {
     expect(riepilogoDashboard({ veicoli, prenotazioni, holds: [], oggi: OGGI }).suVeicoloSospeso).toEqual([]);
+  });
+});
+
+describe('ritardiNascosti', () => {
+  const righe = [{ r: true }, { r: true }, { r: true }, { r: true }, { r: true }, { r: true }, { r: true }, { r: false }, { r: false }];
+  const inRitardo = (p) => p.r;
+  it('conta solo i ritardi dopo le righe visibili', () => {
+    expect(ritardiNascosti(righe, RIGHE_OGGI_CON_I_CLIENTI, inRitardo)).toBe(2);
+  });
+  it('zero se tutto e visibile o non ci sono ritardi nascosti', () => {
+    expect(ritardiNascosti(righe.slice(0, 5), 5, inRitardo)).toBe(0);
+    expect(ritardiNascosti([...righe.slice(0, 2), { r: false }, { r: false }, { r: false }, { r: false }, { r: false }, { r: false }], 5, inRitardo)).toBe(0);
   });
 });
