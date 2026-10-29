@@ -13,6 +13,14 @@ const giorno = (valore) => (valore ? String(valore).slice(0, 10) : '');
 // telefono quando lo staff l'ha confermata. In entrambi i casi non si ricalcola.
 export const pagataSulSito = (p) => Boolean(p && (p.paymentIntentId || p.origine === 'sito'));
 
+// Etichetta per le righe dell'elenco: null per le prenotazioni fatte al banco.
+// «pagata» se il cliente ha pagato online, «al-ritiro» se e' una richiesta senza
+// pagamento confermata dallo staff.
+export function origineSito(p) {
+  if (!p || !pagataSulSito(p)) return null;
+  return p.richiestaSenzaPagamento ? 'al-ritiro' : 'pagata';
+}
+
 // Controlli prima di salvare una prenotazione nuova (`originale` assente) o
 // modificata. Restituisce { errore } oppure { prezzoTotale } da salvare, con
 // totaleNoleggio, protezione, cauzione e optional (vedi sceltaExtra.js) per

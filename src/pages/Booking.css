@@ -1547,3 +1547,16 @@ gap: 0.3rem;
   .bk-tabella--lavoro .bk-btn-testo { display: none; }
   .bk-tabella--lavoro .bk-azioni-riga .bk-btn--piccolo { padding: 6px 8px; }
 }
+
+/* Etichetta e filtro «Dal sito» */
+.bookings-filtri-sep { width: 1px; align-self: stretch; min-height: 1.6rem; margin: 0 0.2rem; background: #c5ced8; }
+.bookings-filtro--sito { border-color: #9cc3e3; color: #1a6fb0; }
+.bookings-filtro--sito.bookings-filtro--attivo,
+.bookings-filtro--sito.bookings-filtro--attivo:hover { background: #0f5a93; border-color: #0f5a93; color: #fff; }
+.bk-dal-sito {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; padding: 2px 9px;
+  border-radius: 6px; border: 1px solid #b9d5ee; background: #e8f1fa; color: #0f4f80;
+  font-size: 12.5px; font-weight: 700;
+}
+.bk-dal-sito--pagata { border-color: #b5dcc5; background: #e3f3ea; color: #17653a; }
+.bk-link { border: 0; background: none; padding: 0; font: inherit; color: #1a6fb0; font-weight: 700; text-decoration: underline; cursor: pointer; }
