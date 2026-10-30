@@ -6,7 +6,7 @@ import {
 import {
   readClienti, aggiungiContrattoCliente, creaCliente, aggiornaCampiCliente, normalizzaCodiceFiscale,
 } from './firestoreClienti';
-import { clienteDaPrenotazione } from '../utils/validaCliente';
+import { clienteDaPrenotazione, normalizzaDocumento, senzaCodiceFiscale } from '../utils/validaCliente';
 import { calcolaGiorniNoleggio } from '../utils/giorniNoleggio';
 import { senzaUndefined } from '../utils/senzaUndefined';
 import { registroControllo } from '../utils/neopatentati';
@@ -170,6 +170,8 @@ export async function assegnaVeicolo({ prenotazione, veicolo, patente }) {
 // La scheda del veicolo, il contratto e lo stato si scrivono in altri momenti.
 export const CAMPI_PRENOTAZIONE = [
   'cliente', 'telefono', 'codiceFiscale', 'patente', 'emailCliente',
+  // Cliente scelto dall'anagrafica (codice interno) e, se straniero senza codice fiscale, i suoi dati.
+  'idCliente', 'senzaCodiceFiscale', 'dataNascita', 'luogoNascita', 'tipoDocumento', 'documento', 'nazionalita',
   'veicolo', 'targa', 'dataInizio', 'dataFine', 'prezzoGiornaliero', 'prezzoTotale',
   // Ore "HH:MM" di uscita e rientro e tolleranza usata per contare i giorni (come il sito).
   'oraInizio', 'oraFine', 'tolleranzaMinuti',
@@ -211,7 +213,12 @@ export async function salvaPrenotazione(dati, originale = null) {
 // 'aggiornato' o null (anagrafica non toccata o non riuscita).
 // `cauzioneBloccata` (se la prenotazione ha una cauzione): spunta del
 // promemoria "Ho bloccato la cauzione", servira' al rientro.
-export async function registraConsegna({ prenotazione, scheda, patente, scadenzaPatente, rilascioPatente, codiceFiscale, ip, cauzioneBloccata, veicolo }) {
+//
+// `identita` (cliente straniero senza codice fiscale): { senzaCodiceFiscale,
+// dataNascita, luogoNascita, tipoDocumento, documento, nazionalita }.
+// `copiaCartacea`: true se si e' presa copia cartacea dei documenti (si
+// registra chi e quando; serve la presa visione nelle Impostazioni).
+export async function registraConsegna({ prenotazione, scheda, patente, scadenzaPatente, rilascioPatente, codiceFiscale, identita, copiaCartacea, ip, cauzioneBloccata, veicolo }) {
   const campi = {
     schedaVeicolo: scheda || {},
     consegnataIl: new Date().toISOString(),
@@ -229,44 +236,71 @@ export async function registraConsegna({ prenotazione, scheda, patente, scadenza
   if (/^\d{4}-\d{2}-\d{2}$/.test(rilascioPatente || '')) campi.rilascioPatente = rilascioPatente;
   const cfPulito = normalizzaCodiceFiscale(codiceFiscale);
   if (/^[A-Z0-9]{16}$/.test(cfPulito)) campi.codiceFiscale = cfPulito;
+  if (identita?.senzaCodiceFiscale === true && !campi.codiceFiscale && !prenotazione.codiceFiscale) {
+    campi.senzaCodiceFiscale = true;
+    ['dataNascita', 'luogoNascita', 'tipoDocumento', 'documento', 'nazionalita'].forEach((nome) => {
+      const valore = String(identita[nome] || '').trim();
+      if (valore) campi[nome] = valore;
+    });
+  }
+  if (copiaCartacea === true) {
+    campi.copiaCartacea = { registrataIl: new Date().toISOString(), registrataDa: auth?.currentUser?.email || '' };
+  }
 
   await aggiornaPrenotazione(prenotazione.id, campi, { statoAtteso: 'attiva' });
 
   let cliente = null;
+  let campiSalvati = campi;
   try {
-    cliente = await aggiornaAnagraficaAllaConsegna(
+    const esito = await aggiornaAnagraficaAllaConsegna(
       { ...prenotazione, ...campi },
       { patente: patentePulita, scadenzaPatente, rilascioPatente: campi.rilascioPatente || '' },
     );
+    cliente = esito?.esito || null;
+    // Il codice interno lega la prenotazione al cliente anche senza codice fiscale.
+    if (esito?.idCliente && esito.idCliente !== prenotazione.idCliente) {
+      campiSalvati = { ...campi, idCliente: esito.idCliente };
+      await aggiornaPrenotazione(prenotazione.id, { idCliente: esito.idCliente });
+    }
   } catch (error) {
     // La consegna e' salvata: l'anagrafica e' secondaria.
     console.error('Anagrafica cliente non aggiornata alla consegna:', error);
   }
 
-  return { campi, cliente };
+  return { campi: campiSalvati, cliente };
 }
 
+// Restituisce { esito: 'creato' | 'aggiornato', idCliente } o null.
 async function aggiornaAnagraficaAllaConsegna(prenotazione, documenti) {
   const dati = clienteDaPrenotazione(prenotazione, documenti);
-  if (!/^[A-Z0-9]{16}$/.test(dati.codiceFiscale)) return null;
+  const senzaCf = senzaCodiceFiscale(dati);
+  if (!senzaCf && !/^[A-Z0-9]{16}$/.test(dati.codiceFiscale)) return null;
   const contratto = { contratto: null, data: prenotazione.consegnataIl, targa: prenotazione.targa || '' };
 
   const clienti = await readClienti();
-  const esistente = clienti.find((c) => normalizzaCodiceFiscale(c.codiceFiscale) === dati.codiceFiscale);
+  const documento = normalizzaDocumento(dati.documento);
+  const esistente = senzaCf
+    ? clienti.find((c) => (prenotazione.idCliente && c.id === prenotazione.idCliente)
+        || (documento && senzaCodiceFiscale(c) && normalizzaDocumento(c.documento) === documento))
+    : clienti.find((c) => normalizzaCodiceFiscale(c.codiceFiscale) === dati.codiceFiscale);
   if (!esistente) {
+    // Senza codice fiscale e senza numero di documento non si puo' riconoscere
+    // un cliente gia' presente: meglio non crearne uno che rischia il doppione.
+    if (senzaCf && !documento) return null;
     const nuovo = await creaCliente(dati);
     await aggiungiContrattoCliente(nuovo.id, contratto);
-    return 'creato';
+    return { esito: 'creato', idCliente: nuovo.id };
   }
   // Solo i campi vuoti: quello che lo staff ha gia' scritto non si tocca.
   const daCompletare = Object.fromEntries(
-    ['patente', 'scadenzaPatente', 'rilascioPatente', 'email', 'telefono']
+    ['patente', 'scadenzaPatente', 'rilascioPatente', 'email', 'telefono',
+      ...(senzaCf ? ['dataNascita', 'luogoNascita', 'tipoDocumento', 'documento', 'nazionalita'] : [])]
       .filter((campo) => dati[campo] && !esistente[campo])
       .map((campo) => [campo, dati[campo]])
   );
   if (Object.keys(daCompletare).length > 0) await aggiornaCampiCliente(esistente.id, daCompletare);
   await aggiungiContrattoCliente(esistente.id, contratto);
-  return 'aggiornato';
+  return { esito: 'aggiornato', idCliente: esistente.id };
 }
 
 // Segna come riparato il danno rilevato alla riconsegna di una prenotazione.

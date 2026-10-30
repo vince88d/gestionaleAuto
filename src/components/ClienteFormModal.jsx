@@ -3,6 +3,8 @@ import Modal from 'react-modal';
 import { X } from 'lucide-react';
 import { preparaCliente, clientePerForm, validaCliente } from '../utils/validaCliente';
 import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
+import CasiParticolari from './CasiParticolari';
+import Aiuto from './Aiuto';
 import '../styles/Prenotazione.css';
 
 const TIPI_DOCUMENTO = [
@@ -15,7 +17,7 @@ const TIPI_DOCUMENTO = [
 ];
 
 export const CLIENTE_VUOTO = {
-  nome: '', cognome: '', codiceFiscale: '', dataNascita: '', luogoNascita: '', indirizzo: '',
+  nome: '', cognome: '', codiceFiscale: '', senzaCodiceFiscale: false, nazionalita: '', dataNascita: '', luogoNascita: '', indirizzo: '',
   email: '', telefono: '', cellulare: '',
   tipoDocumento: '', tipoDocumentoAltro: '', documento: '', rilasciatoDaDocumento: '', rilascioDocumento: '', scadenzaDocumento: '',
   patente: '', rilasciataDaPatente: '', rilascioPatente: '', scadenzaPatente: '',
@@ -51,6 +53,12 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
       ...(name === 'tipoDocumento' && value !== 'Altro' ? { tipoDocumentoAltro: '' } : {}),
     }));
     if (errori[name]) setErrori((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const cambiaSenzaCf = (e) => {
+    const senza = e.target.checked;
+    setDati((prev) => ({ ...prev, senzaCodiceFiscale: senza, ...(senza ? { codiceFiscale: '' } : {}) }));
+    setErrori((prev) => ({ ...prev, codiceFiscale: undefined, dataNascita: undefined, luogoNascita: undefined, documento: undefined, tipoDocumento: undefined }));
   };
 
   const invia = async (e) => {
@@ -113,11 +121,29 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
             <div className="pz-griglia pz-griglia--2">
               {campo('nome', 'Nome', { obbligatorio: true, autoFocus: !modifica })}
               {campo('cognome', 'Cognome', { obbligatorio: true })}
-              {campo('codiceFiscale', 'Codice fiscale', {
+              <CasiParticolari
+                titolo="Non ha il codice fiscale?"
+                attive={dati.senzaCodiceFiscale === true ? ['Straniero'] : []}
+              >
+                <div className="pz-scelte">
+                  <label className="pz-scelta">
+                    <input type="checkbox" checked={dati.senzaCodiceFiscale === true} onChange={cambiaSenzaCf} />
+                    <span className="pz-scelta-testo">
+                      <b>Cliente straniero</b>
+                    </span>
+                    <Aiuto titolo="Cliente straniero">
+                      Senza codice fiscale servono al suo posto data e luogo di nascita e un documento d&apos;identità.
+                      Il cliente si riconosce da un codice interno e le sue prenotazioni restano collegate.
+                    </Aiuto>
+                  </label>
+                </div>
+              </CasiParticolari>
+              {dati.senzaCodiceFiscale !== true && campo('codiceFiscale', 'Codice fiscale', {
                 obbligatorio: true, placeholder: 'Es. RSSMRA80A01H501U', style: { textTransform: 'uppercase' }, maxLength: 16,
               })}
-              {campo('dataNascita', 'Data di nascita', { tipo: 'date' })}
-              {campo('luogoNascita', 'Luogo di nascita')}
+              {campo('dataNascita', 'Data di nascita', { tipo: 'date', obbligatorio: dati.senzaCodiceFiscale === true })}
+              {campo('luogoNascita', 'Luogo di nascita', { obbligatorio: dati.senzaCodiceFiscale === true })}
+              {dati.senzaCodiceFiscale === true && campo('nazionalita', 'Nazionalità (facoltativa)')}
               {campo('indirizzo', 'Indirizzo', { placeholder: 'Via, numero, città' })}
             </div>
           </section>
@@ -145,7 +171,7 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
             <h3 className="pz-titolo-sezione">Documento d'identità</h3>
             <div className="pz-griglia pz-griglia--2">
               <label className="pz-campo">
-                <span className="pz-etichetta">Tipo</span>
+                <span className="pz-etichetta">Tipo{dati.senzaCodiceFiscale === true && <span className="pz-obbligatorio"> *</span>}</span>
                 <select name="tipoDocumento" value={dati.tipoDocumento || ''} onChange={cambia}>
                   <option value="">Scegli…</option>
                   {TIPI_DOCUMENTO.map(([valore, nome]) => <option key={valore} value={valore}>{nome}</option>)}
@@ -153,8 +179,8 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
               </label>
               {dati.tipoDocumento === 'Altro'
                 ? campo('tipoDocumentoAltro', 'Quale documento', { placeholder: 'Es. Carta professionale' })
-                : campo('documento', 'Numero')}
-              {dati.tipoDocumento === 'Altro' && campo('documento', 'Numero')}
+                : campo('documento', 'Numero', { obbligatorio: dati.senzaCodiceFiscale === true })}
+              {dati.tipoDocumento === 'Altro' && campo('documento', 'Numero', { obbligatorio: dati.senzaCodiceFiscale === true })}
               {campo('scadenzaDocumento', 'Scadenza', { tipo: 'date' })}
               {campo('rilasciatoDaDocumento', 'Rilasciato da', { placeholder: 'Es. Comune di Roma' })}
               {campo('rilascioDocumento', 'Data di rilascio', { tipo: 'date' })}

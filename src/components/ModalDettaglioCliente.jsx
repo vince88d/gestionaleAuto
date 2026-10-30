@@ -39,7 +39,7 @@ function ModalDettaglioCliente({ show, onClose, cliente, onModifica, onElimina }
   if (!cliente) return null;
 
   // Dal piu' recente; senza annullate e pagamenti del sito non conclusi.
-  const noleggi = prenotazioniDelCliente(cliente.codiceFiscale, prenotazioni)
+  const noleggi = prenotazioniDelCliente(cliente, prenotazioni)
     .filter(isPrenotazioneVisibile)
     .sort((a, b) => String(b.dataInizio).localeCompare(String(a.dataInizio)));
   const danni = (cliente.storicoDanni || [])
@@ -67,7 +67,7 @@ function ModalDettaglioCliente({ show, onClose, cliente, onModifica, onElimina }
           <div>
             <h2 className="pz-titolo">{nome}</h2>
             <span className="pz-sottotitolo">
-              {[cliente.codiceFiscale, cliente.ragioneSociale, cliente.origine === 'sito' ? 'arrivato dal sito' : null].filter(Boolean).join(' · ')}
+              {[cliente.codiceFiscale || (cliente.senzaCodiceFiscale ? 'Senza codice fiscale' : ''), cliente.ragioneSociale, cliente.origine === 'sito' ? 'arrivato dal sito' : null].filter(Boolean).join(' · ')}
             </span>
             <nav className="pz-schede" role="tablist" aria-label="Sezioni">
               {schede.map(([chiave, etichetta]) => (
@@ -95,7 +95,8 @@ function ModalDettaglioCliente({ show, onClose, cliente, onModifica, onElimina }
               <section className="pz-sezione">
                 <h3 className="pz-titolo-sezione">Anagrafica e contatti</h3>
                 <dl className="pz-dati">
-                  <Dato etichetta="Codice fiscale">{cliente.codiceFiscale}</Dato>
+                  <Dato etichetta="Codice fiscale">{cliente.codiceFiscale || (cliente.senzaCodiceFiscale ? 'Senza codice fiscale (straniero)' : '')}</Dato>
+                  {cliente.senzaCodiceFiscale && <Dato etichetta="Nazionalità">{cliente.nazionalita}</Dato>}
                   <Dato etichetta="Nato il">{cliente.dataNascita ? formattaData(cliente.dataNascita) : ''}{cliente.luogoNascita ? ` a ${cliente.luogoNascita}` : ''}</Dato>
                   <Dato etichetta="Indirizzo">{cliente.indirizzo}</Dato>
                   <Dato etichetta="Email">{cliente.email}</Dato>

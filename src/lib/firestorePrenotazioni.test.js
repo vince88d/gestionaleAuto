@@ -129,7 +129,8 @@ describe('registraConsegna', () => {
     const scheda = { kmIniziali: '45000', carburante: 'Pieno' };
     const esito = await registraConsegna({ prenotazione: { id: 'p1', codiceFiscale: 'rssmra80a01h501u', targa: 'AA111AA', emailCliente: 'nuova@mail.it' }, scheda, patente: ' ab123 ', ip: '1.2.3.4' });
     const campi = t.update.mock.calls[0][1];
-    expect(esito.campi).toEqual(campi);
+    // Il codice interno del cliente si aggiunge alla prenotazione (legame anche senza codice fiscale).
+    expect(esito.campi).toEqual({ ...campi, idCliente: 'RSSMRA80A01H501U' });
     expect(campi).toEqual(expect.objectContaining({ schedaVeicolo: scheda, patente: 'AB123', ipConsegna: '1.2.3.4' }));
     expect(campi.consegnataIl).toBeTruthy();
     expect(aggiungiContrattoCliente).toHaveBeenCalledWith('RSSMRA80A01H501U', expect.objectContaining({ targa: 'AA111AA' }));
@@ -137,6 +138,42 @@ describe('registraConsegna', () => {
     expect(aggiornaCampiCliente).toHaveBeenCalledWith('RSSMRA80A01H501U', { patente: 'AB123' });
     expect(esito.cliente).toBe('aggiornato');
     expect(creaCliente).not.toHaveBeenCalled();
+  });
+
+  test('straniero senza codice fiscale: entra in anagrafica con un codice interno e la prenotazione ci si lega', async () => {
+    const t = transazioneCon({ status: 'attiva' });
+    readClienti.mockResolvedValue([]);
+    creaCliente.mockImplementation(async (c) => ({ ...c, id: 'interno-1' }));
+    const identita = { senzaCodiceFiscale: true, dataNascita: '1990-05-01', luogoNascita: 'Berlino', tipoDocumento: 'Passaporto', documento: 'c01x00t8r', nazionalita: 'Tedesca' };
+    const esito = await registraConsegna({ prenotazione: { id: 'p1', cliente: 'Hans Muller', targa: 'AA111AA' }, scheda: {}, patente: 'AB123', identita, ip: '1.2.3.4' });
+    const campi = t.update.mock.calls[0][1];
+    expect(campi).toEqual(expect.objectContaining({ senzaCodiceFiscale: true, dataNascita: '1990-05-01', documento: 'c01x00t8r' }));
+    expect(campi.codiceFiscale).toBeUndefined();
+    expect(creaCliente).toHaveBeenCalledWith(expect.objectContaining({ senzaCodiceFiscale: true, codiceFiscale: '', documento: 'c01x00t8r' }));
+    expect(aggiungiContrattoCliente).toHaveBeenCalledWith('interno-1', expect.objectContaining({ targa: 'AA111AA' }));
+    expect(esito.cliente).toBe('creato');
+    expect(esito.campi.idCliente).toBe('interno-1');
+    // Seconda scrittura: il codice interno sulla prenotazione.
+    expect(t.update.mock.calls[1][1]).toEqual({ idCliente: 'interno-1' });
+  });
+
+  test('straniero gia\' in anagrafica (stesso documento): niente doppione, si usa quello esistente', async () => {
+    transazioneCon({ status: 'attiva' });
+    readClienti.mockResolvedValue([{ id: 'interno-9', senzaCodiceFiscale: true, documento: 'C01X00T8R', patente: 'AB123' }]);
+    const identita = { senzaCodiceFiscale: true, dataNascita: '1990-05-01', luogoNascita: 'Berlino', tipoDocumento: 'Passaporto', documento: 'c01x 00t8r' };
+    const esito = await registraConsegna({ prenotazione: { id: 'p1', cliente: 'Hans Muller', targa: 'AA111AA' }, scheda: {}, patente: 'AB123', identita, ip: '1.2.3.4' });
+    expect(creaCliente).not.toHaveBeenCalled();
+    expect(aggiungiContrattoCliente).toHaveBeenCalledWith('interno-9', expect.anything());
+    expect(esito.campi.idCliente).toBe('interno-9');
+  });
+
+  test('straniero senza numero di documento (copia cartacea): non si crea un cliente che rischia il doppione', async () => {
+    const t = transazioneCon({ status: 'attiva' });
+    readClienti.mockResolvedValue([]);
+    const esito = await registraConsegna({ prenotazione: { id: 'p1', cliente: 'Hans Muller', targa: 'AA111AA' }, scheda: {}, patente: 'AB123', identita: { senzaCodiceFiscale: true }, copiaCartacea: true, ip: '1.2.3.4' });
+    expect(creaCliente).not.toHaveBeenCalled();
+    expect(esito.cliente).toBeNull();
+    expect(t.update.mock.calls[0][1].copiaCartacea).toEqual(expect.objectContaining({ registrataIl: expect.any(String) }));
   });
 
   test('cliente del sito non in anagrafica: alla consegna viene creato', async () => {

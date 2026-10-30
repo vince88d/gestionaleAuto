@@ -2,7 +2,7 @@ import {
   normalizzaEtaConducenti, chiedeEta, etaSenzaSupplemento, testoSpuntaEta, etaSelezionabili,
   valutaEta, supplementoGiovane, testoSupplemento, etaConducentiPerForm, validaEtaConducenti,
   preparaEtaConducenti, ETA_CONDUCENTI_DI_PARTENZA, opzioniEtaGestionale,
-  etaDaCodiceFiscale, controlloEtaConsegna,
+  etaDaCodiceFiscale, controlloEtaConsegna, etaDaDataNascita,
 } from './etaConducenti';
 
 // Esempio del mockup: 18-20 anni +25 €/giorno, 21-24 +15 €/giorno, tetto 300 €, massimo 70 anni.
@@ -223,5 +223,24 @@ describe('controlloEtaConsegna', () => {
   test('troppo giovane o oltre il massimo', () => {
     expect(controlloEtaConsegna({ prenotazione: pren(null), etaConducenti: { ...ESEMPIO, etaMinima: 23 }, codiceFiscale: CF22, oggi: OGGI }).livello).toBe('errore');
     expect(controlloEtaConsegna({ prenotazione: pren(null), etaConducenti: { ...ESEMPIO, etaMassima: 28 }, codiceFiscale: CF30, oggi: OGGI }).livello).toBe('attenzione');
+  });
+});
+
+describe('età dalla data di nascita (clienti senza codice fiscale)', () => {
+  test('conta gli anni compiuti', () => {
+    expect(etaDaDataNascita('1990-05-01', '2026-10-30')).toBe(36);
+    expect(etaDaDataNascita('1990-11-01', '2026-10-30')).toBe(35);
+    expect(etaDaDataNascita('1990-10-30', '2026-10-30')).toBe(36);
+  });
+  test('data non leggibile o futura: null', () => {
+    expect(etaDaDataNascita('', '2026-10-30')).toBeNull();
+    expect(etaDaDataNascita('30/10/1990', '2026-10-30')).toBeNull();
+    expect(etaDaDataNascita('2030-01-01', '2026-10-30')).toBeNull();
+  });
+  test('il controllo alla consegna usa la data di nascita quando manca il codice fiscale', () => {
+    const regole = { attivo: false, etaMinima: 21, etaMassima: null, fasce: [], massimo: null };
+    const r = controlloEtaConsegna({ prenotazione: { etaConducente: 30 }, etaConducenti: regole, codiceFiscale: '', dataNascita: '2010-01-01', oggi: '2026-10-30' });
+    expect(r.livello).toBe('errore');
+    expect(r.testo).toMatch(/^Dalla data di nascita il cliente ha 16 anni/);
   });
 });

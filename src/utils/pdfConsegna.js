@@ -1,6 +1,7 @@
 // PDF del riepilogo di consegna (cliente, veicolo, scheda, spazio firma).
 // Usato alla consegna e, per riscaricarlo dopo, dai dettagli della prenotazione.
 import { prezzoPrenotazione } from './dashboard';
+import { FRASE_VERBALE } from './copiaCartacea';
 import { COPERTURE } from './protezioni';
 import { riassuntoDotazione } from './dotazione';
 import { dataEOra, formattaData, giornoLocale } from './scadenze';
@@ -130,10 +131,16 @@ export async function generaRiepilogoPdf(prenotazione, scheda = {}, opzioni = {}
   foglio.coppie(
     pieno([
       ['Nome', prenotazione.cliente || '-'],
-      ['Codice fiscale', prenotazione.codiceFiscale],
+      ['Codice fiscale', prenotazione.codiceFiscale || (prenotazione.senzaCodiceFiscale ? 'Senza codice fiscale' : '')],
+      ...(prenotazione.senzaCodiceFiscale ? [
+        ['Nascita', [prenotazione.dataNascita && formattaData(prenotazione.dataNascita), prenotazione.luogoNascita].filter(Boolean).join(' · ')],
+        ['Documento', [prenotazione.tipoDocumento, prenotazione.documento].filter(Boolean).join(' ')],
+        ['Nazionalità', prenotazione.nazionalita],
+      ] : []),
       ['Patente', patenteTesto(prenotazione.patente, opzioni.scadenzaPatente)],
       ['Telefono', prenotazione.telefono],
       ['Email', prenotazione.emailCliente],
+      ['Documenti', prenotazione.copiaCartacea ? FRASE_VERBALE : ''],
     ]),
     pieno([
       ['Ritiro', dataEOra(prenotazione.dataInizio, prenotazione.oraInizio)],

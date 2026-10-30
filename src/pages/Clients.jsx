@@ -42,20 +42,10 @@ function Clients() {
   // aggiornare anche le prenotazioni del cliente.
   const [cambioCodiceFiscale, setCambioCodiceFiscale] = useState(null);
 
-  // Noleggi per cliente (per codice fiscale), senza annullate e pagamenti del
-  // sito non conclusi.
-  const noleggiPerCliente = useMemo(() => {
-    const mappa = new Map();
-    prenotazioni.filter(isPrenotazioneVisibile).forEach((p) => {
-      const cf = (p.codiceFiscale || '').trim().toUpperCase();
-      if (!cf) return;
-      const elenco = mappa.get(cf) || [];
-      elenco.push(p);
-      mappa.set(cf, elenco);
-    });
-    return mappa;
-  }, [prenotazioni]);
-  const noleggiDi = (cliente) => noleggiPerCliente.get((cliente.codiceFiscale || '').toUpperCase()) || [];
+  // Noleggi per cliente (per codice fiscale o codice interno), senza annullate
+  // e pagamenti del sito non conclusi.
+  const prenotazioniVisibili = useMemo(() => prenotazioni.filter(isPrenotazioneVisibile), [prenotazioni]);
+  const noleggiDi = (cliente) => prenotazioniDelCliente(cliente, prenotazioniVisibili);
 
   // Ricerca mentre si scrive, su piu' parole: nome, contatti, codice fiscale,
   // patente, azienda e targhe noleggiate. In ordine alfabetico per cognome.
@@ -108,7 +98,7 @@ function Clients() {
       return;
     }
     const collegate = pronto.codiceFiscale !== (originale.codiceFiscale || '').toUpperCase()
-      ? prenotazioniDelCliente(originale.codiceFiscale, prenotazioni)
+      ? prenotazioniDelCliente(originale, prenotazioni)
       : [];
     if (collegate.length > 0) {
       setCambioCodiceFiscale({ aggiornato: pronto, originale, collegate });
@@ -204,7 +194,7 @@ function Clients() {
                       <span className="cli-secondario">{cliente.cellulare || cliente.telefono}</span>
                     )}
                   </td>
-                  <td><span className="cli-cf">{cliente.codiceFiscale || '—'}</span></td>
+                  <td><span className="cli-cf">{cliente.codiceFiscale || (cliente.senzaCodiceFiscale ? 'Senza codice fiscale' : '—')}</span></td>
                   <td>
                     <span className="cli-principale cli-normale">{cliente.patente || '—'}</span>
                     <AvvisoScadenza etichetta="Patente" data={cliente.scadenzaPatente} />
@@ -268,7 +258,7 @@ function Clients() {
         onConfirm={elimina}
         title="Eliminare il cliente?"
         message={daEliminare ? (() => {
-          const n = prenotazioniDelCliente(daEliminare.codiceFiscale, prenotazioni).length;
+          const n = prenotazioniDelCliente(daEliminare, prenotazioni).length;
           return `Sposto "${daEliminare.nome} ${daEliminare.cognome}" nel Cestino: sparisce dai Clienti, resta recuperabile per 6 mesi poi viene cancellato per sempre. ${n > 0 ? `Le sue ${n} prenotazioni restano.` : 'Non ha prenotazioni.'}`;
         })() : ''}
         confirmLabel="Elimina"
@@ -285,7 +275,7 @@ function Clients() {
         }}
         title="Cambiare il codice fiscale?"
         message={cambioCodiceFiscale
-          ? `${cambioCodiceFiscale.collegate.length === 1 ? 'C\'è 1 prenotazione' : `Ci sono ${cambioCodiceFiscale.collegate.length} prenotazioni`} con il vecchio codice fiscale (${cambioCodiceFiscale.originale.codiceFiscale}). Le aggiorno con quello nuovo (${cambioCodiceFiscale.aggiornato.codiceFiscale}), così lo storico noleggi resta del cliente.`
+          ? `${cambioCodiceFiscale.collegate.length === 1 ? 'C\'è 1 prenotazione' : `Ci sono ${cambioCodiceFiscale.collegate.length} prenotazioni`} con il vecchio codice fiscale (${cambioCodiceFiscale.originale.codiceFiscale || 'senza codice fiscale'}). Le aggiorno con quello nuovo (${cambioCodiceFiscale.aggiornato.codiceFiscale || 'senza codice fiscale'}), così lo storico noleggi resta del cliente.`
           : ''}
         confirmLabel="Aggiorna tutto"
       />

@@ -39,6 +39,8 @@ import { aggiornaDotazioneVeicolo } from '../lib/firestoreVeicoli';
 import { useAddebiti } from '../lib/firestoreAddebiti';
 import { useOrari } from '../lib/firestoreOrari';
 import { useEtaConducenti } from '../lib/firestoreEtaConducenti';
+import { useCopiaCartacea } from '../lib/firestoreCopiaCartacea';
+import { identitaConsegna } from '../utils/controlloConsegna';
 import { costruisciRientro, istanteRientro, dotazioneDopoRientro } from '../utils/rientro';
 import { aggiungiDannoCliente } from '../lib/firestoreClienti';
 import { fotoIncorporataSuStorage } from '../lib/storageFoto';
@@ -141,6 +143,7 @@ function Bookings() {
   const prezziAddebiti = useAddebiti();
   const orariSede = useOrari();
   const etaConducenti = useEtaConducenti();
+  const copiaCartacea = useCopiaCartacea();
   const [confermaInBlocco, setConfermaInBlocco] = useState(null);
   const [paginaPrenotazioni, setPaginaPrenotazioni] = useState(1);
   const [paginaClienti, setPaginaClienti] = useState(1);
@@ -161,9 +164,13 @@ function Bookings() {
   // Codice fiscale della consegna: quello della prenotazione o, se mancava,
   // quello scritto nella scheda di consegna.
   const cfConsegna = (consegnaDi?.codiceFiscale || documentiConsegna.codiceFiscale || '').trim().toUpperCase();
-  const clienteConsegna = consegnaDi && cfConsegna
-    ? clienti.find((c) => (c.codiceFiscale || '').trim().toUpperCase() === cfConsegna)
+  // Il cliente si trova dal codice interno (anche senza codice fiscale) o dal codice fiscale.
+  const clienteConsegna = consegnaDi
+    ? (consegnaDi.idCliente && clienti.find((c) => c.id === consegnaDi.idCliente))
+      || (cfConsegna ? clienti.find((c) => (c.codiceFiscale || '').trim().toUpperCase() === cfConsegna) : null)
+      || null
     : null;
+  const identitaDiConsegna = identitaConsegna({ prenotazione: consegnaDi || {}, cliente: clienteConsegna, documenti: documentiConsegna });
   const location = useLocation();
   const navigate = useNavigate();
   // Ultima richiesta arrivata da Dashboard o menu gia' eseguita (location.key).
@@ -1216,6 +1223,7 @@ return (
     etaConducenti={etaConducenti}
     onCambiaAuto={() => cambiaAuto(consegnaDi, { da: 'consegna' })}
     onModifica={() => { const p = consegnaDi; setSchedaModalOpen(false); setRiepilogoOpen(false); setConsegnaDi(null); apriModifica(p); }}
+    copiaCartaceaAttiva={copiaCartacea.attiva}
   />
 
   {consegnaDi && (
@@ -1226,6 +1234,16 @@ return (
         ...consegnaDi,
         patente: consegnaDi.patente || clienteConsegna?.patente || (documentiConsegna.patente || '').trim().toUpperCase(),
         codiceFiscale: cfConsegna,
+        ...(identitaDiConsegna.senzaCodiceFiscale && !cfConsegna ? {
+          senzaCodiceFiscale: true,
+          dataNascita: identitaDiConsegna.dataNascita,
+          luogoNascita: identitaDiConsegna.luogoNascita,
+          tipoDocumento: identitaDiConsegna.tipoDocumento === 'Altro' ? (identitaDiConsegna.tipoDocumentoAltro || 'Altro') : identitaDiConsegna.tipoDocumento,
+          documento: identitaDiConsegna.documento,
+          nazionalita: identitaDiConsegna.nazionalita,
+        } : {}),
+        ...(identitaDiConsegna.copiaCartacea ? { copiaCartacea: { registrataIl: new Date().toISOString() } } : {}),
+        ...(clienteConsegna ? { idCliente: clienteConsegna.id } : {}),
         rilascioPatente: consegnaDi.rilascioPatente || clienteConsegna?.rilascioPatente || documentiConsegna.rilascioPatente || '',
       }}
       scadenzaPatente={clienteConsegna?.scadenzaPatente || documentiConsegna.scadenzaPatente || ''}
