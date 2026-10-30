@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { preparaCliente, clientePerForm, validaCliente } from '../utils/validaCliente';
 import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
 import CasiParticolari from './CasiParticolari';
+import Aiuto from './Aiuto';
 import '../styles/Prenotazione.css';
 
 const TIPI_DOCUMENTO = [
@@ -121,16 +122,19 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
               {campo('nome', 'Nome', { obbligatorio: true, autoFocus: !modifica })}
               {campo('cognome', 'Cognome', { obbligatorio: true })}
               <CasiParticolari
-                titolo="Se il cliente non ha il codice fiscale"
+                titolo="Non ha il codice fiscale?"
                 attive={dati.senzaCodiceFiscale === true ? ['Straniero'] : []}
               >
                 <div className="pz-scelte">
                   <label className="pz-scelta">
                     <input type="checkbox" checked={dati.senzaCodiceFiscale === true} onChange={cambiaSenzaCf} />
                     <span className="pz-scelta-testo">
-                      <b>Cliente straniero, senza codice fiscale</b>
-                      <small>Al suo posto servono data e luogo di nascita e un documento d&apos;identità.</small>
+                      <b>Cliente straniero</b>
                     </span>
+                    <Aiuto titolo="Cliente straniero">
+                      Senza codice fiscale servono al suo posto data e luogo di nascita e un documento d&apos;identità.
+                      Il cliente si riconosce da un codice interno e le sue prenotazioni restano collegate.
+                    </Aiuto>
                   </label>
                 </div>
               </CasiParticolari>

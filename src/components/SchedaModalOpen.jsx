@@ -14,6 +14,7 @@ import { pagataSulSito } from '../utils/regolePrenotazione';
 import ControlloDotazione from './ControlloDotazione';
 import SchemaDanni from './SchemaDanni';
 import CasiParticolari from './CasiParticolari';
+import Aiuto from './Aiuto';
 import { segniDi, senzaDescrizione, testoDanni } from '../utils/schemaDanni';
 import '../components/schedaModal.css';
 import '../styles/Prenotazione.css';
@@ -238,6 +239,8 @@ function SchedaVeicoloModal({
             <h3 className="pz-titolo-sezione">Documenti del cliente</h3>
             {(chiediPatente || chiediScadenza || chiediCodiceFiscale || chiediRilascio || senzaCf) ? (
               <div className="pz-griglia pz-griglia--2">
+                <p className="pz-aiuto pz-intera">Controlla i documenti del cliente e completa quello che manca.</p>
+                {(chiediCodiceFiscale || senzaCf) && <p className="pz-gruppo pz-intera">Identità</p>}
                 {chiediCodiceFiscale && !senzaCf && (
                   <label className={`pz-campo pz-intera ${erroreDi('codiceFiscale') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-codice-fiscale">
                     <span className="pz-etichetta">Codice fiscale <span className="pz-obbligatorio">*</span></span>
@@ -257,7 +260,7 @@ function SchedaVeicoloModal({
                 )}
                 {chiediCodiceFiscale && (
                   <CasiParticolari
-                    titolo="Se il cliente non ha tutti i documenti"
+                    titolo="Non hai il codice fiscale del cliente?"
                     attive={[senzaCf && 'Straniero', copia && 'Copia cartacea'].filter(Boolean)}
                   >
                     <div className="pz-scelte">
@@ -268,9 +271,12 @@ function SchedaVeicoloModal({
                           onChange={(e) => aggiornaDocumento('senzaCodiceFiscale', e.target.checked)}
                         />
                         <span className="pz-scelta-testo">
-                          <b>Cliente straniero, senza codice fiscale</b>
-                          <small>Al suo posto si scrivono nascita e documento d&apos;identità.</small>
+                          <b>Cliente straniero</b>
                         </span>
+                        <Aiuto titolo="Cliente straniero">
+                          Senza codice fiscale si scrivono al suo posto data e luogo di nascita e un documento d&apos;identità
+                          (passaporto, carta d&apos;identità…). Il cliente entra in anagrafica con un codice interno.
+                        </Aiuto>
                       </label>
                       {mostraCopia && (
                         <label className="pz-scelta">
@@ -280,9 +286,13 @@ function SchedaVeicoloModal({
                             onChange={(e) => aggiornaDocumento('copiaCartacea', e.target.checked)}
                           />
                           <span className="pz-scelta-testo">
-                            <b>Ho preso copia cartacea dei documenti</b>
-                            <small>Non bloccano più codice fiscale, documento e nascita. La patente resta obbligatoria. Si registra chi l&apos;ha spuntata e quando.</small>
+                            <b>Ho preso copia cartacea</b>
                           </span>
+                          <Aiuto titolo="Copia cartacea dei documenti">
+                            Se tieni una copia cartacea dei documenti del cliente, codice fiscale, documento d&apos;identità e data
+                            di nascita non bloccano più la consegna. La patente resta sempre obbligatoria. Si registra chi ha messo
+                            la spunta e quando.
+                          </Aiuto>
                         </label>
                       )}
                     </div>
@@ -310,6 +320,13 @@ function SchedaVeicoloModal({
                     {campoIdentita('nazionalita', 'Nazionalità (facoltativa)', { obbligatorio: false, id: 'consegna-nazionalita' })}
                   </>
                 )}
+                <p className="pz-gruppo pz-intera">
+                  Patente
+                  <Aiuto titolo="Patente">
+                    Controlla la patente in sede. I dati vanno anche nella scheda del cliente
+                    {cliente ? '' : ', che verrà aggiunto ai Clienti'}.
+                  </Aiuto>
+                </p>
                 {chiediPatente ? (
                   <label className={`pz-campo ${erroreDi('patente') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-patente">
                     <span className="pz-etichetta">Numero patente <span className="pz-obbligatorio">*</span></span>
@@ -369,10 +386,6 @@ function SchedaVeicoloModal({
                     <strong style={{ fontSize: 14, lineHeight: '40px' }}>{formattaData(rilascioPatente)}</strong>
                   </div>
                 )}
-                <p className="pz-aiuto pz-intera">
-                  Controlla la patente in sede. I dati vanno anche nella scheda del cliente
-                  {cliente ? '' : ', che verrà aggiunto ai Clienti'}.
-                </p>
               </div>
             ) : (
               <dl className="pz-dati">
