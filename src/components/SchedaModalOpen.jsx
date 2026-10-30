@@ -13,6 +13,7 @@ import { controlloAbbinamento, statoVelocita, testoVelocita, AVVISO_CONTROLLO, A
 import { pagataSulSito } from '../utils/regolePrenotazione';
 import ControlloDotazione from './ControlloDotazione';
 import SchemaDanni from './SchemaDanni';
+import CasiParticolari from './CasiParticolari';
 import { segniDi, senzaDescrizione, testoDanni } from '../utils/schemaDanni';
 import '../components/schedaModal.css';
 import '../styles/Prenotazione.css';
@@ -255,8 +256,10 @@ function SchedaVeicoloModal({
                   </label>
                 )}
                 {chiediCodiceFiscale && (
-                  <div className="pz-intera">
-                    <p className="pz-scelte-titolo">Se il cliente non ha tutti i documenti</p>
+                  <CasiParticolari
+                    titolo="Se il cliente non ha tutti i documenti"
+                    attive={[senzaCf && 'Straniero', copia && 'Copia cartacea'].filter(Boolean)}
+                  >
                     <div className="pz-scelte">
                       <label className="pz-scelta">
                         <input
@@ -283,7 +286,7 @@ function SchedaVeicoloModal({
                         </label>
                       )}
                     </div>
-                  </div>
+                  </CasiParticolari>
                 )}
                 {senzaCf && (
                   <>

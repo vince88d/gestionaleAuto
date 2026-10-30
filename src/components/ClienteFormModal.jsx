@@ -3,6 +3,7 @@ import Modal from 'react-modal';
 import { X } from 'lucide-react';
 import { preparaCliente, clientePerForm, validaCliente } from '../utils/validaCliente';
 import { scorriAlPrimoErrore } from '../utils/scorriAlPrimoErrore';
+import CasiParticolari from './CasiParticolari';
 import '../styles/Prenotazione.css';
 
 const TIPI_DOCUMENTO = [
@@ -119,8 +120,10 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
             <div className="pz-griglia pz-griglia--2">
               {campo('nome', 'Nome', { obbligatorio: true, autoFocus: !modifica })}
               {campo('cognome', 'Cognome', { obbligatorio: true })}
-              <div className="pz-intera">
-                <p className="pz-scelte-titolo">Se il cliente non ha il codice fiscale</p>
+              <CasiParticolari
+                titolo="Se il cliente non ha il codice fiscale"
+                attive={dati.senzaCodiceFiscale === true ? ['Straniero'] : []}
+              >
                 <div className="pz-scelte">
                   <label className="pz-scelta">
                     <input type="checkbox" checked={dati.senzaCodiceFiscale === true} onChange={cambiaSenzaCf} />
@@ -130,7 +133,7 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
                     </span>
                   </label>
                 </div>
-              </div>
+              </CasiParticolari>
               {dati.senzaCodiceFiscale !== true && campo('codiceFiscale', 'Codice fiscale', {
                 obbligatorio: true, placeholder: 'Es. RSSMRA80A01H501U', style: { textTransform: 'uppercase' }, maxLength: 16,
               })}
