@@ -81,3 +81,19 @@ describe('cliente dall\'anagrafica', () => {
     expect(documentiCompleti({ ...c, patente: '' })).toBe(false);
   });
 });
+
+describe('straniero senza codice fiscale nella nuova prenotazione', () => {
+  const { documentiCompleti, datiDaCliente } = require('./nuovaPrenotazione');
+  test('documenti completi con nascita e documento al posto del codice fiscale', () => {
+    const c = { senzaCodiceFiscale: true, patente: 'AB123', dataNascita: '1990-05-01', luogoNascita: 'Berlino', tipoDocumento: 'Passaporto', documento: 'C01' };
+    expect(documentiCompleti(c)).toBe(true);
+    expect(documentiCompleti({ ...c, documento: '' })).toBe(false);
+    expect(documentiCompleti({ ...c, patente: '' })).toBe(false);
+    expect(documentiCompleti({ patente: 'AB123' })).toBe(false);
+  });
+  test('scegliendo il cliente si porta dietro il codice interno e i dati dello straniero', () => {
+    const d = datiDaCliente({ id: 'int-1', nome: 'Hans', cognome: 'Muller', senzaCodiceFiscale: true, dataNascita: '1990-05-01', documento: 'C01' });
+    expect(d).toEqual(expect.objectContaining({ idCliente: 'int-1', senzaCodiceFiscale: true, dataNascita: '1990-05-01', documento: 'C01' }));
+    expect(datiDaCliente({ id: 'RSS', nome: 'Mario', codiceFiscale: 'rss' }).senzaCodiceFiscale).toBeUndefined();
+  });
+});

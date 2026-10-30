@@ -1,4 +1,4 @@
-import { preparaCliente, clientePerForm, validaCliente, prenotazioniDelCliente } from './validaCliente';
+import { preparaCliente, clientePerForm, validaCliente, prenotazioniDelCliente, cercaClienti, clienteDaPrenotazione } from './validaCliente';
 
 jest.mock('../components/firebase', () => ({ db: {} }));
 
@@ -71,4 +71,55 @@ test('clienteDaPrenotazione separa nome e cognome e prende la patente della cons
     { cliente: 'Anna Maria Verdi', codiceFiscale: 'vrdnmr90a41h501x', emailCliente: 'a@b.it', telefono: '333', origine: 'sito' },
     { patente: ' ab12 ', scadenzaPatente: '2030-01-01' });
   expect(c).toEqual({ nome: 'Anna', cognome: 'Maria Verdi', codiceFiscale: 'VRDNMR90A41H501X', email: 'a@b.it', telefono: '333', patente: 'AB12', scadenzaPatente: '2030-01-01', rilascioPatente: '', origine: 'sito' });
+});
+
+describe('cliente straniero senza codice fiscale', () => {
+  const straniero = {
+    nome: 'Hans', cognome: 'Muller', senzaCodiceFiscale: true, patente: 'ab123',
+    dataNascita: '1990-05-01', luogoNascita: 'Berlino', tipoDocumento: 'Passaporto', documento: 'c01x00t8r',
+  };
+
+  test('preparaCliente lascia vuoto il codice fiscale', () => {
+    expect(preparaCliente({ ...straniero, codiceFiscale: 'rssmra80a01h501u' })).toEqual(expect.objectContaining({ senzaCodiceFiscale: true, codiceFiscale: '' }));
+  });
+
+  test('senza codice fiscale servono nascita e documento; il codice fiscale non serve', () => {
+    expect(validaCliente(straniero)).toEqual({});
+    const errori = validaCliente({ ...straniero, dataNascita: '', luogoNascita: '', tipoDocumento: '', documento: '' });
+    expect(Object.keys(errori).sort()).toEqual(['dataNascita', 'documento', 'luogoNascita', 'tipoDocumento']);
+    expect(validaCliente({ ...straniero, tipoDocumento: 'Altro' }).tipoDocumentoAltro).toBeTruthy();
+  });
+
+  test('lo stesso documento (anche scritto con spazi o minuscole) non si inserisce due volte', () => {
+    const altri = [{ id: 'x1', senzaCodiceFiscale: true, documento: 'C01X 00T8R' }];
+    expect(validaCliente(straniero, altri).documento).toMatch(/già di un altro cliente/);
+    expect(validaCliente(straniero, altri, 'x1')).toEqual({});
+  });
+
+  test('il legame con le prenotazioni passa dal codice interno; per i clienti col codice fiscale non cambia nulla', () => {
+    const prenotazioni = [
+      { id: 'p1', idCliente: 'int-1' },
+      { id: 'p2', codiceFiscale: 'rssmra80a01h501u' },
+      { id: 'p3', idCliente: 'altro' },
+    ];
+    expect(prenotazioniDelCliente({ id: 'int-1', senzaCodiceFiscale: true, codiceFiscale: '' }, prenotazioni).map((p) => p.id)).toEqual(['p1']);
+    expect(prenotazioniDelCliente({ id: 'RSSMRA80A01H501U', codiceFiscale: 'RSSMRA80A01H501U' }, prenotazioni).map((p) => p.id)).toEqual(['p2']);
+    // Come prima: si puo' passare solo il codice fiscale.
+    expect(prenotazioniDelCliente('RSSMRA80A01H501U', prenotazioni).map((p) => p.id)).toEqual(['p2']);
+    expect(prenotazioniDelCliente({ id: '', codiceFiscale: '' }, prenotazioni)).toEqual([]);
+  });
+
+  test('la ricerca trova lo straniero per numero documento, targa o «senza codice fiscale»', () => {
+    const clienti = [{ id: 'int-1', nome: 'Hans', cognome: 'Muller', senzaCodiceFiscale: true, documento: 'C01X00T8R' }, { id: 'B', nome: 'Mario', cognome: 'Rossi', codiceFiscale: 'RSSMRA80A01H501U' }];
+    const prenotazioni = [{ idCliente: 'int-1', targa: 'AA111AA' }];
+    expect(cercaClienti(clienti, 'c01x00t8r', prenotazioni).map((c) => c.id)).toEqual(['int-1']);
+    expect(cercaClienti(clienti, 'aa111aa', prenotazioni).map((c) => c.id)).toEqual(['int-1']);
+    expect(cercaClienti(clienti, 'senza codice', prenotazioni).map((c) => c.id)).toEqual(['int-1']);
+  });
+
+  test('i dati dello straniero passano dalla prenotazione al cliente', () => {
+    const c = clienteDaPrenotazione({ cliente: 'Hans Muller', senzaCodiceFiscale: true, dataNascita: '1990-05-01', luogoNascita: 'Berlino', tipoDocumento: 'Passaporto', documento: 'C01' });
+    expect(c).toEqual(expect.objectContaining({ senzaCodiceFiscale: true, codiceFiscale: '', dataNascita: '1990-05-01', documento: 'C01' }));
+    expect(clienteDaPrenotazione({ cliente: 'Mario Rossi', codiceFiscale: 'rssmra80a01h501u' }).senzaCodiceFiscale).toBeUndefined();
+  });
 });

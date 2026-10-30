@@ -14,14 +14,14 @@ const unisci = (parti) => parti.filter(Boolean).join(' · ');
 // Prima della consegna servono codice fiscale e patente (si possono scrivere
 // anche alla consegna): quelli che mancano si dicono nel riassunto della scheda.
 const datiMancanti = (p = {}) => (p.status === 'attiva' && !eConsegnata(p)
-  ? [!p.codiceFiscale && 'codice fiscale', !p.patente && 'patente'].filter(Boolean)
+  ? [!p.codiceFiscale && !p.senzaCodiceFiscale && 'codice fiscale', !p.patente && 'patente'].filter(Boolean)
   : []);
 export const clienteDaCompletare = (p = {}) => datiMancanti(p).length > 0;
 
 export const riassuntoCliente = (p = {}) => {
   const mancanti = datiMancanti(p);
   if (mancanti.length > 0) return unisci([p.cliente, `${mancanti.join(' e ')} da inserire alla consegna`]);
-  return unisci([p.cliente, p.codiceFiscale, p.emailCliente]) || 'Dati del cliente non indicati';
+  return unisci([p.cliente, p.codiceFiscale || (p.senzaCodiceFiscale && 'senza codice fiscale'), p.emailCliente]) || 'Dati del cliente non indicati';
 };
 
 export function riassuntoNoleggio(p = {}) {

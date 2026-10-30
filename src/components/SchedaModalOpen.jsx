@@ -7,7 +7,7 @@ import FotoDalTelefono from './FotoDalTelefono';
 import { formattaData, giornoLocale } from '../utils/scadenze';
 import { controllaPatente } from '../utils/validaCliente';
 import { codiceFiscaleValido } from '../utils/nuovaPrenotazione';
-import { erroriConsegna, riassuntoErrori } from '../utils/controlloConsegna';
+import { erroriConsegna, riassuntoErrori, identitaConsegna } from '../utils/controlloConsegna';
 import { controlloEtaConsegna } from '../utils/etaConducenti';
 import { controlloAbbinamento, statoVelocita, testoVelocita, AVVISO_CONTROLLO, AVVISO_ELETTRICHE_IBRIDE, eElettricaOIbrida } from '../utils/neopatentati';
 import { pagataSulSito } from '../utils/regolePrenotazione';
@@ -18,6 +18,12 @@ import '../components/schedaModal.css';
 import '../styles/Prenotazione.css';
 
 const LIVELLI_CARBURANTE = ['1/4', '1/2', '3/4', 'Pieno'];
+const TIPI_IDENTITA = [
+  ['Passaporto', 'Passaporto'],
+  ['CI', "Carta d'identità"],
+  ['Permesso di soggiorno', 'Permesso di soggiorno'],
+  ['Altro', 'Altro'],
+];
 
 // Passi della consegna, mostrati in testa alla scheda e al riepilogo.
 export function PassiConsegna({ attivo }) {
@@ -58,6 +64,8 @@ function SchedaVeicoloModal({
   // Consegna bloccata (neopatentato con auto non adatta): cambiare auto o modificare la prenotazione.
   onCambiaAuto,
   onModifica,
+  // Chi comanda ha attivato la spunta «copia cartacea dei documenti» (Impostazioni).
+  copiaCartaceaAttiva = false,
 }) {
   const [uploading, setUploading] = useState(false);
   // Dopo il primo «Avanti» i campi mancanti si segnano e si aggiornano mentre si compilano.
@@ -70,6 +78,16 @@ function SchedaVeicoloModal({
   // Anche il codice fiscale si puo' lasciare vuoto prenotando: serve qui, per
   // il contratto e per mettere il cliente in anagrafica.
   const chiediCodiceFiscale = Boolean(prenotazione) && !codiceFiscaleValido(prenotazione.codiceFiscale);
+  // Cliente straniero senza codice fiscale: al suo posto nascita e documento d'identita'.
+  const identita = identitaConsegna({ prenotazione: prenotazione || {}, cliente, documenti });
+  const senzaCf = chiediCodiceFiscale && identita.senzaCodiceFiscale;
+  const mostraCopia = copiaCartaceaAttiva && chiediCodiceFiscale;
+  const copia = mostraCopia && identita.copiaCartacea;
+  const identitaErrori = {
+    senzaCodiceFiscale: senzaCf, copiaCartacea: copia,
+    dataNascita: identita.dataNascita, luogoNascita: identita.luogoNascita,
+    tipoDocumento: identita.tipoDocumento, tipoDocumentoAltro: identita.tipoDocumentoAltro, documento: identita.documento,
+  };
   const scadenzaInAnagrafica = cliente?.scadenzaPatente || '';
   const chiediScadenza = Boolean(prenotazione) && !scadenzaInAnagrafica;
   const scadenzaPatente = scadenzaInAnagrafica || documenti.scadenzaPatente || '';
@@ -92,6 +110,7 @@ function SchedaVeicoloModal({
   const segniConsegna = segniDi(schedaVeicolo.segniDanni, schedaVeicolo.danni);
   const cambiaDanni = (segni) => setSchedaVeicolo((prev) => ({ ...prev, segniDanni: segni, danni: testoDanni(segni) }));
   const errori = provato ? erroriConsegna({
+    ...identitaErrori,
     chiediCodiceFiscale, codiceFiscaleValido: codiceFiscaleValido(documenti.codiceFiscale),
     chiediPatente, patente: documenti.patente,
     chiediScadenza, scadenzaPatente: documenti.scadenzaPatente,
@@ -106,11 +125,26 @@ function SchedaVeicoloModal({
     prenotazione,
     etaConducenti,
     codiceFiscale: codiceFiscaleValido(prenotazione.codiceFiscale) ? prenotazione.codiceFiscale : documenti.codiceFiscale,
+    dataNascita: senzaCf ? identita.dataNascita : '',
     oggi: giornoLocale(),
     // Le richieste senza pagamento si pagano al ritiro: la differenza si corregge prima.
     pagataSulSito: pagataSulSito(prenotazione) && !prenotazione.richiestaSenzaPagamento,
   }) : null;
   const aggiornaDocumento = (campo, valore) => onDocumentiChange({ ...documenti, [campo]: valore });
+  const campoIdentita = (campo, etichetta, { tipo = 'text', id, obbligatorio = true, ...altri } = {}) => (
+    <label className={`pz-campo ${erroreDi(campo) ? 'pz-campo--errore' : ''}`} htmlFor={id}>
+      <span className="pz-etichetta">{etichetta}{obbligatorio && !copia && <span className="pz-obbligatorio"> *</span>}</span>
+      <input
+        id={id}
+        type={tipo}
+        value={identita[campo] || ''}
+        onChange={(e) => aggiornaDocumento(campo, e.target.value)}
+        aria-invalid={Boolean(erroreDi(campo))}
+        {...altri}
+      />
+      {erroreDi(campo) && <p className="pz-errore" role="alert">{erroreDi(campo)}</p>}
+    </label>
+  );
 
   const aggiorna = (campo, valore) => setSchedaVeicolo((prev) => ({ ...prev, [campo]: valore }));
 
@@ -134,7 +168,7 @@ function SchedaVeicoloModal({
 
   // Porta lo sguardo sul primo campo mancante: scorre fin li' e lo seleziona.
   const vaiAlCampo = (campo) => {
-    const id = { codiceFiscale: 'consegna-codice-fiscale', patente: 'consegna-patente', scadenzaPatente: 'consegna-scadenza-patente', rilascioPatente: 'consegna-rilascio-patente', km: 'consegna-km' }[campo];
+    const id = { codiceFiscale: 'consegna-codice-fiscale', patente: 'consegna-patente', scadenzaPatente: 'consegna-scadenza-patente', rilascioPatente: 'consegna-rilascio-patente', km: 'consegna-km', dataNascita: 'consegna-data-nascita', luogoNascita: 'consegna-luogo-nascita', tipoDocumento: 'consegna-tipo-documento', tipoDocumentoAltro: 'consegna-tipo-documento-altro', documento: 'consegna-documento' }[campo];
     const elemento = campo === 'carburante'
       ? document.querySelector('#consegna-carburante-scelte button')
       : campo === 'danni'
@@ -149,6 +183,7 @@ function SchedaVeicoloModal({
     e.preventDefault();
     setProvato(true);
     const mancanti = erroriConsegna({
+      ...identitaErrori,
       chiediCodiceFiscale, codiceFiscaleValido: codiceFiscaleValido(documenti.codiceFiscale),
       chiediPatente, patente: documenti.patente,
       chiediScadenza, scadenzaPatente: documenti.scadenzaPatente,
@@ -200,9 +235,9 @@ function SchedaVeicoloModal({
         <div className="pz-corpo">
           <section className="pz-sezione">
             <h3 className="pz-titolo-sezione">Documenti del cliente</h3>
-            {(chiediPatente || chiediScadenza || chiediCodiceFiscale || chiediRilascio) ? (
+            {(chiediPatente || chiediScadenza || chiediCodiceFiscale || chiediRilascio || senzaCf) ? (
               <div className="pz-griglia pz-griglia--2">
-                {chiediCodiceFiscale && (
+                {chiediCodiceFiscale && !senzaCf && (
                   <label className={`pz-campo pz-intera ${erroreDi('codiceFiscale') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-codice-fiscale">
                     <span className="pz-etichetta">Codice fiscale <span className="pz-obbligatorio">*</span></span>
                     <input
@@ -217,6 +252,53 @@ function SchedaVeicoloModal({
                       aria-invalid={Boolean(erroreDi('codiceFiscale'))}
                     />
                     {erroreDi('codiceFiscale') && <p className="pz-errore" role="alert">{erroreDi('codiceFiscale')}</p>}
+                  </label>
+                )}
+                {chiediCodiceFiscale && (
+                  <label className="pz-opzione pz-intera">
+                    <input
+                      type="checkbox"
+                      checked={senzaCf}
+                      onChange={(e) => aggiornaDocumento('senzaCodiceFiscale', e.target.checked)}
+                    />
+                    <span>Il cliente non ha il codice fiscale (straniero)</span>
+                  </label>
+                )}
+                {senzaCf && (
+                  <>
+                    {campoIdentita('dataNascita', 'Data di nascita', { tipo: 'date', id: 'consegna-data-nascita' })}
+                    {campoIdentita('luogoNascita', 'Luogo di nascita', { id: 'consegna-luogo-nascita' })}
+                    <label className={`pz-campo ${erroreDi('tipoDocumento') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-tipo-documento">
+                      <span className="pz-etichetta">Documento d&apos;identità <span className="pz-obbligatorio">*</span></span>
+                      <select
+                        id="consegna-tipo-documento"
+                        value={identita.tipoDocumento}
+                        onChange={(e) => aggiornaDocumento('tipoDocumento', e.target.value)}
+                        aria-invalid={Boolean(erroreDi('tipoDocumento'))}
+                      >
+                        <option value="">Scegli…</option>
+                        {TIPI_IDENTITA.map(([valore, nome]) => <option key={valore} value={valore}>{nome}</option>)}
+                      </select>
+                      {erroreDi('tipoDocumento') && <p className="pz-errore" role="alert">{erroreDi('tipoDocumento')}</p>}
+                    </label>
+                    {identita.tipoDocumento === 'Altro' && campoIdentita('tipoDocumentoAltro', 'Quale documento', { id: 'consegna-tipo-documento-altro' })}
+                    {campoIdentita('documento', 'Numero del documento', { id: 'consegna-documento', style: { textTransform: 'uppercase' } })}
+                    {campoIdentita('nazionalita', 'Nazionalità (facoltativa)', { obbligatorio: false, id: 'consegna-nazionalita' })}
+                  </>
+                )}
+                {mostraCopia && (
+                  <label className="pz-opzione pz-intera">
+                    <input
+                      type="checkbox"
+                      checked={copia}
+                      onChange={(e) => aggiornaDocumento('copiaCartacea', e.target.checked)}
+                    />
+                    <span>
+                      Ho preso copia cartacea dei documenti
+                      <span className="pz-aiuto" style={{ display: 'block' }}>
+                        Così non bloccano codice fiscale, documento d&apos;identità e data di nascita. La patente resta obbligatoria. Si registra chi l&apos;ha spuntata e quando.
+                      </span>
+                    </span>
                   </label>
                 )}
                 {chiediPatente ? (

@@ -15,7 +15,7 @@ const TIPI_DOCUMENTO = [
 ];
 
 export const CLIENTE_VUOTO = {
-  nome: '', cognome: '', codiceFiscale: '', dataNascita: '', luogoNascita: '', indirizzo: '',
+  nome: '', cognome: '', codiceFiscale: '', senzaCodiceFiscale: false, nazionalita: '', dataNascita: '', luogoNascita: '', indirizzo: '',
   email: '', telefono: '', cellulare: '',
   tipoDocumento: '', tipoDocumentoAltro: '', documento: '', rilasciatoDaDocumento: '', rilascioDocumento: '', scadenzaDocumento: '',
   patente: '', rilasciataDaPatente: '', rilascioPatente: '', scadenzaPatente: '',
@@ -51,6 +51,12 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
       ...(name === 'tipoDocumento' && value !== 'Altro' ? { tipoDocumentoAltro: '' } : {}),
     }));
     if (errori[name]) setErrori((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const cambiaSenzaCf = (e) => {
+    const senza = e.target.checked;
+    setDati((prev) => ({ ...prev, senzaCodiceFiscale: senza, ...(senza ? { codiceFiscale: '' } : {}) }));
+    setErrori((prev) => ({ ...prev, codiceFiscale: undefined, dataNascita: undefined, luogoNascita: undefined, documento: undefined, tipoDocumento: undefined }));
   };
 
   const invia = async (e) => {
@@ -113,11 +119,21 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
             <div className="pz-griglia pz-griglia--2">
               {campo('nome', 'Nome', { obbligatorio: true, autoFocus: !modifica })}
               {campo('cognome', 'Cognome', { obbligatorio: true })}
-              {campo('codiceFiscale', 'Codice fiscale', {
+              <label className="pz-opzione pz-intera">
+                <input type="checkbox" checked={dati.senzaCodiceFiscale === true} onChange={cambiaSenzaCf} />
+                <span>
+                  Il cliente non ha il codice fiscale (straniero)
+                  <span className="pz-aiuto" style={{ display: 'block' }}>
+                    Al suo posto servono data e luogo di nascita e un documento d&apos;identità.
+                  </span>
+                </span>
+              </label>
+              {dati.senzaCodiceFiscale !== true && campo('codiceFiscale', 'Codice fiscale', {
                 obbligatorio: true, placeholder: 'Es. RSSMRA80A01H501U', style: { textTransform: 'uppercase' }, maxLength: 16,
               })}
-              {campo('dataNascita', 'Data di nascita', { tipo: 'date' })}
-              {campo('luogoNascita', 'Luogo di nascita')}
+              {campo('dataNascita', 'Data di nascita', { tipo: 'date', obbligatorio: dati.senzaCodiceFiscale === true })}
+              {campo('luogoNascita', 'Luogo di nascita', { obbligatorio: dati.senzaCodiceFiscale === true })}
+              {dati.senzaCodiceFiscale === true && campo('nazionalita', 'Nazionalità (facoltativa)')}
               {campo('indirizzo', 'Indirizzo', { placeholder: 'Via, numero, città' })}
             </div>
           </section>
@@ -145,7 +161,7 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
             <h3 className="pz-titolo-sezione">Documento d'identità</h3>
             <div className="pz-griglia pz-griglia--2">
               <label className="pz-campo">
-                <span className="pz-etichetta">Tipo</span>
+                <span className="pz-etichetta">Tipo{dati.senzaCodiceFiscale === true && <span className="pz-obbligatorio"> *</span>}</span>
                 <select name="tipoDocumento" value={dati.tipoDocumento || ''} onChange={cambia}>
                   <option value="">Scegli…</option>
                   {TIPI_DOCUMENTO.map(([valore, nome]) => <option key={valore} value={valore}>{nome}</option>)}
@@ -153,8 +169,8 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
               </label>
               {dati.tipoDocumento === 'Altro'
                 ? campo('tipoDocumentoAltro', 'Quale documento', { placeholder: 'Es. Carta professionale' })
-                : campo('documento', 'Numero')}
-              {dati.tipoDocumento === 'Altro' && campo('documento', 'Numero')}
+                : campo('documento', 'Numero', { obbligatorio: dati.senzaCodiceFiscale === true })}
+              {dati.tipoDocumento === 'Altro' && campo('documento', 'Numero', { obbligatorio: dati.senzaCodiceFiscale === true })}
               {campo('scadenzaDocumento', 'Scadenza', { tipo: 'date' })}
               {campo('rilasciatoDaDocumento', 'Rilasciato da', { placeholder: 'Es. Comune di Roma' })}
               {campo('rilascioDocumento', 'Data di rilascio', { tipo: 'date' })}

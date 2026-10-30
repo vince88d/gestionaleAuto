@@ -32,6 +32,12 @@ import './BookingForm.css';
 import '../styles/Prenotazione.css';
 import './NuovaPrenotazione.css';
 
+// Legame con il cliente in anagrafica e dati dello straniero senza codice fiscale: si svuotano insieme al cliente.
+const CAMPI_IDENTITA_VUOTI = {
+  idCliente: undefined, senzaCodiceFiscale: undefined, dataNascita: undefined, luogoNascita: undefined,
+  tipoDocumento: undefined, documento: undefined, nazionalita: undefined,
+};
+
 const CAMPI_VUOTI = {
   cliente: '', telefono: '', emailCliente: '', codiceFiscale: '', patente: '',
   veicolo: '', targa: '', dataInizio: '', dataFine: '', oraInizio: '', oraFine: '', prezzoGiornaliero: '',
@@ -377,7 +383,8 @@ function BookingForm({
 
   // Il cliente scelto e' in anagrafica? (per "documenti completi")
   const clienteInAnagrafica = clienti.find(
-    (c) => dati.codiceFiscale && (c.codiceFiscale || '').toUpperCase() === dati.codiceFiscale.toUpperCase(),
+    (c) => (dati.idCliente && c.id === dati.idCliente)
+      || (dati.codiceFiscale && (c.codiceFiscale || '').toUpperCase() === dati.codiceFiscale.toUpperCase()),
   );
   const documentiOk = documentiCompleti(clienteInAnagrafica || dati);
 
@@ -387,6 +394,7 @@ function BookingForm({
     const sonoNumeri = /^[+\d\s]{6,}$/.test(testo);
     aggiorna({
       cliente: sonoNumeri ? '' : testo, telefono: sonoNumeri ? testo : '', emailCliente: '', codiceFiscale: '', patente: '',
+      ...CAMPI_IDENTITA_VUOTI,
     });
     setModoCliente('nuovo');
   };
@@ -721,7 +729,7 @@ function BookingForm({
                     type="button"
                     className="np-link"
                     onClick={() => {
-                      aggiorna({ cliente: '', telefono: '', emailCliente: '', codiceFiscale: '', patente: '' });
+                      aggiorna({ cliente: '', telefono: '', emailCliente: '', codiceFiscale: '', patente: '', ...CAMPI_IDENTITA_VUOTI });
                       setModoCliente('cerca');
                       setTimeout(() => campoCerca.current?.focus(), 0);
                     }}

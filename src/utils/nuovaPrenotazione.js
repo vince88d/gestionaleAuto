@@ -87,10 +87,21 @@ export function datiDaCliente(c) {
     telefono: c.telefono || c.cellulare || '',
     emailCliente: c.email || '',
     codiceFiscale: normalizzaCodiceFiscale(c.codiceFiscale),
+    // Il codice interno del cliente: lega la prenotazione al cliente anche senza codice fiscale.
+    ...(c.id ? { idCliente: c.id } : {}),
+    ...(c.senzaCodiceFiscale === true ? {
+      senzaCodiceFiscale: true, dataNascita: c.dataNascita || '', luogoNascita: c.luogoNascita || '',
+      tipoDocumento: c.tipoDocumento || '', documento: c.documento || '', nazionalita: c.nazionalita || '',
+    } : {}),
     patente: (c.patente || '').toUpperCase(),
     rilascioPatente: c.rilascioPatente || '',
   };
 }
 
 // Il cliente ha gia' i documenti che servono alla consegna?
-export const documentiCompleti = (c) => codiceFiscaleValido(c?.codiceFiscale) && Boolean(c?.patente);
+export const documentiCompleti = (c) => (
+  (c?.senzaCodiceFiscale === true
+    ? Boolean(c.dataNascita && c.luogoNascita && c.tipoDocumento && c.documento)
+    : codiceFiscaleValido(c?.codiceFiscale))
+  && Boolean(c?.patente)
+);

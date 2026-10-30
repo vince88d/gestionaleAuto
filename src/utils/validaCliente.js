@@ -4,6 +4,13 @@ import { normalizzaCodiceFiscale } from '../lib/firestoreClienti';
 
 export const TIPI_DOCUMENTO = ['CI', 'Patente', 'Passaporto', 'Permesso di soggiorno', 'Tessera sanitaria', 'Altro'];
 
+// Cliente straniero senza codice fiscale: si riconosce da un codice interno
+// (l'id del documento), non dal codice fiscale.
+export const senzaCodiceFiscale = (c) => c?.senzaCodiceFiscale === true;
+
+// Numero del documento d'identita' per confronti (maiuscolo, senza spazi).
+export const normalizzaDocumento = (valore) => String(valore || '').replace(/\s+/g, '').toUpperCase();
+
 // Dal form ai dati da salvare: codice fiscale in maiuscolo, spazi tolti,
 // "Altro" sostituito dal tipo scritto a mano.
 export function preparaCliente(dati) {
@@ -12,9 +19,11 @@ export function preparaCliente(dati) {
   );
   const tipoAltro = pulito.tipoDocumento === 'Altro';
   const { index: _index, ...senzaIndice } = pulito;
+  const senzaCf = pulito.senzaCodiceFiscale === true;
   return {
     ...senzaIndice,
-    codiceFiscale: normalizzaCodiceFiscale(pulito.codiceFiscale),
+    senzaCodiceFiscale: senzaCf,
+    codiceFiscale: senzaCf ? '' : normalizzaCodiceFiscale(pulito.codiceFiscale),
     patente: (pulito.patente || '').toUpperCase(),
     tipoDocumento: tipoAltro ? (pulito.tipoDocumentoAltro || '') : (pulito.tipoDocumento || ''),
     tipoDocumentoAltro: tipoAltro ? (pulito.tipoDocumentoAltro || '') : '',
@@ -38,23 +47,39 @@ export function validaCliente(cliente, altriClienti = [], idCliente = null) {
   const errori = {};
   if (!cliente.nome) errori.nome = 'Inserisci il nome.';
   if (!cliente.cognome) errori.cognome = 'Inserisci il cognome.';
-  const cf = normalizzaCodiceFiscale(cliente.codiceFiscale);
-  if (!cf) errori.codiceFiscale = 'Inserisci il codice fiscale.';
-  else if (!/^[A-Z0-9]{16}$/.test(cf)) errori.codiceFiscale = 'Il codice fiscale ha 16 lettere e numeri.';
-  else if (altriClienti.some((c) => c.id !== idCliente && normalizzaCodiceFiscale(c.codiceFiscale) === cf)) {
-    errori.codiceFiscale = 'Questo codice fiscale è già di un altro cliente.';
+  if (senzaCodiceFiscale(cliente)) {
+    if (!cliente.dataNascita) errori.dataNascita = 'Senza codice fiscale serve la data di nascita.';
+    if (!cliente.luogoNascita) errori.luogoNascita = 'Senza codice fiscale serve il luogo di nascita.';
+    if (!cliente.tipoDocumento) errori.tipoDocumento = 'Scegli il tipo di documento d\'identità.';
+    else if (cliente.tipoDocumento === 'Altro' && !cliente.tipoDocumentoAltro) errori.tipoDocumentoAltro = 'Scrivi quale documento.';
+    const doc = normalizzaDocumento(cliente.documento);
+    if (!doc) errori.documento = 'Senza codice fiscale serve il numero del documento d\'identità.';
+    else if (altriClienti.some((c) => c.id !== idCliente && senzaCodiceFiscale(c) && normalizzaDocumento(c.documento) === doc)) {
+      errori.documento = 'Questo documento è già di un altro cliente.';
+    }
+  } else {
+    const cf = normalizzaCodiceFiscale(cliente.codiceFiscale);
+    if (!cf) errori.codiceFiscale = 'Inserisci il codice fiscale.';
+    else if (!/^[A-Z0-9]{16}$/.test(cf)) errori.codiceFiscale = 'Il codice fiscale ha 16 lettere e numeri.';
+    else if (altriClienti.some((c) => c.id !== idCliente && normalizzaCodiceFiscale(c.codiceFiscale) === cf)) {
+      errori.codiceFiscale = 'Questo codice fiscale è già di un altro cliente.';
+    }
   }
   if (!cliente.patente) errori.patente = 'Inserisci il numero della patente.';
   if (cliente.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cliente.email)) errori.email = 'Email non valida.';
   return errori;
 }
 
-// Prenotazioni legate al cliente (per codice fiscale, senza badare alle
-// maiuscole: quelle del sito lo salvano come l'ha scritto il cliente).
-export function prenotazioniDelCliente(codiceFiscale, prenotazioni = []) {
+// Prenotazioni legate al cliente: per codice fiscale (senza badare alle
+// maiuscole: quelle del sito lo salvano come l'ha scritto il cliente) oppure
+// per codice interno (`idCliente`, per i clienti senza codice fiscale).
+// Accetta il cliente intero o, come prima, il solo codice fiscale.
+export function prenotazioniDelCliente(cliente, prenotazioni = []) {
+  const { codiceFiscale, id } = typeof cliente === 'object' && cliente !== null ? cliente : { codiceFiscale: cliente };
   const cf = normalizzaCodiceFiscale(codiceFiscale);
-  if (!cf) return [];
-  return prenotazioni.filter((p) => normalizzaCodiceFiscale(p.codiceFiscale) === cf);
+  return prenotazioni.filter((p) => (
+    (cf && normalizzaCodiceFiscale(p.codiceFiscale) === cf) || (id && p.idCliente === id)
+  ));
 }
 
 // Ricerca immediata su piu' parole: nome, cognome, contatti, codice fiscale,
@@ -62,15 +87,17 @@ export function prenotazioniDelCliente(codiceFiscale, prenotazioni = []) {
 export function cercaClienti(clienti = [], testo = '', prenotazioni = []) {
   const parole = testo.toLowerCase().split(/\s+/).filter(Boolean);
   if (parole.length === 0) return clienti;
-  const targhePerCf = new Map();
+  const targhe = new Map();
   prenotazioni.forEach((p) => {
-    const cf = normalizzaCodiceFiscale(p.codiceFiscale);
-    if (cf && p.targa) targhePerCf.set(cf, `${targhePerCf.get(cf) || ''} ${p.targa}`);
+    if (!p.targa) return;
+    [normalizzaCodiceFiscale(p.codiceFiscale), p.idCliente].filter(Boolean)
+      .forEach((chiave) => targhe.set(chiave, `${targhe.get(chiave) || ''} ${p.targa}`));
   });
   return clienti.filter((c) => {
     const testoCliente = [
       c.nome, c.cognome, c.email, c.telefono, c.cellulare, c.codiceFiscale, c.patente, c.ragioneSociale,
-      targhePerCf.get(normalizzaCodiceFiscale(c.codiceFiscale)),
+      senzaCodiceFiscale(c) && 'senza codice fiscale', c.documento,
+      targhe.get(normalizzaCodiceFiscale(c.codiceFiscale)), targhe.get(c.id),
     ].filter(Boolean).join(' ').toLowerCase();
     return parole.every((parola) => testoCliente.includes(parola));
   });
@@ -99,6 +126,14 @@ export function clienteDaPrenotazione(prenotazione, { patente, scadenzaPatente, 
     nome: prenotazione.nomeCliente || nome,
     cognome: prenotazione.cognomeCliente || resto.join(' '),
     codiceFiscale: normalizzaCodiceFiscale(prenotazione.codiceFiscale),
+    ...(prenotazione.senzaCodiceFiscale === true ? {
+      senzaCodiceFiscale: true,
+      dataNascita: prenotazione.dataNascita || '',
+      luogoNascita: prenotazione.luogoNascita || '',
+      tipoDocumento: prenotazione.tipoDocumento || '',
+      documento: prenotazione.documento || '',
+      nazionalita: prenotazione.nazionalita || '',
+    } : {}),
     email: prenotazione.emailCliente || '',
     telefono: prenotazione.telefono || '',
     patente: (patente || prenotazione.patente || '').trim().toUpperCase(),

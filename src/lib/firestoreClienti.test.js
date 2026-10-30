@@ -46,8 +46,8 @@ describe('aggiornaCliente', () => {
     expect(campi).toEqual(expect.objectContaining({ nome: 'Mario', codiceFiscale: 'NUOVOCF' }));
     expect(campi.storicoDanni).toBeUndefined();
     expect(campi.contratti).toBeUndefined();
-    expect(batch.update).toHaveBeenCalledWith('prenotazioni/p1', { codiceFiscale: 'NUOVOCF' });
-    expect(batch.update).toHaveBeenCalledWith('prenotazioni/p2', { codiceFiscale: 'NUOVOCF' });
+    expect(batch.update).toHaveBeenCalledWith('prenotazioni/p1', { codiceFiscale: 'NUOVOCF', idCliente: 'VECCHIO' });
+    expect(batch.update).toHaveBeenCalledWith('prenotazioni/p2', { codiceFiscale: 'NUOVOCF', idCliente: 'VECCHIO' });
     expect(batch.commit).toHaveBeenCalledTimes(1);
   });
 });

@@ -141,6 +141,8 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
             scheda: datiScheda,
             patente: formData.patente,
             codiceFiscale: formData.codiceFiscale,
+            identita: formData.senzaCodiceFiscale === true ? formData : null,
+            copiaCartacea: Boolean(formData.copiaCartacea),
             rilascioPatente: formData.rilascioPatente,
             scadenzaPatente,
             ip: ipPubblico || 'Non disponibile',
@@ -207,7 +209,7 @@ function RiepilogoPrenotazioneModal({ isOpen, onClose, formData, schedaVeicolo, 
               <h3 className="pz-titolo-sezione">Cliente</h3>
               <dl className="pz-dati">
                 <div><dt>Nome</dt><dd>{formData.cliente || '—'}</dd></div>
-                <div><dt>Codice fiscale</dt><dd>{formData.codiceFiscale || '—'}</dd></div>
+                <div><dt>Codice fiscale</dt><dd>{formData.codiceFiscale || (formData.senzaCodiceFiscale ? 'Senza codice fiscale' : '—')}</dd></div>
                 <div><dt>Patente</dt><dd>{formData.patente || '—'}</dd></div>
                 <div className="pz-intera"><dt>Email</dt><dd>{formData.emailCliente || '—'}</dd></div>
               </dl>

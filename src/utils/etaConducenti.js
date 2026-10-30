@@ -165,24 +165,37 @@ export function etaDaCodiceFiscale(codiceFiscale, oggi) {
   return anno - nascita - (m < mese || (m === mese && g < giorno) ? 1 : 0);
 }
 
+// Eta' dalla data di nascita scritta (AAAA-MM-GG): per i clienti senza codice
+// fiscale. null se la data non si legge.
+export function etaDaDataNascita(dataNascita, oggi) {
+  const n = String(dataNascita || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(n) || !/^\d{4}-\d{2}-\d{2}/.test(String(oggi || ''))) return null;
+  const [na, nm, ng] = n.split('-').map(Number);
+  const [a, m, g] = String(oggi).slice(0, 10).split('-').map(Number);
+  if (nm < 1 || nm > 12 || ng < 1 || ng > 31 || na > a) return null;
+  return a - na - (m < nm || (m === nm && g < ng) ? 1 : 0);
+}
+
 // Promemoria alla consegna sull'eta' dichiarata. Con il codice fiscale
 // (se guida il cliente) l'eta' si controlla da sola: avvisa solo se non
 // torna. Senza, ricorda di guardare la patente.
 // Restituisce null oppure { livello: 'errore' | 'attenzione' | 'info', testo }.
-export function controlloEtaConsegna({ prenotazione, etaConducenti, codiceFiscale, oggi, pagataSulSito = false }) {
+export function controlloEtaConsegna({ prenotazione, etaConducenti, codiceFiscale, dataNascita, oggi, pagataSulSito = false }) {
   const n = normalizzaEtaConducenti(etaConducenti);
   const dichiarata = typeof prenotazione?.etaConducente === 'number' ? prenotazione.etaConducente : null;
   const g = prenotazione?.giovaneConducente || null;
   if (!chiedeEta(n) && dichiarata === null && !g) return null;
 
-  const x = etaDaCodiceFiscale(codiceFiscale, oggi);
+  const daCf = etaDaCodiceFiscale(codiceFiscale, oggi);
+  const x = daCf !== null ? daCf : etaDaDataNascita(dataNascita, oggi);
+  const fonte = daCf !== null ? 'Dal codice fiscale' : 'Dalla data di nascita';
   if (x !== null) {
     const v = valutaEta(n, x);
     if (v.motivo === 'sotto') {
-      return { livello: 'errore', testo: `Dal codice fiscale il cliente ha ${x} anni: si noleggia dai ${n.etaMinima} anni. Se guida lui, non consegnare.` };
+      return { livello: 'errore', testo: `${fonte} il cliente ha ${x} anni: si noleggia dai ${n.etaMinima} anni. Se guida lui, non consegnare.` };
     }
     if (v.motivo === 'oltre') {
-      return { livello: 'attenzione', testo: `Dal codice fiscale il cliente ha ${x} anni, oltre l'età massima (${n.etaMassima}). Consegna solo se l'hai deciso tu.` };
+      return { livello: 'attenzione', testo: `${fonte} il cliente ha ${x} anni, oltre l'età massima (${n.etaMassima}). Consegna solo se l'hai deciso tu.` };
     }
     const pagato = g?.euroGiorno || 0;
     if (v.euroGiorno === pagato) return null;
@@ -192,7 +205,7 @@ export function controlloEtaConsegna({ prenotazione, etaConducenti, codiceFiscal
       : 'Se guida lui, prima di consegnare correggi l\'età con «Modifica».';
     return {
       livello: 'attenzione',
-      testo: `Dal codice fiscale il cliente ha ${x} anni${dichiarata !== null ? `, ma ha dichiarato ${dichiarata}` : ''}: ${giusto}${pagato > 0 ? ` (ne paga ${euro(pagato)})` : ''}. ${come}`,
+      testo: `${fonte} il cliente ha ${x} anni${dichiarata !== null ? `, ma ha dichiarato ${dichiarata}` : ''}: ${giusto}${pagato > 0 ? ` (ne paga ${euro(pagato)})` : ''}. ${come}`,
     };
   }
 

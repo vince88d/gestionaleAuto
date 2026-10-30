@@ -10,6 +10,7 @@ import { useAzienda, salvaAzienda, salvaAspettoAzienda } from '../lib/firestoreA
 import AspettoDocumenti from '../components/AspettoDocumenti';
 import SezioneImpostazioni from '../components/SezioneImpostazioni';
 import OrariSede from '../components/OrariSede';
+import CopiaCartaceaImpostazioni from '../components/CopiaCartaceaImpostazioni';
 import { leggiDatiPerBackup } from '../lib/backupDati';
 import {
   AZIENDA_VUOTA, validaAzienda, aziendeUguali, normalizzaAzienda, campiCambiati,
@@ -30,7 +31,7 @@ const CAMPI = [
 ];
 const ETICHETTE = { ...Object.fromEntries(CAMPI.map((c) => [c.nome, c.etichetta])), coloreAccento: 'Colore dei documenti', logo: 'Logo' };
 
-const SEZIONI = ['dati', 'aspetto', 'orari', 'licenza', 'backup', 'recupero'];
+const SEZIONI = ['dati', 'aspetto', 'orari', 'copiaCartacea', 'licenza', 'backup', 'recupero'];
 const CHIAVE_APERTE = 'impostazioni-sezioni-aperte';
 const leggiAperte = () => {
   try {
@@ -256,6 +257,8 @@ function ImpostazioniAzienda() {
       <AspettoDocumenti dati={datiSalvati} caricato={caricato} onSalva={salvaAspettoAzienda} aperta={aperte.aspetto} onToggle={toggle('aspetto')} />
 
       <OrariSede aperta={aperte.orari} onToggle={toggle('orari')} />
+
+      <CopiaCartaceaImpostazioni aperta={aperte.copiaCartacea} onToggle={toggle('copiaCartacea')} />
 
       <SezioneImpostazioni
         Icona={KeyRound}

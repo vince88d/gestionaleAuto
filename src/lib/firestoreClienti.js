@@ -101,7 +101,7 @@ export async function aggiornaCliente(id, cliente, { prenotazioniDaAggiornare = 
   const batch = writeBatch(db);
   batch.update(doc(db, CLIENTI_COLLECTION, id), campi);
   prenotazioniDaAggiornare.forEach((idPrenotazione) => {
-    batch.update(doc(db, PRENOTAZIONI_COLLECTION, idPrenotazione), { codiceFiscale: campi.codiceFiscale });
+    batch.update(doc(db, PRENOTAZIONI_COLLECTION, idPrenotazione), { codiceFiscale: campi.codiceFiscale, idCliente: id });
   });
   await batch.commit();
   return campi;
