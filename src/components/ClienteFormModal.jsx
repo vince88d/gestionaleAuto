@@ -119,15 +119,18 @@ function ClienteFormModal({ isOpen, cliente = null, clienti = [], onClose, onSal
             <div className="pz-griglia pz-griglia--2">
               {campo('nome', 'Nome', { obbligatorio: true, autoFocus: !modifica })}
               {campo('cognome', 'Cognome', { obbligatorio: true })}
-              <label className="pz-opzione pz-intera">
-                <input type="checkbox" checked={dati.senzaCodiceFiscale === true} onChange={cambiaSenzaCf} />
-                <span>
-                  Il cliente non ha il codice fiscale (straniero)
-                  <span className="pz-aiuto" style={{ display: 'block' }}>
-                    Al suo posto servono data e luogo di nascita e un documento d&apos;identità.
-                  </span>
-                </span>
-              </label>
+              <div className="pz-intera">
+                <p className="pz-scelte-titolo">Se il cliente non ha il codice fiscale</p>
+                <div className="pz-scelte">
+                  <label className="pz-scelta">
+                    <input type="checkbox" checked={dati.senzaCodiceFiscale === true} onChange={cambiaSenzaCf} />
+                    <span className="pz-scelta-testo">
+                      <b>Cliente straniero, senza codice fiscale</b>
+                      <small>Al suo posto servono data e luogo di nascita e un documento d&apos;identità.</small>
+                    </span>
+                  </label>
+                </div>
+              </div>
               {dati.senzaCodiceFiscale !== true && campo('codiceFiscale', 'Codice fiscale', {
                 obbligatorio: true, placeholder: 'Es. RSSMRA80A01H501U', style: { textTransform: 'uppercase' }, maxLength: 16,
               })}

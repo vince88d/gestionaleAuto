@@ -255,14 +255,35 @@ function SchedaVeicoloModal({
                   </label>
                 )}
                 {chiediCodiceFiscale && (
-                  <label className="pz-opzione pz-intera">
-                    <input
-                      type="checkbox"
-                      checked={senzaCf}
-                      onChange={(e) => aggiornaDocumento('senzaCodiceFiscale', e.target.checked)}
-                    />
-                    <span>Il cliente non ha il codice fiscale (straniero)</span>
-                  </label>
+                  <div className="pz-intera">
+                    <p className="pz-scelte-titolo">Se il cliente non ha tutti i documenti</p>
+                    <div className="pz-scelte">
+                      <label className="pz-scelta">
+                        <input
+                          type="checkbox"
+                          checked={senzaCf}
+                          onChange={(e) => aggiornaDocumento('senzaCodiceFiscale', e.target.checked)}
+                        />
+                        <span className="pz-scelta-testo">
+                          <b>Cliente straniero, senza codice fiscale</b>
+                          <small>Al suo posto si scrivono nascita e documento d&apos;identità.</small>
+                        </span>
+                      </label>
+                      {mostraCopia && (
+                        <label className="pz-scelta">
+                          <input
+                            type="checkbox"
+                            checked={copia}
+                            onChange={(e) => aggiornaDocumento('copiaCartacea', e.target.checked)}
+                          />
+                          <span className="pz-scelta-testo">
+                            <b>Ho preso copia cartacea dei documenti</b>
+                            <small>Non bloccano più codice fiscale, documento e nascita. La patente resta obbligatoria. Si registra chi l&apos;ha spuntata e quando.</small>
+                          </span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
                 )}
                 {senzaCf && (
                   <>
@@ -285,21 +306,6 @@ function SchedaVeicoloModal({
                     {campoIdentita('documento', 'Numero del documento', { id: 'consegna-documento', style: { textTransform: 'uppercase' } })}
                     {campoIdentita('nazionalita', 'Nazionalità (facoltativa)', { obbligatorio: false, id: 'consegna-nazionalita' })}
                   </>
-                )}
-                {mostraCopia && (
-                  <label className="pz-opzione pz-intera">
-                    <input
-                      type="checkbox"
-                      checked={copia}
-                      onChange={(e) => aggiornaDocumento('copiaCartacea', e.target.checked)}
-                    />
-                    <span>
-                      Ho preso copia cartacea dei documenti
-                      <span className="pz-aiuto" style={{ display: 'block' }}>
-                        Così non bloccano codice fiscale, documento d&apos;identità e data di nascita. La patente resta obbligatoria. Si registra chi l&apos;ha spuntata e quando.
-                      </span>
-                    </span>
-                  </label>
                 )}
                 {chiediPatente ? (
                   <label className={`pz-campo ${erroreDi('patente') ? 'pz-campo--errore' : ''}`} htmlFor="consegna-patente">
